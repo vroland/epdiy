@@ -1,0 +1,187 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title "ED097OC4 Breakout"
+Date "2019-08-30"
+Rev "v1.0"
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 "License: CC-BY-4.0"
+Comment4 "Author: Valentin Roland"
+$EndDescr
+$Comp
+L Diode:MBR0540 D?
+U 1 1 5D697AF4
+P 3950 1350
+F 0 "D?" H 3950 1566 50  0000 C CNN
+F 1 "MBR0540" H 3950 1475 50  0000 C CNN
+F 2 "Diode_SMD:D_SOD-123" H 3950 1175 50  0001 C CNN
+F 3 "http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf" H 3950 1350 50  0001 C CNN
+	1    3950 1350
+	1    0    0    -1  
+$EndComp
+$Comp
+L epd_breakout:ED097OC4 J?
+U 1 1 5D6A1D54
+P 9150 1500
+F 0 "J?" H 9800 2143 60  0000 C CNN
+F 1 "ED097OC4" H 9800 2037 60  0000 C CNN
+F 2 "epaper-breakout:CONN_ED097OC4" H 9800 1931 60  0000 C CNN
+F 3 "" H 9150 1500 60  0000 C CNN
+	1    9150 1500
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:CP C?
+U 1 1 5D6A725A
+P 1700 1250
+F 0 "C?" H 1818 1296 50  0000 L CNN
+F 1 "4.7uF" H 1818 1205 50  0000 L CNN
+F 2 "" H 1738 1100 50  0001 C CNN
+F 3 "~" H 1700 1250 50  0001 C CNN
+	1    1700 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:L L?
+U 1 1 5D6A7C6B
+P 2550 1400
+F 0 "L?" V 2369 1400 50  0000 C CNN
+F 1 "22uH" V 2460 1400 50  0000 C CNN
+F 2 "" H 2550 1400 50  0001 C CNN
+F 3 "~" H 2550 1400 50  0001 C CNN
+	1    2550 1400
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:L L?
+U 1 1 5D6A849F
+P 2700 3100
+F 0 "L?" V 2519 3100 50  0000 C CNN
+F 1 "22uH" V 2610 3100 50  0000 C CNN
+F 2 "" H 2700 3100 50  0001 C CNN
+F 3 "~" H 2700 3100 50  0001 C CNN
+	1    2700 3100
+	0    1    1    0   
+$EndComp
+$Comp
+L power:GND #PWR0101
+U 1 1 5D6A98DE
+P 2650 2550
+F 0 "#PWR0101" H 2650 2300 50  0001 C CNN
+F 1 "GND" H 2655 2377 50  0000 C CNN
+F 2 "" H 2650 2550 50  0001 C CNN
+F 3 "" H 2650 2550 50  0001 C CNN
+	1    2650 2550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2650 2350 2650 2400
+Wire Wire Line
+	2750 2350 2750 2400
+Wire Wire Line
+	2750 2400 2650 2400
+Connection ~ 2650 2400
+Wire Wire Line
+	2650 2400 2650 2550
+$Comp
+L Regulator_Switching:LT1945 U?
+U 1 1 5D6957D8
+P 2750 2050
+F 0 "U?" H 2750 2617 50  0000 C CNN
+F 1 "LT1945" H 2750 2526 50  0000 C CNN
+F 2 "Package_SO:MSOP-10_3x3mm_P0.5mm" H 2800 1800 50  0001 L CNN
+F 3 "https://www.analog.com/media/en/technical-documentation/data-sheets/1945fa.pdf" H 2850 2050 50  0001 C CNN
+	1    2750 2050
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0102
+U 1 1 5D6BF964
+P 1700 1400
+F 0 "#PWR0102" H 1700 1150 50  0001 C CNN
+F 1 "GND" H 1705 1227 50  0000 C CNN
+F 2 "" H 1700 1400 50  0001 C CNN
+F 3 "" H 1700 1400 50  0001 C CNN
+	1    1700 1400
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2250 1750 2250 1400
+$Comp
+L Device:R R?
+U 1 1 5D6CAD3A
+P 2050 2350
+F 0 "R?" H 2120 2396 50  0000 L CNN
+F 1 "10k" H 2120 2305 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 1980 2350 50  0001 C CNN
+F 3 "~" H 2050 2350 50  0001 C CNN
+	1    2050 2350
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R?
+U 1 1 5D6CB0A8
+P 1800 2350
+F 0 "R?" H 1870 2396 50  0000 L CNN
+F 1 "10k" H 1870 2305 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 1730 2350 50  0001 C CNN
+F 3 "~" H 1800 2350 50  0001 C CNN
+	1    1800 2350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1800 1850 1800 2200
+Text Label 1300 1850 0    50   ~ 0
+NEG_CTRL
+Text Label 1300 1950 0    50   ~ 0
+POS_CTRL
+Wire Wire Line
+	2050 2200 2050 1950
+Wire Wire Line
+	2250 1400 2400 1400
+Wire Wire Line
+	2250 1750 2350 1750
+Wire Wire Line
+	2250 1750 2250 3100
+Wire Wire Line
+	2250 3100 2550 3100
+Connection ~ 2250 1750
+Wire Wire Line
+	2250 1400 2250 1100
+Wire Wire Line
+	2250 1100 1700 1100
+Connection ~ 2250 1400
+Wire Wire Line
+	1800 1850 2350 1850
+Wire Wire Line
+	2050 1950 2350 1950
+Wire Wire Line
+	1300 1850 1800 1850
+Connection ~ 1800 1850
+Wire Wire Line
+	1300 1950 2050 1950
+Connection ~ 2050 1950
+$Comp
+L power:GND #PWR0103
+U 1 1 5D6D2229
+P 1950 2650
+F 0 "#PWR0103" H 1950 2400 50  0001 C CNN
+F 1 "GND" H 1955 2477 50  0000 C CNN
+F 2 "" H 1950 2650 50  0001 C CNN
+F 3 "" H 1950 2650 50  0001 C CNN
+	1    1950 2650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2050 2500 1950 2500
+Wire Wire Line
+	1950 2650 1950 2500
+Connection ~ 1950 2500
+Wire Wire Line
+	1950 2500 1800 2500
+$EndSCHEMATC

@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name epdbreakout)(type Legacy)(uri ${KIPRJMOD}/epdbreakout.lib)(options "")(descr ""))
+  (lib (name 2019-08-30_17-40-41)(type Legacy)(uri ${KIPRJMOD}/external/KiCAD/2019-08-30_17-40-41/2019-08-30_17-40-41.lib)(options "")(descr ""))
+)

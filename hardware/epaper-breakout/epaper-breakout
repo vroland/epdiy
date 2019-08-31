@@ -1,0 +1,29 @@
+"Source:","/home/vroland/dev/misc/epaper-breakout/hardware/epaper-breakout/epaper-breakout.sch"
+"Date:","Sa 31 Aug 2019 13:38:20 CEST"
+"Tool:","Eeschema 5.1.4"
+"Generator:","/usr/share/kicad/plugins/bom_csv_grouped_by_value.py"
+"Component Count:","8"
+
+"Individual Components:"
+
+"Item","Qty","Reference(s)","Value","LibPart","Footprint","Datasheet"
+"","","C1","4.7uF","Device:CP","","~"
+"","","D1","MBR0540","Diode:MBR0540","Diode_SMD:D_SOD-123","http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf"
+"","","J1","ED097OC4","epd_breakout:ED097OC4","epaper-breakout:CONN_ED097OC4",""
+"","","L1","22uH","Device:L","","~"
+"","","L2","22uH","Device:L","","~"
+"","","R1","10k","Device:R","","~"
+"","","R2","10k","Device:R","","~"
+"","","U1","LT1945","Regulator_Switching:LT1945","Package_SO:MSOP-10_3x3mm_P0.5mm","https://www.analog.com/media/en/technical-documentation/data-sheets/1945fa.pdf"
+
+
+
+"Collated Components:"
+
+"Item","Qty","Reference(s)","Value","LibPart","Footprint","Datasheet"
+"1","1","C1","4.7uF","Device:CP","","~"
+"2","1","D1","MBR0540","Diode:MBR0540","Diode_SMD:D_SOD-123","http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf"
+"3","1","J1","ED097OC4","epd_breakout:ED097OC4","epaper-breakout:CONN_ED097OC4",""
+"4","2","L1, L2","22uH","Device:L","","~"
+"5","2","R1, R2","10k","Device:R","","~"
+"6","1","U1","LT1945","Regulator_Switching:LT1945","Package_SO:MSOP-10_3x3mm_P0.5mm","https://www.analog.com/media/en/technical-documentation/data-sheets/1945fa.pdf"
