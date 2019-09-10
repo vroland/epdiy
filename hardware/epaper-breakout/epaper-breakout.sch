@@ -566,15 +566,13 @@ Wire Wire Line
 	1650 5450 2150 5450
 Wire Wire Line
 	1650 5450 1650 5550
-Text Label 2350 4950 0    50   ~ 0
+Text Label 2650 4950 2    50   ~ 0
 +3.3V
 Wire Wire Line
 	1950 4950 2150 4950
 Wire Wire Line
 	2150 4950 2150 5150
 Connection ~ 2150 4950
-Wire Wire Line
-	2150 4950 2350 4950
 Wire Notes Line
 	650  5800 650  4650
 Text Notes 700  5750 0    50   ~ 0
@@ -906,13 +904,7 @@ Text Label 8200 1150 2    50   ~ 0
 IO0
 Wire Notes Line
 	5200 600  8800 600 
-Wire Notes Line
-	8800 600  8800 3950
-Wire Notes Line
-	8800 3950 5200 3950
-Wire Notes Line
-	5200 3950 5200 600 
-Text Notes 5250 3900 0    50   ~ 0
+Text Notes 5250 3950 0    50   ~ 0
 ESP32 Module
 Wire Wire Line
 	7100 3750 7100 3800
@@ -1138,7 +1130,7 @@ F 3 "" H 9100 1500 50  0001 C CNN
 	1    9100 1500
 	1    0    0    -1  
 $EndComp
-Text Label 8200 2750 2    50   ~ 0
+Text Label 8200 2850 2    50   ~ 0
 EP_CKV
 Text Label 9350 1750 0    50   ~ 0
 EP_CKH
@@ -1152,8 +1144,6 @@ Wire Wire Line
 	9700 1850 9350 1850
 Wire Wire Line
 	9350 1950 9700 1950
-Text Label 9350 2050 0    50   ~ 0
-EP_RL
 Text Label 9350 2150 0    50   ~ 0
 EP_STH
 Text Label 9350 2250 0    50   ~ 0
@@ -1202,10 +1192,6 @@ Text Label 9350 4050 0    50   ~ 0
 EP_STV
 Text Label 9350 4150 0    50   ~ 0
 EP_CKV
-Text Label 9350 4250 0    50   ~ 0
-EP_BORDER
-Wire Wire Line
-	9700 4250 9350 4250
 Wire Wire Line
 	9350 4150 9700 4150
 Wire Wire Line
@@ -1238,20 +1224,18 @@ Text Label 8200 2150 2    50   ~ 0
 EP_D6
 Text Label 8200 2250 2    50   ~ 0
 EP_D7
-Text Label 8200 2350 2    50   ~ 0
+Text Label 8200 1350 2    50   ~ 0
 EP_LE
 Text Label 8200 2450 2    50   ~ 0
 EP_OE
-Text Label 8200 2650 2    50   ~ 0
+Text Label 8200 2750 2    50   ~ 0
 EP_CKH
-Text Label 8200 3050 2    50   ~ 0
+Text Label 8200 2350 2    50   ~ 0
 ~SMPS_CTRL
-Text Label 8200 2850 2    50   ~ 0
-EP_STH
 Text Label 8200 2950 2    50   ~ 0
+EP_STH
+Text Label 8200 3050 2    50   ~ 0
 EP_STV
-Text Label 8200 1350 2    50   ~ 0
-EP_RL
 Wire Wire Line
 	8200 1250 7700 1250
 Wire Wire Line
@@ -1277,8 +1261,6 @@ Wire Wire Line
 Wire Wire Line
 	7700 2450 8200 2450
 Wire Wire Line
-	8200 2650 7700 2650
-Wire Wire Line
 	7700 2750 8200 2750
 Wire Wire Line
 	8200 2850 7700 2850
@@ -1299,33 +1281,10 @@ Wire Wire Line
 Connection ~ 9600 3750
 Wire Wire Line
 	9600 3750 9350 3750
-Text Label 8600 1150 2    50   ~ 0
+Text Label 8700 1150 2    50   ~ 0
 EP_MODE
-NoConn ~ 6500 1350
-NoConn ~ 6500 1450
-$Comp
-L Connector_Generic:Conn_01x03 J3
-U 1 1 5DB0F972
-P 8200 3750
-F 0 "J3" V 8072 3930 50  0000 L CNN
-F 1 "Conn_01x03" V 8163 3930 50  0000 L CNN
-F 2 "" H 8200 3750 50  0001 C CNN
-F 3 "~" H 8200 3750 50  0001 C CNN
-	1    8200 3750
-	0    1    1    0   
-$EndComp
-Wire Wire Line
-	7700 2550 8300 2550
-Wire Wire Line
-	8300 2550 8300 3550
 Wire Wire Line
 	7700 3350 8200 3350
-Wire Wire Line
-	8200 3350 8200 3550
-Wire Wire Line
-	7700 3450 8100 3450
-Wire Wire Line
-	8100 3450 8100 3550
 Wire Wire Line
 	7700 3250 8200 3250
 Text Label 5350 950  0    50   ~ 0
@@ -1341,8 +1300,6 @@ Connection ~ 7100 950
 Wire Wire Line
 	7750 950  7750 1150
 Connection ~ 7750 1150
-Wire Wire Line
-	7750 1150 8600 1150
 Text Label 5300 1750 0    50   ~ 0
 +3.3V
 Wire Wire Line
@@ -1588,4 +1545,235 @@ Connection ~ 5500 2600
 Connection ~ 5900 2600
 Text Label 6350 2600 2    50   ~ 0
 IO0
+$Comp
+L power:GND #PWR08
+U 1 1 5DE439C7
+P 7150 4850
+F 0 "#PWR08" H 7150 4600 50  0001 C CNN
+F 1 "GND" H 7155 4677 50  0000 C CNN
+F 2 "" H 7150 4850 50  0001 C CNN
+F 3 "" H 7150 4850 50  0001 C CNN
+	1    7150 4850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6950 4900 6950 4750
+Text Label 6250 4500 3    50   ~ 0
++3.3V
+Text Label 6050 1350 0    50   ~ 0
+SENSOR_VP
+Text Label 6050 1450 0    50   ~ 0
+SENSOR_VN
+Wire Wire Line
+	6500 1350 6050 1350
+Wire Wire Line
+	6050 1450 6500 1450
+Text Label 6450 4500 3    50   ~ 0
+SENSOR_VN
+Text Label 6350 4500 3    50   ~ 0
+SENSOR_VP
+Wire Wire Line
+	6950 4750 7150 4750
+$Comp
+L power:GND #PWR010
+U 1 1 5DF3D78D
+P 9450 4350
+F 0 "#PWR010" H 9450 4100 50  0001 C CNN
+F 1 "GND" H 9350 4250 50  0000 C CNN
+F 2 "" H 9450 4350 50  0001 C CNN
+F 3 "" H 9450 4350 50  0001 C CNN
+	1    9450 4350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9700 4250 9450 4250
+Wire Wire Line
+	9450 4250 9450 4350
+Wire Wire Line
+	7750 1150 8700 1150
+Text Label 9350 2050 0    50   ~ 0
++3.3V
+Text Label 8200 2550 2    50   ~ 0
+SDA
+Text Label 8200 2650 2    50   ~ 0
+SCL
+$Comp
+L Connector_Generic:Conn_01x10 J3
+U 1 1 5DF9BBE8
+P 6550 5100
+F 0 "J3" V 6650 5200 50  0000 C CNN
+F 1 "Conn_01x10" V 6650 4800 50  0000 C CNN
+F 2 "" H 6550 5100 50  0001 C CNN
+F 3 "~" H 6550 5100 50  0001 C CNN
+	1    6550 5100
+	0    1    1    0   
+$EndComp
+Text Label 6050 4500 3    50   ~ 0
+USB_RXD
+Text Label 6150 4500 3    50   ~ 0
+USB_TXD
+Wire Notes Line
+	5200 4000 8800 4000
+Text Label 8200 3350 2    50   ~ 0
+A0
+Text Label 8200 3450 2    50   ~ 0
+A1
+Wire Wire Line
+	7700 3450 8200 3450
+Text Label 6550 4500 3    50   ~ 0
+A0
+Text Label 6650 4500 3    50   ~ 0
+A1
+Text Label 6750 4500 3    50   ~ 0
+SDA
+Text Label 6850 4500 3    50   ~ 0
+SCL
+Text Label 6850 4600 3    50   ~ 0
+SCL
+Wire Wire Line
+	8200 2550 7700 2550
+Wire Wire Line
+	7700 2650 8200 2650
+Wire Wire Line
+	6850 4500 6850 4900
+Wire Wire Line
+	6750 4500 6750 4900
+Wire Wire Line
+	6650 4500 6650 4900
+Wire Wire Line
+	6550 4900 6550 4500
+Wire Wire Line
+	6450 4500 6450 4900
+Wire Wire Line
+	6350 4900 6350 4500
+Wire Wire Line
+	6250 4500 6250 4900
+Wire Wire Line
+	7150 4750 7150 4850
+Wire Notes Line
+	8800 4000 8800 600 
+Wire Notes Line
+	5200 600  5200 4000
+Wire Wire Line
+	2150 4950 2500 4950
+$Comp
+L Device:R R16
+U 1 1 5E0FA82A
+P 2500 5100
+F 0 "R16" H 2570 5146 50  0000 L CNN
+F 1 "1k" H 2570 5055 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 2430 5100 50  0001 C CNN
+F 3 "~" H 2500 5100 50  0001 C CNN
+	1    2500 5100
+	1    0    0    -1  
+$EndComp
+Connection ~ 2500 4950
+Wire Wire Line
+	2500 4950 2650 4950
+$Comp
+L Device:LED D4
+U 1 1 5E0FC088
+P 2500 5450
+F 0 "D4" V 2550 5350 50  0000 R CNN
+F 1 "PWR" V 2450 5400 50  0000 R CNN
+F 2 "LED_SMD:LED_0805_2012Metric" H 2500 5450 50  0001 C CNN
+F 3 "~" H 2500 5450 50  0001 C CNN
+	1    2500 5450
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	2500 5250 2500 5300
+Wire Wire Line
+	2500 5600 2500 5650
+Wire Wire Line
+	2500 5650 2150 5650
+Wire Wire Line
+	2150 5650 2150 5450
+Connection ~ 2150 5450
+$Comp
+L Device:R R17
+U 1 1 5E11C7A4
+P 5600 4450
+F 0 "R17" H 5700 4400 50  0000 L CNN
+F 1 "1k" H 5700 4500 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 5530 4450 50  0001 C CNN
+F 3 "~" H 5600 4450 50  0001 C CNN
+	1    5600 4450
+	-1   0    0    1   
+$EndComp
+$Comp
+L Device:R R18
+U 1 1 5E13B857
+P 5750 4450
+F 0 "R18" H 5600 4400 50  0000 L CNN
+F 1 "1k" H 5600 4500 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 5680 4450 50  0001 C CNN
+F 3 "~" H 5750 4450 50  0001 C CNN
+	1    5750 4450
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	6150 4300 6150 4900
+Wire Wire Line
+	5750 4600 5750 4650
+Wire Wire Line
+	5600 4650 5600 4600
+$Comp
+L power:GND #PWR012
+U 1 1 5E1E4779
+P 5700 5150
+F 0 "#PWR012" H 5700 4900 50  0001 C CNN
+F 1 "GND" H 5705 4977 50  0000 C CNN
+F 2 "" H 5700 5150 50  0001 C CNN
+F 3 "" H 5700 5150 50  0001 C CNN
+	1    5700 5150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5750 4950 5700 4950
+Wire Wire Line
+	5700 4950 5700 5150
+Connection ~ 5700 4950
+Wire Wire Line
+	5700 4950 5600 4950
+Wire Wire Line
+	5750 4300 6150 4300
+Wire Wire Line
+	5600 4300 5600 4200
+Wire Wire Line
+	5600 4200 6050 4200
+Wire Wire Line
+	6050 4200 6050 4900
+$Comp
+L Device:LED D6
+U 1 1 5E14B634
+P 5750 4800
+F 0 "D6" V 5800 4700 50  0000 R CNN
+F 1 "RXD" V 5700 4700 50  0000 R CNN
+F 2 "LED_SMD:LED_0805_2012Metric" H 5750 4800 50  0001 C CNN
+F 3 "~" H 5750 4800 50  0001 C CNN
+	1    5750 4800
+	0    -1   -1   0   
+$EndComp
+$Comp
+L Device:LED D5
+U 1 1 5E14C380
+P 5600 4800
+F 0 "D5" V 5650 5000 50  0000 R CNN
+F 1 "TXD" V 5550 5000 50  0000 R CNN
+F 2 "LED_SMD:LED_0805_2012Metric" H 5600 4800 50  0001 C CNN
+F 3 "~" H 5600 4800 50  0001 C CNN
+	1    5600 4800
+	0    -1   -1   0   
+$EndComp
+Wire Notes Line
+	5200 4100 5200 5400
+Wire Notes Line
+	5200 5400 7350 5400
+Wire Notes Line
+	7350 5400 7350 4100
+Wire Notes Line
+	5200 4100 7350 4100
+Text Notes 5250 5350 0    50   ~ 0
+Debug
 $EndSCHEMATC
