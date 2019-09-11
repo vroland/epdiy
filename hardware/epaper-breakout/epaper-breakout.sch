@@ -914,8 +914,8 @@ U 1 1 5D80BDD8
 P 5700 3300
 F 0 "SW1" H 5700 3585 50  0000 C CNN
 F 1 "RESET" H 5700 3494 50  0000 C CNN
-F 2 "" H 5700 3500 50  0001 C CNN
-F 3 "~" H 5700 3500 50  0001 C CNN
+F 2 "epaper-breakout:SW_TS-1187A" H 5700 3500 50  0001 C CNN
+F 3 "https://datasheet.lcsc.com/szlcsc/1901111503_XKB-Enterprise-TS-1187A-B-A-B_C318884.pdf" H 5700 3500 50  0001 C CNN
 	1    5700 3300
 	1    0    0    -1  
 $EndComp
@@ -979,8 +979,8 @@ U 1 1 5D83555C
 P 900 6700
 F 0 "J2" H 957 7167 50  0000 C CNN
 F 1 "USB_B_Micro" H 957 7076 50  0000 C CNN
-F 2 "" H 1050 6650 50  0001 C CNN
-F 3 "~" H 1050 6650 50  0001 C CNN
+F 2 "epaper-breakout:USB_Micro-B_A01SB141B1-067" H 1050 6650 50  0001 C CNN
+F 3 "https://lcsc.com/product-detail/USB-Connectors_Jing-Extension-of-the-Electronic-Co-Jing-Extension-of-the-Electronic-Co-MICRO-USB-5S-B-Type-horns-High-temperature_C10418.html" H 1050 6650 50  0001 C CNN
 	1    900  6700
 	1    0    0    -1  
 $EndComp
@@ -1404,10 +1404,10 @@ $Comp
 L Device:R_POT RV1
 U 1 1 5DC48245
 P 3500 6650
-F 0 "RV1" H 3430 6696 50  0000 R CNN
-F 1 "2.2k" H 3430 6605 50  0000 R CNN
-F 2 "" H 3500 6650 50  0001 C CNN
-F 3 "~" H 3500 6650 50  0001 C CNN
+F 0 "RV1" H 3431 6696 50  0000 R CNN
+F 1 "200k" H 3431 6605 50  0000 R CNN
+F 2 "epaper-breakout:EVM3ESX50B25" H 3500 6650 50  0001 C CNN
+F 3 "https://lcsc.com/product-detail/Variable-Resistors_PANASONIC-EVM3ESX50B25_C11958.html" H 3500 6650 50  0001 C CNN
 	1    3500 6650
 	1    0    0    -1  
 $EndComp
@@ -1416,7 +1416,7 @@ L Device:R R14
 U 1 1 5DC497E2
 P 3500 7000
 F 0 "R14" H 3570 7046 50  0000 L CNN
-F 1 "4.7k" H 3570 6955 50  0000 L CNN
+F 1 "400k" H 3570 6955 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 3430 7000 50  0001 C CNN
 F 3 "~" H 3500 7000 50  0001 C CNN
 	1    3500 7000
@@ -1489,8 +1489,8 @@ U 1 1 5DE2D37B
 P 5700 2600
 F 0 "SW2" H 5700 2885 50  0000 C CNN
 F 1 "BOOT" H 5700 2794 50  0000 C CNN
-F 2 "" H 5700 2800 50  0001 C CNN
-F 3 "~" H 5700 2800 50  0001 C CNN
+F 2 "epaper-breakout:SW_TS-1187A" H 5700 2800 50  0001 C CNN
+F 3 "https://datasheet.lcsc.com/szlcsc/1901111503_XKB-Enterprise-TS-1187A-B-A-B_C318884.pdf" H 5700 2800 50  0001 C CNN
 	1    5700 2600
 	1    0    0    -1  
 $EndComp
@@ -1603,7 +1603,7 @@ U 1 1 5DF9BBE8
 P 6550 5100
 F 0 "J3" V 6650 5200 50  0000 C CNN
 F 1 "Conn_01x10" V 6650 4800 50  0000 C CNN
-F 2 "" H 6550 5100 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical" H 6550 5100 50  0001 C CNN
 F 3 "~" H 6550 5100 50  0001 C CNN
 	1    6550 5100
 	0    1    1    0   
