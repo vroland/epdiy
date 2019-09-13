@@ -32,7 +32,7 @@ P 9700 1250
 F 0 "J1" H 10350 1893 60  0000 C CNN
 F 1 "ED097OC4" H 10350 1787 60  0000 C CNN
 F 2 "epaper-breakout:CONN_ED097OC4" H 10000 1700 60  0000 C CNN
-F 3 "" H 9700 1250 60  0000 C CNN
+F 3 "https://datasheet.lcsc.com/szlcsc/Omron-Electronics-XF2M-3315-1A_C231420.pdf" H 9700 1250 60  0001 C CNN
 	1    9700 1250
 	1    0    0    -1  
 $EndComp
