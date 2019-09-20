@@ -26,11 +26,11 @@ F 3 "http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf" H 3550 950 50  0
 	1    0    0    -1  
 $EndComp
 $Comp
-L epd_breakout:ED097OC4 J1
+L epd_breakout:XF2M-3315-1A J1
 U 1 1 5D6A1D54
 P 9700 1250
 F 0 "J1" H 10350 1893 60  0000 C CNN
-F 1 "ED097OC4" H 10350 1787 60  0000 C CNN
+F 1 "XF2M-3315-1A" H 10350 1787 60  0000 C CNN
 F 2 "epaper-breakout:CONN_ED097OC4" H 10000 1700 60  0000 C CNN
 F 3 "https://datasheet.lcsc.com/szlcsc/Omron-Electronics-XF2M-3315-1A_C231420.pdf" H 9700 1250 60  0001 C CNN
 	1    9700 1250
@@ -909,11 +909,11 @@ ESP32 Module
 Wire Wire Line
 	7100 3750 7100 3800
 $Comp
-L Switch:SW_Push SW1
+L Switch:SW_Push RESET1
 U 1 1 5D80BDD8
 P 5700 3300
-F 0 "SW1" H 5700 3585 50  0000 C CNN
-F 1 "RESET" H 5700 3494 50  0000 C CNN
+F 0 "RESET1" H 5700 3585 50  0000 C CNN
+F 1 "SW1" H 5700 3494 50  0000 C CNN
 F 2 "epaper-breakout:SW_TS-1187A" H 5700 3500 50  0001 C CNN
 F 3 "https://datasheet.lcsc.com/szlcsc/1901111503_XKB-Enterprise-TS-1187A-B-A-B_C318884.pdf" H 5700 3500 50  0001 C CNN
 	1    5700 3300
@@ -974,11 +974,11 @@ F 3 "http://www.wch.cn/downloads/file/240.html" H 1750 6800 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Connector:USB_B_Micro J2
+L epd_breakout:C10418 J2
 U 1 1 5D83555C
 P 900 6700
 F 0 "J2" H 957 7167 50  0000 C CNN
-F 1 "USB_B_Micro" H 957 7076 50  0000 C CNN
+F 1 "C10418" H 957 7076 50  0000 C CNN
 F 2 "epaper-breakout:USB_Micro-B_A01SB141B1-067" H 1050 6650 50  0001 C CNN
 F 3 "https://lcsc.com/product-detail/USB-Connectors_Jing-Extension-of-the-Electronic-Co-Jing-Extension-of-the-Electronic-Co-MICRO-USB-5S-B-Type-horns-High-temperature_C10418.html" H 1050 6650 50  0001 C CNN
 	1    900  6700
@@ -1484,11 +1484,11 @@ Wire Wire Line
 Connection ~ 5500 3300
 Connection ~ 5900 3300
 $Comp
-L Switch:SW_Push SW2
+L Switch:SW_Push BOOT1
 U 1 1 5DE2D37B
 P 5700 2600
-F 0 "SW2" H 5700 2885 50  0000 C CNN
-F 1 "BOOT" H 5700 2794 50  0000 C CNN
+F 0 "BOOT1" H 5700 2885 50  0000 C CNN
+F 1 "SW2" H 5700 2794 50  0000 C CNN
 F 2 "epaper-breakout:SW_TS-1187A" H 5700 2800 50  0001 C CNN
 F 3 "https://datasheet.lcsc.com/szlcsc/1901111503_XKB-Enterprise-TS-1187A-B-A-B_C318884.pdf" H 5700 2800 50  0001 C CNN
 	1    5700 2600
@@ -1745,25 +1745,14 @@ Wire Wire Line
 Wire Wire Line
 	6050 4200 6050 4900
 $Comp
-L Device:LED D6
+L Device:LED RXD1
 U 1 1 5E14B634
 P 5750 4800
-F 0 "D6" V 5800 4700 50  0000 R CNN
-F 1 "RXD" V 5700 4700 50  0000 R CNN
+F 0 "RXD1" V 5800 4750 50  0000 R CNN
+F 1 "LED2" V 5700 4750 50  0000 R CNN
 F 2 "LED_SMD:LED_0805_2012Metric" H 5750 4800 50  0001 C CNN
 F 3 "~" H 5750 4800 50  0001 C CNN
 	1    5750 4800
-	0    -1   -1   0   
-$EndComp
-$Comp
-L Device:LED D5
-U 1 1 5E14C380
-P 5600 4800
-F 0 "D5" V 5650 5000 50  0000 R CNN
-F 1 "TXD" V 5550 5000 50  0000 R CNN
-F 2 "LED_SMD:LED_0805_2012Metric" H 5600 4800 50  0001 C CNN
-F 3 "~" H 5600 4800 50  0001 C CNN
-	1    5600 4800
 	0    -1   -1   0   
 $EndComp
 Wire Notes Line
@@ -1776,4 +1765,15 @@ Wire Notes Line
 	5200 4100 7350 4100
 Text Notes 5250 5350 0    50   ~ 0
 Debug
+$Comp
+L Device:LED TXD1
+U 1 1 5E14C380
+P 5600 4800
+F 0 "TXD1" V 5650 5000 50  0000 R CNN
+F 1 "LED1" V 5550 5050 50  0000 R CNN
+F 2 "LED_SMD:LED_0805_2012Metric" H 5600 4800 50  0001 C CNN
+F 3 "~" H 5600 4800 50  0001 C CNN
+	1    5600 4800
+	0    -1   -1   0   
+$EndComp
 $EndSCHEMATC

@@ -1,6 +1,18 @@
 EESchema-DOCLIB  Version 2.0
 #
-$CMP ED097OC4
+$CMP C10418
+D USB Micro Type B connector
+K connector USB micro
+F ~
+$ENDCMP
+#
+$CMP USB_B_Mini
+D USB Mini Type B connector
+K connector USB mini
+F ~
+$ENDCMP
+#
+$CMP XF2M-3315-1A
 D ED097OC4 9.7" epaper display
 K epaper eink
 $ENDCMP
