@@ -2,7 +2,7 @@
 <export version="D">
   <design>
     <source>/home/vroland/dev/misc/epaper-breakout/hardware/epaper-breakout/epaper-breakout.sch</source>
-    <date>Mo 16 Sep 2019 19:58:07 CEST</date>
+    <date>Fr 04 Okt 2019 22:05:07 CEST</date>
     <tool>Eeschema 5.1.4</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
@@ -284,8 +284,8 @@
       <tstamp>5D7648E3</tstamp>
     </comp>
     <comp ref="C15">
-      <value>100uF</value>
-      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <value>10uF</value>
+      <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
