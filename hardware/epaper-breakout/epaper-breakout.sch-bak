@@ -786,8 +786,8 @@ L Device:C C15
 U 1 1 5D79C798
 P 5450 1100
 F 0 "C15" H 5565 1146 50  0000 L CNN
-F 1 "100uF" H 5565 1055 50  0000 L CNN
-F 2 "Capacitor_SMD:C_0805_2012Metric" H 5488 950 50  0001 C CNN
+F 1 "10uF" H 5565 1055 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0603_1608Metric" H 5488 950 50  0001 C CNN
 F 3 "~" H 5450 1100 50  0001 C CNN
 	1    5450 1100
 	1    0    0    -1  
@@ -974,11 +974,11 @@ F 3 "http://www.wch.cn/downloads/file/240.html" H 1750 6800 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Connector:USB_B_Micro J2
+L epd_breakout:C10418 J2
 U 1 1 5D83555C
 P 900 6700
 F 0 "J2" H 957 7167 50  0000 C CNN
-F 1 "USB_B_Micro" H 957 7076 50  0000 C CNN
+F 1 "C10418" H 957 7076 50  0000 C CNN
 F 2 "epaper-breakout:USB_Micro-B_A01SB141B1-067" H 1050 6650 50  0001 C CNN
 F 3 "https://lcsc.com/product-detail/USB-Connectors_Jing-Extension-of-the-Electronic-Co-Jing-Extension-of-the-Electronic-Co-MICRO-USB-5S-B-Type-horns-High-temperature_C10418.html" H 1050 6650 50  0001 C CNN
 	1    900  6700
@@ -1776,4 +1776,6 @@ F 3 "~" H 5600 4800 50  0001 C CNN
 	1    5600 4800
 	0    -1   -1   0   
 $EndComp
+Entry Bus Bus
+	4900 7500 5000 7600
 $EndSCHEMATC
