@@ -7,15 +7,12 @@
 #include "Arduino.h"
 #include "image.hpp"
 //#include "beat.hpp"
-#include "Paperback.hpp"
+#include "ed097oc4.h"
 
 
 /* Screen Constants */
 #define EPD_WIDTH     1200
 #define EPD_HEIGHT    825
-#define CLK_DELAY_US  1
-#define VCLK_DELAY_US 0
-#define OUTPUT_TIME   2
 #define CLEAR_BYTE    0B10101010
 #define DARK_BYTE     0B01010101
 
@@ -25,40 +22,50 @@ enum ScreenState {
         DRAW_SCREEN = 1,
 };
 
-/* Pointer to the EPaper object */
-Paperback *EPD;
-
 /* Contrast cycles in order of contrast (Darkest first).  */
-const uint8_t contrast_cycles[] = {2,2,1,1};
-const uint8_t sz_contrast_cycles = sizeof(contrast_cycles)/sizeof(uint8_t);
-
-/* Screen clearing state */
-const uint8_t clear_cycles[] = {
-  CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE,
-  CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE,
-  DARK_BYTE, DARK_BYTE, DARK_BYTE, DARK_BYTE, DARK_BYTE, DARK_BYTE,
-  CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE,
-  CLEAR_BYTE, CLEAR_BYTE, CLEAR_BYTE,
-  CLEAR_BYTE,
+const uint32_t contrast_cycles[15] = {
+    2, 2, 2,
+    2, 3, 3, 3,
+    4, 4, 5, 5,
+    5, 10, 30, 50
 };
-const uint8_t sz_clear_cycles = sizeof(clear_cycles)/sizeof(uint8_t);
+hw_timer_t * timer = NULL;
 
 /* Setup serial and allocate memory for the Paperback pointer */
 void setup()
 {
-        Serial.begin(115200);
-        Serial.println("Blank screen!");
+    Serial.begin(115200);
+    Serial.println("Blank screen!");
 
-        EPD = new Paperback(
-                CLK_DELAY_US,
-                VCLK_DELAY_US,
-                OUTPUT_TIME
-        );
-
-
-        EPD->poweron();
+    init_gpios();
+    //timer = timerBegin(1, 1, true);
+    //timerAttachInterrupt(timer, &on_output_timer_expire, true);
 }
 
+void draw_byte(uint8_t byte, short time) {
+
+    start_frame();
+    fill_byte(byte);
+    for (int i = 0; i < EPD_HEIGHT; ++i) {
+        output_row(time, NULL, timer);
+    }
+    end_frame(timer);
+}
+
+void clear_screen() {
+    const short white_time = 50;
+    const short dark_time = 40;
+
+    for (int i=0; i<8; i++) {
+        draw_byte(CLEAR_BYTE, white_time);
+    }
+    for (int i=0; i<6; i++) {
+        draw_byte(DARK_BYTE, dark_time);
+    }
+    for (int i=0; i<8; i++) {
+        draw_byte(CLEAR_BYTE, white_time);
+    }
+}
 
 /* Setup serial and allocate memory for the Paperback pointer */
 void loop()
@@ -68,121 +75,58 @@ void loop()
         static ScreenState _state = CLEAR_SCREEN;
 
         delay(300);
-        EPD->poweron();
-
-
+        poweron();
         uint32_t timestamp = 0;
         if (_state == CLEAR_SCREEN) {
                 Serial.println("Clear cycle.");
                 timestamp = millis();
-                data_output(CLEAR_BYTE);
-                for (int k = 0; k < sz_clear_cycles; ++k) {
-                        EPD->vscan_start();
-                        data_output(clear_cycles[k]);
-                        // Height of the display
-                        for (int i = 0; i < EPD_HEIGHT; ++i) {
-                                EPD->hscan_start();
-
-                                // Width of the display, 4 Pixels each.
-                                for (int j = 0; j < (EPD_WIDTH/4); ++j) {
-                                        clock_pixel();
-                                }
-
-                                EPD->hscan_end();
-                                EPD->output_row();
-                                EPD->latch_row();
-                        }
-
-                        EPD->vscan_end();
-
-                } // End loop of Refresh Cycles Size
+                clear_screen();
                 _state = DRAW_SCREEN;
 
         } else if (_state == DRAW_SCREEN) {
                 Serial.println("Draw cycle.");
                 timestamp = millis();
-                for (int k = 0; k < sz_contrast_cycles; ++k) {
-                        for (
-                            int contrast_cnt = 0;
-                            contrast_cnt < contrast_cycles[k];
-                            ++contrast_cnt
-                        ) {
+                for (uint8_t k = 15; k > 1; --k) {
+                    start_frame();
+                    const uint8_t *dp = img_bytes;
 
-                                EPD->vscan_start();
-                                const uint8_t *dp = img_bytes;
+                    uint8_t row[EPD_WIDTH/4];
+                    // Height of the display
+                    for (int i = 0; i < EPD_HEIGHT; ++i) {
 
-                                // Height of the display
-                                for (int i = 0; i < EPD_HEIGHT; ++i) {
-                                        EPD->hscan_start();
-                                        yield();
-
-                                        // Width of the display, 4 Pixels each.
-                                        for (
-                                            int j = 0;
-                                            j < (EPD_WIDTH/4);
-                                            ++j
-                                        ) {
-
-
-
-                                                uint8_t pixel = 0B00000000;
-                                                if (i < 600 && j < 200) {
-                                                    uint8_t pix1 = \
-                                                        (*(dp) >> 7 - k) & 1;
-                                                    uint8_t pix2 = \
-                                                        (*(dp++) >> 3 - k) & 1;
-                                                    uint8_t pix3 = \
-                                                        (*(dp) >> 7 - k) & 1;
-                                                    uint8_t pix4 = \
-                                                        (*(dp++) >> 3 - k) & 1;
-
-                                                    pixel |= \
-                                                        ( pixel_to_epd_cmd(
-                                                            pix1
-                                                        ) << 6
-                                                    );
-                                                    pixel |=
-                                                        ( pixel_to_epd_cmd(
-                                                            pix2
-                                                        ) << 4
-                                                    );
-                                                    pixel |= \
-                                                        ( pixel_to_epd_cmd(
-                                                            pix3
-                                                        ) << 2
-                                                    );
-                                                    pixel |= \
-                                                        ( pixel_to_epd_cmd(
-                                                            pix4
-                                                        ) << 0
-                                                    );
-                                                } else {
-                                                    pixel = DARK_BYTE;
-                                                }
-
-                                                data_output(pixel);
-                                                clock_pixel();
-                                        }
-
-                                        EPD->hscan_end();
-                                        EPD->output_row();
-                                        EPD->latch_row();
-                                }
-
-                                EPD->vscan_end();
-                        } // End contrast count
+                        // Width of the display, 4 Pixels each.
+                        for (int j = 0; j < (EPD_WIDTH/4); ++j) {
+                            uint8_t pixel = 0B00000000;
+                            uint8_t value = *(dp++);
+                            //value = ((j / 19) << 4) | (j / 19);
+                            pixel |= ((value >> 4) < k) << 6;
+                            pixel |= ((value & 0B00001111) < k) << 4;
+                            value = *(dp++);
+                            //value = ((j / 19) << 4) | (j / 19);
+                            pixel |= ((value >> 4) < k) << 2;
+                            pixel |= ((value & 0B00001111) < k) << 0;
+                            row[j] = pixel;
+                        }
+                        //
+                        //uint32_t time = micros();
+                        output_row(contrast_cycles[15 - k], (uint8_t*) &row, timer);
+                        //Serial.println(micros() - time);
+                        //delay(50);
+                        //output_row(contrast_cycles[15 - k], (uint8_t*) &row, timer);
+                    }
+                    end_frame(timer);
+                    //delay(1000);
 
                 } // End loop of Refresh Cycles Size
 
                 _state = CLEAR_SCREEN;
         }
-
+        poweroff();
         // Print out the benchmark
         timestamp = millis() - timestamp;
         Serial.print("Took ");
         Serial.print(timestamp);
         Serial.println(" ms to redraw the screen.");
-        EPD->poweroff();
 
         // Wait 5 seconds then do it again
         delay(5000);
