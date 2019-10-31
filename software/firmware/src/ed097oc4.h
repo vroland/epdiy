@@ -235,7 +235,6 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t* data, hw_timer_t* ti
 {
     //while (next_row_clear) {};
     //portENTER_CRITICAL(&timerMux);
-    taskDISABLE_INTERRUPTS();
 
     //fast_gpio_set_hi(OEH);
 
@@ -259,6 +258,8 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t* data, hw_timer_t* ti
     latch_row();
     //next_row_clear = 1;
 
+
+    taskDISABLE_INTERRUPTS();
     fast_gpio_set_hi(CKV);
     for (uint32_t i=0; i < output_time_us * 40; i++) {
         asm volatile ("nop");
