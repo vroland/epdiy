@@ -230,8 +230,17 @@ inline void fill_byte(uint8_t byte) {
     gpio_set_hi(STH);
 }
 
+void IRAM_ATTR wait_line(uint32_t output_time_us) {
+    taskDISABLE_INTERRUPTS();
+    fast_gpio_set_hi(CKV);
+    unsigned counts = xthal_get_ccount() + output_time_us * 240;
+    while (xthal_get_ccount() < counts) {}
+    fast_gpio_set_lo(CKV);
+    taskENABLE_INTERRUPTS();
+}
+
 // This needs to be in IRAM, otherwise we get weired delays!
-void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t* data, hw_timer_t* timer)
+void output_row(uint32_t output_time_us, uint8_t* data, hw_timer_t* timer)
 {
     //while (next_row_clear) {};
     //portENTER_CRITICAL(&timerMux);
@@ -257,32 +266,7 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t* data, hw_timer_t* ti
 
     latch_row();
     //next_row_clear = 1;
-
-
-    taskDISABLE_INTERRUPTS();
-    fast_gpio_set_hi(CKV);
-    for (uint32_t i=0; i < output_time_us * 40; i++) {
-        asm volatile ("nop");
-    }
-    fast_gpio_set_lo(CKV);
-    //for (uint32_t i=0; i < 30; i++) {
-    //    __asm__("nop");
-    //}
-    //fast_gpio_set_lo(OEH);
-    //timerStop(timer);
-    //timerWrite(timer, 0);
-    //timerAlarmWrite(timer, output_time_us * 5, false);
-    //timerAlarmEnable(timer);
-    //timerStart(timer);
-    //fast_gpio_set_hi(OEH);
-    // NEXTROW START
-    //
-    //gpio_set_hi(CKH);
-    //gpio_set_lo(CKH);
-    //gpio_set_hi(CKH);
-    //gpio_set_lo(CKH);
-    //portEXIT_CRITICAL(&timerMux);
-    taskENABLE_INTERRUPTS();
+    wait_line(output_time_us);
 
     // END NEXTROW
 }
