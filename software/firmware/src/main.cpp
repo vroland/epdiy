@@ -6,8 +6,7 @@
  */
 #include "Arduino.h"
 #include "image.hpp"
-//#include "beat.hpp"
-#include "ed097oc4.h"
+#include "ed097oc4.hpp"
 
 
 /* Screen Constants */
@@ -29,7 +28,6 @@ const uint32_t contrast_cycles[15] = {
     4, 4, 5, 5,
     5, 10, 30, 50
 };
-hw_timer_t * timer = NULL;
 
 /* Setup serial and allocate memory for the Paperback pointer */
 void setup()
@@ -38,8 +36,6 @@ void setup()
     Serial.println("Blank screen!");
 
     init_gpios();
-    //timer = timerBegin(1, 1, true);
-    //timerAttachInterrupt(timer, &on_output_timer_expire, true);
 }
 
 void draw_byte(uint8_t byte, short time) {
@@ -47,9 +43,9 @@ void draw_byte(uint8_t byte, short time) {
     start_frame();
     fill_byte(byte);
     for (int i = 0; i < EPD_HEIGHT; ++i) {
-        output_row(time, NULL, timer);
+        output_row(time, NULL);
     }
-    end_frame(timer);
+    end_frame();
 }
 
 void clear_screen() {
@@ -107,14 +103,9 @@ void loop()
                             pixel |= ((value & 0B00001111) < k) << 0;
                             row[j] = pixel;
                         }
-                        //
-                        //uint32_t time = micros();
-                        output_row(contrast_cycles[15 - k], (uint8_t*) &row, timer);
-                        //Serial.println(micros() - time);
-                        //delay(50);
-                        //output_row(contrast_cycles[15 - k], (uint8_t*) &row, timer);
+                        output_row(contrast_cycles[15 - k], (uint8_t*) &row);
                     }
-                    end_frame(timer);
+                    end_frame();
                     //delay(1000);
 
                 } // End loop of Refresh Cycles Size
