@@ -31,15 +31,8 @@
 #define DATA_GPIO_MASK 0B00000000000000111111000000110000
 
 void init_gpios();
-void poweron();
-void poweroff();
-
-/*
- * Fill the output latch with a given byte.
- * Afterwards, output_row() can be called with NULL
- * as data, elimiating the need to write the same data again.
- */
-void fill_byte(uint8_t byte);
+void epd_poweron();
+void epd_poweroff();
 
 /*
  * Start a draw cycle.
@@ -50,7 +43,16 @@ void start_frame();
  * Output `data` to the next display row and enable the vertical
  * driver for `output_time_us` microseconds.
  */
-void output_row(uint32_t output_time_us, uint8_t* data);
+void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width);
+
+/* skip a row without writing to it. */
+void skip();
+
+/* enable the output register */
+void enable_output();
+
+/* disable the output register */
+void disable_output();
 
 /*
  * End a draw cycle.

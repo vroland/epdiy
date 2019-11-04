@@ -110,7 +110,7 @@ void init_gpios() {
     digitalWrite(D0, LOW);
 }
 
-void poweron() {
+void epd_poweron() {
     // POWERON
     gpio_set_lo(SMPS_CTRL);
     delayMicroseconds(100);
@@ -123,7 +123,7 @@ void poweron() {
     // END POWERON
 }
 
-void poweroff() {
+void epd_poweroff() {
     // POWEROFF
     gpio_set_lo(POS_CTRL);
     delayMicroseconds(10);
@@ -170,15 +170,6 @@ inline void latch_row()
     gpio_set_lo(CKH);
 }
 
-void fill_byte(uint8_t byte) {
-    data_output(byte);
-    gpio_set_lo(STH);
-    for (uint32_t i=0; i < 300; i++) {
-        next_pixel();
-    }
-    gpio_set_hi(STH);
-}
-
 
 // This needs to be in IRAM, otherwise we get weird delays!
 void IRAM_ATTR wait_line(uint32_t output_time_us) {
@@ -190,16 +181,28 @@ void IRAM_ATTR wait_line(uint32_t output_time_us) {
     taskENABLE_INTERRUPTS();
 }
 
-void output_row(uint32_t output_time_us, uint8_t* data)
+void skip() {
+    fast_gpio_set_hi(CKV);
+    unsigned counts = xthal_get_ccount() + 120;
+    while (xthal_get_ccount() < counts) {}
+    fast_gpio_set_lo(CKV);
+}
+
+void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)
 {
-    gpio_set_lo(STH);
     if (data != NULL) {
-        for (uint32_t i=0; i < 300; i++) {
+        gpio_set_lo(STH);
+        for (uint32_t i=0; i < width/4; i++) {
             data_output(*(data++));
             next_pixel();
         }
+        gpio_set_hi(STH);
     }
-    gpio_set_hi(STH);
+
+    gpio_set_hi(CKH);
+    gpio_set_lo(CKH);
+    gpio_set_hi(CKH);
+    gpio_set_lo(CKH);
 
     latch_row();
 
@@ -209,4 +212,12 @@ void output_row(uint32_t output_time_us, uint8_t* data)
 void end_frame() {
     gpio_set_lo(OEH);
     gpio_set_lo(MODE);
+}
+
+void enable_output() {
+    gpio_set_hi(OEH);
+}
+
+void disable_output() {
+    gpio_set_lo(OEH);
 }

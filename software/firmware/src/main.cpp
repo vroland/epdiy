@@ -6,113 +6,59 @@
  */
 #include "Arduino.h"
 #include "image.hpp"
-#include "ed097oc4.hpp"
+#include "EPD.hpp"
 
-
-/* Screen Constants */
-#define EPD_WIDTH     1200
-#define EPD_HEIGHT    825
-#define CLEAR_BYTE    0B10101010
-#define DARK_BYTE     0B01010101
 
 /* Display State Machine */
 enum ScreenState {
         CLEAR_SCREEN = 0,
         DRAW_SCREEN = 1,
+        CLEAR_PARTIAL = 2,
 };
 
-/* Contrast cycles in order of contrast (Darkest first).  */
-const uint32_t contrast_cycles[15] = {
-    2, 2, 2,
-    2, 3, 3, 3,
-    4, 4, 5, 5,
-    5, 10, 30, 50
-};
+EPD* epd;
 
-/* Setup serial and allocate memory for the Paperback pointer */
-void setup()
-{
+
+void setup() {
     Serial.begin(115200);
     Serial.println("Blank screen!");
 
-    init_gpios();
+    epd = new EPD(1200, 825);
 }
 
-void draw_byte(uint8_t byte, short time) {
-
-    start_frame();
-    fill_byte(byte);
-    for (int i = 0; i < EPD_HEIGHT; ++i) {
-        output_row(time, NULL);
-    }
-    end_frame();
-}
-
-void clear_screen() {
-    const short white_time = 50;
-    const short dark_time = 40;
-
-    for (int i=0; i<8; i++) {
-        draw_byte(CLEAR_BYTE, white_time);
-    }
-    for (int i=0; i<6; i++) {
-        draw_byte(DARK_BYTE, dark_time);
-    }
-    for (int i=0; i<8; i++) {
-        draw_byte(CLEAR_BYTE, white_time);
-    }
-}
-
-/* Setup serial and allocate memory for the Paperback pointer */
-void loop()
-{
-
+void loop() {
         // Variables to set one time.
         static ScreenState _state = CLEAR_SCREEN;
 
         delay(300);
-        poweron();
+        epd->poweron();
         uint32_t timestamp = 0;
         if (_state == CLEAR_SCREEN) {
                 Serial.println("Clear cycle.");
+                Serial.flush();
                 timestamp = millis();
-                clear_screen();
+                epd->clear_screen();
                 _state = DRAW_SCREEN;
 
         } else if (_state == DRAW_SCREEN) {
                 Serial.println("Draw cycle.");
                 timestamp = millis();
-                for (uint8_t k = 15; k > 1; --k) {
-                    start_frame();
-                    const uint8_t *dp = img_bytes;
+                epd->draw_picture(epd->full_screen(), (uint8_t*)&img_bytes);
+                _state = CLEAR_PARTIAL;
 
-                    uint8_t row[EPD_WIDTH/4];
-                    // Height of the display
-                    for (int i = 0; i < EPD_HEIGHT; ++i) {
-
-                        // Width of the display, 4 Pixels each.
-                        for (int j = 0; j < (EPD_WIDTH/4); ++j) {
-                            uint8_t pixel = 0B00000000;
-                            uint8_t value = *(dp++);
-                            //value = ((j / 19) << 4) | (j / 19);
-                            pixel |= ((value >> 4) < k) << 6;
-                            pixel |= ((value & 0B00001111) < k) << 4;
-                            value = *(dp++);
-                            //value = ((j / 19) << 4) | (j / 19);
-                            pixel |= ((value >> 4) < k) << 2;
-                            pixel |= ((value & 0B00001111) < k) << 0;
-                            row[j] = pixel;
-                        }
-                        output_row(contrast_cycles[15 - k], (uint8_t*) &row);
-                    }
-                    end_frame();
-                    //delay(1000);
-
-                } // End loop of Refresh Cycles Size
-
+        } else if (_state == CLEAR_PARTIAL) {
+                Serial.println("Partial clear cycle.");
+                Rect_t area = {
+                    .x = 100,
+                    .y = 100,
+                    .width = epd->width - 200,
+                    .height = epd->height - 200,
+                };
+                timestamp = millis();
+                epd->clear_area(area);
                 _state = CLEAR_SCREEN;
         }
-        poweroff();
+        epd->poweroff();
         // Print out the benchmark
         timestamp = millis() - timestamp;
         Serial.print("Took ");
@@ -120,6 +66,6 @@ void loop()
         Serial.println(" ms to redraw the screen.");
 
         // Wait 5 seconds then do it again
-        delay(5000);
+        delay(3000);
         Serial.println("Going active again.");
 }
