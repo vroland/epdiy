@@ -37,10 +37,10 @@ void EPD::poweroff() {
 }
 
 void EPD::skip_row() {
-    if (this->skipping < 2) {
+    if (this->skipping < 1) {
         output_row(10, this->null_row, this->width);
     } else {
-        skip();
+        skip(this->width);
     }
     this->skipping++;
 }
@@ -58,11 +58,13 @@ void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
             row[i] = 0;
         } else {
             // undivisible pixel values
-            //if (area.x < i*4 + 3) {
-            //    row[i] = byte & ~(0B11111111 << area.x % 4);
-            //} else {
-            row[i] = byte;
-            //}
+            if (area->x > i*4) {
+                row[i] = byte & (0B11111111 >> (2 * (area->x % 4)));
+            } else if (i*4 + 4 > area->x + area->width) {
+                row[i] = byte & (0B11111111 << (8 - 2 * ((area->x + area->width) % 4)));
+            } else {
+                row[i] = byte;
+            }
         }
     }
     start_frame();
@@ -87,7 +89,7 @@ void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
 }
 
 void EPD::clear_area(Rect_t area) {
-    const short white_time = 50;
+    const short white_time = 80;
     const short dark_time = 40;
 
     for (int i=0; i<8; i++) {

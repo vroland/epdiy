@@ -46,7 +46,7 @@ void start_frame();
 void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width);
 
 /* skip a row without writing to it. */
-void skip();
+void skip(uint16_t width);
 
 /* enable the output register */
 void enable_output();

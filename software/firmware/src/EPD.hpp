@@ -43,6 +43,10 @@ class EPD {
          */
         Rect_t full_screen();
 
+        /* draw a frame with all pixels being set to `byte`,
+         * where byte is an EPD-specific encoding of black and white. */
+        void draw_byte(Rect_t* area, short time, uint8_t byte);
+
         ~EPD();
     protected:
         // A row with only null bytes, to be loaded when skipping lines
@@ -51,9 +55,6 @@ class EPD {
 
         // status tracker for row skipping
         uint32_t skipping;
-
-        /* draw a frame with all pixels being set to `byte` */
-        void draw_byte(Rect_t* area, short time, uint8_t byte);
 
         // skip a display row
         void skip_row();

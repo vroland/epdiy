@@ -140,14 +140,17 @@ void start_frame() {
 
     gpio_set_hi(STV);
     gpio_set_lo(CKV);
+    delayMicroseconds(1);
     gpio_set_hi(CKV);
 
     gpio_set_lo(STV);
     gpio_set_lo(CKV);
+    delayMicroseconds(1);
     gpio_set_hi(CKV);
 
     gpio_set_hi(STV);
     gpio_set_lo(CKV);
+    delayMicroseconds(1);
     gpio_set_hi(CKV);
 
 
@@ -181,11 +184,17 @@ void IRAM_ATTR wait_line(uint32_t output_time_us) {
     taskENABLE_INTERRUPTS();
 }
 
-void skip() {
-    fast_gpio_set_hi(CKV);
-    unsigned counts = xthal_get_ccount() + 120;
-    while (xthal_get_ccount() < counts) {}
-    fast_gpio_set_lo(CKV);
+void skip(uint16_t width) {
+    gpio_set_lo(STH);
+    data_output(255);
+    for (uint32_t i=0; i < width/4; i++) {
+        next_pixel();
+    }
+    gpio_set_hi(STH);
+    gpio_set_hi(CKV);
+    unsigned counts = xthal_get_ccount() + 480;
+    while (xthal_get_ccount() < counts) {}    gpio_set_lo(CKV);
+    gpio_set_lo(CKV);
 }
 
 void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)

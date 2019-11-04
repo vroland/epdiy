@@ -48,14 +48,16 @@ void loop() {
 
         } else if (_state == CLEAR_PARTIAL) {
                 Serial.println("Partial clear cycle.");
-                Rect_t area = {
-                    .x = 100,
-                    .y = 100,
-                    .width = epd->width - 200,
-                    .height = epd->height - 200,
-                };
                 timestamp = millis();
-                epd->clear_area(area);
+                for (int i=0; i < 10; i++) {
+                    Rect_t area = {
+                        .x = 100 + i,
+                        .y = 100 + 30* i,
+                        .width = epd->width - 200,
+                        .height = 30,
+                    };
+                    epd->clear_area(area);
+                }
                 _state = CLEAR_SCREEN;
         }
         epd->poweroff();
