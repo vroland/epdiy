@@ -40,7 +40,8 @@ void EPD::skip_row() {
     if (this->skipping < 1) {
         output_row(10, this->null_row, this->width);
     } else {
-        skip(this->width);
+        output_row(10, this->null_row, this->width);
+        //skip(this->width);
     }
     this->skipping++;
 }
@@ -112,6 +113,22 @@ void EPD::clear_screen() {
     clear_area(this->full_screen());
 }
 
+/* shift row bitwise by bits to the right.
+ * only touch bytes start to end (inclusive).
+ * insert zeroes where gaps are created.
+ * information of the end byte is lost.
+ *
+ * Possible improvement: use larger chunks.
+ * */
+void shift_row_r(uint8_t* row, uint8_t bits, uint16_t start, uint16_t end) {
+    uint8_t carry = 0;
+    uint8_t mask = ~(0B11111111 << bits);
+    for (uint16_t i=end; i>=start; i--) {
+        carry = (row[i - 1] & mask) << (8 - bits);
+        row[i] = row[i] >> bits | carry;
+    }
+}
+
 void EPD::draw_picture(Rect_t area, uint8_t* data) {
     uint8_t* row = (uint8_t*)malloc(this->width/4);
 
@@ -123,25 +140,31 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
         for (int i = 0; i < this->height; i++) {
             if (i < area.y || i >= area.y + area.height) {
                 this->skip_row();
+                continue;
             }
-            for (int j = 0; j < this->width/4; j++) {
-                uint16_t image_end = area.x + area.width;
+
+            uint32_t aligned_end = 4 * (area.x / 4) + area.width;
+            for (uint32_t j = 0; j < this->width/4; j++) {
                 uint8_t pixel = 0B00000000;
-                if (j * 4 + 3 >= area.x && j*4 + 3 < image_end) {
+                if (j * 4 + 3 >= area.x && j * 4 < area.x + area.width) {
                     uint8_t value = *(ptr++);
                     pixel |= ((value >> 4) < k) << 6;
-                    if (image_end >= j*4 + 1) {
-                        pixel |= ((value & 0B00001111) < k) << 4;
-                    }
-                    if (image_end >= j*4 + 2) {
-                        value = *(ptr++);
+                    pixel |= ((value & 0B00001111) < k) << 4;
+                    if (j * 4 + 3 <= aligned_end) {
+                        uint8_t value = *(ptr++);
                         pixel |= ((value >> 4) < k) << 2;
-                        if (image_end >= j*4 + 3) {
-                            pixel |= ((value & 0B00001111) < k) << 0;
-                        }
+                        pixel |= ((value & 0B00001111) < k) << 0;
                     }
                 }
                 row[j] = pixel;
+            }
+            uint8_t offset = area.width % 4;
+            if (aligned_end < this->width / 4 && offset) {
+                row[area.x / 4 + area.width / 4] &= 0B11111111 ^ (0B00000011 << (6 - 2 * offset));
+            }
+            // image is not aligned
+            if (area.x % 4 > 0) {
+                shift_row_r(row, 2 * (area.x % 4), 1, this->width / 4 - 1);
             }
             this->write_row(contrast_cycles[15 - k], row);
         }

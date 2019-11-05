@@ -14,10 +14,18 @@ enum ScreenState {
         CLEAR_SCREEN = 0,
         DRAW_SCREEN = 1,
         CLEAR_PARTIAL = 2,
+        DRAW_SQUARES = 3,
 };
 
 EPD* epd;
 
+const uint8_t square[15] = {
+    0B00000000, 0B00000000, 0B00000000,
+    0B00001111, 0B11111111, 0B00000000,
+    0B00001111, 0B11111111, 0B00000000,
+    0B00001111, 0B11111111, 0B00000000,
+    0B00000000, 0B00000000, 0B00000000,
+};
 
 void setup() {
     Serial.begin(115200);
@@ -49,14 +57,25 @@ void loop() {
         } else if (_state == CLEAR_PARTIAL) {
                 Serial.println("Partial clear cycle.");
                 timestamp = millis();
-                for (int i=0; i < 10; i++) {
+                Rect_t area = {
+                    .x = 100,
+                    .y = 100,
+                    .width = epd->width - 200,
+                    .height = epd->height - 200,
+                };
+                epd->clear_area(area);
+                _state = DRAW_SQUARES;
+        } else if (_state == DRAW_SQUARES) {
+                Serial.println("Squares cycle.");
+                timestamp = millis();
+                for (int i=0; i<20; i++) {
                     Rect_t area = {
-                        .x = 100 + i,
-                        .y = 100 + 30* i,
-                        .width = epd->width - 200,
-                        .height = 30,
+                        .x = 150 + 7 * i,
+                        .y = 150 + 7 * i,
+                        .width = 5,
+                        .height = 5,
                     };
-                    epd->clear_area(area);
+                    epd->draw_picture(area, (uint8_t*)square);
                 }
                 _state = CLEAR_SCREEN;
         }
@@ -67,7 +86,7 @@ void loop() {
         Serial.print(timestamp);
         Serial.println(" ms to redraw the screen.");
 
-        // Wait 5 seconds then do it again
-        delay(3000);
+        // Wait 1 seconds then do it again
+        delay(1000);
         Serial.println("Going active again.");
 }
