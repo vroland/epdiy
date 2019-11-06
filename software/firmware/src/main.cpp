@@ -7,7 +7,9 @@
 #include "Arduino.h"
 #include "image.hpp"
 #include "EPD.hpp"
-
+#include "zlib.h"
+#include "gfxfont.h"
+#include "firasans.h"
 
 /* Display State Machine */
 enum ScreenState {
@@ -27,11 +29,15 @@ const uint8_t square[15] = {
     0B00000000, 0B00000000, 0B00000000,
 };
 
+uint8_t a_buf[1081];
+
 void setup() {
     Serial.begin(115200);
     Serial.println("Blank screen!");
 
     epd = new EPD(1200, 825);
+    unsigned long dsize = 1081;
+    Serial.println(uncompress(a_buf, &dsize, glyph_A, sizeof(glyph_A)));
 }
 
 void loop() {
@@ -70,12 +76,12 @@ void loop() {
                 timestamp = millis();
                 for (int i=0; i<20; i++) {
                     Rect_t area = {
-                        .x = 150 + 7 * i,
-                        .y = 150 + 7 * i,
-                        .width = 5,
-                        .height = 5,
+                        .x = 150 + 51 * i,
+                        .y = 150 + 51 * i,
+                        .width = 45,
+                        .height = 47,
                     };
-                    epd->draw_picture(area, (uint8_t*)square);
+                    epd->draw_picture(area, (uint8_t*)a_buf);
                 }
                 _state = CLEAR_SCREEN;
         }

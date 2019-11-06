@@ -159,7 +159,7 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
                 row[j] = pixel;
             }
             uint8_t offset = area.width % 4;
-            if (aligned_end < this->width / 4 && offset) {
+            if (aligned_end < this->width && offset) {
                 row[area.x / 4 + area.width / 4] &= 0B11111111 ^ (0B00000011 << (6 - 2 * offset));
             }
             // image is not aligned
