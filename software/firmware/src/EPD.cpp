@@ -146,7 +146,7 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
             uint32_t aligned_end = 4 * (area.x / 4) + area.width;
             for (uint32_t j = 0; j < this->width/4; j++) {
                 uint8_t pixel = 0B00000000;
-                if (j * 4 + 3 >= area.x && j * 4 < area.x + area.width) {
+                if (j * 4 + 3 >= area.x && j * 4 < 4 * ( area.x / 4) + area.width) {
                     uint8_t value = *(ptr++);
                     pixel |= ((value >> 4) < k) << 6;
                     pixel |= ((value & 0B00001111) < k) << 4;

@@ -74,16 +74,12 @@ void loop() {
         } else if (_state == DRAW_SQUARES) {
                 Serial.println("Squares cycle.");
                 timestamp = millis();
-                for (int i=0; i<20; i++) {
-                    Rect_t area = {
-                        .x = 150 + 51 * i,
-                        .y = 150 + 51 * i,
-                        .width = 45,
-                        .height = 47,
-                    };
-                    epd->draw_picture(area, (uint8_t*)a_buf);
-                }
+                int cursor_x = 100;
+                int cursor_y = 200;
+                unsigned char* string = (unsigned char*)"Hello World!\0\0\0";
+                write((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y, epd);
                 _state = CLEAR_SCREEN;
+                delay(5000);
         }
         epd->poweroff();
         // Print out the benchmark
