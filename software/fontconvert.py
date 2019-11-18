@@ -1,5 +1,6 @@
 import freetype
 import zlib
+import sys
 from collections import namedtuple
 
 GlyphProps = namedtuple("GlyphProps", ["width", "height", "advance_x", "left", "top", "compressed_size", "data_offset"])
@@ -30,6 +31,7 @@ def twopack(buf, width):
     return new_buf
 
 total_size = 0
+total_packed = 0
 all_glyphs = []
 for i in range(first, last + 1):
     if i in range(0x7F, 0xA0):
@@ -37,7 +39,8 @@ for i in range(first, last + 1):
     face.load_char(chr(i))
     bitmap = face.glyph.bitmap
 
-    packed = bytes(twopack([15 - (b >> 4) for b in bitmap.buffer], bitmap.width));
+    packed = bytes([255 - b for b in bitmap.buffer]);
+    total_packed += len(packed)
     compressed = zlib.compress(packed)
     glyph = GlyphProps(
         width = bitmap.width,
@@ -51,7 +54,6 @@ for i in range(first, last + 1):
     total_size += len(compressed)
     all_glyphs.append((glyph, compressed))
 
-
 glyph_data = []
 glyph_props = []
 for index, glyph in enumerate(all_glyphs):
@@ -59,14 +61,17 @@ for index, glyph in enumerate(all_glyphs):
     glyph_data.extend([b for b in compressed])
     glyph_props.append(props)
 
+print("total", total_packed, file=sys.stderr)
+print("compressed", total_size, file=sys.stderr)
+
 print(f"const uint8_t {font_name}Bitmaps[{len(glyph_data)}] = {{")
 for c in chunks(glyph_data, 16):
     print ("    " + " ".join(f"0x{b:02X}," for b in c))
 print ("};");
 
 print(f"const GFXglyph {font_name}Glyphs[] = {{")
-for g in glyph_props:
-    print ("    { " + ", ".join([f"{a}" for a in list(g)]), "},")
+for i, g in enumerate(glyph_props):
+    print ("    { " + ", ".join([f"{a}" for a in list(g)]), f"}}, // {first + i}")
 print ("};");
 
 print(f"const GFXfont {font_name} = {{")

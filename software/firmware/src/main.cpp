@@ -7,8 +7,7 @@
 #include "Arduino.h"
 #include "image.hpp"
 #include "EPD.hpp"
-#include "zlib.h"
-#include "gfxfont.h"
+#include "font.h"
 #include "firasans.h"
 
 /* Display State Machine */
@@ -21,23 +20,8 @@ enum ScreenState {
 
 EPD* epd;
 
-const uint8_t square[15] = {
-    0B00000000, 0B00000000, 0B00000000,
-    0B00001111, 0B11111111, 0B00000000,
-    0B00001111, 0B11111111, 0B00000000,
-    0B00001111, 0B11111111, 0B00000000,
-    0B00000000, 0B00000000, 0B00000000,
-};
-
-uint8_t a_buf[1081];
-
 void setup() {
-    Serial.begin(115200);
-    Serial.println("Blank screen!");
-
     epd = new EPD(1200, 825);
-    unsigned long dsize = 1081;
-    Serial.println(uncompress(a_buf, &dsize, glyph_A, sizeof(glyph_A)));
 }
 
 void loop() {
@@ -75,11 +59,13 @@ void loop() {
                 Serial.println("Squares cycle.");
                 timestamp = millis();
                 int cursor_x = 100;
-                int cursor_y = 200;
-                unsigned char* string = (unsigned char*)"Hello World!\0\0\0";
-                write((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y, epd);
+                int cursor_y = 100;
+                unsigned char* string = (unsigned char*)"Hello World! *g*";
+                writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y, epd);
+                cursor_y += FiraSans.advance_y;
+                string = (unsigned char*)"\xf6\xfc\xe4\xdf" "abcd/#{";
+                writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y, epd);
                 _state = CLEAR_SCREEN;
-                delay(5000);
         }
         epd->poweroff();
         // Print out the benchmark
@@ -88,7 +74,7 @@ void loop() {
         Serial.print(timestamp);
         Serial.println(" ms to redraw the screen.");
 
-        // Wait 1 seconds then do it again
-        delay(1000);
+        // Wait 4 seconds then do it again
+        delay(4000);
         Serial.println("Going active again.");
 }

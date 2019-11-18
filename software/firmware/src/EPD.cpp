@@ -144,27 +144,19 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
             }
 
             uint32_t aligned_end = 4 * (area.x / 4) + area.width;
-            for (uint32_t j = 0; j < this->width/4; j++) {
-                uint8_t pixel = 0B00000000;
-                if (j * 4 + 3 >= area.x && j * 4 < 4 * ( area.x / 4) + area.width) {
-                    uint8_t value = *(ptr++);
-                    pixel |= ((value >> 4) < k) << 6;
-                    pixel |= ((value & 0B00001111) < k) << 4;
-                    if (j * 4 + 3 <= aligned_end) {
-                        uint8_t value = *(ptr++);
-                        pixel |= ((value >> 4) < k) << 2;
-                        pixel |= ((value & 0B00001111) < k) << 0;
-                    }
+            uint8_t pixel = 0B00000000;
+            for (uint32_t j = 0; j < this->width; j++) {
+                if (j % 4 == 0) {
+                    pixel = 0B00000000;
                 }
-                row[j] = pixel;
-            }
-            uint8_t offset = area.width % 4;
-            if (aligned_end < this->width && offset) {
-                row[area.x / 4 + area.width / 4] &= 0B11111111 ^ (0B00000011 << (6 - 2 * offset));
-            }
-            // image is not aligned
-            if (area.x % 4 > 0) {
-                shift_row_r(row, 2 * (area.x % 4), 1, this->width / 4 - 1);
+                pixel = pixel << 2;
+                if (j >= area.x && j < area.x + area.width) {
+                    uint8_t value = *(ptr++);
+                    pixel |= ((value >> 4) < k);
+                }
+                if (j % 4 == 3) {
+                    row[j / 4] = pixel;
+                }
             }
             this->write_row(contrast_cycles[15 - k], row);
         }
