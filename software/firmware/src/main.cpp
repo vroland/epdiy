@@ -21,6 +21,7 @@ enum ScreenState {
 EPD* epd;
 
 void setup() {
+    Serial.begin(115200);
     epd = new EPD(1200, 825);
 }
 
