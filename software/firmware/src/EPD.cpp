@@ -6,10 +6,10 @@
 
 /* Contrast cycles in order of contrast (Darkest first).  */
 const uint32_t contrast_cycles[15] = {
-    2, 2, 2,
-    2, 3, 3, 3,
+    3, 4, 4,
     4, 4, 5, 5,
-    5, 10, 30, 50
+    5, 8, 10, 10,
+    10, 30, 40, 50
 };
 
 EPD::EPD(uint16_t width, uint16_t height) {
