@@ -18,15 +18,14 @@ void drawChar(GFXfont* font, uint8_t* buffer, int* cursor_x, uint16_t buf_width,
     uint32_t offset = glyph->data_offset;
     uint8_t  width  = glyph->width,
              height  = glyph->height;
-    int   left = glyph->left,
-           top_offset = 1 - glyph->top;
+    int   left = glyph->left;
 
     unsigned long bitmap_size = width * height;
     uint8_t* bitmap = (uint8_t*)malloc(bitmap_size);
     uncompress(bitmap, &bitmap_size, &font->bitmap[offset], glyph->compressed_size);
     for (uint32_t i=0; i<bitmap_size; i++) {
-        uint16_t xx = *cursor_x + left + i % width;
-        uint16_t yy = buf_height - (glyph->top + baseline_height - i / width);
+        int xx = *cursor_x + left + i % width;
+        int yy = buf_height - (glyph->top + baseline_height - i / width) + 1;
         buffer[yy * buf_width + xx] = bitmap[i];
     }
     free(bitmap);
@@ -48,7 +47,7 @@ void getCharBounds(GFXfont* font, unsigned char c, int* x, int* y, int* minx, in
         int x1 = *x + glyph->left,
             y1 = *y + (glyph->top - glyph->height),
             x2 = x1 + glyph->width,
-            y2 = y1 + glyph->height - 1;
+            y2 = y1 + glyph->height;
         if(x1 < *minx) *minx = x1;
         if(y1 < *miny) *miny = y1;
         if(x2 > *maxx) *maxx = x2;
