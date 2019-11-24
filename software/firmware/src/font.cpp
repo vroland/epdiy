@@ -25,7 +25,7 @@ void drawChar(GFXfont* font, uint8_t* buffer, int* cursor_x, uint16_t buf_width,
     uncompress(bitmap, &bitmap_size, &font->bitmap[offset], glyph->compressed_size);
     for (uint32_t i=0; i<bitmap_size; i++) {
         int xx = *cursor_x + left + i % width;
-        int yy = buf_height - (glyph->top + baseline_height - i / width) + 1;
+        int yy = buf_height - (glyph->top + baseline_height - i / width);
         buffer[yy * buf_width + xx] = bitmap[i];
     }
     free(bitmap);
@@ -78,10 +78,11 @@ void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y,
 
     Rect_t area = {
         .x = x1,
-        .y = *cursor_y - h + (*cursor_y - y1),
+        .y = y1,
         .width = w,
         .height = h
     };
+
     int working_curor = 0;
     while (c=*(string++)) {
         drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
