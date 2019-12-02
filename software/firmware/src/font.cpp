@@ -62,6 +62,9 @@ void getTextBounds(GFXfont* font, unsigned char* string, int x, int y, int* x1, 
     while (c=*(string++)) {
         getCharBounds(font, c, &xx, &yy, &minx, &miny, &maxx, &maxy);
     }
+    Serial.println(miny);
+    Serial.println(yy);
+    Serial.println(maxy);
     *x1 = min(x, minx);
     *w = maxx - *x1;
     *y1 = miny;
@@ -75,10 +78,11 @@ void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y,
     uint8_t* buffer = (uint8_t*)malloc(w * h);
     memset(buffer, 255, w * h);
     unsigned char c;
+    int baseline_height = *cursor_y - y1;
 
     Rect_t area = {
         .x = x1,
-        .y = y1,
+        .y = *cursor_y - h + baseline_height,
         .width = w,
         .height = h
     };
