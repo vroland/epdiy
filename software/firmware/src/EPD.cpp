@@ -1,5 +1,7 @@
 #include "EPD.hpp"
-#include "ed097oc4.hpp"
+extern "C" {
+    #include "ed097oc4.h"
+}
 
 #define CLEAR_BYTE    0B10101010
 #define DARK_BYTE     0B01010101
@@ -131,9 +133,10 @@ void shift_row_r(uint8_t* row, uint8_t bits, uint16_t start, uint16_t end) {
 
 void EPD::draw_picture(Rect_t area, uint8_t* data) {
     uint8_t* row = (uint8_t*)malloc(this->width/4);
+    uint32_t* line = (uint32_t*)malloc(this->width);
 
     for (uint8_t k = 15; k > 0; k--) {
-        uint8_t* ptr = data;
+        uint32_t* ptr = (uint32_t*)data;
         yield();
         start_frame();
         // initialize with null row to avoid artifacts
@@ -143,24 +146,40 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
                 continue;
             }
 
-            uint32_t aligned_end = 4 * (area.x / 4) + area.width;
+            //uint32_t aligned_end = 4 * (area.x / 4) + area.width;
             uint8_t pixel = 0B00000000;
-            for (uint32_t j = 0; j < this->width; j++) {
-                if (j % 4 == 0) {
-                    pixel = 0B00000000;
-                }
-                pixel = pixel << 2;
-                if (j >= area.x && j < area.x + area.width) {
+            memcpy(line, ptr, this->width);
+            ptr+=this->width/4;
+            uint32_t* lp = line;
+            uint8_t displacement_map[4] = {
+                2, 3, 0, 1
+            };
+
+            volatile uint32_t t = micros();
+            for (uint32_t j = 0; j < this->width/4; j++) {
+                /*if (j >= area.x && j < area.x + area.width) {
                     uint8_t value = *(ptr++);
                     pixel |= ((value >> 4) < k);
-                }
-                if (j % 4 == 3) {
-                    row[j / 4] = pixel;
-                }
+                }*/
+                uint32_t val = *(lp++);
+                pixel = (val & 0x000000F0) < (k << 4);
+                pixel = pixel << 2;
+                val = val >> 8;
+                pixel |= (val & 0x000000F0) < (k << 4);
+                pixel = pixel << 2;
+                val = val >> 8;
+                pixel |= (val & 0x000000F0) < (k << 4);
+                pixel = pixel << 2;
+                val = val >> 8;
+                pixel |= (val & 0x000000F0) < (k << 4);
+                row[(j & ~0x00000003) + displacement_map[j % 4]] = pixel;
             }
+            volatile uint32_t t2 = micros();
+            //printf("row calc took %d us.\n", t2 - t);
             this->write_row(contrast_cycles[15 - k], row);
         }
         end_frame();
     }
     free(row);
+    free(line);
 }
