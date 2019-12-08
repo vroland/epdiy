@@ -34,11 +34,15 @@ void EPD::poweroff() {
 }
 
 void EPD::skip_row() {
-    if (this->skipping < 1) {
+    // 2, to latch out previously loaded null row
+    if (this->skipping < 2) {
         output_row(10, this->null_row);
+        // avoid tainting of following rows by
+        // allowing residual charge to dissipate
+        unsigned counts = xthal_get_ccount() + 50 * 240;
+        while (xthal_get_ccount() < counts) {};
     } else {
-        output_row(10, this->null_row);
-        //skip();
+        skip();
     }
     this->skipping++;
 }

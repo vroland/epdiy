@@ -26,7 +26,6 @@ int current_buffer = 0;
 volatile bool output_done = true;
 static intr_handle_t gI2S_intr_handle = NULL;
 
-
 inline void gpio_set_hi(gpio_num_t gpio_num)
 {
         digitalWrite(gpio_num, HIGH);
@@ -54,6 +53,10 @@ inline void fast_gpio_set_lo(gpio_num_t gpio_num)
     GPIO.out_w1tc = (1 << gpio_num);
 }
 
+inline void busy_delay(uint32_t cycles) {
+    volatile unsigned long counts = xthal_get_ccount() + cycles;
+    while (xthal_get_ccount() < counts) {};
+}
 
 static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf) {
     dmadesc->size=EPD_LINE_BYTES;
@@ -323,8 +326,7 @@ inline void latch_row()
 void IRAM_ATTR wait_line(uint32_t output_time_us) {
     taskDISABLE_INTERRUPTS();
     fast_gpio_set_hi(CKV);
-    unsigned counts = xthal_get_ccount() + output_time_us * 240;
-    while (xthal_get_ccount() < counts) {}
+    busy_delay(output_time_us * 240);
     fast_gpio_set_lo(CKV);
     taskENABLE_INTERRUPTS();
 }
@@ -343,13 +345,11 @@ void start_line_output() {
 }
 
 void skip() {
-    gpio_set_lo(STH);
-    memset(get_current_buffer(), 0, EPD_LINE_BYTES);
-    gpio_set_hi(STH);
-    gpio_set_hi(CKV);
-    unsigned counts = xthal_get_ccount() + 480;
-    while (xthal_get_ccount() < counts) {}    gpio_set_lo(CKV);
-    gpio_set_lo(CKV);
+    latch_row();
+
+    fast_gpio_set_hi(CKV);
+    busy_delay(100);
+    fast_gpio_set_lo(CKV);
 }
 
 void output_row(uint32_t output_time_us, uint8_t* data)
