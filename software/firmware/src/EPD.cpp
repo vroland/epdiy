@@ -14,15 +14,10 @@ const uint32_t contrast_cycles[15] = {
     5, 10, 30, 50
 };
 
-EPD::EPD(uint16_t width, uint16_t height) {
-    this->width = width;
-    this->height = height;
+EPD::EPD() {
     this->skipping = 0;
-    this->null_row = (uint8_t*)malloc(this->width/4);
-    for (int i = 0; i < this->width/4; i++) {
-        this->null_row[i] = 255;
-    }
-    //memset(this->null_row, 0, this->width/4);
+    this->null_row = (uint8_t*)malloc(EPD_LINE_BYTES);
+    memset(this->null_row, 255, EPD_LINE_BYTES);
     init_gpios();
 }
 
@@ -40,23 +35,23 @@ void EPD::poweroff() {
 
 void EPD::skip_row() {
     if (this->skipping < 1) {
-        output_row(10, this->null_row, this->width);
+        output_row(10, this->null_row);
     } else {
-        output_row(10, this->null_row, this->width);
-        //skip(this->width);
+        output_row(10, this->null_row);
+        //skip();
     }
     this->skipping++;
 }
 
 void EPD::write_row(uint32_t output_time_us, uint8_t* data) {
     this->skipping = 0;
-    output_row(output_time_us, data, this->width);
+    output_row(output_time_us, data);
 }
 
 void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
 
-    uint8_t* row = (uint8_t*)malloc(this->width/4);
-    for (int i = 0; i < this->width/4; i++) {
+    uint8_t* row = (uint8_t*)malloc(EPD_LINE_BYTES);
+    for (int i = 0; i < EPD_LINE_BYTES; i++) {
         if (i*4 + 3 < area->x || i*4 >= area->x + area->width) {
             row[i] = 0;
         } else {
@@ -71,7 +66,7 @@ void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
         }
     }
     start_frame();
-    for (int i = 0; i < this->height; i++) {
+    for (int i = 0; i < EPD_HEIGHT; i++) {
         // before are of interest: skip
         if (i < area->y) {
             this->skip_row();
@@ -110,7 +105,7 @@ void EPD::clear_area(Rect_t area) {
 }
 
 Rect_t EPD::full_screen() {
-    Rect_t full_screen = { .x = 0, .y = 0, .width = this->width, .height = this->height };
+    Rect_t full_screen = { .x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT };
     return full_screen;
 }
 
@@ -135,15 +130,15 @@ void shift_row_r(uint8_t* row, uint8_t bits, uint16_t start, uint16_t end) {
 }
 
 void EPD::draw_picture(Rect_t area, uint8_t* data) {
-    uint8_t* row = (uint8_t*)malloc(this->width/4);
-    uint32_t* line = (uint32_t*)malloc(this->width);
+    uint8_t* row = (uint8_t*)malloc(EPD_LINE_BYTES);
+    uint32_t* line = (uint32_t*)malloc(EPD_WIDTH);
 
     for (uint8_t k = 15; k > 0; k--) {
         uint32_t* ptr = (uint32_t*)data;
         yield();
         start_frame();
         // initialize with null row to avoid artifacts
-        for (int i = 0; i < this->height; i++) {
+        for (int i = 0; i < EPD_HEIGHT; i++) {
             if (i < area.y || i >= area.y + area.height) {
                 this->skip_row();
                 continue;
@@ -151,15 +146,15 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
 
             //uint32_t aligned_end = 4 * (area.x / 4) + area.width;
             uint8_t pixel = 0B00000000;
-            memcpy(line, ptr, this->width);
-            ptr+=this->width/4;
+            memcpy(line, ptr, EPD_WIDTH);
+            ptr+=EPD_WIDTH/4;
             uint32_t* lp = line;
             uint8_t displacement_map[4] = {
                 2, 3, 0, 1
             };
 
             volatile uint32_t t = micros();
-            for (uint32_t j = 0; j < this->width/4; j++) {
+            for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
                 /*if (j >= area.x && j < area.x + area.width) {
                     uint8_t value = *(ptr++);
                     pixel |= ((value >> 4) < k);

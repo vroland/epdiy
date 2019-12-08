@@ -12,11 +12,8 @@ typedef struct {
 } Rect_t;
 
 class EPD {
-    public:
-        uint16_t width;
-        uint16_t height;
-        
-        EPD(uint16_t width, uint16_t height);
+    public: 
+        EPD();
 
         /* enable display power supply. */
         void poweron();

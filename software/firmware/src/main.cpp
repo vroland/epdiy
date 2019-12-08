@@ -22,7 +22,7 @@ EPD* epd;
 
 void setup() {
     Serial.begin(115200);
-    epd = new EPD(1200, 825);
+    epd = new EPD();
 }
 
 void loop() {
@@ -51,8 +51,8 @@ void loop() {
                 Rect_t area = {
                     .x = 100,
                     .y = 100,
-                    .width = epd->width - 200,
-                    .height = epd->height - 200,
+                    .width = 1200 - 200,
+                    .height = 825 - 200,
                 };
                 epd->clear_area(area);
                 _state = DRAW_SQUARES;

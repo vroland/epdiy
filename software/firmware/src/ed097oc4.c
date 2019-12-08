@@ -12,19 +12,14 @@
 int I2S_GPIO_BUS[] = {D0, D1, D2, D3, D4, D5, D6, D7, -1, -1, -1, -1, -1, -1, -1, -1};
 
 typedef struct {
-    void *memory;
-    size_t size;
-} i2s_parallel_buffer_desc_t;
-
-typedef struct {
     volatile lldesc_t *dma_desc_a;
     volatile lldesc_t *dma_desc_b;
 } i2s_parallel_state_t;
 
 static i2s_parallel_state_t i2s_state;
 
-i2s_parallel_buffer_desc_t buf_a;
-i2s_parallel_buffer_desc_t buf_b;
+uint8_t* buf_a;
+uint8_t* buf_b;
 
 int current_buffer = 0;
 
@@ -60,13 +55,10 @@ inline void fast_gpio_set_lo(gpio_num_t gpio_num)
 }
 
 
-static void fill_dma_desc(volatile lldesc_t *dmadesc, i2s_parallel_buffer_desc_t *bufdesc) {
-    if (bufdesc->size>DMA_MAX) {
-        assert("buffer too large!");
-    }
-    dmadesc->size=bufdesc->size;
-    dmadesc->length=bufdesc->size;
-    dmadesc->buf=bufdesc->memory;
+static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf) {
+    dmadesc->size=EPD_LINE_BYTES;
+    dmadesc->length=EPD_LINE_BYTES;
+    dmadesc->buf=buf;
     dmadesc->eof=1;
     dmadesc->sosf=1;
     dmadesc->owner=1;
@@ -96,8 +88,8 @@ static void IRAM_ATTR i2s_int_hdl(void *arg) {
     dev->int_clr.val = dev->int_raw.val;
 }
 
-i2s_parallel_buffer_desc_t* get_current_buffer() {
-    return current_buffer ? &buf_b : &buf_a;
+uint8_t* get_current_buffer() {
+    return current_buffer ? buf_b : buf_a;
 }
 
 uint32_t dma_desc_addr() {
@@ -184,8 +176,8 @@ void i2s_setup(i2s_dev_t *dev) {
     i2s_state.dma_desc_b=heap_caps_malloc(sizeof(lldesc_t), MALLOC_CAP_DMA);
 
     //and fill them
-    fill_dma_desc(i2s_state.dma_desc_a, &buf_a);
-    fill_dma_desc(i2s_state.dma_desc_b, &buf_b);
+    fill_dma_desc(i2s_state.dma_desc_a, buf_a);
+    fill_dma_desc(i2s_state.dma_desc_b, buf_b);
 
     // enable "done" interrupt
     SET_PERI_REG_BITS(I2S_INT_ENA_REG(1), I2S_OUT_DONE_INT_ENA_V, 1, I2S_OUT_DONE_INT_ENA_S);
@@ -252,10 +244,8 @@ void init_gpios() {
     /* Output lines are set up in i2s_setup */
 
     // malloc the DMA linked list descriptors that i2s_parallel will need
-    buf_a.memory = malloc(EPD_LINE_BYTES);
-    buf_a.size = EPD_LINE_BYTES;
-    buf_b.memory = malloc(EPD_LINE_BYTES);
-    buf_b.size = EPD_LINE_BYTES;
+    buf_a = malloc(EPD_LINE_BYTES);
+    buf_b = malloc(EPD_LINE_BYTES);
 
     // Setup I2S
     i2s_setup(&I2S1);
@@ -352,9 +342,9 @@ void start_line_output() {
     dev->conf.tx_start = 1;
 }
 
-void skip(uint16_t width) {
+void skip() {
     gpio_set_lo(STH);
-    memset(get_current_buffer()->memory, 0, EPD_LINE_BYTES);
+    memset(get_current_buffer(), 0, EPD_LINE_BYTES);
     gpio_set_hi(STH);
     gpio_set_hi(CKV);
     unsigned counts = xthal_get_ccount() + 480;
@@ -362,7 +352,7 @@ void skip(uint16_t width) {
     gpio_set_lo(CKV);
 }
 
-void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)
+void output_row(uint32_t output_time_us, uint8_t* data)
 {
 
     // wait for dma to be done with the line
@@ -380,7 +370,7 @@ void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)
     wait_line(output_time_us);
 
     if (data != NULL) {
-        memcpy(get_current_buffer()->memory, data, EPD_LINE_BYTES);
+        memcpy(get_current_buffer(), data, EPD_LINE_BYTES);
 
         output_done = false;
         gpio_set_lo(STH);
