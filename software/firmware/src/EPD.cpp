@@ -174,7 +174,7 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
                 pixel = pixel << 2;
                 val = val >> 8;
                 pixel |= (val & 0x000000F0) < (k << 4);
-                row[(j & ~0x00000003) + displacement_map[j % 4]] = pixel;
+                row[j] = pixel;
             }
             volatile uint32_t t2 = micros();
             //printf("row calc took %d us.\n", t2 - t);
