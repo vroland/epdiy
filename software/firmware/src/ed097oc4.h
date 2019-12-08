@@ -1,6 +1,11 @@
 #pragma once
 #include "Arduino.h"
 
+#define EPD_WIDTH 1200
+#define EPD_HEIGHT 825
+// number of bytes needed for one line of EPD pixel data.
+#define EPD_LINE_BYTES 1200/4
+
 /* Control Lines */
 #define NEG_CTRL  GPIO_NUM_33  // Active HIGH
 #define POS_CTRL  GPIO_NUM_32  // Active HIGH
@@ -43,10 +48,10 @@ void start_frame();
  * Output `data` to the next display row and enable the vertical
  * driver for `output_time_us` microseconds.
  */
-void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width);
+void output_row(uint32_t output_time_us, uint8_t* data);
 
 /* skip a row without writing to it. */
-void skip(uint16_t width);
+void skip();
 
 /* enable the output register */
 void enable_output();

@@ -252,10 +252,10 @@ void init_gpios() {
     /* Output lines are set up in i2s_setup */
 
     // malloc the DMA linked list descriptors that i2s_parallel will need
-    buf_a.memory = malloc(300);
-    buf_a.size = 300;
-    buf_b.memory = malloc(300);
-    buf_b.size = 300;
+    buf_a.memory = malloc(EPD_LINE_BYTES);
+    buf_a.size = EPD_LINE_BYTES;
+    buf_b.memory = malloc(EPD_LINE_BYTES);
+    buf_b.size = EPD_LINE_BYTES;
 
     // Setup I2S
     i2s_setup(&I2S1);
@@ -308,9 +308,9 @@ void start_frame() {
     gpio_set_hi(OEH);
     // END VSCANSTART
 
-    skip(300);
-    skip(300);
-    skip(300);
+    skip();
+    skip();
+    skip();
 }
 
 inline void latch_row()
@@ -354,7 +354,7 @@ void start_line_output() {
 
 void skip(uint16_t width) {
     gpio_set_lo(STH);
-    memset(get_current_buffer()->memory, 0, 300);
+    memset(get_current_buffer()->memory, 0, EPD_LINE_BYTES);
     gpio_set_hi(STH);
     gpio_set_hi(CKV);
     unsigned counts = xthal_get_ccount() + 480;
@@ -380,7 +380,7 @@ void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)
     wait_line(output_time_us);
 
     if (data != NULL) {
-        memcpy(get_current_buffer()->memory, data, 300);
+        memcpy(get_current_buffer()->memory, data, EPD_LINE_BYTES);
 
         output_done = false;
         gpio_set_lo(STH);
