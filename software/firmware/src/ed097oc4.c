@@ -307,6 +307,10 @@ void start_frame() {
 
     gpio_set_hi(OEH);
     // END VSCANSTART
+
+    skip(300);
+    skip(300);
+    skip(300);
 }
 
 inline void latch_row()
