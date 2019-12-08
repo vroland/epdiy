@@ -86,6 +86,9 @@ void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
             this->write_row(time, NULL);
         }
     }
+    // Since we "pipeline" row output, we still have to latch out the last row.
+    this->write_row(time, NULL);
+
     end_frame();
     free(row);
 
@@ -178,6 +181,8 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
             //printf("row calc took %d us.\n", t2 - t);
             this->write_row(contrast_cycles[15 - k], row);
         }
+        // Since we "pipeline" row output, we still have to latch out the last row.
+        this->write_row(contrast_cycles[15 - k], NULL);
         end_frame();
     }
     free(row);

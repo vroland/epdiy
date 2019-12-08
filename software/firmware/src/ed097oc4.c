@@ -28,8 +28,37 @@ i2s_parallel_buffer_desc_t buf_b;
 
 int current_buffer = 0;
 
-volatile bool output_done = false;
+volatile bool output_done = true;
 static intr_handle_t gI2S_intr_handle = NULL;
+
+
+inline void gpio_set_hi(gpio_num_t gpio_num)
+{
+        digitalWrite(gpio_num, HIGH);
+}
+
+
+inline void gpio_set_lo(gpio_num_t gpio_num)
+{
+        digitalWrite(gpio_num, LOW);
+}
+
+/*
+Write bits directly using the registers.  Won't work for some signals
+(>= 32). May be too fast for some signals.
+*/
+inline void fast_gpio_set_hi(gpio_num_t gpio_num)
+{
+    GPIO.out_w1ts = (1 << gpio_num);
+}
+
+
+inline void fast_gpio_set_lo(gpio_num_t gpio_num)
+{
+
+    GPIO.out_w1tc = (1 << gpio_num);
+}
+
 
 static void fill_dma_desc(volatile lldesc_t *dmadesc, i2s_parallel_buffer_desc_t *bufdesc) {
     if (bufdesc->size>DMA_MAX) {
@@ -52,16 +81,19 @@ static void gpio_setup_out(int gpio, int sig, bool invert) {
     gpio_matrix_out(gpio, sig, invert, false);
 }
 
+volatile int empty_count = 0;
 
 //ISR handler. Call callback to refill buffer that was just finished.
 static void IRAM_ATTR i2s_int_hdl(void *arg) {
     i2s_dev_t* dev = &I2S1;
     if (dev->int_st.out_done) {
+        //dev->int_ena.tx_rempty=1;
+        //empty_count = 0;
         // Clear the interrupt. Otherwise, the whole device would hang.
-        dev->int_clr.val = dev->int_raw.val;
-
+        fast_gpio_set_hi(STH);
         output_done = true;
     }
+    dev->int_clr.val = dev->int_raw.val;
 }
 
 i2s_parallel_buffer_desc_t* get_current_buffer() {
@@ -179,33 +211,6 @@ void i2s_setup(i2s_dev_t *dev) {
     dev->int_ena.out_done=1;
 
     dev->conf.tx_start=1;
-}
-
-inline void gpio_set_hi(gpio_num_t gpio_num)
-{
-        digitalWrite(gpio_num, HIGH);
-}
-
-
-inline void gpio_set_lo(gpio_num_t gpio_num)
-{
-        digitalWrite(gpio_num, LOW);
-}
-
-/*
-Write bits directly using the registers.  Won't work for some signals
-(>= 32). May be too fast for some signals.
-*/
-inline void fast_gpio_set_hi(gpio_num_t gpio_num)
-{
-    GPIO.out_w1ts = (1 << gpio_num);
-}
-
-
-inline void fast_gpio_set_lo(gpio_num_t gpio_num)
-{
-
-    GPIO.out_w1tc = (1 << gpio_num);
 }
 
 /*
@@ -355,20 +360,11 @@ void skip(uint16_t width) {
 
 void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)
 {
-    if (data != NULL) {
-        output_done = false;
-        memcpy(get_current_buffer()->memory, data, 300);
 
-        gpio_set_lo(STH);
-        start_line_output();
-
-        switch_buffer();
-
-        while (!output_done) {};
-        while (!(I2S1.state.tx_idle)) {};
-
-        gpio_set_hi(STH);
-    }
+    // wait for dma to be done with the line
+    while (!output_done) {};
+    // now wait until the fifo buffer is empty as well.
+    while (!I2S1.state.tx_idle) {};
 
     gpio_set_hi(CKH);
     gpio_set_lo(CKH);
@@ -378,6 +374,18 @@ void output_row(uint32_t output_time_us, uint8_t* data, uint16_t width)
     latch_row();
 
     wait_line(output_time_us);
+
+    if (data != NULL) {
+        memcpy(get_current_buffer()->memory, data, 300);
+
+        output_done = false;
+        gpio_set_lo(STH);
+        start_line_output();
+
+        switch_buffer();
+
+        // sth is pulled up through peripheral interrupt
+    }
 }
 
 void end_frame() {
