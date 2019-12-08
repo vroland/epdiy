@@ -138,7 +138,7 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
     uint32_t* line = (uint32_t*)malloc(EPD_WIDTH);
 
     for (uint8_t k = 15; k > 0; k--) {
-        uint32_t* ptr = (uint32_t*)data;
+        uint8_t* ptr = data;
         yield();
         start_frame();
         // initialize with null row to avoid artifacts
@@ -148,14 +148,17 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
                 continue;
             }
 
-            //uint32_t aligned_end = 4 * (area.x / 4) + area.width;
             uint8_t pixel = 0B00000000;
-            memcpy(line, ptr, EPD_WIDTH);
-            ptr+=EPD_WIDTH/4;
+            if (area.width == EPD_WIDTH) {
+                memcpy(line, ptr, EPD_WIDTH);
+                ptr+=EPD_WIDTH;
+            } else {
+                memset(line, 255, EPD_WIDTH);
+                uint8_t* buf_start = ((uint8_t*)line) + area.x;
+                memcpy(buf_start, ptr, area.width);
+                ptr += area.width;
+            }
             uint32_t* lp = line;
-            uint8_t displacement_map[4] = {
-                2, 3, 0, 1
-            };
 
             volatile uint32_t t = micros();
             for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
