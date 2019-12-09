@@ -21,8 +21,8 @@ typedef struct {
 
 static i2s_parallel_state_t i2s_state;
 
-uint8_t* buf_a;
-uint8_t* buf_b;
+uint8_t buf_a[EPD_LINE_BYTES];
+uint8_t buf_b[EPD_LINE_BYTES];
 
 int current_buffer = 0;
 
@@ -248,10 +248,6 @@ void init_gpios() {
     gpio_set_lo(OEH);
 
     /* Output lines are set up in i2s_setup */
-
-    // malloc the DMA linked list descriptors that i2s_parallel will need
-    buf_a = malloc(EPD_LINE_BYTES);
-    buf_b = malloc(EPD_LINE_BYTES);
 
     // Setup I2S
     i2s_setup(&I2S1);
