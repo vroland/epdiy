@@ -5,8 +5,9 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 #include "Arduino.h"
-#include "image.hpp"
+
 extern "C" {
+    #include "image.h"
     #include "EPD.h"
     #include "font.h"
     #include "firasans.h"
