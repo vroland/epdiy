@@ -3,8 +3,7 @@
 #ifndef _FONT_H_
 #define _FONT_H_
 
-#include "Arduino.h"
-#include "EPD.hpp"
+#include <stdint.h>
 
 /// Font data stored PER GLYPH
 typedef struct {
@@ -37,6 +36,6 @@ void getTextBounds(GFXfont* font, unsigned char* string, int x, int y, int* x1, 
 /*!
  * Write a line of text to the EPD.
  */
-void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y, EPD* epd);
+void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y);
 
 #endif // _FONT_H_

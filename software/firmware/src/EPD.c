@@ -1,7 +1,12 @@
-#include "EPD.hpp"
-extern "C" {
-    #include "ed097oc4.h"
-}
+#include "EPD.h"
+#include "ed097oc4.h"
+
+// A row with only null bytes, to be loaded when skipping lines
+// to avoid slight darkening / lightening.
+uint8_t null_row[EPD_LINE_BYTES] = {0};
+
+// status tracker for row skipping
+uint32_t skipping;
 
 #define CLEAR_BYTE    0B10101010
 #define DARK_BYTE     0B01010101
@@ -14,29 +19,16 @@ const uint32_t contrast_cycles[15] = {
     5, 10, 30, 50
 };
 
-EPD::EPD() {
-    this->skipping = 0;
-    this->null_row = (uint8_t*)malloc(EPD_LINE_BYTES);
-    memset(this->null_row, 255, EPD_LINE_BYTES);
+void epd_init() {
+    skipping = 0;
     init_gpios();
 }
 
-EPD::~EPD() {
-    free(this->null_row);
-}
-
-void EPD::poweron() {
-    epd_poweron();
-}
-
-void EPD::poweroff() {
-    epd_poweroff();
-}
-
-void EPD::skip_row() {
+// skip a display row
+void skip_row() {
     // 2, to latch out previously loaded null row
-    if (this->skipping < 2) {
-        output_row(10, this->null_row);
+    if (skipping < 2) {
+        output_row(10, null_row);
         // avoid tainting of following rows by
         // allowing residual charge to dissipate
         unsigned counts = xthal_get_ccount() + 50 * 240;
@@ -44,15 +36,16 @@ void EPD::skip_row() {
     } else {
         skip();
     }
-    this->skipping++;
+    skipping++;
 }
 
-void EPD::write_row(uint32_t output_time_us, uint8_t* data) {
-    this->skipping = 0;
+// output a row to the display.
+void write_row(uint32_t output_time_us, uint8_t* data) {
+    skipping = 0;
     output_row(output_time_us, data);
 }
 
-void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
+void epd_draw_byte(Rect_t* area, short time, uint8_t byte) {
 
     uint8_t* row = (uint8_t*)malloc(EPD_LINE_BYTES);
     for (int i = 0; i < EPD_LINE_BYTES; i++) {
@@ -73,67 +66,50 @@ void EPD::draw_byte(Rect_t* area, short time, uint8_t byte) {
     for (int i = 0; i < EPD_HEIGHT; i++) {
         // before are of interest: skip
         if (i < area->y) {
-            this->skip_row();
+            skip_row();
         // start area of interest: set row data
         } else if (i == area->y) {
-            this->write_row(time, row);
+            write_row(time, row);
         // load nop row if done with area
         } else if (i >= area->y + area->height) {
-            this->skip_row();
+            skip_row();
         // output the same as before
         } else {
-            this->write_row(time, NULL);
+            write_row(time, NULL);
         }
     }
     // Since we "pipeline" row output, we still have to latch out the last row.
-    this->write_row(time, NULL);
+    write_row(time, NULL);
 
     end_frame();
     free(row);
-
 }
 
-void EPD::clear_area(Rect_t area) {
+void epd_clear_area(Rect_t area) {
     const short white_time = 80;
     const short dark_time = 40;
 
     for (int i=0; i<8; i++) {
-        draw_byte(&area, white_time, CLEAR_BYTE);
+        epd_draw_byte(&area, white_time, CLEAR_BYTE);
     }
     for (int i=0; i<6; i++) {
-        draw_byte(&area, dark_time, DARK_BYTE);
+        epd_draw_byte(&area, dark_time, DARK_BYTE);
     }
     for (int i=0; i<8; i++) {
-        draw_byte(&area, white_time, CLEAR_BYTE);
+        epd_draw_byte(&area, white_time, CLEAR_BYTE);
     }
 }
 
-Rect_t EPD::full_screen() {
-    Rect_t full_screen = { .x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT };
-    return full_screen;
+Rect_t epd_full_screen() {
+    Rect_t area = { .x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT };
+    return area;
 }
 
-void EPD::clear_screen() {
-    clear_area(this->full_screen());
+void epd_clear() {
+    epd_clear_area(epd_full_screen());
 }
 
-/* shift row bitwise by bits to the right.
- * only touch bytes start to end (inclusive).
- * insert zeroes where gaps are created.
- * information of the end byte is lost.
- *
- * Possible improvement: use larger chunks.
- * */
-void shift_row_r(uint8_t* row, uint8_t bits, uint16_t start, uint16_t end) {
-    uint8_t carry = 0;
-    uint8_t mask = ~(0B11111111 << bits);
-    for (uint16_t i=end; i>=start; i--) {
-        carry = (row[i - 1] & mask) << (8 - bits);
-        row[i] = row[i] >> bits | carry;
-    }
-}
-
-void EPD::draw_picture(Rect_t area, uint8_t* data) {
+void epd_draw_picture(Rect_t area, uint8_t* data) {
     uint8_t* row = (uint8_t*)malloc(EPD_LINE_BYTES);
     uint32_t* line = (uint32_t*)malloc(EPD_WIDTH);
 
@@ -144,11 +120,10 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
         // initialize with null row to avoid artifacts
         for (int i = 0; i < EPD_HEIGHT; i++) {
             if (i < area.y || i >= area.y + area.height) {
-                this->skip_row();
+                skip_row();
                 continue;
             }
 
-            uint8_t pixel = 0B00000000;
             if (area.width == EPD_WIDTH) {
                 memcpy(line, ptr, EPD_WIDTH);
                 ptr+=EPD_WIDTH;
@@ -160,12 +135,8 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
             }
             uint32_t* lp = line;
 
-            volatile uint32_t t = micros();
+            uint8_t pixel = 0B00000000;
             for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
-                /*if (j >= area.x && j < area.x + area.width) {
-                    uint8_t value = *(ptr++);
-                    pixel |= ((value >> 4) < k);
-                }*/
                 uint32_t val = *(lp++);
                 pixel = (val & 0x000000F0) < (k << 4);
                 pixel = pixel << 2;
@@ -179,12 +150,10 @@ void EPD::draw_picture(Rect_t area, uint8_t* data) {
                 pixel |= (val & 0x000000F0) < (k << 4);
                 row[j] = pixel;
             }
-            volatile uint32_t t2 = micros();
-            //printf("row calc took %d us.\n", t2 - t);
-            this->write_row(contrast_cycles[15 - k], row);
+            write_row(contrast_cycles[15 - k], row);
         }
         // Since we "pipeline" row output, we still have to latch out the last row.
-        this->write_row(contrast_cycles[15 - k], NULL);
+        write_row(contrast_cycles[15 - k], NULL);
         end_frame();
     }
     free(row);

@@ -6,9 +6,11 @@
  */
 #include "Arduino.h"
 #include "image.hpp"
-#include "EPD.hpp"
-#include "font.h"
-#include "firasans.h"
+extern "C" {
+    #include "EPD.h"
+    #include "font.h"
+    #include "firasans.h"
+}
 
 /* Display State Machine */
 enum ScreenState {
@@ -18,11 +20,9 @@ enum ScreenState {
         DRAW_SQUARES = 3,
 };
 
-EPD* epd;
-
 void setup() {
     Serial.begin(115200);
-    epd = new EPD();
+    epd_init();
 }
 
 void loop() {
@@ -30,19 +30,19 @@ void loop() {
         static ScreenState _state = CLEAR_SCREEN;
 
         delay(300);
-        epd->poweron();
+        epd_poweron();
         uint32_t timestamp = 0;
         if (_state == CLEAR_SCREEN) {
                 Serial.println("Clear cycle.");
                 Serial.flush();
                 timestamp = millis();
-                epd->clear_screen();
+                epd_clear();
                 _state = DRAW_SCREEN;
 
         } else if (_state == DRAW_SCREEN) {
                 Serial.println("Draw cycle.");
                 timestamp = millis();
-                epd->draw_picture(epd->full_screen(), (uint8_t*)&img_bytes);
+                epd_draw_picture(epd_full_screen(), (uint8_t*)&img_bytes);
                 _state = CLEAR_PARTIAL;
 
         } else if (_state == CLEAR_PARTIAL) {
@@ -54,7 +54,7 @@ void loop() {
                     .width = 1200 - 200,
                     .height = 825 - 200,
                 };
-                epd->clear_area(area);
+                epd_clear_area(area);
                 _state = DRAW_SQUARES;
         } else if (_state == DRAW_SQUARES) {
                 Serial.println("Squares cycle.");
@@ -62,13 +62,13 @@ void loop() {
                 int cursor_x = 100;
                 int cursor_y = 100;
                 unsigned char* string = (unsigned char*)"Hello World! *g*";
-                writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y, epd);
+                writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y);
                 cursor_y += FiraSans.advance_y;
                 string = (unsigned char*)"\xf6\xfc\xe4\xdf" "abcd/#{";
-                writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y, epd);
+                writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y);
                 _state = CLEAR_SCREEN;
         }
-        epd->poweroff();
+        epd_poweroff();
         // Print out the benchmark
         timestamp = millis() - timestamp;
         Serial.print("Took ");

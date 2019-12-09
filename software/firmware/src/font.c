@@ -1,6 +1,10 @@
 #include "font.h"
 
+#include "EPD.h"
+
 #include "zlib.h"
+#include <math.h>
+
 
 /*!
    @brief   Draw a single character to a pre-allocated buffer
@@ -56,22 +60,23 @@ void getCharBounds(GFXfont* font, unsigned char c, int* x, int* y, int* minx, in
     }
 }
 
+int min(int x, int y) {
+    return x < y ? x : y;
+}
+
 void getTextBounds(GFXfont* font, unsigned char* string, int x, int y, int* x1, int* y1, int* w, int* h) {
     int xx = x, yy = y, minx = 100000, miny = 100000, maxx = -1, maxy = -1;
     unsigned char c;
-    while (c=*(string++)) {
+    while ((c=*(string++))) {
         getCharBounds(font, c, &xx, &yy, &minx, &miny, &maxx, &maxy);
     }
-    Serial.println(miny);
-    Serial.println(yy);
-    Serial.println(maxy);
     *x1 = min(x, minx);
     *w = maxx - *x1;
     *y1 = miny;
     *h = maxy - miny;
 }
 
-void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y, EPD* epd) {
+void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y) {
 
     int x1 = 0, y1 = 0, w = 0, h = 0;
     getTextBounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
@@ -88,9 +93,12 @@ void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y,
     };
 
     int working_curor = 0;
-    while (c=*(string++)) {
+    while ((c=*(string++))) {
         drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
     }
-    epd->draw_picture(area, buffer);
+    volatile uint32_t t = micros();
+    epd_draw_picture(area, buffer);
+    volatile uint32_t t2 = micros();
+    printf("drawing took %d us.\n", t2 - t);
     free(buffer);
 }
