@@ -1,13 +1,16 @@
 #include "ed097oc4.h"
 
+#include <string.h>
+
 #include "driver/periph_ctrl.h"
 #include "esp_intr.h"
 #include "soc/i2s_struct.h"
 #include "soc/i2s_reg.h"
 #include "soc/rtc.h"
 #include "rom/lldesc.h"
-
-#define DMA_MAX (4096-4)
+#include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 int I2S_GPIO_BUS[] = {D0, D1, D2, D3, D4, D5, D6, D7, -1, -1, -1, -1, -1, -1, -1, -1};
 
@@ -28,13 +31,13 @@ static intr_handle_t gI2S_intr_handle = NULL;
 
 inline void gpio_set_hi(gpio_num_t gpio_num)
 {
-        digitalWrite(gpio_num, HIGH);
+        gpio_set_level(gpio_num, 1);
 }
 
 
 inline void gpio_set_lo(gpio_num_t gpio_num)
 {
-        digitalWrite(gpio_num, LOW);
+        gpio_set_level(gpio_num, 0);
 }
 
 /*
@@ -53,7 +56,7 @@ inline void fast_gpio_set_lo(gpio_num_t gpio_num)
     GPIO.out_w1tc = (1 << gpio_num);
 }
 
-inline void busy_delay(uint32_t cycles) {
+void IRAM_ATTR busy_delay(uint32_t cycles) {
     volatile unsigned long counts = xthal_get_ccount() + cycles;
     while (xthal_get_ccount() < counts) {};
 }
@@ -219,30 +222,30 @@ inline void next_pixel() {
 void init_gpios() {
 
     /* Power Control Output/Off */
-    pinMode(POS_CTRL, OUTPUT);
-    digitalWrite(POS_CTRL, LOW);
-    pinMode(NEG_CTRL, OUTPUT);
-    digitalWrite(NEG_CTRL, LOW);
-    pinMode(SMPS_CTRL, OUTPUT);
-    digitalWrite(SMPS_CTRL, HIGH);
+    gpio_set_direction(POS_CTRL, GPIO_MODE_OUTPUT);
+    gpio_set_lo(POS_CTRL);
+    gpio_set_direction(NEG_CTRL, GPIO_MODE_OUTPUT);
+    gpio_set_lo(NEG_CTRL);
+    gpio_set_direction(SMPS_CTRL, GPIO_MODE_OUTPUT);
+    gpio_set_hi(SMPS_CTRL);
 
     /* Edges/Clocks */
-    pinMode(CKH, OUTPUT);
-    digitalWrite(CKH, LOW);
-    pinMode(LEH, OUTPUT);
-    digitalWrite(LEH, LOW);
+    gpio_set_direction(CKH, GPIO_MODE_OUTPUT);
+    gpio_set_lo(CKH);
+    gpio_set_direction(LEH, GPIO_MODE_OUTPUT);
+    gpio_set_lo(LEH);
 
     /* Control Lines */
-    pinMode(MODE, OUTPUT);
-    digitalWrite(MODE, LOW);
-    pinMode(STH, OUTPUT);
-    digitalWrite(STH, LOW);
-    pinMode(CKV, OUTPUT);
-    digitalWrite(CKV, LOW);
-    pinMode(STV, OUTPUT);
-    digitalWrite(STV, LOW);
-    pinMode(OEH, OUTPUT);
-    digitalWrite(OEH, LOW);
+    gpio_set_direction(MODE, GPIO_MODE_OUTPUT);
+    gpio_set_lo(MODE);
+    gpio_set_direction(STH, GPIO_MODE_OUTPUT);
+    gpio_set_lo(STH);
+    gpio_set_direction(CKV, GPIO_MODE_OUTPUT);
+    gpio_set_lo(CKV);
+    gpio_set_direction(STV, GPIO_MODE_OUTPUT);
+    gpio_set_lo(STV);
+    gpio_set_direction(OEH, GPIO_MODE_OUTPUT);
+    gpio_set_lo(OEH);
 
     /* Output lines are set up in i2s_setup */
 
@@ -257,11 +260,11 @@ void init_gpios() {
 void epd_poweron() {
     // POWERON
     gpio_set_lo(SMPS_CTRL);
-    delayMicroseconds(100);
+    busy_delay(100 * 240);
     gpio_set_hi(NEG_CTRL);
-    delayMicroseconds(500);
+    busy_delay(500 * 240);
     gpio_set_hi(POS_CTRL);
-    delayMicroseconds(100);
+    busy_delay(100 * 240);
     gpio_set_hi(STV);
     gpio_set_hi(STH);
     // END POWERON
@@ -270,9 +273,9 @@ void epd_poweron() {
 void epd_poweroff() {
     // POWEROFF
     gpio_set_lo(POS_CTRL);
-    delayMicroseconds(10);
+    busy_delay(10 * 240);
     gpio_set_lo(NEG_CTRL);
-    delayMicroseconds(100);
+    busy_delay(100 * 240);
     gpio_set_hi(SMPS_CTRL);
     // END POWEROFF
 }
@@ -280,21 +283,21 @@ void epd_poweroff() {
 void start_frame() {
     // VSCANSTART
     gpio_set_hi(MODE);
-    delayMicroseconds(10);
+    busy_delay(10 * 240);
 
     gpio_set_hi(STV);
     gpio_set_lo(CKV);
-    delayMicroseconds(1);
+    busy_delay(240);
     gpio_set_hi(CKV);
 
     gpio_set_lo(STV);
     gpio_set_lo(CKV);
-    delayMicroseconds(1);
+    busy_delay(240);
     gpio_set_hi(CKV);
 
     gpio_set_hi(STV);
     gpio_set_lo(CKV);
-    delayMicroseconds(1);
+    busy_delay(240);
     gpio_set_hi(CKV);
 
 

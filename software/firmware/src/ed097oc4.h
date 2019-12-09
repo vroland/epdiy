@@ -1,5 +1,6 @@
 #pragma once
-#include "Arduino.h"
+
+#include "driver/gpio.h"
 
 #define EPD_WIDTH 1200
 #define EPD_HEIGHT 825
@@ -31,9 +32,6 @@
 #define D2        GPIO_NUM_12
 #define D1        GPIO_NUM_5
 #define D0        GPIO_NUM_4
-
-// Masks the data pins in a gpio bitmap to enable fast writing.
-#define DATA_GPIO_MASK 0B00000000000000111111000000110000
 
 void init_gpios();
 void epd_poweron();
