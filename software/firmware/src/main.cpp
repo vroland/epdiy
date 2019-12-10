@@ -43,7 +43,7 @@ void loop() {
         } else if (_state == DRAW_SCREEN) {
                 Serial.println("Draw cycle.");
                 timestamp = millis();
-                epd_draw_picture(epd_full_screen(), (uint8_t*)&img_bytes);
+                epd_draw_picture(epd_full_screen(), (uint8_t*)&img_bytes, BIT_DEPTH_4);
                 _state = CLEAR_PARTIAL;
 
         } else if (_state == CLEAR_PARTIAL) {

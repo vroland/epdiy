@@ -11,12 +11,17 @@ uint32_t skipping;
 #define CLEAR_BYTE    0B10101010
 #define DARK_BYTE     0B01010101
 
-/* Contrast cycles in order of contrast (Darkest first).  */
-const uint32_t contrast_cycles[15] = {
+/* 4bpp Contrast cycles in order of contrast (Darkest first).  */
+const uint8_t contrast_cycles_4[15] = {
     2, 2, 2,
     2, 3, 3, 3,
     4, 4, 5, 5,
     5, 10, 30, 50
+};
+
+/* 2bpp Contrast cycles in order of contrast (Darkest first).  */
+const uint8_t contrast_cycles_2[3] = {
+   8, 10, 100
 };
 
 void epd_init() {
@@ -109,11 +114,72 @@ void epd_clear() {
     epd_clear_area(epd_full_screen());
 }
 
-void epd_draw_picture(Rect_t area, uint8_t* data) {
+
+void calc_epd_input_4bpp(uint32_t* line_data, uint8_t* epd_input, uint8_t k) {
+
+    const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
+
+    k = 16 - k;
+    uint32_t add_mask = (k << 24) | (k << 16) | (k << 8) | k;
+
+    // this is reversed for little-endian, but this is later compensated
+    // through the output peripheral.
+    for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
+
+        uint8_t pixel = DARK_BYTE;
+        uint32_t val = *(line_data++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= (val * shiftmul) >> 24;
+        epd_input[j] = pixel;
+    }
+}
+
+void IRAM_ATTR calc_epd_input_2bpp(uint32_t* line_data, uint8_t* epd_input, uint8_t k) {
+
+    const uint32_t shiftmul = (1 << 17) + (1 << 23) + (1 << 5) + (1 << 11);
+
+    k = 4 - k;
+    uint32_t add_mask = (k << 24) | (k << 16) | (k << 8) | k;
+
+    // this is reversed for little-endian, but this is later compensated
+    // through the output peripheral.
+    for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
+
+        uint8_t pixel = DARK_BYTE;
+        uint32_t val = *(line_data++);
+        val = (val & 0xC0C0C0C0) >> 6;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x04040404;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= (val * shiftmul) >> 24;
+        epd_input[j] = pixel;
+    }
+}
+
+
+void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp) {
     uint8_t* row = (uint8_t*)malloc(EPD_LINE_BYTES);
     uint32_t* line = (uint32_t*)malloc(EPD_WIDTH);
 
-    for (uint8_t k = 15; k > 0; k--) {
+    uint8_t frame_count = (1 << bpp) - 1;
+    const uint8_t* contrast_lut;
+    switch (bpp) {
+        case BIT_DEPTH_4:
+            contrast_lut = contrast_cycles_4;
+            break;
+        case BIT_DEPTH_2:
+            contrast_lut = contrast_cycles_2;
+            break;
+        default:
+            assert("invalid grayscale mode!");
+    };
+
+    for (uint8_t k = frame_count; k > 0; k--) {
         uint8_t* ptr = data;
         yield();
         start_frame();
@@ -135,25 +201,21 @@ void epd_draw_picture(Rect_t area, uint8_t* data) {
             }
             uint32_t* lp = line;
 
-            uint8_t pixel = 0B00000000;
-            for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
-                uint32_t val = *(lp++);
-                pixel = (val & 0x000000F0) < (k << 4);
-                pixel = pixel << 2;
-                val = val >> 8;
-                pixel |= (val & 0x000000F0) < (k << 4);
-                pixel = pixel << 2;
-                val = val >> 8;
-                pixel |= (val & 0x000000F0) < (k << 4);
-                pixel = pixel << 2;
-                val = val >> 8;
-                pixel |= (val & 0x000000F0) < (k << 4);
-                row[j] = pixel;
-            }
-            write_row(contrast_cycles[15 - k], row);
+            switch (bpp) {
+                case BIT_DEPTH_4:
+                    calc_epd_input_4bpp(lp, row, k);
+                    break;
+                case BIT_DEPTH_2:
+                    calc_epd_input_2bpp(lp, row, k);
+                    break;
+                default:
+                    assert("invalid grayscale mode!");
+            };
+
+            write_row(contrast_lut[frame_count - k], row);
         }
         // Since we "pipeline" row output, we still have to latch out the last row.
-        write_row(contrast_cycles[15 - k], NULL);
+        write_row(contrast_lut[frame_count - k], NULL);
         end_frame();
     }
     free(row);

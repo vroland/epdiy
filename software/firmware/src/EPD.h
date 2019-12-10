@@ -11,6 +11,11 @@ typedef struct {
     uint16_t height;
 } Rect_t;
 
+typedef enum {
+    BIT_DEPTH_4 = 4,
+    BIT_DEPTH_2 = 2,
+} EPDBitdepth_t;
+
 /* initialize the ePaper display */
 void epd_init();
 
@@ -33,7 +38,7 @@ void epd_clear_area(Rect_t area);
  * uneven, the last half byte is ignored.
  * The given area must be white before drawing.
  */
-void epd_draw_picture(Rect_t area, uint8_t* data);
+void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp);
 
 /*
  * Returns a rectancle representing the whole screen area.

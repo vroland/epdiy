@@ -12,7 +12,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-int I2S_GPIO_BUS[] = {D0, D1, D2, D3, D4, D5, D6, D7, -1, -1, -1, -1, -1, -1, -1, -1};
+// compensate for big-endian ordering in output data.
+int I2S_GPIO_BUS[] = {D6, D7, D4, D5, D2, D3, D0, D1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 typedef struct {
     volatile lldesc_t *dma_desc_a;
@@ -173,7 +174,7 @@ void i2s_setup(i2s_dev_t *dev) {
     // Configure TX channel
     dev->conf_chan.val=0;
     dev->conf_chan.tx_chan_mod=1;
-    dev->conf.tx_right_first=0;
+    dev->conf.tx_right_first=1;
 
     dev->timing.val=0;
 
@@ -366,7 +367,6 @@ void output_row(uint32_t output_time_us, uint8_t* data)
 
     latch_row();
 
-    wait_line(output_time_us);
 
     if (data != NULL) {
         memcpy(get_current_buffer(), data, EPD_LINE_BYTES);
@@ -385,6 +385,8 @@ void output_row(uint32_t output_time_us, uint8_t* data)
 
         // sth is pulled up through peripheral interrupt
     }
+
+    wait_line(output_time_us);
 }
 
 void end_frame() {

@@ -97,7 +97,7 @@ void writeln(GFXfont* font, unsigned char* string, int* cursor_x, int* cursor_y)
         drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
     }
     volatile uint32_t t = micros();
-    epd_draw_picture(area, buffer);
+    epd_draw_picture(area, buffer, BIT_DEPTH_2);
     volatile uint32_t t2 = micros();
     printf("drawing took %d us.\n", t2 - t);
     free(buffer);
