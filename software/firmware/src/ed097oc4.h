@@ -61,3 +61,7 @@ void disable_output();
  * End a draw cycle.
  */
 void end_frame();
+
+
+uint8_t* get_current_buffer();
+void switch_buffer();

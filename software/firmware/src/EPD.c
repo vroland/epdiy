@@ -33,6 +33,7 @@ void epd_init() {
 void skip_row() {
     // 2, to latch out previously loaded null row
     if (skipping < 2) {
+        memcpy(get_current_buffer(), null_row, EPD_LINE_BYTES);
         output_row(10, null_row);
         // avoid tainting of following rows by
         // allowing residual charge to dissipate
@@ -67,6 +68,7 @@ void epd_draw_byte(Rect_t* area, short time, uint8_t byte) {
             }
         }
     }
+
     start_frame();
     for (int i = 0; i < EPD_HEIGHT; i++) {
         // before are of interest: skip
@@ -74,6 +76,10 @@ void epd_draw_byte(Rect_t* area, short time, uint8_t byte) {
             skip_row();
         // start area of interest: set row data
         } else if (i == area->y) {
+            memcpy(get_current_buffer(), row, EPD_LINE_BYTES);
+            switch_buffer();
+            memcpy(get_current_buffer(), row, EPD_LINE_BYTES);
+
             write_row(time, row);
         // load nop row if done with area
         } else if (i >= area->y + area->height) {
@@ -94,13 +100,13 @@ void epd_clear_area(Rect_t area) {
     const short white_time = 80;
     const short dark_time = 40;
 
-    for (int i=0; i<8; i++) {
+    for (int i=0; i<4; i++) {
         epd_draw_byte(&area, white_time, CLEAR_BYTE);
     }
     for (int i=0; i<6; i++) {
         epd_draw_byte(&area, dark_time, DARK_BYTE);
     }
-    for (int i=0; i<8; i++) {
+    for (int i=0; i<10; i++) {
         epd_draw_byte(&area, white_time, CLEAR_BYTE);
     }
 }
@@ -115,26 +121,51 @@ void epd_clear() {
 }
 
 
-void calc_epd_input_4bpp(uint32_t* line_data, uint8_t* epd_input, uint8_t k) {
+void IRAM_ATTR calc_epd_input_4bpp(uint32_t* line_data, uint8_t* epd_input, uint8_t k) {
 
     const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
 
     k = 16 - k;
     uint32_t add_mask = (k << 24) | (k << 16) | (k << 8) | k;
+    uint32_t* wide_epd_input = (uint32_t*)epd_input;
 
     // this is reversed for little-endian, but this is later compensated
     // through the output peripheral.
-    for (uint32_t j = 0; j < EPD_WIDTH/4; j++) {
+    for (uint32_t j = 0; j < EPD_WIDTH/4/4; j++) {
 
-        uint8_t pixel = DARK_BYTE;
+        uint32_t pixel = (DARK_BYTE << 24) | (DARK_BYTE << 16) | (DARK_BYTE << 8) | DARK_BYTE;
         uint32_t val = *(line_data++);
         val = (val & 0xF0F0F0F0) >> 4;
         val += add_mask;
         // now the bits we need are masked
         val &= 0x10101010;
         // shift relevant bits to the most significant byte, then shift down
-        pixel |= (val * shiftmul) >> 24;
-        epd_input[j] = pixel;
+        pixel |= ((val * shiftmul) >> 8) & 0x00FF0000;
+
+        val = *(line_data++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= ((val * shiftmul) >> 0) & 0xFF000000;
+
+        val = *(line_data++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= ((val * shiftmul) >> 24);
+
+        val = *(line_data++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= ((val * shiftmul) >> 16) & 0x0000FF00;
+        wide_epd_input[j] = pixel;
     }
 }
 
@@ -190,6 +221,7 @@ void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp) {
                 continue;
             }
 
+            volatile uint32_t t = micros();
             if (area.width == EPD_WIDTH) {
                 memcpy(line, ptr, EPD_WIDTH);
                 ptr+=EPD_WIDTH;
@@ -201,18 +233,22 @@ void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp) {
             }
             uint32_t* lp = line;
 
+            volatile uint32_t t2 = micros();
+            uint8_t* buf = get_current_buffer();
             switch (bpp) {
-                case BIT_DEPTH_4:
-                    calc_epd_input_4bpp(lp, row, k);
+                case BIT_DEPTH_4: {
+                    calc_epd_input_4bpp(lp, buf, k);
                     break;
+              }
                 case BIT_DEPTH_2:
-                    calc_epd_input_2bpp(lp, row, k);
+                    calc_epd_input_2bpp(lp, buf, k);
                     break;
                 default:
                     assert("invalid grayscale mode!");
             };
 
-            write_row(contrast_lut[frame_count - k], row);
+            write_row(contrast_lut[frame_count - k], buf);
+            printf("prepare took %d us.\n", t2 - t);
         }
         // Since we "pipeline" row output, we still have to latch out the last row.
         write_row(contrast_lut[frame_count - k], NULL);
