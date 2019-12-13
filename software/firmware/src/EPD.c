@@ -24,6 +24,8 @@ const uint8_t contrast_cycles_2[3] = {
    8, 10, 100
 };
 
+void reorder_line_buffer(uint32_t* line_data);
+
 void epd_init() {
     skipping = 0;
     init_gpios();
@@ -68,6 +70,7 @@ void epd_draw_byte(Rect_t* area, short time, uint8_t byte) {
             }
         }
     }
+	reorder_line_buffer(row);
 
     start_frame();
     for (int i = 0; i < EPD_HEIGHT; i++) {
@@ -120,6 +123,16 @@ void epd_clear() {
     epd_clear_area(epd_full_screen());
 }
 
+
+/*
+ * Reorder the output buffer to account for I2S FIFO order.
+ */
+void reorder_line_buffer(uint32_t* line_data) {
+	for (uint32_t i = 0; i < EPD_LINE_BYTES/4; i++) {
+		uint32_t val = *line_data;
+		*(line_data++) = val >> 16 | ((val & 0x0000FFFF) << 16);
+	}
+}
 
 void IRAM_ATTR calc_epd_input_4bpp(uint32_t* line_data, uint8_t* epd_input, uint8_t k) {
 
@@ -190,6 +203,7 @@ void IRAM_ATTR calc_epd_input_2bpp(uint32_t* line_data, uint8_t* epd_input, uint
         pixel |= (val * shiftmul) >> 24;
         epd_input[j] = pixel;
     }
+	reorder_line_buffer(epd_input);
 }
 
 

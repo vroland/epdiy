@@ -369,15 +369,6 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t* data)
 
 
     if (data != NULL) {
-        //memcpy(get_current_buffer(), data, EPD_LINE_BYTES);
-        // switch lower and upper 16 bits to account for I2S fifo order
-        /*
-        uint32_t* rp = (uint32_t*)get_current_buffer();
-        for (uint32_t i = 0; i < EPD_LINE_BYTES/4; i++) {
-            uint32_t val = *rp;
-            *(rp++) = val >> 16 | ((val & 0x0000FFFF) << 16);
-        }*/
-
         output_done = false;
         gpio_set_lo(STH);
         start_line_output();
