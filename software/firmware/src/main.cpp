@@ -65,7 +65,7 @@ void loop() {
                 unsigned char* string = (unsigned char*)"Hello World! *g*";
                 writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y);
                 cursor_y += FiraSans.advance_y;
-                string = (unsigned char*)"\xf6\xfc\xe4\xdf" "abcd/#{";
+                string = (unsigned char*)"äöüßabcd/#{🚀";
                 writeln((GFXfont*)&FiraSans, string, &cursor_x, &cursor_y);
                 _state = CLEAR_SCREEN;
         }

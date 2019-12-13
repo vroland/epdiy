@@ -221,7 +221,6 @@ void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp) {
                 continue;
             }
 
-            volatile uint32_t t = micros();
             if (area.width == EPD_WIDTH) {
                 memcpy(line, ptr, EPD_WIDTH);
                 ptr+=EPD_WIDTH;
@@ -233,7 +232,6 @@ void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp) {
             }
             uint32_t* lp = line;
 
-            volatile uint32_t t2 = micros();
             uint8_t* buf = get_current_buffer();
             switch (bpp) {
                 case BIT_DEPTH_4: {
@@ -248,7 +246,6 @@ void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp) {
             };
 
             write_row(contrast_lut[frame_count - k], buf);
-            printf("prepare took %d us.\n", t2 - t);
         }
         // Since we "pipeline" row output, we still have to latch out the last row.
         write_row(contrast_lut[frame_count - k], NULL);

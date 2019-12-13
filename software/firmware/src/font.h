@@ -1,4 +1,4 @@
-// Font structures adapted from Adafruit_GFX (1.1 and later).
+// Font structures adapted from Adafruit_GFX
 
 #ifndef _FONT_H_
 #define _FONT_H_
@@ -16,13 +16,20 @@ typedef struct {
     uint32_t data_offset;      ///< Pointer into GFXfont->bitmap
 } GFXglyph;
 
+/// Glyph interval structure
+typedef struct {
+    uint32_t  first;         ///< The first unicode code point of the interval
+    uint32_t  last;          ///< The last unicode code point of the interval
+    uint32_t  offset;        ///< Index of the first code point into the glyph array
+} UnicodeInterval;
+
 /// Data stored for FONT AS A WHOLE
 typedef struct {
-    uint8_t  *bitmap;      ///< Glyph bitmaps, concatenated
-    GFXglyph *glyph;       ///< Glyph array
-    uint8_t   first;       ///< ASCII extents (first char)
-    uint8_t   last;        ///< ASCII extents (last char)
-    uint8_t   advance_y;   ///< Newline distance (y axis)
+    uint8_t  *bitmap;      		  ///< Glyph bitmaps, concatenated
+    GFXglyph *glyph;       		  ///< Glyph array
+    UnicodeInterval*   intervals; ///< Valid unicode intervals for this font
+	uint32_t  interval_count;     ///< Number of unicode intervals.
+    uint8_t   advance_y;   		  ///< Newline distance (y axis)
 } GFXfont;
 
 
