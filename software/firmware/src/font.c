@@ -139,7 +139,7 @@ void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
                    int *y1, int *w, int *h) {
   int xx = x, yy = y, minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   uint32_t c;
-  while (c = next_cp(&string)) {
+  while ((c = next_cp(&string))) {
     getCharBounds(font, c, &xx, &yy, &minx, &miny, &maxx, &maxy);
   }
   *x1 = min(x, minx);
@@ -162,7 +162,7 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x,
       .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
   int working_curor = 0;
-  while (c = next_cp(&string)) {
+  while ((c = next_cp(&string))) {
     drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
   }
   volatile uint32_t t = micros();

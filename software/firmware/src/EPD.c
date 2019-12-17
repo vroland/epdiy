@@ -65,7 +65,7 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
       }
     }
   }
-  reorder_line_buffer(row);
+  reorder_line_buffer((uint32_t *)row);
 
   start_frame();
   for (int i = 0; i < EPD_HEIGHT; i++) {
@@ -198,7 +198,7 @@ void IRAM_ATTR calc_epd_input_2bpp(uint32_t *line_data, uint8_t *epd_input,
     pixel |= (val * shiftmul) >> 24;
     epd_input[j] = pixel;
   }
-  reorder_line_buffer(epd_input);
+  reorder_line_buffer((uint32_t *)epd_input);
 }
 
 void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
@@ -216,6 +216,7 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
     break;
   default:
     assert("invalid grayscale mode!");
+    return;
   };
 
   for (uint8_t k = frame_count; k > 0; k--) {
