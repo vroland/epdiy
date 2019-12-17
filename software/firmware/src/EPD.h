@@ -5,15 +5,15 @@
 #include "Arduino.h"
 
 typedef struct {
-    uint16_t x;
-    uint16_t y;
-    uint16_t width;
-    uint16_t height;
+  uint16_t x;
+  uint16_t y;
+  uint16_t width;
+  uint16_t height;
 } Rect_t;
 
 typedef enum {
-    BIT_DEPTH_4 = 4,
-    BIT_DEPTH_2 = 2,
+  BIT_DEPTH_4 = 4,
+  BIT_DEPTH_2 = 2,
 } EPDBitdepth_t;
 
 /* initialize the ePaper display */
@@ -38,7 +38,7 @@ void epd_clear_area(Rect_t area);
  * uneven, the last half byte is ignored.
  * The given area must be white before drawing.
  */
-void epd_draw_picture(Rect_t area, uint8_t* data, EPDBitdepth_t bpp);
+void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp);
 
 /*
  * Returns a rectancle representing the whole screen area.
@@ -47,4 +47,4 @@ Rect_t epd_full_screen();
 
 /* draw a frame with all pixels being set to `byte`,
  * where byte is an EPD-specific encoding of black and white. */
-void epd_draw_byte(Rect_t* area, short time, uint8_t byte);
+void epd_draw_byte(Rect_t *area, short time, uint8_t byte);
