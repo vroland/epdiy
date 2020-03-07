@@ -1,0 +1,3 @@
+[submodule "hardware/epaper-breakout/esp32-wrover-kicad"]
+	path = hardware/epaper-breakout/esp32-wrover-kicad
+	url = https://github.com/aliafshar/esp32-wrover-kicad

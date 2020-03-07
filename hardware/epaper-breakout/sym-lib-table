@@ -1,3 +1,5 @@
 (sym_lib_table
   (lib (name epd_breakout)(type Legacy)(uri ${KIPRJMOD}/epd_breakout.lib)(options "")(descr ""))
+  (lib (name esp32-wrover)(type Legacy)(uri ${KIPRJMOD}/esp32-wrover-kicad/esp32-wrover.lib)(options "")(descr ""))
+  (lib (name 74HC4094)(type Legacy)(uri ${KIPRJMOD}/74HC4094.lib)(options "")(descr ""))
 )
