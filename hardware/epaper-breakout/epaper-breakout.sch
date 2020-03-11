@@ -1004,10 +1004,6 @@ Wire Wire Line
 	1300 6500 1200 6500
 Text Label 850  4950 0    50   ~ 0
 5V
-Text Label 750  3150 0    50   ~ 0
-5V
-Wire Wire Line
-	750  3150 800  3150
 Connection ~ 800  3150
 $Comp
 L power:PWR_FLAG #FLG0101
@@ -1168,42 +1164,6 @@ Wire Wire Line
 	14250 4400 14000 4400
 Wire Wire Line
 	14000 4400 14000 4500
-Wire Wire Line
-	2150 4950 2500 4950
-$Comp
-L Device:R R16
-U 1 1 5E0FA82A
-P 2500 5100
-F 0 "R16" H 2570 5146 50  0000 L CNN
-F 1 "1k" H 2570 5055 50  0000 L CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 2430 5100 50  0001 C CNN
-F 3 "~" H 2500 5100 50  0001 C CNN
-	1    2500 5100
-	1    0    0    -1  
-$EndComp
-Connection ~ 2500 4950
-Wire Wire Line
-	2500 4950 2650 4950
-$Comp
-L Device:LED D4
-U 1 1 5E0FC088
-P 2500 5450
-F 0 "D4" V 2550 5350 50  0000 R CNN
-F 1 "PWR" V 2450 5400 50  0000 R CNN
-F 2 "LED_SMD:LED_0805_2012Metric" H 2500 5450 50  0001 C CNN
-F 3 "~" H 2500 5450 50  0001 C CNN
-	1    2500 5450
-	0    -1   -1   0   
-$EndComp
-Wire Wire Line
-	2500 5250 2500 5300
-Wire Wire Line
-	2500 5600 2500 5650
-Wire Wire Line
-	2500 5650 2150 5650
-Wire Wire Line
-	2150 5650 2150 5450
-Connection ~ 2150 5450
 Text Label 10350 2700 2    50   ~ 0
 IO0
 Text Label 10100 1700 2    50   ~ 0
@@ -1236,8 +1196,6 @@ Wire Wire Line
 	8000 1800 7500 1800
 Text Label 7500 1800 0    50   ~ 0
 A0
-Text Label 7500 1900 0    50   ~ 0
-A1
 Wire Wire Line
 	8000 1900 7500 1900
 Text Label 7500 1600 0    50   ~ 0
@@ -1270,7 +1228,7 @@ U 1 1 5EAA330C
 P 11050 2150
 F 0 "U8" H 11050 2903 60  0000 C CNN
 F 1 "74HC4094-normal" H 11050 2797 60  0000 C CNN
-F 2 "" H 11050 2150 50  0001 C CNN
+F 2 "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm" H 11050 2150 50  0001 C CNN
 F 3 "" H 11050 2150 50  0001 C CNN
 	1    11050 2150
 	1    0    0    -1  
@@ -1323,7 +1281,7 @@ U 1 1 5E61FA0C
 P 8900 2050
 F 0 "U5" H 8875 3387 60  0000 C CNN
 F 1 "ESP32-WROVER" H 8875 3281 60  0000 C CNN
-F 2 "" H 9350 1750 60  0001 C CNN
+F 2 "esp32-wrover:ESP32-WROVER" H 9350 1750 60  0001 C CNN
 F 3 "" H 9350 1750 60  0001 C CNN
 	1    8900 2050
 	1    0    0    -1  
@@ -1669,17 +1627,6 @@ Wire Wire Line
 	7500 2600 8000 2600
 Wire Wire Line
 	8000 2500 7500 2500
-$Comp
-L Connector_Generic:Conn_02x04_Counter_Clockwise J3
-U 1 1 5F7C060E
-P 6350 4250
-F 0 "J3" V 6354 4430 50  0000 L CNN
-F 1 "Conn_02x04_Counter_Clockwise" V 6445 4430 50  0000 L CNN
-F 2 "" H 6350 4250 50  0001 C CNN
-F 3 "~" H 6350 4250 50  0001 C CNN
-	1    6350 4250
-	-1   0    0    1   
-$EndComp
 Text Label 6850 4050 2    50   ~ 0
 MISO
 Text Label 6850 4150 2    50   ~ 0
@@ -1692,10 +1639,6 @@ Wire Wire Line
 	6050 4250 5550 4250
 Text Label 5550 4250 0    50   ~ 0
 A0
-Text Label 5550 4350 0    50   ~ 0
-A1
-Wire Wire Line
-	6050 4350 5550 4350
 Text Label 5550 4050 0    50   ~ 0
 SENSOR_VP
 Text Label 5550 4150 0    50   ~ 0
@@ -1716,4 +1659,263 @@ Text Label 13550 2200 0    50   ~ 0
 +3.3V
 Wire Wire Line
 	13550 2200 14250 2200
+$Comp
+L ed060sc4:ED060SC4 J4
+U 1 1 5E684C5A
+P 14650 7250
+F 0 "J4" H 15228 7301 50  0000 L CNN
+F 1 "ED060SC4" H 15228 7210 50  0000 L CNN
+F 2 "epaper-breakout:HRS_FH26W-39S-0.3SHW(60)" H 14650 7250 50  0001 C CNN
+F 3 "" H 14650 7250 50  0001 C CNN
+	1    14650 7250
+	1    0    0    -1  
+$EndComp
+Text Label 14100 6450 0    50   ~ 0
+EP_D0
+Text Label 14100 6550 0    50   ~ 0
+EP_D1
+Text Label 14100 6650 0    50   ~ 0
+EP_D2
+Text Label 14100 6750 0    50   ~ 0
+EP_D3
+Text Label 14100 6850 0    50   ~ 0
+EP_D4
+Text Label 14100 6950 0    50   ~ 0
+EP_D5
+Text Label 14100 7050 0    50   ~ 0
+EP_D6
+Text Label 14100 7150 0    50   ~ 0
+EP_D7
+Wire Wire Line
+	14450 6450 14100 6450
+Wire Wire Line
+	14100 6550 14450 6550
+Wire Wire Line
+	14450 6650 14100 6650
+Wire Wire Line
+	14100 6750 14450 6750
+Wire Wire Line
+	14450 6850 14100 6850
+Wire Wire Line
+	14100 6950 14450 6950
+Wire Wire Line
+	14450 7050 14100 7050
+Wire Wire Line
+	14100 7150 14450 7150
+Text Label 14100 5350 0    50   ~ 0
+-15V
+Wire Wire Line
+	14100 5350 14450 5350
+Text Label 14100 5450 0    50   ~ 0
+15V
+Wire Wire Line
+	14450 5450 14100 5450
+Wire Wire Line
+	14100 5650 14450 5650
+Text Label 14100 5650 0    50   ~ 0
++3.3V
+$Comp
+L power:GND #PWR06
+U 1 1 5E6F9E7C
+P 13950 6400
+F 0 "#PWR06" H 13950 6150 50  0001 C CNN
+F 1 "GND" H 13850 6300 50  0000 C CNN
+F 2 "" H 13950 6400 50  0001 C CNN
+F 3 "" H 13950 6400 50  0001 C CNN
+	1    13950 6400
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	13950 5550 14450 5550
+Text Label 14100 5750 0    50   ~ 0
+EP_CKH
+Wire Wire Line
+	14450 5750 14100 5750
+Text Label 14100 5850 0    50   ~ 0
+EP_LE
+Wire Wire Line
+	14450 5850 14100 5850
+Text Label 14100 5950 0    50   ~ 0
+EP_OE
+Wire Wire Line
+	14100 5950 14450 5950
+Wire Wire Line
+	13950 5550 13950 6150
+Wire Wire Line
+	14450 6150 13950 6150
+Connection ~ 13950 6150
+Wire Wire Line
+	13950 6150 13950 6400
+Text Label 14100 6250 0    50   ~ 0
++3.3V
+Wire Wire Line
+	14450 6250 14100 6250
+Text Label 14100 6350 0    50   ~ 0
+EP_STH
+Wire Wire Line
+	14100 6350 14450 6350
+Text Label 14100 7450 0    50   ~ 0
+EP_VCOM
+Wire Wire Line
+	14100 7450 14450 7450
+Text Label 14100 7550 0    50   ~ 0
++22V
+Wire Wire Line
+	14450 7550 14100 7550
+Text Label 14100 7650 0    50   ~ 0
+-20V
+Wire Wire Line
+	14100 7650 14450 7650
+Text Label 14100 7950 0    50   ~ 0
+EP_MODE
+Wire Wire Line
+	14350 7950 14100 7950
+Wire Wire Line
+	14350 7950 14350 8050
+Wire Wire Line
+	14350 8050 14450 8050
+Wire Wire Line
+	14450 7950 14350 7950
+Connection ~ 14350 7950
+Text Label 13750 6050 0    50   ~ 0
++3.3V
+Wire Wire Line
+	13750 6050 14450 6050
+Text Label 14100 6050 0    50   ~ 0
+EP_RL
+Wire Wire Line
+	14450 8150 14100 8150
+Text Label 14100 8150 0    50   ~ 0
+EP_UD
+$Comp
+L power:GND #PWR03
+U 1 1 5E8C9B49
+P 13850 8800
+F 0 "#PWR03" H 13850 8550 50  0001 C CNN
+F 1 "GND" H 13750 8700 50  0000 C CNN
+F 2 "" H 13850 8800 50  0001 C CNN
+F 3 "" H 13850 8800 50  0001 C CNN
+	1    13850 8800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	14450 8650 13850 8650
+Wire Wire Line
+	13850 8650 13850 8800
+Wire Wire Line
+	14450 8350 13850 8350
+Wire Wire Line
+	13850 8350 13850 8650
+Connection ~ 13850 8650
+Text Label 13950 8100 3    50   ~ 0
++3.3V
+Wire Wire Line
+	13950 8100 13950 8250
+Wire Wire Line
+	13950 8250 14450 8250
+Wire Wire Line
+	13950 8250 13950 8750
+Wire Wire Line
+	13950 8750 14450 8750
+Connection ~ 13950 8250
+Wire Wire Line
+	13950 8750 13950 8850
+Wire Wire Line
+	13950 8850 14450 8850
+Connection ~ 13950 8750
+Text Label 14050 8450 0    50   ~ 0
+EP_STV
+Text Label 14050 8550 0    50   ~ 0
+EP_CKV
+Wire Wire Line
+	14050 8450 14350 8450
+Wire Wire Line
+	14050 8550 14400 8550
+Wire Wire Line
+	14400 8550 14400 9050
+Wire Wire Line
+	14400 9050 14450 9050
+Connection ~ 14400 8550
+Wire Wire Line
+	14400 8550 14450 8550
+Wire Wire Line
+	14350 8450 14350 8950
+Wire Wire Line
+	14350 8950 14450 8950
+Connection ~ 14350 8450
+Wire Wire Line
+	14350 8450 14450 8450
+Text Label 650  3150 0    50   ~ 0
++3.3V
+Wire Wire Line
+	650  3150 800  3150
+Wire Wire Line
+	2150 4950 2650 4950
+$Comp
+L Connector_Generic:Conn_02x05_Counter_Clockwise J3
+U 1 1 5EA89592
+P 6250 4250
+F 0 "J3" H 6300 4667 50  0000 C CNN
+F 1 "Conn_02x05_Counter_Clockwise" H 6300 4576 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_2x05_P2.54mm_Vertical" H 6250 4250 50  0001 C CNN
+F 3 "~" H 6250 4250 50  0001 C CNN
+	1    6250 4250
+	1    0    0    -1  
+$EndComp
+Text Label 6850 4450 2    50   ~ 0
++3.3V
+$Comp
+L power:GND #PWR0117
+U 1 1 5EABA85C
+P 5900 4500
+F 0 "#PWR0117" H 5900 4250 50  0001 C CNN
+F 1 "GND" H 5905 4327 50  0000 C CNN
+F 2 "" H 5900 4500 50  0001 C CNN
+F 3 "" H 5900 4500 50  0001 C CNN
+	1    5900 4500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5900 4500 5900 4450
+Wire Wire Line
+	5900 4450 6050 4450
+Wire Wire Line
+	6550 4450 6850 4450
+$Comp
+L Sensor_Temperature:MCP9700AT-ETT U9
+U 1 1 5EB1CA91
+P 6200 5450
+F 0 "U9" H 5870 5496 50  0000 R CNN
+F 1 "MCP9700AT-ETT" H 5870 5405 50  0000 R CNN
+F 2 "Package_TO_SOT_SMD:SOT-23" H 6200 5050 50  0001 C CNN
+F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21942e.pdf" H 6050 5700 50  0001 C CNN
+	1    6200 5450
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6050 4350 5900 4350
+Wire Wire Line
+	5900 4350 5900 4450
+Connection ~ 5900 4450
+Text Label 7500 1900 0    50   ~ 0
+V_TEMP
+Text Label 7000 5450 2    50   ~ 0
+V_TEMP
+Wire Wire Line
+	7000 5450 6600 5450
+$Comp
+L power:GND #PWR07
+U 1 1 5EB6AA6D
+P 6200 5750
+F 0 "#PWR07" H 6200 5500 50  0001 C CNN
+F 1 "GND" H 6205 5577 50  0000 C CNN
+F 2 "" H 6200 5750 50  0001 C CNN
+F 3 "" H 6200 5750 50  0001 C CNN
+	1    6200 5750
+	1    0    0    -1  
+$EndComp
+Text Label 6200 4850 3    50   ~ 0
++3.3V
+Wire Wire Line
+	6200 5150 6200 4850
 $EndSCHEMATC
