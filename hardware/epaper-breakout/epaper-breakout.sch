@@ -1172,7 +1172,7 @@ Text Label 10100 1800 2    50   ~ 0
 USB_TXD
 Text Label 7500 2200 0    50   ~ 0
 EP_CKV
-Text Label 7500 2000 0    50   ~ 0
+Text Label 7500 2100 0    50   ~ 0
 EP_D0
 Text Label 10100 2600 2    50   ~ 0
 EP_D2
@@ -1185,7 +1185,7 @@ EP_D6
 Text Label 10100 2300 2    50   ~ 0
 EP_CKH
 Wire Wire Line
-	7500 2000 8000 2000
+	7500 2100 8000 2100
 Wire Wire Line
 	8000 2400 7500 2400
 Wire Wire Line
@@ -1217,10 +1217,10 @@ NoConn ~ 9750 3200
 NoConn ~ 9750 3100
 NoConn ~ 9750 3000
 Wire Wire Line
-	8000 2100 7500 2100
+	8000 2000 7500 2000
 Text Label 10100 1600 2    50   ~ 0
 EP_D7
-Text Label 7500 2100 0    50   ~ 0
+Text Label 7500 2000 0    50   ~ 0
 EP_D1
 $Comp
 L 74HC4094:74HC4094-normal U8
@@ -1233,40 +1233,28 @@ F 3 "" H 11050 2150 50  0001 C CNN
 	1    11050 2150
 	1    0    0    -1  
 $EndComp
-Text Label 11950 1800 2    50   ~ 0
+Text Label 11950 2500 2    50   ~ 0
 EP_OE
 Text Label 11950 2200 2    50   ~ 0
-~SMPS_CTRL
-Wire Wire Line
-	11950 2200 11450 2200
-Text Label 11950 2300 2    50   ~ 0
-POS_CTRL
-Wire Wire Line
-	11450 2300 11950 2300
-Text Label 11950 2400 2    50   ~ 0
-NEG_CTRL
-Wire Wire Line
-	11450 2400 11950 2400
-Text Label 11950 1900 2    50   ~ 0
 EP_STV
 Wire Wire Line
-	11950 1900 11450 1900
+	11950 2400 11450 2400
 Wire Wire Line
-	11950 1800 11450 1800
-Text Label 11950 2000 2    50   ~ 0
+	11950 2500 11450 2500
+Text Label 11950 2400 2    50   ~ 0
 EP_MODE
 Wire Wire Line
-	11450 2000 11950 2000
+	11450 2200 11950 2200
 Text Label 13900 2200 0    50   ~ 0
 EP_RL
 Text Label 13900 4100 0    50   ~ 0
 EP_UD
-Text Label 11950 2500 2    50   ~ 0
+Text Label 11950 2300 2    50   ~ 0
 EP_UD
 Wire Wire Line
-	11450 2500 11950 2500
+	11450 2300 11950 2300
 Wire Wire Line
-	11950 2100 11450 2100
+	11950 1800 11450 1800
 Wire Wire Line
 	9750 1500 10250 1500
 Text Label 7500 2600 0    50   ~ 0
@@ -1375,7 +1363,7 @@ Wire Wire Line
 	11050 1600 11900 1600
 Wire Wire Line
 	9750 2300 10100 2300
-Text Label 11950 2100 2    50   ~ 0
+Text Label 11950 1800 2    50   ~ 0
 EP_LE
 Text Label 7500 2300 0    50   ~ 0
 EP_STH
@@ -1918,4 +1906,16 @@ Text Label 6200 4850 3    50   ~ 0
 +3.3V
 Wire Wire Line
 	6200 5150 6200 4850
+Wire Wire Line
+	11450 2100 11950 2100
+Text Label 11950 2100 2    50   ~ 0
+NEG_CTRL
+Wire Wire Line
+	11450 2000 11950 2000
+Text Label 11950 2000 2    50   ~ 0
+POS_CTRL
+Wire Wire Line
+	11950 1900 11450 1900
+Text Label 11950 1900 2    50   ~ 0
+~SMPS_CTRL
 $EndSCHEMATC
