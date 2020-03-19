@@ -1880,11 +1880,6 @@ F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21942e.pdf" H 6050 5700 50 
 	1    6200 5450
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	6050 4350 5900 4350
-Wire Wire Line
-	5900 4350 5900 4450
-Connection ~ 5900 4450
 Text Label 7500 1900 0    50   ~ 0
 V_TEMP
 Text Label 7000 5450 2    50   ~ 0
@@ -1918,4 +1913,8 @@ Wire Wire Line
 	11950 1900 11450 1900
 Text Label 11950 1900 2    50   ~ 0
 ~SMPS_CTRL
+Text Label 5550 4350 0    50   ~ 0
+5V
+Wire Wire Line
+	5550 4350 6050 4350
 $EndSCHEMATC

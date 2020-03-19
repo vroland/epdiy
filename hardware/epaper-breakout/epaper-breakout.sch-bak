@@ -1172,7 +1172,7 @@ Text Label 10100 1800 2    50   ~ 0
 USB_TXD
 Text Label 7500 2200 0    50   ~ 0
 EP_CKV
-Text Label 7500 2000 0    50   ~ 0
+Text Label 7500 2100 0    50   ~ 0
 EP_D0
 Text Label 10100 2600 2    50   ~ 0
 EP_D2
@@ -1185,7 +1185,7 @@ EP_D6
 Text Label 10100 2300 2    50   ~ 0
 EP_CKH
 Wire Wire Line
-	7500 2000 8000 2000
+	7500 2100 8000 2100
 Wire Wire Line
 	8000 2400 7500 2400
 Wire Wire Line
@@ -1217,10 +1217,10 @@ NoConn ~ 9750 3200
 NoConn ~ 9750 3100
 NoConn ~ 9750 3000
 Wire Wire Line
-	8000 2100 7500 2100
+	8000 2000 7500 2000
 Text Label 10100 1600 2    50   ~ 0
 EP_D7
-Text Label 7500 2100 0    50   ~ 0
+Text Label 7500 2000 0    50   ~ 0
 EP_D1
 $Comp
 L 74HC4094:74HC4094-normal U8
@@ -1918,4 +1918,19 @@ Wire Wire Line
 	11950 1900 11450 1900
 Text Label 11950 1900 2    50   ~ 0
 ~SMPS_CTRL
+$Comp
+L Connector_Generic:Conn_02x01 J?
+U 1 1 5E8C42DF
+P 7750 4000
+F 0 "J?" H 7800 4217 50  0000 C CNN
+F 1 "Conn_02x01" H 7800 4126 50  0000 C CNN
+F 2 "" H 7750 4000 50  0001 C CNN
+F 3 "~" H 7750 4000 50  0001 C CNN
+	1    7750 4000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7550 4000 7300 4000
+Text Label 7300 4000 0    50   ~ 0
+5V
 $EndSCHEMATC
