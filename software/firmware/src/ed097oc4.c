@@ -18,9 +18,22 @@ int I2S_GPIO_BUS[] = {D6, D7, D4, D5, D2, D3, D0, D1,
                       -1, -1, -1, -1, -1, -1, -1, -1};
 
 typedef struct {
+  bool ep_latch_enable : 1;
+  bool power_disable : 1;
+  bool pos_power_enable : 1;
+  bool neg_power_enable : 1;
+  bool ep_stv : 1;
+  bool ep_scan_direction : 1;
+  bool ep_mode : 1;
+  bool ep_output_enable : 1;
+} epd_config_register_t;
+
+typedef struct {
   volatile lldesc_t *dma_desc_a;
   volatile lldesc_t *dma_desc_b;
 } i2s_parallel_state_t;
+
+epd_config_register_t config_reg;
 
 static i2s_parallel_state_t i2s_state;
 
@@ -77,6 +90,33 @@ static void gpio_setup_out(int gpio, int sig, bool invert) {
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpio], PIN_FUNC_GPIO);
   gpio_set_direction(gpio, GPIO_MODE_DEF_OUTPUT);
   gpio_matrix_out(gpio, sig, invert, false);
+}
+
+void IRAM_ATTR push_cfg_bit(bool bit) {
+  fast_gpio_set_lo(CFG_CLK);
+  if (bit) {
+    fast_gpio_set_hi(CFG_DATA);
+  } else {
+    fast_gpio_set_lo(CFG_DATA);
+  }
+  fast_gpio_set_hi(CFG_CLK);
+}
+
+void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
+  fast_gpio_set_lo(CFG_STR);
+
+  // push config bits in reverse order
+  push_cfg_bit(cfg->ep_output_enable);
+  push_cfg_bit(cfg->ep_mode);
+  push_cfg_bit(cfg->ep_scan_direction);
+  push_cfg_bit(cfg->ep_stv);
+
+  push_cfg_bit(cfg->neg_power_enable);
+  push_cfg_bit(cfg->pos_power_enable);
+  push_cfg_bit(cfg->power_disable);
+  push_cfg_bit(cfg->ep_latch_enable);
+
+  fast_gpio_set_hi(CFG_STR);
 }
 
 volatile int empty_count = 0;
@@ -248,34 +288,34 @@ inline void next_pixel() {
 
 void init_gpios() {
 
+  config_reg.ep_latch_enable = false;
+  config_reg.power_disable = true;
+  config_reg.pos_power_enable = false;
+  config_reg.neg_power_enable = false;
+  config_reg.ep_stv = true;
+  config_reg.ep_scan_direction = true;
+  config_reg.ep_mode = false;
+  config_reg.ep_output_enable = false;
+
   /* Power Control Output/Off */
-  gpio_set_direction(POS_CTRL, GPIO_MODE_OUTPUT);
-  gpio_set_lo(POS_CTRL);
-  gpio_set_direction(NEG_CTRL, GPIO_MODE_OUTPUT);
-  gpio_set_lo(NEG_CTRL);
-  gpio_set_direction(SMPS_CTRL, GPIO_MODE_OUTPUT);
-  gpio_set_hi(SMPS_CTRL);
+  gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
+  gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
+  gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
+  gpio_set_lo(CFG_STR);
+
+  push_cfg(&config_reg);
 
   /* Edges/Clocks */
   gpio_set_direction(CKH, GPIO_MODE_OUTPUT);
   gpio_set_lo(CKH);
-  gpio_set_direction(LEH, GPIO_MODE_OUTPUT);
-  gpio_set_lo(LEH);
 
   /* Control Lines */
-  gpio_set_direction(MODE, GPIO_MODE_OUTPUT);
-  gpio_set_lo(MODE);
   gpio_set_direction(STH, GPIO_MODE_OUTPUT);
   gpio_set_lo(STH);
   gpio_set_direction(CKV, GPIO_MODE_OUTPUT);
   gpio_set_lo(CKV);
-  gpio_set_direction(STV, GPIO_MODE_OUTPUT);
-  gpio_set_hi(STV);
-  gpio_set_direction(OEH, GPIO_MODE_OUTPUT);
-  gpio_set_lo(OEH);
 
   /* Output lines are set up in i2s_setup */
-
   // Setup I2S
   i2s_setup(&I2S1);
 
@@ -331,31 +371,39 @@ void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
 
 void epd_poweron() {
   // POWERON
-  gpio_set_lo(SMPS_CTRL);
+  config_reg.power_disable = false;
+  push_cfg(&config_reg);
   busy_delay(100 * 240);
-  gpio_set_hi(NEG_CTRL);
+  config_reg.neg_power_enable = true;
+  push_cfg(&config_reg);
   busy_delay(500 * 240);
-  gpio_set_hi(POS_CTRL);
+  config_reg.pos_power_enable = true;
+  push_cfg(&config_reg);
   busy_delay(100 * 240);
-  gpio_set_hi(STV);
+  config_reg.ep_stv = true;
+  push_cfg(&config_reg);
   gpio_set_hi(STH);
   // END POWERON
 }
 
 void epd_poweroff() {
   // POWEROFF
-  gpio_set_lo(POS_CTRL);
+  config_reg.pos_power_enable = false;
+  push_cfg(&config_reg);
   busy_delay(10 * 240);
-  gpio_set_lo(NEG_CTRL);
+  config_reg.neg_power_enable = false;
+  push_cfg(&config_reg);
   busy_delay(100 * 240);
-  gpio_set_hi(SMPS_CTRL);
+  config_reg.power_disable = true;
+  push_cfg(&config_reg);
   // END POWEROFF
 }
 
 void start_frame() {
   // VSCANSTART
-  gpio_set_hi(MODE);
-  busy_delay(10 * 240);
+  config_reg.ep_mode = true;
+  push_cfg(&config_reg);
+  // busy_delay(10 * 240);
 
   /*
 gpio_set_lo(STV);
@@ -369,32 +417,37 @@ gpio_set_lo(STV);
   gpio_set_hi(CKV);
 
   */
-  skip();
-  skip();
-  skip();
 
-  gpio_set_lo(STV);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+
+  config_reg.ep_stv = false;
+  push_cfg(&config_reg);
   busy_delay(240);
-  pulse_ckv_us(1, 1, false);
-  gpio_set_hi(STV);
-  pulse_ckv_us(0, 1, true);
+  pulse_ckv_us(10, 10, false);
+  config_reg.ep_stv = true;
+  push_cfg(&config_reg);
+  pulse_ckv_us(0, 10, true);
 
-  gpio_set_hi(OEH);
-  // END VSCANSTART
+  config_reg.ep_output_enable = true;
+  push_cfg(&config_reg); // END VSCANSTART
 
-  skip();
-  skip();
-  skip();
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
 }
 
 inline void latch_row() {
-  gpio_set_hi(LEH);
   gpio_set_hi(CKH);
   gpio_set_lo(CKH);
+  config_reg.ep_latch_enable = true;
+  push_cfg(&config_reg);
   gpio_set_hi(CKH);
-  gpio_set_lo(CKH);
 
-  gpio_set_lo(LEH);
+  config_reg.ep_latch_enable = false;
+  push_cfg(&config_reg);
+  gpio_set_lo(CKH);
   gpio_set_hi(CKH);
   gpio_set_lo(CKH);
   gpio_set_hi(CKH);
@@ -468,10 +521,8 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t *data) {
 void end_frame() {
   // rmt_driver_uninstall(row_rmt_config.channel);
 
-  gpio_set_lo(OEH);
-  gpio_set_lo(MODE);
+  config_reg.ep_output_enable = false;
+  push_cfg(&config_reg);
+  config_reg.ep_mode = false;
+  push_cfg(&config_reg);
 }
-
-void enable_output() { gpio_set_hi(OEH); }
-
-void disable_output() { gpio_set_lo(OEH); }

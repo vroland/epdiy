@@ -84,11 +84,11 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
       skip_row();
       // output the same as before
     } else {
-      write_row(time, NULL);
+      write_row(time, row);
     }
   }
   // Since we "pipeline" row output, we still have to latch out the last row.
-  write_row(time, NULL);
+  write_row(time, row);
 
   end_frame();
   free(row);

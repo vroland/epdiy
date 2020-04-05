@@ -8,30 +8,35 @@
 #define EPD_LINE_BYTES 1200 / 4
 
 /* Control Lines */
-#define NEG_CTRL GPIO_NUM_33  // Active HIGH
-#define POS_CTRL GPIO_NUM_32  // Active HIGH
-#define SMPS_CTRL GPIO_NUM_18 // Active LOW
+//#define NEG_CTRL GPIO_NUM_33  // Active HIGH
+//#define POS_CTRL GPIO_NUM_32  // Active HIGH
+//#define SMPS_CTRL GPIO_NUM_18 // Active LOW
+
+/* Config Reg Control */
+#define CFG_DATA GPIO_NUM_23
+#define CFG_CLK GPIO_NUM_18
+#define CFG_STR GPIO_NUM_19
 
 /* Control Lines */
 #define CKV GPIO_NUM_25
-#define STV GPIO_NUM_27
-#define MODE GPIO_NUM_0
+//#define STV GPIO_NUM_27
+//#define MODE GPIO_NUM_0
 #define STH GPIO_NUM_26
-#define OEH GPIO_NUM_19
+//#define OEH GPIO_NUM_19
 
 /* Edges */
-#define CKH GPIO_NUM_23
-#define LEH GPIO_NUM_2
+#define CKH GPIO_NUM_5
+//#define LEH GPIO_NUM_2
 
 /* Data Lines */
-#define D7 GPIO_NUM_17
-#define D6 GPIO_NUM_16
-#define D5 GPIO_NUM_15
-#define D4 GPIO_NUM_14
-#define D3 GPIO_NUM_13
-#define D2 GPIO_NUM_12
-#define D1 GPIO_NUM_5
-#define D0 GPIO_NUM_4
+#define D7 GPIO_NUM_22
+#define D6 GPIO_NUM_21
+#define D5 GPIO_NUM_12
+#define D4 GPIO_NUM_2
+#define D3 GPIO_NUM_0
+#define D2 GPIO_NUM_4
+#define D1 GPIO_NUM_32
+#define D0 GPIO_NUM_33
 
 void init_gpios();
 void epd_poweron();

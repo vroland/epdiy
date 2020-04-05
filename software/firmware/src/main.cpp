@@ -32,6 +32,7 @@ void loop() {
 
   delay(300);
   epd_poweron();
+
   uint32_t timestamp = 0;
   if (_state == CLEAR_SCREEN) {
     Serial.println("Clear cycle.");
@@ -44,7 +45,7 @@ void loop() {
     Serial.println("Draw cycle.");
     timestamp = millis();
     epd_draw_picture(epd_full_screen(), (uint8_t *)&img_bytes, BIT_DEPTH_4);
-    _state = CLEAR_PARTIAL;
+    _state = CLEAR_SCREEN;
 
   } else if (_state == CLEAR_PARTIAL) {
     Serial.println("Partial clear cycle.");
@@ -77,6 +78,6 @@ void loop() {
   Serial.println(" ms to redraw the screen.");
 
   // Wait 4 seconds then do it again
-  delay(4000);
+  delay(2000);
   Serial.println("Going active again.");
 }
