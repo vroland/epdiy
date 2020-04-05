@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "driver/periph_ctrl.h"
+#include "driver/rmt.h"
 #include "esp_heap_caps.h"
 #include "esp_intr.h"
 #include "freertos/FreeRTOS.h"
@@ -30,6 +31,11 @@ int current_buffer = 0;
 
 volatile bool output_done = true;
 static intr_handle_t gI2S_intr_handle = NULL;
+static intr_handle_t gRMT_intr_handle = NULL;
+
+// Use a remote control peripheral channel for row timings
+rmt_config_t row_rmt_config;
+volatile bool rmt_tx_done = true;
 
 inline void gpio_set_hi(gpio_num_t gpio_num) { gpio_set_level(gpio_num, 1); }
 
@@ -86,6 +92,21 @@ static void IRAM_ATTR i2s_int_hdl(void *arg) {
     output_done = true;
   }
   dev->int_clr.val = dev->int_raw.val;
+}
+
+// -- Custom interrupt handler
+// Signal when the RMT is done.
+static void IRAM_ATTR rmt_interrupt_handler(void *arg) {
+  // -- The basic structure of this code is borrowed from the
+  //    interrupt handler in esp-idf/components/driver/rmt.c
+  uint32_t intr_st = RMT.int_st.val;
+  int tx_done_bit = row_rmt_config.channel * 3;
+
+  // -- Transmission is complete on this channel
+  // if (intr_st & BIT(tx_done_bit)) {
+  rmt_tx_done = true;
+  //}
+  RMT.int_clr.val = ~0;
 }
 
 uint8_t *get_current_buffer() { return current_buffer ? buf_b : buf_a; }
@@ -249,7 +270,7 @@ void init_gpios() {
   gpio_set_direction(CKV, GPIO_MODE_OUTPUT);
   gpio_set_lo(CKV);
   gpio_set_direction(STV, GPIO_MODE_OUTPUT);
-  gpio_set_lo(STV);
+  gpio_set_hi(STV);
   gpio_set_direction(OEH, GPIO_MODE_OUTPUT);
   gpio_set_lo(OEH);
 
@@ -257,6 +278,55 @@ void init_gpios() {
 
   // Setup I2S
   i2s_setup(&I2S1);
+
+  // Setup RMT peripheral
+  row_rmt_config.rmt_mode = RMT_MODE_TX;
+  row_rmt_config.channel = RMT_CHANNEL_0;
+  row_rmt_config.gpio_num = CKV;
+  row_rmt_config.mem_block_num = 1;
+  row_rmt_config.clk_div = 80; // Divide 80MHz by 80 -> 1us delay
+
+  row_rmt_config.tx_config.loop_en = false;
+  row_rmt_config.tx_config.carrier_en = false;
+  row_rmt_config.tx_config.carrier_level = RMT_CARRIER_LEVEL_LOW;
+  row_rmt_config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
+  row_rmt_config.tx_config.idle_output_en = true;
+
+  esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3,
+                 rmt_interrupt_handler, 0, &gRMT_intr_handle);
+  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+
+  rmt_config(&row_rmt_config);
+  rmt_set_tx_intr_en(row_rmt_config.channel, true);
+}
+
+/**
+ * Outputs a high pulse on CKV signal for a given number of microseconds.
+ *
+ * This function will always wait for a previous call to finish.
+ */
+void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
+                            bool wait) {
+  while (!rmt_tx_done) {
+  };
+  volatile rmt_item32_t *rmt_mem_ptr =
+      &(RMTMEM.chan[row_rmt_config.channel].data32[0]);
+  if (high_time_us > 0) {
+    rmt_mem_ptr->level0 = 1;
+    rmt_mem_ptr->duration0 = high_time_us;
+    rmt_mem_ptr->level1 = 0;
+    rmt_mem_ptr->duration1 = low_time_us;
+  } else {
+    rmt_mem_ptr->level0 = 1;
+    rmt_mem_ptr->duration0 = low_time_us;
+    rmt_mem_ptr->level1 = 0;
+    rmt_mem_ptr->duration1 = 0;
+  }
+  RMTMEM.chan[row_rmt_config.channel].data32[1].val = 0;
+  rmt_tx_done = false;
+  rmt_tx_start(row_rmt_config.channel, true);
+  while (wait && !rmt_tx_done) {
+  };
 }
 
 void epd_poweron() {
@@ -287,20 +357,27 @@ void start_frame() {
   gpio_set_hi(MODE);
   busy_delay(10 * 240);
 
+  /*
+gpio_set_lo(STV);
+  gpio_set_lo(CKV);
+  busy_delay(240);
+  gpio_set_hi(CKV);
+
   gpio_set_hi(STV);
   gpio_set_lo(CKV);
   busy_delay(240);
   gpio_set_hi(CKV);
+
+  */
+  skip();
+  skip();
+  skip();
 
   gpio_set_lo(STV);
-  gpio_set_lo(CKV);
   busy_delay(240);
-  gpio_set_hi(CKV);
-
+  pulse_ckv_us(1, 1, false);
   gpio_set_hi(STV);
-  gpio_set_lo(CKV);
-  busy_delay(240);
-  gpio_set_hi(CKV);
+  pulse_ckv_us(0, 1, true);
 
   gpio_set_hi(OEH);
   // END VSCANSTART
@@ -325,6 +402,8 @@ inline void latch_row() {
 }
 
 // This needs to be in IRAM, otherwise we get weird delays!
+
+/*
 void IRAM_ATTR wait_line(uint32_t output_time_us) {
   taskDISABLE_INTERRUPTS();
   fast_gpio_set_hi(CKV);
@@ -332,6 +411,7 @@ void IRAM_ATTR wait_line(uint32_t output_time_us) {
   fast_gpio_set_lo(CKV);
   taskENABLE_INTERRUPTS();
 }
+*/
 
 /*
  * Start shifting out the current buffer via I2S.
@@ -353,9 +433,7 @@ void start_line_output() {
 void skip() {
   latch_row();
 
-  fast_gpio_set_hi(CKV);
-  busy_delay(100);
-  fast_gpio_set_lo(CKV);
+  pulse_ckv_us(1, 1, true);
 }
 
 void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t *data) {
@@ -383,11 +461,13 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t *data) {
 
     // sth is pulled up through peripheral interrupt
   }
-
-  wait_line(output_time_us);
+  pulse_ckv_us(output_time_us, 10, false);
+  // wait_line(output_time_us);
 }
 
 void end_frame() {
+  // rmt_driver_uninstall(row_rmt_config.channel);
+
   gpio_set_lo(OEH);
   gpio_set_lo(MODE);
 }
