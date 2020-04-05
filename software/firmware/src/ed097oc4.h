@@ -31,7 +31,7 @@
 /* Data Lines */
 #define D7 GPIO_NUM_22
 #define D6 GPIO_NUM_21
-#define D5 GPIO_NUM_12
+#define D5 GPIO_NUM_27
 #define D4 GPIO_NUM_2
 #define D3 GPIO_NUM_0
 #define D2 GPIO_NUM_4
