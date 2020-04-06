@@ -119,14 +119,11 @@ void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
   fast_gpio_set_hi(CFG_STR);
 }
 
-volatile int empty_count = 0;
-
 // ISR handler. Call callback to refill buffer that was just finished.
 static void IRAM_ATTR i2s_int_hdl(void *arg) {
   i2s_dev_t *dev = &I2S1;
   if (dev->int_st.out_done) {
     // dev->int_ena.tx_rempty=1;
-    // empty_count = 0;
     // Clear the interrupt. Otherwise, the whole device would hang.
     fast_gpio_set_hi(STH);
     output_done = true;
@@ -139,17 +136,13 @@ static void IRAM_ATTR i2s_int_hdl(void *arg) {
 static void IRAM_ATTR rmt_interrupt_handler(void *arg) {
   // -- The basic structure of this code is borrowed from the
   //    interrupt handler in esp-idf/components/driver/rmt.c
-  uint32_t intr_st = RMT.int_st.val;
-  int tx_done_bit = row_rmt_config.channel * 3;
-
-  // -- Transmission is complete on this channel
-  // if (intr_st & BIT(tx_done_bit)) {
   rmt_tx_done = true;
-  //}
-  RMT.int_clr.val = ~0;
+  RMT.int_clr.val = RMT.int_st.val;
 }
 
-uint8_t *get_current_buffer() { return current_buffer ? buf_b : buf_a; }
+volatile uint8_t *get_current_buffer() {
+  return current_buffer ? i2s_state.dma_desc_a->buf : i2s_state.dma_desc_b->buf;
+}
 
 uint32_t dma_desc_addr() {
   return (uint32_t)(current_buffer ? i2s_state.dma_desc_b
@@ -270,20 +263,11 @@ void i2s_setup(i2s_dev_t *dev) {
   dev->out_link.start = 1;
 
   dev->int_clr.val = dev->int_raw.val;
-  dev->int_ena.out_dscr_err = 1;
 
   dev->int_ena.val = 0;
   dev->int_ena.out_done = 1;
 
-  dev->conf.tx_start = 1;
-}
-
-/*
- * Pulses the horizontal clock to advance the horizontal latch 2 pixels.
- */
-inline void next_pixel() {
-  fast_gpio_set_hi(CKH);
-  fast_gpio_set_lo(CKH);
+  dev->conf.tx_start = 0;
 }
 
 void init_gpios() {
@@ -305,11 +289,6 @@ void init_gpios() {
 
   push_cfg(&config_reg);
 
-  /* Edges/Clocks */
-  gpio_set_direction(CKH, GPIO_MODE_OUTPUT);
-  gpio_set_lo(CKH);
-
-  /* Control Lines */
   gpio_set_direction(STH, GPIO_MODE_OUTPUT);
   gpio_set_lo(STH);
   gpio_set_direction(CKV, GPIO_MODE_OUTPUT);
@@ -399,6 +378,9 @@ void epd_poweroff() {
   // END POWEROFF
 }
 
+/**
+ * This is very timing-sensitive!
+ */
 void start_frame() {
   // VSCANSTART
   config_reg.ep_mode = true;
@@ -432,44 +414,20 @@ gpio_set_lo(STV);
 
   config_reg.ep_output_enable = true;
   push_cfg(&config_reg); // END VSCANSTART
-
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
 }
 
 inline void latch_row() {
-  gpio_set_hi(CKH);
-  gpio_set_lo(CKH);
   config_reg.ep_latch_enable = true;
   push_cfg(&config_reg);
-  gpio_set_hi(CKH);
 
   config_reg.ep_latch_enable = false;
   push_cfg(&config_reg);
-  gpio_set_lo(CKH);
-  gpio_set_hi(CKH);
-  gpio_set_lo(CKH);
-  gpio_set_hi(CKH);
-  gpio_set_lo(CKH);
 }
-
-// This needs to be in IRAM, otherwise we get weird delays!
-
-/*
-void IRAM_ATTR wait_line(uint32_t output_time_us) {
-  taskDISABLE_INTERRUPTS();
-  fast_gpio_set_hi(CKV);
-  busy_delay(output_time_us * 240);
-  fast_gpio_set_lo(CKV);
-  taskENABLE_INTERRUPTS();
-}
-*/
 
 /*
  * Start shifting out the current buffer via I2S.
  */
-void start_line_output() {
+void IRAM_ATTR start_line_output() {
   i2s_dev_t *dev = &I2S1;
   dev->conf.tx_start = 0;
   dev->conf.tx_reset = 1;
@@ -489,7 +447,7 @@ void skip() {
   pulse_ckv_us(1, 1, true);
 }
 
-void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t *data) {
+void IRAM_ATTR output_row(uint32_t output_time_us, volatile uint8_t *data) {
 
   // wait for dma to be done with the line
   while (!output_done) {
@@ -498,31 +456,27 @@ void IRAM_ATTR output_row(uint32_t output_time_us, uint8_t *data) {
   while (!I2S1.state.tx_idle) {
   };
 
-  gpio_set_hi(CKH);
-  gpio_set_lo(CKH);
-  gpio_set_hi(CKH);
-  gpio_set_lo(CKH);
-
   latch_row();
+
+  pulse_ckv_us(output_time_us, 10, false);
 
   if (data != NULL) {
     output_done = false;
-    gpio_set_lo(STH);
+    fast_gpio_set_lo(STH);
     start_line_output();
-
     switch_buffer();
 
     // sth is pulled up through peripheral interrupt
   }
-  pulse_ckv_us(output_time_us, 10, false);
+
   // wait_line(output_time_us);
 }
 
 void end_frame() {
-  // rmt_driver_uninstall(row_rmt_config.channel);
-
   config_reg.ep_output_enable = false;
   push_cfg(&config_reg);
   config_reg.ep_mode = false;
   push_cfg(&config_reg);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
 }

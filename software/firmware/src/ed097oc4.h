@@ -51,7 +51,7 @@ void start_frame();
  * Output `data` to the next display row and enable the vertical
  * driver for `output_time_us` microseconds.
  */
-void output_row(uint32_t output_time_us, uint8_t *data);
+void output_row(uint32_t output_time_us, volatile uint8_t *data);
 
 /* skip a row without writing to it. */
 void skip();
@@ -67,5 +67,5 @@ void disable_output();
  */
 void end_frame();
 
-uint8_t *get_current_buffer();
+volatile uint8_t *get_current_buffer();
 void switch_buffer();

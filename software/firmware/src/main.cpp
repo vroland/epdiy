@@ -45,7 +45,7 @@ void loop() {
     Serial.println("Draw cycle.");
     timestamp = millis();
     epd_draw_picture(epd_full_screen(), (uint8_t *)&img_bytes, BIT_DEPTH_4);
-    _state = CLEAR_SCREEN;
+    _state = CLEAR_PARTIAL;
 
   } else if (_state == CLEAR_PARTIAL) {
     Serial.println("Partial clear cycle.");

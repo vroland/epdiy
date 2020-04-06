@@ -30,6 +30,8 @@ void skip_row() {
   // 2, to latch out previously loaded null row
   if (skipping < 2) {
     memcpy(get_current_buffer(), null_row, EPD_LINE_BYTES);
+    switch_buffer();
+    memcpy(get_current_buffer(), null_row, EPD_LINE_BYTES);
     output_row(10, null_row);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
@@ -43,14 +45,14 @@ void skip_row() {
 }
 
 // output a row to the display.
-void write_row(uint32_t output_time_us, uint8_t *data) {
+void write_row(uint32_t output_time_us, volatile uint8_t *data) {
   skipping = 0;
   output_row(output_time_us, data);
 }
 
 void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
 
-  uint8_t *row = (uint8_t *)malloc(EPD_LINE_BYTES);
+  volatile uint8_t *row = (uint8_t *)malloc(EPD_LINE_BYTES);
   for (int i = 0; i < EPD_LINE_BYTES; i++) {
     if (i * 4 + 3 < area->x || i * 4 >= area->x + area->width) {
       row[i] = 0;
@@ -95,16 +97,25 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
 }
 
 void epd_clear_area(Rect_t area) {
-  const short white_time = 80;
-  const short dark_time = 40;
+  const short white_time = 50;
+  const short dark_time = 50;
 
-  for (int i = 0; i < 4; i++) {
-    epd_draw_byte(&area, white_time, CLEAR_BYTE);
-  }
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 3; i++) {
     epd_draw_byte(&area, dark_time, DARK_BYTE);
   }
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3; i++) {
+    epd_draw_byte(&area, white_time, CLEAR_BYTE);
+  }
+  for (int i = 0; i < 3; i++) {
+    epd_draw_byte(&area, white_time, DARK_BYTE);
+  }
+  for (int i = 0; i < 3; i++) {
+    epd_draw_byte(&area, white_time, CLEAR_BYTE);
+  }
+  for (int i = 0; i < 3; i++) {
+    epd_draw_byte(&area, white_time, DARK_BYTE);
+  }
+  for (int i = 0; i < 3; i++) {
     epd_draw_byte(&area, white_time, CLEAR_BYTE);
   }
 }
@@ -126,8 +137,8 @@ void reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
-void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
-                                   uint8_t k) {
+void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data,
+                                   volatile uint8_t *epd_input, uint8_t k) {
 
   const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
 
@@ -176,8 +187,8 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
   }
 }
 
-void IRAM_ATTR calc_epd_input_2bpp(uint32_t *line_data, uint8_t *epd_input,
-                                   uint8_t k) {
+void IRAM_ATTR calc_epd_input_2bpp(uint32_t *line_data,
+                                   volatile uint8_t *epd_input, uint8_t k) {
 
   const uint32_t shiftmul = (1 << 17) + (1 << 23) + (1 << 5) + (1 << 11);
 
@@ -231,7 +242,7 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       }
 
       if (area.width == EPD_WIDTH) {
-        memcpy(line, ptr, EPD_WIDTH);
+        memcpy(line, (uint32_t *)ptr, EPD_WIDTH);
         ptr += EPD_WIDTH;
       } else {
         memset(line, 255, EPD_WIDTH);
@@ -241,7 +252,7 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       }
       uint32_t *lp = line;
 
-      uint8_t *buf = get_current_buffer();
+      volatile uint8_t *buf = get_current_buffer();
       switch (bpp) {
       case BIT_DEPTH_4: {
         calc_epd_input_4bpp(lp, buf, k);
@@ -253,7 +264,6 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       default:
         assert("invalid grayscale mode!");
       };
-
       write_row(contrast_lut[frame_count - k], buf);
     }
     // Since we "pipeline" row output, we still have to latch out the last row.
