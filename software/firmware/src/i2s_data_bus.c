@@ -235,3 +235,14 @@ void i2s_bus_init(i2s_bus_config *cfg) {
 
   dev->conf.tx_start = 0;
 }
+
+void i2s_deinit() {
+  esp_intr_free(gI2S_intr_handle);
+
+  free(i2s_state.buf_a);
+  free(i2s_state.buf_b);
+  free((void *)i2s_state.dma_desc_a);
+  free((void *)i2s_state.dma_desc_b);
+
+  periph_module_disable(PERIPH_I2S1_MODULE);
+}

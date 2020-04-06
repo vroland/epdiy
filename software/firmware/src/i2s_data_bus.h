@@ -58,3 +58,8 @@ void IRAM_ATTR i2s_start_line_output();
  * Returns true if there is an ongoing transmission.
  */
 bool i2s_is_busy();
+
+/**
+ * Give up allocated resources.
+ */
+void i2s_deinit();
