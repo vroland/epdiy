@@ -67,5 +67,14 @@ void disable_output();
  */
 void end_frame();
 
+/**
+ * Get the currently writable line buffer.
+ */
 volatile uint8_t *get_current_buffer();
+
+/**
+ * Switches front and back line buffer.
+ * If the switched-to line buffer is currently in use,
+ * this function blocks until transmission is done.
+ */
 void switch_buffer();
