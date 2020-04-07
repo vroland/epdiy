@@ -1,7 +1,8 @@
 #include "ed097oc4.h"
 #include "i2s_data_bus.h"
+#include "rmt_pulse.h"
 
-#include "driver/rmt.h"
+#include "xtensa/core-macros.h"
 
 typedef struct {
   bool ep_latch_enable : 1;
@@ -14,22 +15,12 @@ typedef struct {
   bool ep_output_enable : 1;
 } epd_config_register_t;
 
-epd_config_register_t config_reg;
-
-static intr_handle_t gRMT_intr_handle = NULL;
-
-// Use a remote control peripheral channel for row timings
-rmt_config_t row_rmt_config;
-volatile bool rmt_tx_done = true;
-
-inline void gpio_set_hi(gpio_num_t gpio_num) { gpio_set_level(gpio_num, 1); }
-
-inline void gpio_set_lo(gpio_num_t gpio_num) { gpio_set_level(gpio_num, 0); }
+static epd_config_register_t config_reg;
 
 /*
-Write bits directly using the registers.  Won't work for some signals
-(>= 32). May be too fast for some signals.
-*/
+ * Write bits directly using the registers.
+ * Won't work for some pins (>= 32).
+ */
 inline void fast_gpio_set_hi(gpio_num_t gpio_num) {
   GPIO.out_w1ts = (1 << gpio_num);
 }
@@ -40,12 +31,12 @@ inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
 }
 
 void IRAM_ATTR busy_delay(uint32_t cycles) {
-  volatile unsigned long counts = xthal_get_ccount() + cycles;
-  while (xthal_get_ccount() < counts) {
+  volatile unsigned long counts = XTHAL_GET_CCOUNT() + cycles;
+  while (XTHAL_GET_CCOUNT() < counts) {
   };
 }
 
-void IRAM_ATTR push_cfg_bit(bool bit) {
+static void IRAM_ATTR push_cfg_bit(bool bit) {
   fast_gpio_set_lo(CFG_CLK);
   if (bit) {
     fast_gpio_set_hi(CFG_DATA);
@@ -55,7 +46,7 @@ void IRAM_ATTR push_cfg_bit(bool bit) {
   fast_gpio_set_hi(CFG_CLK);
 }
 
-void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
+static void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
   fast_gpio_set_lo(CFG_STR);
 
   // push config bits in reverse order
@@ -70,15 +61,6 @@ void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
   push_cfg_bit(cfg->ep_latch_enable);
 
   fast_gpio_set_hi(CFG_STR);
-}
-
-// -- Custom interrupt handler
-// Signal when the RMT is done.
-static void IRAM_ATTR rmt_interrupt_handler(void *arg) {
-  // -- The basic structure of this code is borrowed from the
-  //    interrupt handler in esp-idf/components/driver/rmt.c
-  rmt_tx_done = true;
-  RMT.int_clr.val = RMT.int_st.val;
 }
 
 void init_gpios() {
@@ -96,12 +78,9 @@ void init_gpios() {
   gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
-  gpio_set_lo(CFG_STR);
+  fast_gpio_set_lo(CFG_STR);
 
   push_cfg(&config_reg);
-
-  gpio_set_direction(CKV, GPIO_MODE_OUTPUT);
-  gpio_set_lo(CKV);
 
   // Setup I2S
   i2s_bus_config i2s_config;
@@ -119,54 +98,7 @@ void init_gpios() {
 
   i2s_bus_init(&i2s_config);
 
-  // Setup RMT peripheral
-  row_rmt_config.rmt_mode = RMT_MODE_TX;
-  row_rmt_config.channel = RMT_CHANNEL_0;
-  row_rmt_config.gpio_num = CKV;
-  row_rmt_config.mem_block_num = 1;
-  row_rmt_config.clk_div = 80; // Divide 80MHz by 80 -> 1us delay
-
-  row_rmt_config.tx_config.loop_en = false;
-  row_rmt_config.tx_config.carrier_en = false;
-  row_rmt_config.tx_config.carrier_level = RMT_CARRIER_LEVEL_LOW;
-  row_rmt_config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
-  row_rmt_config.tx_config.idle_output_en = true;
-
-  esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3,
-                 rmt_interrupt_handler, 0, &gRMT_intr_handle);
-  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-
-  rmt_config(&row_rmt_config);
-  rmt_set_tx_intr_en(row_rmt_config.channel, true);
-}
-
-/**
- * Outputs a high pulse on CKV signal for a given number of microseconds.
- *
- * This function will always wait for a previous call to finish.
- */
-void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
-                            bool wait) {
-  while (!rmt_tx_done) {
-  };
-  volatile rmt_item32_t *rmt_mem_ptr =
-      &(RMTMEM.chan[row_rmt_config.channel].data32[0]);
-  if (high_time_us > 0) {
-    rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration0 = high_time_us;
-    rmt_mem_ptr->level1 = 0;
-    rmt_mem_ptr->duration1 = low_time_us;
-  } else {
-    rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration0 = low_time_us;
-    rmt_mem_ptr->level1 = 0;
-    rmt_mem_ptr->duration1 = 0;
-  }
-  RMTMEM.chan[row_rmt_config.channel].data32[1].val = 0;
-  rmt_tx_done = false;
-  rmt_tx_start(row_rmt_config.channel, true);
-  while (wait && !rmt_tx_done) {
-  };
+  rmt_pulse_init(CKV);
 }
 
 void epd_poweron() {
@@ -182,7 +114,7 @@ void epd_poweron() {
   busy_delay(100 * 240);
   config_reg.ep_stv = true;
   push_cfg(&config_reg);
-  gpio_set_hi(STH);
+  fast_gpio_set_hi(STH);
   // END POWERON
 }
 
@@ -206,20 +138,6 @@ void start_frame() {
   // VSCANSTART
   config_reg.ep_mode = true;
   push_cfg(&config_reg);
-  // busy_delay(10 * 240);
-
-  /*
-gpio_set_lo(STV);
-  gpio_set_lo(CKV);
-  busy_delay(240);
-  gpio_set_hi(CKV);
-
-  gpio_set_hi(STV);
-  gpio_set_lo(CKV);
-  busy_delay(240);
-  gpio_set_hi(CKV);
-
-  */
 
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
