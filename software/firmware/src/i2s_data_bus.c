@@ -81,7 +81,9 @@ bool i2s_is_busy() {
 }
 
 void i2s_switch_buffer() {
-  while (i2s_is_busy()) {
+  // either device is done transmitting or the switch must be away from the
+  // buffer currently used by the DMA engine.
+  while (i2s_is_busy() && dma_desc_addr() == I2S1.out_link.addr) {
   };
   current_buffer = !current_buffer;
 }
