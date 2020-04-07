@@ -163,11 +163,7 @@ inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void skip() {
-  latch_row();
-
-  pulse_ckv_us(1, 1, true);
-}
+void skip() { pulse_ckv_us(1, 1, true); }
 
 void IRAM_ATTR output_row(uint32_t output_time_us, volatile uint8_t *data) {
 
