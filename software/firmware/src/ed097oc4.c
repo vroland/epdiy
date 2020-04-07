@@ -26,7 +26,6 @@ inline void fast_gpio_set_hi(gpio_num_t gpio_num) {
 }
 
 inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
-
   GPIO.out_w1tc = (1 << gpio_num);
 }
 
@@ -63,7 +62,7 @@ static void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
   fast_gpio_set_hi(CFG_STR);
 }
 
-void init_gpios() {
+void epd_base_init(uint32_t epd_row_width) {
 
   config_reg.ep_latch_enable = false;
   config_reg.power_disable = true;
@@ -84,7 +83,7 @@ void init_gpios() {
 
   // Setup I2S
   i2s_bus_config i2s_config;
-  i2s_config.epd_row_width = EPD_WIDTH;
+  i2s_config.epd_row_width = epd_row_width;
   i2s_config.clock = CKH;
   i2s_config.start_pulse = STH;
   i2s_config.data_0 = D0;
@@ -131,11 +130,7 @@ void epd_poweroff() {
   // END POWEROFF
 }
 
-/**
- * This is very timing-sensitive!
- */
-void start_frame() {
-  // VSCANSTART
+void epd_start_frame() {
   config_reg.ep_mode = true;
   push_cfg(&config_reg);
 
@@ -143,6 +138,7 @@ void start_frame() {
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
 
+  // This is very timing-sensitive!
   config_reg.ep_stv = false;
   push_cfg(&config_reg);
   busy_delay(240);
@@ -152,7 +148,7 @@ void start_frame() {
   pulse_ckv_us(0, 10, true);
 
   config_reg.ep_output_enable = true;
-  push_cfg(&config_reg); // END VSCANSTART
+  push_cfg(&config_reg);
 }
 
 inline void latch_row() {
@@ -163,9 +159,9 @@ inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void skip() { pulse_ckv_us(1, 1, true); }
+void epd_skip() { pulse_ckv_us(1, 1, true); }
 
-void IRAM_ATTR output_row(uint32_t output_time_us, volatile uint8_t *data) {
+void IRAM_ATTR epd_output_row(uint32_t output_time_us, volatile uint8_t *data) {
 
   while (i2s_is_busy()) {
   };
@@ -180,7 +176,7 @@ void IRAM_ATTR output_row(uint32_t output_time_us, volatile uint8_t *data) {
   }
 }
 
-void end_frame() {
+void epd_end_frame() {
   config_reg.ep_output_enable = false;
   push_cfg(&config_reg);
   config_reg.ep_mode = false;
@@ -189,5 +185,5 @@ void end_frame() {
   pulse_ckv_us(1, 1, true);
 }
 
-void switch_buffer() { i2s_switch_buffer(); }
-volatile uint8_t *get_current_buffer() { return i2s_get_current_buffer(); };
+void epd_switch_buffer() { i2s_switch_buffer(); }
+volatile uint8_t *epd_get_current_buffer() { return i2s_get_current_buffer(); };

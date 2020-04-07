@@ -1,6 +1,12 @@
 #include "EPD.h"
 #include "ed097oc4.h"
 
+#define EPD_WIDTH 1200
+#define EPD_HEIGHT 825
+
+// number of bytes needed for one line of EPD pixel data.
+#define EPD_LINE_BYTES 1200 / 4
+
 // A row with only null bytes, to be loaded when skipping lines
 // to avoid slight darkening / lightening.
 uint8_t null_row[EPD_LINE_BYTES] = {0};
@@ -22,24 +28,24 @@ void reorder_line_buffer(uint32_t *line_data);
 
 void epd_init() {
   skipping = 0;
-  init_gpios();
+  epd_base_init(EPD_WIDTH);
 }
 
 // skip a display row
 void skip_row() {
   // 2, to latch out previously loaded null row
   if (skipping < 2) {
-    memcpy(get_current_buffer(), null_row, EPD_LINE_BYTES);
-    switch_buffer();
-    memcpy(get_current_buffer(), null_row, EPD_LINE_BYTES);
-    output_row(10, null_row);
+    memcpy(epd_get_current_buffer(), null_row, EPD_LINE_BYTES);
+    epd_switch_buffer();
+    memcpy(epd_get_current_buffer(), null_row, EPD_LINE_BYTES);
+    epd_output_row(10, null_row);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
     unsigned counts = xthal_get_ccount() + 50 * 240;
     while (xthal_get_ccount() < counts) {
     };
   } else {
-    skip();
+    epd_skip();
   }
   skipping++;
 }
@@ -47,7 +53,7 @@ void skip_row() {
 // output a row to the display.
 void write_row(uint32_t output_time_us, volatile uint8_t *data) {
   skipping = 0;
-  output_row(output_time_us, data);
+  epd_output_row(output_time_us, data);
 }
 
 void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
@@ -69,16 +75,17 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
   }
   reorder_line_buffer((uint32_t *)row);
 
-  start_frame();
+  epd_start_frame();
+
   for (int i = 0; i < EPD_HEIGHT; i++) {
     // before are of interest: skip
     if (i < area->y) {
       skip_row();
       // start area of interest: set row data
     } else if (i == area->y) {
-      memcpy(get_current_buffer(), row, EPD_LINE_BYTES);
-      switch_buffer();
-      memcpy(get_current_buffer(), row, EPD_LINE_BYTES);
+      memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
+      epd_switch_buffer();
+      memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
 
       write_row(time, row);
       // load nop row if done with area
@@ -92,7 +99,7 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
   // Since we "pipeline" row output, we still have to latch out the last row.
   write_row(time, row);
 
-  end_frame();
+  epd_end_frame();
   free(row);
 }
 
@@ -233,7 +240,8 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
   for (uint8_t k = frame_count; k > 0; k--) {
     uint8_t *ptr = data;
     yield();
-    start_frame();
+    epd_start_frame();
+
     // initialize with null row to avoid artifacts
     for (int i = 0; i < EPD_HEIGHT; i++) {
       if (i < area.y || i >= area.y + area.height) {
@@ -252,7 +260,7 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       }
       uint32_t *lp = line;
 
-      volatile uint8_t *buf = get_current_buffer();
+      volatile uint8_t *buf = epd_get_current_buffer();
       switch (bpp) {
       case BIT_DEPTH_4: {
         calc_epd_input_4bpp(lp, buf, k);
@@ -268,7 +276,7 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
     }
     // Since we "pipeline" row output, we still have to latch out the last row.
     write_row(contrast_lut[frame_count - k], NULL);
-    end_frame();
+    epd_end_frame();
   }
   free(row);
   free(line);

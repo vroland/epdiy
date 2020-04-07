@@ -2,31 +2,17 @@
 
 #include "driver/gpio.h"
 
-#define EPD_WIDTH 1200
-#define EPD_HEIGHT 825
-// number of bytes needed for one line of EPD pixel data.
-#define EPD_LINE_BYTES 1200 / 4
-
-/* Control Lines */
-//#define NEG_CTRL GPIO_NUM_33  // Active HIGH
-//#define POS_CTRL GPIO_NUM_32  // Active HIGH
-//#define SMPS_CTRL GPIO_NUM_18 // Active LOW
-
-/* Config Reg Control */
+/* Config Reggister Control */
 #define CFG_DATA GPIO_NUM_23
 #define CFG_CLK GPIO_NUM_18
 #define CFG_STR GPIO_NUM_19
 
 /* Control Lines */
 #define CKV GPIO_NUM_25
-//#define STV GPIO_NUM_27
-//#define MODE GPIO_NUM_0
 #define STH GPIO_NUM_26
-//#define OEH GPIO_NUM_19
 
 /* Edges */
 #define CKH GPIO_NUM_5
-//#define LEH GPIO_NUM_2
 
 /* Data Lines */
 #define D7 GPIO_NUM_22
@@ -38,43 +24,46 @@
 #define D1 GPIO_NUM_32
 #define D0 GPIO_NUM_33
 
-void init_gpios();
+void epd_base_init(uint32_t epd_row_width);
 void epd_poweron();
 void epd_poweroff();
 
-/*
+/**
  * Start a draw cycle.
  */
-void start_frame();
+void epd_start_frame();
 
-/*
- * Output `data` to the next display row and enable the vertical
- * driver for `output_time_us` microseconds.
- */
-void output_row(uint32_t output_time_us, volatile uint8_t *data);
-
-/* skip a row without writing to it. */
-void skip();
-
-/* enable the output register */
-void enable_output();
-
-/* disable the output register */
-void disable_output();
-
-/*
+/**
  * End a draw cycle.
  */
-void end_frame();
+void epd_end_frame();
+
+/**
+ * Waits until all previously submitted data has been written.
+ * Then, the following operations are initiated:
+ *
+ *  - Previously submitted data is latched to the output register.
+ *  - The RMT peripheral is set up to pulse the vertical (gate) driver for
+ * `output_time_us` microseconds.
+ *  - The I2S peripheral starts transmission of `data` to the source driver.
+ *  - The line buffers are switched.
+ *
+ * This sequence of operations allows for pipelining data preparation and
+ * transfer, reducing total refresh times.
+ */
+void epd_output_row(uint32_t output_time_us, volatile uint8_t *data);
+
+/** Skip a row without writing to it. */
+void epd_skip();
 
 /**
  * Get the currently writable line buffer.
  */
-volatile uint8_t *get_current_buffer();
+volatile uint8_t *epd_get_current_buffer();
 
 /**
  * Switches front and back line buffer.
  * If the switched-to line buffer is currently in use,
  * this function blocks until transmission is done.
  */
-void switch_buffer();
+void epd_switch_buffer();
