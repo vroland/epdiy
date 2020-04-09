@@ -38,8 +38,6 @@ void rmt_pulse_init(gpio_num_t pin) {
   esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3,
                  rmt_interrupt_handler, 0, &gRMT_intr_handle);
 
-  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-
   rmt_config(&row_rmt_config);
   rmt_set_tx_intr_en(row_rmt_config.channel, true);
 }

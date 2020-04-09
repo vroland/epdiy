@@ -151,7 +151,7 @@ void epd_start_frame() {
   push_cfg(&config_reg);
 }
 
-inline void latch_row() {
+static inline void latch_row() {
   config_reg.ep_latch_enable = true;
   push_cfg(&config_reg);
 
@@ -159,7 +159,7 @@ inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void epd_skip() { pulse_ckv_us(1, 1, true); }
+void IRAM_ATTR epd_skip() { pulse_ckv_us(1, 1, true); }
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_us, volatile uint8_t *data) {
 
@@ -185,5 +185,7 @@ void epd_end_frame() {
   pulse_ckv_us(1, 1, true);
 }
 
-void epd_switch_buffer() { i2s_switch_buffer(); }
-volatile uint8_t *epd_get_current_buffer() { return i2s_get_current_buffer(); };
+void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
+volatile uint8_t IRAM_ATTR *epd_get_current_buffer() {
+  return i2s_get_current_buffer();
+};

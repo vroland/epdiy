@@ -71,16 +71,16 @@ static void IRAM_ATTR i2s_int_hdl(void *arg) {
   dev->int_clr.val = dev->int_raw.val;
 }
 
-volatile uint8_t *i2s_get_current_buffer() {
+volatile uint8_t IRAM_ATTR *i2s_get_current_buffer() {
   return current_buffer ? i2s_state.dma_desc_a->buf : i2s_state.dma_desc_b->buf;
 }
 
-bool i2s_is_busy() {
+bool IRAM_ATTR i2s_is_busy() {
   // DMA and FIFO must be done
   return !output_done || !I2S1.state.tx_idle;
 }
 
-void i2s_switch_buffer() {
+void IRAM_ATTR i2s_switch_buffer() {
   // either device is done transmitting or the switch must be away from the
   // buffer currently used by the DMA engine.
   while (i2s_is_busy() && dma_desc_addr() == I2S1.out_link.addr) {

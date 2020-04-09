@@ -21,9 +21,20 @@ enum ScreenState {
   DRAW_SQUARES = 3,
 };
 
+uint8_t *img_buf;
+
 void setup() {
   Serial.begin(115200);
   epd_init();
+
+  img_buf = (uint8_t *)heap_caps_malloc(1200 * 825 * 2, MALLOC_CAP_SPIRAM);
+  volatile uint32_t t = micros();
+  img_8bit_to_unary_image(img_buf, (uint8_t*)img_bytes, 1200, 825);
+  volatile uint32_t t2 = micros();
+  printf("copy to PSRAM took %d us.\n", t2 - t);
+
+  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 }
 
 void loop() {
@@ -44,7 +55,7 @@ void loop() {
   } else if (_state == DRAW_SCREEN) {
     Serial.println("Draw cycle.");
     timestamp = millis();
-    epd_draw_picture(epd_full_screen(), (uint8_t *)&img_bytes, BIT_DEPTH_4);
+    draw_image_unary_coded(epd_full_screen(), img_buf);
     _state = CLEAR_PARTIAL;
 
   } else if (_state == CLEAR_PARTIAL) {

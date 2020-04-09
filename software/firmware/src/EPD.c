@@ -24,6 +24,67 @@ const uint8_t contrast_cycles_4[15] = {2, 2, 2, 2, 3,  3,  3, 4,
 /* 2bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_2[3] = {8, 10, 100};
 
+/**
+ * Convert an 8 bit bitmap image to a linearized unary representation,
+ * which is optimized for linear access for displaying.
+ *
+ * Image width must be divisible by 8.
+ */
+void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width,
+                             uint32_t image_height) {
+  for (uint8_t layer = 0; layer < 15; layer++) {
+    uint32_t *batch_ptr = (uint32_t *)src;
+    uint8_t comparator = (15 - layer) << 4;
+
+    uint8_t pixels[2] = {0, 0};
+    for (uint32_t i = 0; i < image_width * image_height / 8; i++) {
+      uint32_t px1 = *(batch_ptr++);
+      uint32_t px2 = *(batch_ptr++);
+      pixels[i % 2] = ((px2 & 0xFF000000) < (comparator << 24)) << 7 |
+                      ((px2 & 0x00FF0000) < (comparator << 16)) << 6 |
+                      ((px2 & 0x0000FF00) < (comparator << 8)) << 5 |
+                      ((px2 & 0x000000FF) < (comparator << 0)) << 4 |
+                      ((px1 & 0xFF000000) < (comparator << 24)) << 3 |
+                      ((px1 & 0x00FF0000) < (comparator << 16)) << 2 |
+                      ((px1 & 0x0000FF00) < (comparator << 8)) << 1 |
+                      ((px1 & 0x000000FF) < (comparator << 0)) << 0;
+
+      if (i % 2) {
+        *(dst++) = pixels[1];
+        *(dst++) = pixels[0];
+      }
+    }
+  }
+}
+
+void draw_image_unary_coded(Rect_t area, uint8_t *data) {
+  uint16_t *data_16 = (uint16_t *)data;
+
+  for (int layer = 0; layer < 15; layer++) {
+
+    epd_start_frame();
+    for (int i = 0; i < EPD_HEIGHT; i++) {
+
+      uint32_t *buffer = epd_get_current_buffer();
+
+      for (int j = 0; j < EPD_WIDTH / 16; j++) {
+        uint32_t x = (uint32_t) * (data_16++);
+        // inspired from
+        // https://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN
+        x = (x | (x << 8)) & 0x00FF00FF;
+        x = (x | (x << 4)) & 0x0F0F0F0F;
+        x = (x | (x << 2)) & 0x33333333;
+        x = (x | (x << 1)) & 0x55555555;
+        *(buffer++) = x;
+      }
+      // Since we "pipeline" row output, we still have to latch out the last
+      // row.
+      write_row(contrast_cycles_4[layer], epd_get_current_buffer());
+    }
+    epd_end_frame();
+  }
+}
+
 void reorder_line_buffer(uint32_t *line_data);
 
 void epd_init() {
@@ -219,9 +280,12 @@ void IRAM_ATTR calc_epd_input_2bpp(uint32_t *line_data,
   reorder_line_buffer((uint32_t *)epd_input);
 }
 
-void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
-  uint8_t *row = (uint8_t *)malloc(EPD_LINE_BYTES);
-  uint32_t *line = (uint32_t *)malloc(EPD_WIDTH);
+void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
+  uint8_t row[EPD_WIDTH]; // = (uint8_t *)heap_caps_malloc(EPD_LINE_BYTES,
+                          // MALLOC_CAP_8BIT);
+  uint32_t
+      line[EPD_WIDTH / 4]; //*line = (uint32_t *)heap_caps_malloc(EPD_WIDTH,
+                           // MALLOC_CAP_32BIT);
 
   uint8_t frame_count = (1 << bpp) - 1;
   const uint8_t *contrast_lut;
@@ -250,7 +314,10 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       }
 
       if (area.width == EPD_WIDTH) {
+        // volatile uint32_t t = micros();
         memcpy(line, (uint32_t *)ptr, EPD_WIDTH);
+        // volatile uint32_t t2 = micros();
+        // printf("copy took %d us.\n", t2 - t);
         ptr += EPD_WIDTH;
       } else {
         memset(line, 255, EPD_WIDTH);
@@ -278,6 +345,6 @@ void epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
     write_row(contrast_lut[frame_count - k], NULL);
     epd_end_frame();
   }
-  free(row);
-  free(line);
+  // free(row);
+  // free(line);
 }
