@@ -2,7 +2,8 @@
  * A more high-level library for drawing to an EPD.
  */
 #pragma once
-#include "Arduino.h"
+#include <stdint.h>
+#include "esp_attr.h"
 
 typedef struct {
   uint16_t x;

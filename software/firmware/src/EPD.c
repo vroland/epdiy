@@ -1,6 +1,9 @@
 #include "EPD.h"
 #include "ed097oc4.h"
 
+#include "xtensa/core-macros.h"
+#include <string.h>
+
 #define EPD_WIDTH 1200
 #define EPD_HEIGHT 825
 
@@ -136,11 +139,11 @@ void skip_row() {
     memcpy(epd_get_current_buffer(), null_row, EPD_LINE_BYTES);
     epd_switch_buffer();
     memcpy(epd_get_current_buffer(), null_row, EPD_LINE_BYTES);
-    epd_output_row(10, null_row);
+    epd_output_row(10);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
-    unsigned counts = xthal_get_ccount() + 50 * 240;
-    while (xthal_get_ccount() < counts) {
+    unsigned counts = XTHAL_GET_CCOUNT() + 50 * 240;
+    while (XTHAL_GET_CCOUNT() < counts) {
     };
   } else {
     epd_skip();
@@ -334,7 +337,6 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
 
   for (uint8_t k = frame_count; k > 0; k--) {
     uint8_t *ptr = data;
-    yield();
     epd_start_frame();
 
     // initialize with null row to avoid artifacts

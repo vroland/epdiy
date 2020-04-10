@@ -1,9 +1,12 @@
 #include "font.h"
 
 #include "EPD.h"
-
-#include "zlib.h"
+#include <string.h>
+#include <stdio.h>
+#include "esp_assert.h"
+#include <zlib.h>
 #include <math.h>
+#include "esp_timer.h"
 
 typedef struct {
   uint8_t mask;    /* char data will be bitwise AND with this */
@@ -165,9 +168,9 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x,
   while ((c = next_cp(&string))) {
     drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
   }
-  volatile uint32_t t = micros();
+  volatile uint32_t t = esp_timer_get_time();
   epd_draw_picture(area, buffer, BIT_DEPTH_4);
-  volatile uint32_t t2 = micros();
+  volatile uint32_t t2 = esp_timer_get_time();
   printf("drawing took %d us.\n", t2 - t);
   free(buffer);
 }
