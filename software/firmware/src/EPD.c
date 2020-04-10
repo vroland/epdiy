@@ -24,6 +24,12 @@ const uint8_t contrast_cycles_4[15] = {2, 2, 2, 2, 3,  3,  3, 4,
 /* 2bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_2[3] = {8, 10, 100};
 
+// output a row to the display.
+static void write_row(uint32_t output_time_us) {
+  skipping = 0;
+  epd_output_row(output_time_us);
+}
+
 /**
  * Convert an 8 bit bitmap image to a linearized unary representation,
  * which is optimized for linear access for displaying.
@@ -32,37 +38,68 @@ const uint8_t contrast_cycles_2[3] = {8, 10, 100};
  */
 void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width,
                              uint32_t image_height) {
+
+  uint16_t* dst_16 = (uint16_t*)dst;
+  const uint32_t shiftmul = (1 << 24) + (1 << 17) + (1 << 10) + (1 << 3);
+
   for (uint8_t layer = 0; layer < 15; layer++) {
     uint32_t *batch_ptr = (uint32_t *)src;
-    uint8_t comparator = (15 - layer) << 4;
+    uint8_t k = layer + 1;
+    uint32_t add_mask = (k << 24) | (k << 16) | (k << 8) | k;
 
-    uint8_t pixels[2] = {0, 0};
-    for (uint32_t i = 0; i < image_width * image_height / 8; i++) {
-      uint32_t px1 = *(batch_ptr++);
-      uint32_t px2 = *(batch_ptr++);
-      pixels[i % 2] = ((px2 & 0xFF000000) < (comparator << 24)) << 7 |
-                      ((px2 & 0x00FF0000) < (comparator << 16)) << 6 |
-                      ((px2 & 0x0000FF00) < (comparator << 8)) << 5 |
-                      ((px2 & 0x000000FF) < (comparator << 0)) << 4 |
-                      ((px1 & 0xFF000000) < (comparator << 24)) << 3 |
-                      ((px1 & 0x00FF0000) < (comparator << 16)) << 2 |
-                      ((px1 & 0x0000FF00) < (comparator << 8)) << 1 |
-                      ((px1 & 0x000000FF) < (comparator << 0)) << 0;
+    for (uint32_t i = 0; i < image_width * image_height / 4 / 4; i++) {
 
-      if (i % 2) {
-        *(dst++) = pixels[1];
-        *(dst++) = pixels[0];
-      }
+        uint32_t val = *(batch_ptr++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        uint16_t pixel = ((val * shiftmul) >> 20) & 0x0F00;
+
+        val = *(batch_ptr++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= ((val * shiftmul) >> 16) & 0xF000;
+
+        val = *(batch_ptr++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= ((val * shiftmul) >> 28);
+
+        val = *(batch_ptr++);
+        val = (val & 0xF0F0F0F0) >> 4;
+        val += add_mask;
+        // now the bits we need are masked
+        val &= 0x10101010;
+        // shift relevant bits to the most significant byte, then shift down
+        pixel |= ((val * shiftmul) >> 24) & 0x00F0;
+        *(dst_16++) = ~pixel;
     }
   }
 }
 
-void draw_image_unary_coded(Rect_t area, uint8_t *data) {
-  uint16_t *data_16 = (uint16_t *)data;
+static inline uint32_t min(uint32_t a, uint32_t b) {
+    return a < b ? a : b;
+}
+
+void IRAM_ATTR draw_image_unary_coded(Rect_t area, uint8_t *data) {
+
+  const uint32_t cache_size = EPD_WIDTH / 8 * 300;
+
+  uint16_t* data_16 = (uint16_t*)data;
 
   for (int layer = 0; layer < 15; layer++) {
 
     epd_start_frame();
+
+    uint16_t* cache_ptr;
     for (int i = 0; i < EPD_HEIGHT; i++) {
 
       uint32_t *buffer = epd_get_current_buffer();
@@ -79,7 +116,7 @@ void draw_image_unary_coded(Rect_t area, uint8_t *data) {
       }
       // Since we "pipeline" row output, we still have to latch out the last
       // row.
-      write_row(contrast_cycles_4[layer], epd_get_current_buffer());
+      write_row(contrast_cycles_4[layer]);
     }
     epd_end_frame();
   }
@@ -109,12 +146,6 @@ void skip_row() {
     epd_skip();
   }
   skipping++;
-}
-
-// output a row to the display.
-void write_row(uint32_t output_time_us, volatile uint8_t *data) {
-  skipping = 0;
-  epd_output_row(output_time_us, data);
 }
 
 void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
@@ -148,17 +179,17 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
       epd_switch_buffer();
       memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
 
-      write_row(time, row);
+      write_row(time);
       // load nop row if done with area
     } else if (i >= area->y + area->height) {
       skip_row();
       // output the same as before
     } else {
-      write_row(time, row);
+      write_row(time);
     }
   }
   // Since we "pipeline" row output, we still have to latch out the last row.
-  write_row(time, row);
+  write_row(time);
 
   epd_end_frame();
   free(row);
@@ -339,10 +370,10 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       default:
         assert("invalid grayscale mode!");
       };
-      write_row(contrast_lut[frame_count - k], buf);
+      write_row(contrast_lut[frame_count - k]);
     }
     // Since we "pipeline" row output, we still have to latch out the last row.
-    write_row(contrast_lut[frame_count - k], NULL);
+    write_row(contrast_lut[frame_count - k]);
     epd_end_frame();
   }
   // free(row);

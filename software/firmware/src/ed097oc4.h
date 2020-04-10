@@ -44,14 +44,15 @@ void epd_end_frame();
  *
  *  - Previously submitted data is latched to the output register.
  *  - The RMT peripheral is set up to pulse the vertical (gate) driver for
- * `output_time_us` microseconds.
- *  - The I2S peripheral starts transmission of `data` to the source driver.
+ *  `output_time_us` microseconds.
+ *  - The I2S peripheral starts transmission of the current buffer to
+ *  the source driver.
  *  - The line buffers are switched.
  *
  * This sequence of operations allows for pipelining data preparation and
  * transfer, reducing total refresh times.
  */
-void IRAM_ATTR epd_output_row(uint32_t output_time_us, volatile uint8_t *data);
+void IRAM_ATTR epd_output_row(uint32_t output_time_us);
 
 /** Skip a row without writing to it. */
 void IRAM_ATTR epd_skip();

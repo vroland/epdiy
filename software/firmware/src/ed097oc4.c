@@ -161,7 +161,7 @@ static inline void latch_row() {
 
 void IRAM_ATTR epd_skip() { pulse_ckv_us(1, 1, true); }
 
-void IRAM_ATTR epd_output_row(uint32_t output_time_us, volatile uint8_t *data) {
+void IRAM_ATTR epd_output_row(uint32_t output_time_us) {
 
   while (i2s_is_busy()) {
   };
@@ -170,10 +170,8 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_us, volatile uint8_t *data) {
 
   pulse_ckv_us(output_time_us, 10, false);
 
-  if (data != NULL) {
-    i2s_start_line_output();
-    i2s_switch_buffer();
-  }
+  i2s_start_line_output();
+  i2s_switch_buffer();
 }
 
 void epd_end_frame() {
