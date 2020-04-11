@@ -1,6 +1,7 @@
 #include "ed097oc4.h"
 #include "i2s_data_bus.h"
 #include "rmt_pulse.h"
+#include "esp_timer.h"
 
 #include "xtensa/core-macros.h"
 
@@ -168,7 +169,7 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_us) {
 
   latch_row();
 
-  pulse_ckv_us(output_time_us, 10, false);
+  pulse_ckv_us(output_time_us, 5, false);
 
   i2s_start_line_output();
   i2s_switch_buffer();
@@ -184,6 +185,6 @@ void epd_end_frame() {
 }
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
-volatile uint8_t IRAM_ATTR *epd_get_current_buffer() {
+uint8_t IRAM_ATTR *epd_get_current_buffer() {
   return i2s_get_current_buffer();
 };

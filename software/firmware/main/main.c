@@ -16,7 +16,7 @@
 
 #include "EPD.h"
 #include "firasans.h"
-//#include "font.h"
+#include "font.h"
 #include "image.h"
 
 /* Display State Machine */
@@ -77,10 +77,10 @@ void loop() {
     int cursor_x = 100;
     int cursor_y = 200;
     unsigned char *string = (unsigned char *)"Hello World! *g*";
-    //writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y);
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y);
     cursor_y += FiraSans.advance_y;
     string = (unsigned char *)"äöüßabcd/#{🚀";
-    //writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y);
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y);
     _state = CLEAR_SCREEN;
   }
   epd_poweroff();

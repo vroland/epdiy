@@ -60,7 +60,7 @@ void IRAM_ATTR epd_skip();
 /**
  * Get the currently writable line buffer.
  */
-volatile uint8_t IRAM_ATTR *epd_get_current_buffer();
+uint8_t IRAM_ATTR *epd_get_current_buffer();
 
 /**
  * Switches front and back line buffer.

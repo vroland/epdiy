@@ -21,8 +21,8 @@ uint32_t skipping;
 #define DARK_BYTE 0B01010101
 
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
-const uint8_t contrast_cycles_4[15] = {2, 2, 2, 2, 3,  3,  3, 4,
-                                       4, 5, 5, 5, 10, 30, 50};
+const uint8_t contrast_cycles_4[15] = {3, 3, 2, 2, 3,  3,  3, 4,
+                                       4, 5, 5, 5, 10, 20, 30};
 
 /* 2bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_2[3] = {8, 10, 100};
@@ -117,6 +117,7 @@ void IRAM_ATTR draw_image_unary_coded(Rect_t area, uint8_t *data) {
         x = (x | (x << 1)) & 0x55555555;
         *(buffer++) = x;
       }
+
       // Since we "pipeline" row output, we still have to latch out the last
       // row.
       write_row(contrast_cycles_4[layer]);

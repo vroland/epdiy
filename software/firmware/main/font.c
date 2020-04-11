@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "esp_assert.h"
-#include <zlib.h>
+#include "lib/zlib/zlib.h"
 #include <math.h>
 #include "esp_timer.h"
 
