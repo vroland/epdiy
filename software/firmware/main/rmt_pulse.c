@@ -21,10 +21,10 @@ void rmt_pulse_init(gpio_num_t pin) {
 
   row_rmt_config.rmt_mode = RMT_MODE_TX;
   // currently hardcoded: use channel 0
-  row_rmt_config.channel = RMT_CHANNEL_0;
+  row_rmt_config.channel = RMT_CHANNEL_1;
 
   row_rmt_config.gpio_num = pin;
-  row_rmt_config.mem_block_num = 1;
+  row_rmt_config.mem_block_num = 2;
 
   // Divide 80MHz APB Clock by 80 -> 1us resolution delay
   row_rmt_config.clk_div = 80;

@@ -5,11 +5,14 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 
+#include "sdkconfig.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
-#include "sdkconfig.h"
+#include <stdio.h>
+#include "esp_log.h"
+
 
 #include "EPD.h"
 #include "firasans.h"
@@ -90,15 +93,10 @@ void loop() {
   printf("Going active again.\n");
 }
 
-void app_main() {
-  printf("Hello World!\n");
-
-  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
-
+void epd_task() {
   epd_init();
 
-  printf("allocating...\n");
+  ESP_LOGW("main", "allocating...\n");
 
   original_image_ram = (uint8_t *)heap_caps_malloc(1200 * 825, MALLOC_CAP_SPIRAM);
 
@@ -115,5 +113,15 @@ void app_main() {
   printf("converting took %dms.\n", t2 - t);
 
   while (1) {loop(); };
+}
+
+
+void app_main() {
+  ESP_LOGW("main", "Hello World!\n");
+
+  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
+
+  xTaskCreatePinnedToCore(&epd_task, "epd task", 10000, NULL, 2, NULL, 1);
 }
 
