@@ -5,14 +5,13 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 
-#include "sdkconfig.h"
+#include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include <string.h>
+#include "sdkconfig.h"
 #include <stdio.h>
-#include "esp_log.h"
-
+#include <string.h>
 
 #include "EPD.h"
 #include "firasans.h"
@@ -27,18 +26,13 @@ enum ScreenState {
   DRAW_SQUARES = 3,
 };
 
-
 uint8_t *img_buf;
 
 uint8_t *original_image_ram;
 
-void delay(uint32_t millis) {
-    vTaskDelay(millis / portTICK_PERIOD_MS);
-}
+void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
-uint32_t millis() {
-    return esp_timer_get_time() / 1000;
-}
+uint32_t millis() { return esp_timer_get_time() / 1000; }
 
 void loop() {
   // Variables to set one time.
@@ -57,6 +51,7 @@ void loop() {
   } else if (_state == DRAW_SCREEN) {
     printf("Draw cycle.\n");
     timestamp = millis();
+    // epd_draw_picture(epd_full_screen(), original_image_ram, BIT_DEPTH_4);
     draw_image_unary_coded(epd_full_screen(), img_buf);
     _state = CLEAR_PARTIAL;
 
@@ -77,15 +72,15 @@ void loop() {
     int cursor_x = 100;
     int cursor_y = 200;
     unsigned char *string = (unsigned char *)"Hello World! *g*";
-    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y);
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
     cursor_y += FiraSans.advance_y;
     string = (unsigned char *)"äöüßabcd/#{🚀";
-    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y);
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
     _state = CLEAR_SCREEN;
   }
+  timestamp = millis() - timestamp;
   epd_poweroff();
   // Print out the benchmark
-  timestamp = millis() - timestamp;
   printf("Took %d ms to redraw the screen.\n", timestamp);
 
   // Wait 4 seconds then do it again
@@ -98,10 +93,11 @@ void epd_task() {
 
   ESP_LOGW("main", "allocating...\n");
 
-  original_image_ram = (uint8_t *)heap_caps_malloc(1200 * 825, MALLOC_CAP_SPIRAM);
+  original_image_ram =
+      (uint8_t *)heap_caps_malloc(1200 * 825, MALLOC_CAP_SPIRAM);
 
   volatile uint32_t t = millis();
-  memcpy(original_image_ram, img_bytes, 1200*825);
+  memcpy(original_image_ram, img_bytes, 1200 * 825);
   volatile uint32_t t2 = millis();
   printf("original copy to PSRAM took %dms.\n", t2 - t);
 
@@ -112,9 +108,10 @@ void epd_task() {
   t2 = millis();
   printf("converting took %dms.\n", t2 - t);
 
-  while (1) {loop(); };
+  while (1) {
+    loop();
+  };
 }
-
 
 void app_main() {
   ESP_LOGW("main", "Hello World!\n");
@@ -124,4 +121,3 @@ void app_main() {
 
   xTaskCreatePinnedToCore(&epd_task, "epd task", 10000, NULL, 2, NULL, 1);
 }
-

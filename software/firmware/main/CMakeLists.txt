@@ -1,15 +1,12 @@
-# Warning! This code was automatically generated for projects
-# without default 'CMakeLists.txt' file.
+#Warning !This code was automatically generated for projects
+#without default 'CMakeLists.txt' file.
 
-set(app_sources
-	"EPD.c"
-	"ed097oc4.c"
-    "font.c"
-	"i2s_data_bus.c"
-	"main.c"
-	"rmt_pulse.c"
-)
-
+set(app_sources "EPD.c"
+                "ed097oc4.c"
+                "font.c"
+                "i2s_data_bus.c"
+                "main.c"
+                "rmt_pulse.c")
 
 idf_component_register(SRCS ${app_sources})
 

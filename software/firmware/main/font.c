@@ -1,12 +1,12 @@
 #include "font.h"
 
 #include "EPD.h"
-#include <string.h>
-#include <stdio.h>
 #include "esp_assert.h"
+#include "esp_timer.h"
 #include "lib/zlib/zlib.h"
 #include <math.h>
-#include "esp_timer.h"
+#include <stdio.h>
+#include <string.h>
 
 typedef struct {
   uint8_t mask;    /* char data will be bitwise AND with this */
@@ -151,13 +151,20 @@ void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
   *h = maxy - miny;
 }
 
-void writeln(GFXfont *font, unsigned char *string, int *cursor_x,
-             int *cursor_y) {
+void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
+             uint8_t *framebuffer) {
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
   getTextBounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
-  uint8_t *buffer = (uint8_t *)malloc(w * h);
-  memset(buffer, 255, w * h);
+
+  uint8_t *buffer;
+  if (framebuffer == NULL) {
+    buffer = (uint8_t *)malloc(w * h);
+    memset(buffer, 255, w * h);
+  } else {
+    buffer = framebuffer;
+  }
+
   uint32_t c;
   int baseline_height = *cursor_y - y1;
 
@@ -168,9 +175,13 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x,
   while ((c = next_cp(&string))) {
     drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
   }
-  volatile uint32_t t = esp_timer_get_time();
-  epd_draw_picture(area, buffer, BIT_DEPTH_4);
-  volatile uint32_t t2 = esp_timer_get_time();
-  printf("drawing took %d us.\n", t2 - t);
-  free(buffer);
+
+  if (framebuffer == NULL) {
+    volatile uint32_t t = esp_timer_get_time();
+    epd_draw_picture(area, buffer, BIT_DEPTH_4);
+    volatile uint32_t t2 = esp_timer_get_time();
+    printf("drawing took %d us.\n", t2 - t);
+
+    free(buffer);
+  }
 }

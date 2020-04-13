@@ -2,8 +2,8 @@
  * A more high-level library for drawing to an EPD.
  */
 #pragma once
-#include <stdint.h>
 #include "esp_attr.h"
+#include <stdint.h>
 
 typedef struct {
   uint16_t x;
@@ -50,8 +50,7 @@ Rect_t epd_full_screen();
  * where byte is an EPD-specific encoding of black and white. */
 void epd_draw_byte(Rect_t *area, short time, uint8_t byte);
 
+void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width,
+                             uint32_t image_height);
 
-void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width, uint32_t image_height);
-
-
-void IRAM_ATTR draw_image_unary_coded(Rect_t area, uint8_t* data);
+void IRAM_ATTR draw_image_unary_coded(Rect_t area, uint8_t *data);

@@ -41,7 +41,7 @@ void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
 /*!
  * Write a line of text to the EPD.
  */
-void writeln(GFXfont *font, unsigned char *string, int *cursor_x,
-             int *cursor_y);
+void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
+             uint8_t *framebuffer);
 
 #endif // _FONT_H_

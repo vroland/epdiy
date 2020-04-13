@@ -1,7 +1,7 @@
 #include "ed097oc4.h"
+#include "esp_timer.h"
 #include "i2s_data_bus.h"
 #include "rmt_pulse.h"
-#include "esp_timer.h"
 
 #include "xtensa/core-macros.h"
 
@@ -22,11 +22,11 @@ static epd_config_register_t config_reg;
  * Write bits directly using the registers.
  * Won't work for some pins (>= 32).
  */
-inline void fast_gpio_set_hi(gpio_num_t gpio_num) {
+inline static void fast_gpio_set_hi(gpio_num_t gpio_num) {
   GPIO.out_w1ts = (1 << gpio_num);
 }
 
-inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
+inline static void fast_gpio_set_lo(gpio_num_t gpio_num) {
   GPIO.out_w1tc = (1 << gpio_num);
 }
 
@@ -36,7 +36,7 @@ void IRAM_ATTR busy_delay(uint32_t cycles) {
   };
 }
 
-static void IRAM_ATTR push_cfg_bit(bool bit) {
+inline static void IRAM_ATTR push_cfg_bit(bool bit) {
   fast_gpio_set_lo(CFG_CLK);
   if (bit) {
     fast_gpio_set_hi(CFG_DATA);
