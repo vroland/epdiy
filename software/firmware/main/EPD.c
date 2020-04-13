@@ -42,7 +42,7 @@ static void write_row(uint32_t output_time_us) {
 void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width,
                              uint32_t image_height) {
 
-  uint16_t* dst_16 = (uint16_t*)dst;
+  uint16_t *dst_16 = (uint16_t *)dst;
   const uint32_t shiftmul = (1 << 24) + (1 << 17) + (1 << 10) + (1 << 3);
 
   for (uint8_t layer = 0; layer < 15; layer++) {
@@ -52,57 +52,52 @@ void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width,
 
     for (uint32_t i = 0; i < image_width * image_height / 4 / 4; i++) {
 
-        uint32_t val = *(batch_ptr++);
-        val = (val & 0xF0F0F0F0) >> 4;
-        val += add_mask;
-        // now the bits we need are masked
-        val &= 0x10101010;
-        // shift relevant bits to the most significant byte, then shift down
-        uint16_t pixel = ((val * shiftmul) >> 20) & 0x0F00;
+      uint32_t val = *(batch_ptr++);
+      val = (val & 0xF0F0F0F0) >> 4;
+      val += add_mask;
+      // now the bits we need are masked
+      val &= 0x10101010;
+      // shift relevant bits to the most significant byte, then shift down
+      uint16_t pixel = ((val * shiftmul) >> 20) & 0x0F00;
 
-        val = *(batch_ptr++);
-        val = (val & 0xF0F0F0F0) >> 4;
-        val += add_mask;
-        // now the bits we need are masked
-        val &= 0x10101010;
-        // shift relevant bits to the most significant byte, then shift down
-        pixel |= ((val * shiftmul) >> 16) & 0xF000;
+      val = *(batch_ptr++);
+      val = (val & 0xF0F0F0F0) >> 4;
+      val += add_mask;
+      // now the bits we need are masked
+      val &= 0x10101010;
+      // shift relevant bits to the most significant byte, then shift down
+      pixel |= ((val * shiftmul) >> 16) & 0xF000;
 
-        val = *(batch_ptr++);
-        val = (val & 0xF0F0F0F0) >> 4;
-        val += add_mask;
-        // now the bits we need are masked
-        val &= 0x10101010;
-        // shift relevant bits to the most significant byte, then shift down
-        pixel |= ((val * shiftmul) >> 28);
+      val = *(batch_ptr++);
+      val = (val & 0xF0F0F0F0) >> 4;
+      val += add_mask;
+      // now the bits we need are masked
+      val &= 0x10101010;
+      // shift relevant bits to the most significant byte, then shift down
+      pixel |= ((val * shiftmul) >> 28);
 
-        val = *(batch_ptr++);
-        val = (val & 0xF0F0F0F0) >> 4;
-        val += add_mask;
-        // now the bits we need are masked
-        val &= 0x10101010;
-        // shift relevant bits to the most significant byte, then shift down
-        pixel |= ((val * shiftmul) >> 24) & 0x00F0;
-        *(dst_16++) = ~pixel;
+      val = *(batch_ptr++);
+      val = (val & 0xF0F0F0F0) >> 4;
+      val += add_mask;
+      // now the bits we need are masked
+      val &= 0x10101010;
+      // shift relevant bits to the most significant byte, then shift down
+      pixel |= ((val * shiftmul) >> 24) & 0x00F0;
+      *(dst_16++) = ~pixel;
     }
   }
 }
 
-static inline uint32_t min(uint32_t a, uint32_t b) {
-    return a < b ? a : b;
-}
+static inline uint32_t min(uint32_t a, uint32_t b) { return a < b ? a : b; }
 
 void IRAM_ATTR draw_image_unary_coded(Rect_t area, uint8_t *data) {
 
-  const uint32_t cache_size = EPD_WIDTH / 8 * 300;
-
-  uint16_t* data_16 = (uint16_t*)data;
+  uint16_t *data_16 = (uint16_t *)data;
 
   for (int layer = 0; layer < 15; layer++) {
 
     epd_start_frame();
 
-    uint16_t* cache_ptr;
     for (int i = 0; i < EPD_HEIGHT; i++) {
 
       uint32_t *buffer = epd_get_current_buffer();
@@ -240,13 +235,14 @@ void reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
-void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data,
-                                   volatile uint8_t *epd_input, uint8_t k) {
+void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
+                                   uint8_t k) {
 
   const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
 
-  k = 16 - k;
-  uint32_t add_mask = (k << 24) | (k << 16) | (k << 8) | k;
+  uint8_t r = k + 1;
+  uint32_t add_mask = (r << 24) | (r << 16) | (r << 8) | r;
+
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
 
   // this is reversed for little-endian, but this is later compensated
@@ -255,37 +251,38 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data,
 
     uint32_t pixel =
         (DARK_BYTE << 24) | (DARK_BYTE << 16) | (DARK_BYTE << 8) | DARK_BYTE;
-    uint32_t val = *(line_data++);
-    val = (val & 0xF0F0F0F0) >> 4;
+    uint32_t val = *(line_data++) >> 4;
+    val = val & 0x0F0F0F0F;
     val += add_mask;
     // now the bits we need are masked
     val &= 0x10101010;
     // shift relevant bits to the most significant byte, then shift down
     pixel |= ((val * shiftmul) >> 8) & 0x00FF0000;
 
-    val = *(line_data++);
-    val = (val & 0xF0F0F0F0) >> 4;
+    val = *(line_data++) >> 4;
+    val = (val & 0x0F0F0F0F);
     val += add_mask;
     // now the bits we need are masked
     val &= 0x10101010;
     // shift relevant bits to the most significant byte, then shift down
     pixel |= ((val * shiftmul) >> 0) & 0xFF000000;
 
-    val = *(line_data++);
-    val = (val & 0xF0F0F0F0) >> 4;
+    val = *(line_data++) >> 4;
+    val = (val & 0x0F0F0F0F);
     val += add_mask;
     // now the bits we need are masked
     val &= 0x10101010;
     // shift relevant bits to the most significant byte, then shift down
     pixel |= ((val * shiftmul) >> 24);
 
-    val = *(line_data++);
-    val = (val & 0xF0F0F0F0) >> 4;
+    val = *(line_data++) >> 4;
+    val = (val & 0x0F0F0F0F);
     val += add_mask;
     // now the bits we need are masked
     val &= 0x10101010;
     // shift relevant bits to the most significant byte, then shift down
     pixel |= ((val * shiftmul) >> 16) & 0x0000FF00;
+
     wide_epd_input[j] = pixel;
   }
 }
@@ -336,7 +333,7 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
     return;
   };
 
-  for (uint8_t k = frame_count; k > 0; k--) {
+  for (uint8_t k = 0; k < frame_count; k++) {
     uint8_t *ptr = data;
     epd_start_frame();
 
@@ -347,21 +344,23 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
         continue;
       }
 
+      uint32_t *lp;
       if (area.width == EPD_WIDTH) {
         // volatile uint32_t t = micros();
-        memcpy(line, (uint32_t *)ptr, EPD_WIDTH);
+        // memcpy(line, (uint32_t *)ptr, EPD_WIDTH);
         // volatile uint32_t t2 = micros();
         // printf("copy took %d us.\n", t2 - t);
+        lp = (uint32_t *)ptr;
         ptr += EPD_WIDTH;
       } else {
         memset(line, 255, EPD_WIDTH);
         uint8_t *buf_start = ((uint8_t *)line) + area.x;
         memcpy(buf_start, ptr, area.width);
         ptr += area.width;
+        lp = line;
       }
-      uint32_t *lp = line;
 
-      volatile uint8_t *buf = epd_get_current_buffer();
+      uint8_t *buf = epd_get_current_buffer();
       switch (bpp) {
       case BIT_DEPTH_4: {
         calc_epd_input_4bpp(lp, buf, k);
@@ -373,10 +372,10 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       default:
         assert("invalid grayscale mode!");
       };
-      write_row(contrast_lut[frame_count - k]);
+      write_row(contrast_lut[k]);
     }
     // Since we "pipeline" row output, we still have to latch out the last row.
-    write_row(contrast_lut[frame_count - k]);
+    write_row(contrast_lut[k]);
     epd_end_frame();
   }
   // free(row);
