@@ -61,7 +61,9 @@ void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
   }
   RMTMEM.chan[row_rmt_config.channel].data32[1].val = 0;
   rmt_tx_done = false;
-  rmt_tx_start(row_rmt_config.channel, true);
+  RMT.conf_ch[row_rmt_config.channel].conf1.mem_rd_rst = 1;
+  RMT.conf_ch[row_rmt_config.channel].conf1.mem_owner = RMT_MEM_OWNER_TX;
+  RMT.conf_ch[row_rmt_config.channel].conf1.tx_start = 1;
   while (wait && !rmt_tx_done) {
   };
 }
