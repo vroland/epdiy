@@ -1,0 +1,3 @@
+- Use multi-cycle waveform (maybe real waveform file?)
+- External cycle clock peripheral? (Not needed with multi-cycle?)
+- External comparator hardware?

@@ -51,8 +51,8 @@ void loop() {
   } else if (_state == DRAW_SCREEN) {
     printf("Draw cycle.\n");
     timestamp = millis();
-    // epd_draw_picture(epd_full_screen(), original_image_ram, BIT_DEPTH_4);
-    draw_image_unary_coded(epd_full_screen(), img_buf);
+    epd_draw_picture(epd_full_screen(), original_image_ram, BIT_DEPTH_4);
+    //draw_image_unary_coded(epd_full_screen(), img_buf);
     _state = CLEAR_PARTIAL;
 
   } else if (_state == CLEAR_PARTIAL) {
@@ -94,19 +94,19 @@ void epd_task() {
   ESP_LOGW("main", "allocating...\n");
 
   original_image_ram =
-      (uint8_t *)heap_caps_malloc(1200 * 825, MALLOC_CAP_SPIRAM);
+      (uint8_t *)heap_caps_malloc(1200 * 825 / 2, MALLOC_CAP_SPIRAM);
 
   volatile uint32_t t = millis();
-  memcpy(original_image_ram, img_bytes, 1200 * 825);
+  memcpy(original_image_ram, img_bytes, 1200 * 825 / 2);
   volatile uint32_t t2 = millis();
   printf("original copy to PSRAM took %dms.\n", t2 - t);
 
-  img_buf = (uint8_t *)heap_caps_malloc(1200 * 825 * 2, MALLOC_CAP_SPIRAM);
+  //img_buf = (uint8_t *)heap_caps_malloc(1200 * 825 * 2, MALLOC_CAP_SPIRAM);
 
-  t = millis();
-  img_8bit_to_unary_image(img_buf, original_image_ram, 1200, 825);
-  t2 = millis();
-  printf("converting took %dms.\n", t2 - t);
+  //t = millis();
+  //img_8bit_to_unary_image(img_buf, original_image_ram, 1200, 825);
+  //t2 = millis();
+  //printf("converting took %dms.\n", t2 - t);
 
   while (1) {
     loop();
