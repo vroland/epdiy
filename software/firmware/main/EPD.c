@@ -11,10 +11,6 @@
 // number of bytes needed for one line of EPD pixel data.
 #define EPD_LINE_BYTES 1200 / 4
 
-// A row with only null bytes, to be loaded when skipping lines
-// to avoid slight darkening / lightening.
-uint8_t null_row[EPD_LINE_BYTES] = {0};
-
 // status tracker for row skipping
 uint32_t skipping;
 
@@ -137,40 +133,38 @@ void epd_init() {
 }
 
 // skip a display row
-void skip_row() {
-  // 2, to latch out previously loaded null row
-  if (skipping < 2) {
-    memcpy(epd_get_current_buffer(), null_row, EPD_LINE_BYTES);
+void skip_row(uint8_t pipeline_finish_time) {
+  // output previously loaded row, fill buffer with no-ops.
+  if (skipping == 0) {
     epd_switch_buffer();
-    memcpy(epd_get_current_buffer(), null_row, EPD_LINE_BYTES);
-    epd_output_row(10);
+    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
+    epd_switch_buffer();
+    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
+    epd_output_row(pipeline_finish_time);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
     unsigned counts = XTHAL_GET_CCOUNT() + 50 * 240;
     while (XTHAL_GET_CCOUNT() < counts) {
     };
-  } else {
+  };
+  if (skipping == 1) {
+    epd_output_row(1);
+  }
+  if (skipping > 1) {
     epd_skip();
   }
   skipping++;
 }
 
-void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
+void epd_push_pixels(Rect_t *area, short time, bool color) {
 
-  volatile uint8_t *row = (uint8_t *)malloc(EPD_LINE_BYTES);
-  for (int i = 0; i < EPD_LINE_BYTES; i++) {
-    if (i * 4 + 3 < area->x || i * 4 >= area->x + area->width) {
-      row[i] = 0;
-    } else {
-      // undivisible pixel values
-      if (area->x > i * 4) {
-        row[i] = byte & (0B11111111 >> (2 * (area->x % 4)));
-      } else if (i * 4 + 4 > area->x + area->width) {
-        row[i] = byte & (0B11111111 << (8 - 2 * ((area->x + area->width) % 4)));
-      } else {
-        row[i] = byte;
-      }
-    }
+  uint8_t row[EPD_LINE_BYTES] = {0};
+
+  for (uint32_t i = 0; i < area->width; i++) {
+    uint32_t position = i + area->x % 4;
+    uint8_t mask =
+        (color ? CLEAR_BYTE : DARK_BYTE) & (0b00000011 << (2 * (position % 4)));
+    row[area->x / 4 + position / 4] |= mask;
   }
   reorder_line_buffer((uint32_t *)row);
 
@@ -179,9 +173,10 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
   for (int i = 0; i < EPD_HEIGHT; i++) {
     // before are of interest: skip
     if (i < area->y) {
-      skip_row();
+      skip_row(time);
       // start area of interest: set row data
     } else if (i == area->y) {
+      epd_switch_buffer();
       memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
       epd_switch_buffer();
       memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
@@ -189,7 +184,7 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
       write_row(time);
       // load nop row if done with area
     } else if (i >= area->y + area->height) {
-      skip_row();
+      skip_row(time);
       // output the same as before
     } else {
       write_row(time);
@@ -199,7 +194,6 @@ void epd_draw_byte(Rect_t *area, short time, uint8_t byte) {
   write_row(time);
 
   epd_end_frame();
-  free(row);
 }
 
 void epd_clear_area(Rect_t area) {
@@ -207,22 +201,22 @@ void epd_clear_area(Rect_t area) {
   const short dark_time = 50;
 
   for (int i = 0; i < 3; i++) {
-    epd_draw_byte(&area, dark_time, DARK_BYTE);
+    epd_push_pixels(&area, dark_time, 0);
   }
   for (int i = 0; i < 3; i++) {
-    epd_draw_byte(&area, white_time, CLEAR_BYTE);
+    epd_push_pixels(&area, white_time, 1);
   }
   for (int i = 0; i < 3; i++) {
-    epd_draw_byte(&area, white_time, DARK_BYTE);
+    epd_push_pixels(&area, white_time, 0);
   }
   for (int i = 0; i < 3; i++) {
-    epd_draw_byte(&area, white_time, CLEAR_BYTE);
+    epd_push_pixels(&area, white_time, 1);
   }
   for (int i = 0; i < 3; i++) {
-    epd_draw_byte(&area, white_time, DARK_BYTE);
+    epd_push_pixels(&area, white_time, 0);
   }
   for (int i = 0; i < 3; i++) {
-    epd_draw_byte(&area, white_time, CLEAR_BYTE);
+    epd_push_pixels(&area, white_time, 1);
   }
 }
 
@@ -282,8 +276,18 @@ void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k) {
   }
 }
 
+void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
+  uint8_t carry = 0xF;
+  for (uint32_t i = 0; i < len; i++) {
+    uint8_t val = buf[i];
+    buf[i] = (val << 4) | carry;
+    carry = (val & 0xF0) >> 4;
+  }
+}
+
 void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
-  uint32_t line[EPD_WIDTH / 8];
+  uint8_t line[EPD_WIDTH / 2];
+  memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = (1 << bpp) - 1;
   const uint8_t *contrast_lut;
   switch (bpp) {
@@ -306,25 +310,31 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
     // initialize with null row to avoid artifacts
     for (int i = 0; i < EPD_HEIGHT; i++) {
       if (i < area.y || i >= area.y + area.height) {
-        skip_row();
+        skip_row(contrast_lut[k]);
         continue;
       }
 
       uint32_t *lp;
       if (area.width == EPD_WIDTH) {
-        // volatile uint32_t t = micros();
-        // memcpy(line, (uint32_t *)ptr, EPD_WIDTH);
-        // volatile uint32_t t2 = micros();
-        // printf("copy took %d us.\n", t2 - t);
         lp = (uint32_t *)ptr;
         ptr += EPD_WIDTH / 2;
       } else {
-        // FIXME
-        memset(line, 255, EPD_WIDTH / 2);
-        uint8_t *buf_start = ((uint8_t *)line) + area.x;
-        memcpy(buf_start, ptr, area.width / 2);
-        ptr += area.width;
-        lp = line;
+        uint8_t *buf_start = line + area.x / 2;
+        uint32_t line_bytes = area.width / 2 + area.width % 2;
+        memcpy(buf_start, ptr, line_bytes);
+        ptr += line_bytes;
+
+        // mask last nibble for uneven width
+        if (area.width % 2) {
+          *(buf_start + line_bytes - 1) |= 0xF0;
+        }
+        if (area.x % 2 == 1) {
+          // shift one nibble to right
+          nibble_shift_buffer_right(
+              buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
+                                                 (uint32_t)buf_start));
+        }
+        lp = (uint32_t *)line;
       }
 
       uint8_t *buf = epd_get_current_buffer();

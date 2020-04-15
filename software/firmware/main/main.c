@@ -17,6 +17,7 @@
 #include "firasans.h"
 #include "font.h"
 #include "image.h"
+#include "shells.h"
 
 /* Display State Machine */
 enum ScreenState {
@@ -51,7 +52,13 @@ void loop() {
   } else if (_state == DRAW_SCREEN) {
     printf("Draw cycle.\n");
     timestamp = millis();
-    epd_draw_picture(epd_full_screen(), original_image_ram, BIT_DEPTH_4);
+    Rect_t area = {
+        .x = 100,
+        .y = 100,
+        .width = shells_width,
+        .height = shells_height,
+    };
+    epd_draw_picture(area, shells_data, BIT_DEPTH_4);
     //draw_image_unary_coded(epd_full_screen(), img_buf);
     _state = CLEAR_PARTIAL;
 
