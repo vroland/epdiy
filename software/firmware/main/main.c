@@ -12,6 +12,8 @@
 #include "sdkconfig.h"
 #include <stdio.h>
 #include <string.h>
+#include "esp_heap_caps.h"
+#include "esp_types.h"
 
 #include "EPD.h"
 #include "firasans.h"
@@ -58,7 +60,7 @@ void loop() {
         .width = shells_width,
         .height = shells_height,
     };
-    epd_draw_picture(area, shells_data, BIT_DEPTH_4);
+    epd_draw_grayscale_image(area, (uint8_t*)shells_data);
     //draw_image_unary_coded(epd_full_screen(), img_buf);
     _state = CLEAR_PARTIAL;
 

@@ -4,6 +4,8 @@
 #include "esp_heap_caps.h"
 #include "xtensa/core-macros.h"
 #include <string.h>
+#include "esp_assert.h"
+#include "esp_types.h"
 
 #define EPD_WIDTH 1200
 #define EPD_HEIGHT 825
@@ -21,9 +23,6 @@ uint32_t skipping;
 const uint8_t contrast_cycles_4[15] = {3, 3, 2, 2, 3,  3,  3, 4,
                                        4, 5, 5, 5, 10, 20, 30};
 
-/* 2bpp Contrast cycles in order of contrast (Darkest first).  */
-const uint8_t contrast_cycles_2[3] = {8, 10, 100};
-
 // Heap space to use for the EPD output lookup table, which
 // is calculated for each cycle.
 static uint8_t *conversion_lut;
@@ -32,94 +31,6 @@ static uint8_t *conversion_lut;
 static void write_row(uint32_t output_time_us) {
   skipping = 0;
   epd_output_row(output_time_us);
-}
-
-/**
- * Convert an 8 bit bitmap image to a linearized unary representation,
- * which is optimized for linear access for displaying.
- *
- * Image width must be divisible by 8.
- */
-void img_8bit_to_unary_image(uint8_t *dst, uint8_t *src, uint32_t image_width,
-                             uint32_t image_height) {
-
-  uint16_t *dst_16 = (uint16_t *)dst;
-  const uint32_t shiftmul = (1 << 24) + (1 << 17) + (1 << 10) + (1 << 3);
-
-  for (uint8_t layer = 0; layer < 15; layer++) {
-    uint32_t *batch_ptr = (uint32_t *)src;
-    uint8_t k = layer + 1;
-    uint32_t add_mask = (k << 24) | (k << 16) | (k << 8) | k;
-
-    for (uint32_t i = 0; i < image_width * image_height / 4 / 4; i++) {
-
-      uint32_t val = *(batch_ptr++);
-      val = (val & 0xF0F0F0F0) >> 4;
-      val += add_mask;
-      // now the bits we need are masked
-      val &= 0x10101010;
-      // shift relevant bits to the most significant byte, then shift down
-      uint16_t pixel = ((val * shiftmul) >> 20) & 0x0F00;
-
-      val = *(batch_ptr++);
-      val = (val & 0xF0F0F0F0) >> 4;
-      val += add_mask;
-      // now the bits we need are masked
-      val &= 0x10101010;
-      // shift relevant bits to the most significant byte, then shift down
-      pixel |= ((val * shiftmul) >> 16) & 0xF000;
-
-      val = *(batch_ptr++);
-      val = (val & 0xF0F0F0F0) >> 4;
-      val += add_mask;
-      // now the bits we need are masked
-      val &= 0x10101010;
-      // shift relevant bits to the most significant byte, then shift down
-      pixel |= ((val * shiftmul) >> 28);
-
-      val = *(batch_ptr++);
-      val = (val & 0xF0F0F0F0) >> 4;
-      val += add_mask;
-      // now the bits we need are masked
-      val &= 0x10101010;
-      // shift relevant bits to the most significant byte, then shift down
-      pixel |= ((val * shiftmul) >> 24) & 0x00F0;
-      *(dst_16++) = ~pixel;
-    }
-  }
-}
-
-static inline uint32_t min(uint32_t a, uint32_t b) { return a < b ? a : b; }
-
-void IRAM_ATTR draw_image_unary_coded(Rect_t area, uint8_t *data) {
-
-  uint16_t *data_16 = (uint16_t *)data;
-
-  for (int layer = 0; layer < 15; layer++) {
-
-    epd_start_frame();
-
-    for (int i = 0; i < EPD_HEIGHT; i++) {
-
-      uint32_t *buffer = epd_get_current_buffer();
-
-      for (int j = 0; j < EPD_WIDTH / 16; j++) {
-        uint32_t x = (uint32_t) * (data_16++);
-        // inspired from
-        // https://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN
-        x = (x | (x << 8)) & 0x00FF00FF;
-        x = (x | (x << 4)) & 0x0F0F0F0F;
-        x = (x | (x << 2)) & 0x33333333;
-        x = (x | (x << 1)) & 0x55555555;
-        *(buffer++) = x;
-      }
-
-      // Since we "pipeline" row output, we still have to latch out the last
-      // row.
-      write_row(contrast_cycles_4[layer]);
-    }
-    epd_end_frame();
-  }
 }
 
 void reorder_line_buffer(uint32_t *line_data);
@@ -285,22 +196,13 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
   }
 }
 
-void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
+inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
+
+void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
-  uint8_t frame_count = (1 << bpp) - 1;
-  const uint8_t *contrast_lut;
-  switch (bpp) {
-  case BIT_DEPTH_4:
-    contrast_lut = contrast_cycles_4;
-    break;
-  case BIT_DEPTH_2:
-    contrast_lut = contrast_cycles_2;
-    break;
-  default:
-    assert("invalid grayscale mode!");
-    return;
-  };
+  uint8_t frame_count = 15;
+  const uint8_t *contrast_lut = contrast_cycles_4;
 
   for (uint8_t k = 0; k < frame_count; k++) {
     populate_LUT(conversion_lut, k);

@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "esp_heap_caps.h"
 
 typedef struct {
   uint8_t mask;    /* char data will be bitwise AND with this */
@@ -178,7 +179,7 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
 
   if (framebuffer == NULL) {
     volatile uint32_t t = esp_timer_get_time();
-    epd_draw_picture(area, buffer, BIT_DEPTH_4);
+    epd_draw_grayscale_image(area, buffer);
     volatile uint32_t t2 = esp_timer_get_time();
     printf("drawing took %d us.\n", t2 - t);
 
