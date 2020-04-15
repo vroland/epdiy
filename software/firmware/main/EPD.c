@@ -1,6 +1,7 @@
 #include "EPD.h"
 #include "ed097oc4.h"
 
+#include "esp_heap_caps.h"
 #include "xtensa/core-macros.h"
 #include <string.h>
 
@@ -26,6 +27,10 @@ const uint8_t contrast_cycles_4[15] = {3, 3, 2, 2, 3,  3,  3, 4,
 
 /* 2bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_2[3] = {8, 10, 100};
+
+// Heap space to use for the EPD output lookup table, which
+// is calculated for each cycle.
+static uint8_t *conversion_lut;
 
 // output a row to the display.
 static void write_row(uint32_t output_time_us) {
@@ -126,6 +131,9 @@ void reorder_line_buffer(uint32_t *line_data);
 void epd_init() {
   skipping = 0;
   epd_base_init(EPD_WIDTH);
+
+  conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
+  assert(conversion_lut != NULL);
 }
 
 // skip a display row
@@ -236,75 +244,46 @@ void reorder_line_buffer(uint32_t *line_data) {
 }
 
 void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
-                                   uint8_t k) {
+                                   uint8_t k, uint8_t *conversion_lut) {
 
+  uint32_t *wide_epd_input = (uint32_t *)epd_input;
+  uint16_t *line_data_16 = (uint16_t *)line_data;
+
+  // this is reversed for little-endian, but this is later compensated
+  // through the output peripheral.
+  for (uint32_t j = 0; j < EPD_WIDTH / 16; j++) {
+
+    uint16_t v1 = *(line_data_16++);
+    uint16_t v2 = *(line_data_16++);
+    uint16_t v3 = *(line_data_16++);
+    uint16_t v4 = *(line_data_16++);
+    uint32_t pixel = conversion_lut[v1] << 16 | conversion_lut[v2] << 24 |
+                     conversion_lut[v3] | conversion_lut[v4] << 8;
+    wide_epd_input[j] = pixel;
+  }
+}
+
+void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k) {
   const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
 
   uint8_t r = k + 1;
   uint32_t add_mask = (r << 24) | (r << 16) | (r << 8) | r;
 
-  uint32_t *wide_epd_input = (uint32_t *)epd_input;
-
-
-  // this is reversed for little-endian, but this is later compensated
-  // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 16 ; j++) {
-
-    uint32_t pixel =
-        (DARK_BYTE << 24) | (DARK_BYTE << 16) | (DARK_BYTE << 8) | DARK_BYTE;
-
-    uint32_t val1 = *(line_data++);
-    uint32_t val2 = *(line_data++);
-    uint32_t val;
-    val = val1 & 0xFFFF0000;
-    val = (val | (val >> 8)) & 0xFF00FF00;
-    val = (val | (val >> 4)) & 0xF0F0F0F0;
-    val = val >> 4;
-    val += add_mask;
-    // now the bits we need are masked
-    val &= 0x10101010;
-    // shift relevant bits to the most significant byte, then shift down
-    pixel |= ((val * shiftmul) >> 0) & 0xFF000000;
-
-    val = val1 & 0x0000FFFF;
+  for (uint32_t i = 0; i < (1 << 16); i++) {
+    uint32_t val = i;
     val = (val | (val << 8)) & 0x00FF00FF;
     val = (val | (val << 4)) & 0x0F0F0F0F;
     val += add_mask;
+    val = ~val;
     // now the bits we need are masked
     val &= 0x10101010;
     // shift relevant bits to the most significant byte, then shift down
-    pixel |= ((val * shiftmul) >> 8) & 0x00FF0000;
-
-    val = val2 & 0xFFFF0000;
-    val = (val | (val >> 8)) & 0xFF00FF00;
-    val = (val | (val >> 4)) & 0xF0F0F0F0;
-    val = val >> 4;
-    val += add_mask;
-    // now the bits we need are masked
-    val &= 0x10101010;
-    // shift relevant bits to the most significant byte, then shift down
-    pixel |= ((val * shiftmul) >> 16) & 0x0000FF00;
-
-    val = val2 & 0x0000FFFF;
-    val = (val | (val << 8)) & 0x00FF00FF;
-    val = (val | (val << 4)) & 0x0F0F0F0F;
-    val += add_mask;
-    // now the bits we need are masked
-    val &= 0x10101010;
-    // shift relevant bits to the most significant byte, then shift down
-    pixel |= ((val * shiftmul) >> 24);
-
-    wide_epd_input[j] = pixel;
+    lut_mem[i] = ((val * shiftmul) >> 25);
   }
 }
 
 void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
-  uint8_t row[EPD_WIDTH]; // = (uint8_t *)heap_caps_malloc(EPD_LINE_BYTES,
-                          // MALLOC_CAP_8BIT);
-  uint32_t
-      line[EPD_WIDTH / 8]; //*line = (uint32_t *)heap_caps_malloc(EPD_WIDTH,
-                           // MALLOC_CAP_32BIT);
-
+  uint32_t line[EPD_WIDTH / 8];
   uint8_t frame_count = (1 << bpp) - 1;
   const uint8_t *contrast_lut;
   switch (bpp) {
@@ -320,6 +299,7 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
   };
 
   for (uint8_t k = 0; k < frame_count; k++) {
+    populate_LUT(conversion_lut, k);
     uint8_t *ptr = data;
     epd_start_frame();
 
@@ -348,13 +328,11 @@ void IRAM_ATTR epd_draw_picture(Rect_t area, uint8_t *data, EPDBitdepth_t bpp) {
       }
 
       uint8_t *buf = epd_get_current_buffer();
-      calc_epd_input_4bpp(lp, buf, k);
+      calc_epd_input_4bpp(lp, buf, k, conversion_lut);
       write_row(contrast_lut[k]);
     }
     // Since we "pipeline" row output, we still have to latch out the last row.
     write_row(contrast_lut[k]);
     epd_end_frame();
   }
-  // free(row);
-  // free(line);
 }
