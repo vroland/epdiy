@@ -55,7 +55,7 @@ void loop() {
     printf("Draw cycle.\n");
     timestamp = millis();
     Rect_t area = {
-        .x = 100,
+        .x = 101,
         .y = 100,
         .width = shells_width,
         .height = shells_height,
@@ -83,7 +83,8 @@ void loop() {
     unsigned char *string = (unsigned char *)"Hello World! *g*";
     writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
     cursor_y += FiraSans.advance_y;
-    string = (unsigned char *)"äöüßabcd/#{🚀";
+    cursor_x = 101;
+    string = (unsigned char *)"Hello äöüßabcd/#{🚀";
     writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
     _state = CLEAR_SCREEN;
   }

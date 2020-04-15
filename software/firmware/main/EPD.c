@@ -211,7 +211,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
 
     // initialize with null row to avoid artifacts
     for (int i = 0; i < EPD_HEIGHT; i++) {
-      if (i < area.y || i >= area.y + area.height) {
+      if (i < area.y || i > area.y + area.height) {
         skip_row(contrast_lut[k]);
         continue;
       }

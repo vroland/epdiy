@@ -2,12 +2,12 @@
 
 #include "EPD.h"
 #include "esp_assert.h"
+#include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "lib/zlib/zlib.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include "esp_heap_caps.h"
 
 typedef struct {
   uint8_t mask;    /* char data will be bitwise AND with this */
@@ -80,7 +80,7 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
 }
 
 /*!
-   @brief   Draw a single character to a pre-allocated buffer
+   @brief   Draw a single character to a pre-allocated buffer.
 */
 void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, uint16_t buf_width,
               uint16_t buf_height, int16_t baseline_height, uint32_t cp) {
@@ -101,10 +101,16 @@ void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, uint16_t buf_width,
   uint8_t *bitmap = (uint8_t *)malloc(bitmap_size);
   uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
              glyph->compressed_size);
+
   for (uint32_t i = 0; i < bitmap_size; i++) {
     int xx = *cursor_x + left + i % width;
-    int yy = buf_height - (glyph->top + baseline_height - i / width);
-    buffer[yy * buf_width + xx] = bitmap[i];
+    int yy = buf_height - (glyph->top + baseline_height - i / width) - 1;
+    uint32_t buf_pos = yy * buf_width + xx / 2 + (xx % 2);
+    if (xx % 2) {
+      buffer[buf_pos] = (buffer[buf_pos] & 0xF0) | (bitmap[i] >> 4);
+    } else {
+      buffer[buf_pos] = (buffer[buf_pos] & 0x0F) | (bitmap[i] & 0xF0);
+    }
   }
   free(bitmap);
   *cursor_x += glyph->advance_x;
@@ -149,7 +155,7 @@ void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
   *x1 = min(x, minx);
   *w = maxx - *x1;
   *y1 = miny;
-  *h = maxy - miny;
+  *h = maxy - miny + 1;
 }
 
 void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
@@ -157,24 +163,25 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
   getTextBounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
+  int baseline_height = *cursor_y - y1;
 
   uint8_t *buffer;
+  int buf_width = (w / 2 + w % 2);
   if (framebuffer == NULL) {
-    buffer = (uint8_t *)malloc(w * h);
-    memset(buffer, 255, w * h);
+    buffer = (uint8_t *)malloc(buf_width * h);
+    memset(buffer, 255, buf_width * h);
   } else {
     buffer = framebuffer;
   }
 
   uint32_t c;
-  int baseline_height = *cursor_y - y1;
 
   Rect_t area = {
       .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
   int working_curor = 0;
   while ((c = next_cp(&string))) {
-    drawChar(font, buffer, &working_curor, w, h, (*cursor_y - y1), c);
+    drawChar(font, buffer, &working_curor, buf_width, h, (*cursor_y - y1), c);
   }
 
   if (framebuffer == NULL) {
