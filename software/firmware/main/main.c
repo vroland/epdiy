@@ -26,11 +26,12 @@ enum ScreenState {
   CLEAR_SCREEN = 0,
   DRAW_SCREEN = 1,
   CLEAR_PARTIAL = 2,
-  DRAW_SQUARES = 3,
+  DRAW_FONTS = 3,
 };
 
 uint8_t *img_buf;
 
+uint8_t *framebuffer;
 uint8_t *original_image_ram;
 
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
@@ -49,13 +50,28 @@ void loop() {
     printf("Clear cycle.\n");
     timestamp = millis();
     epd_clear();
+
+    int cursor_x = 100;
+    int cursor_y = 100;
+    unsigned char *string = (unsigned char *)"Hello World! *g*";
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, framebuffer);
+    cursor_y += FiraSans.advance_y;
+    cursor_x = 101;
+    string = (unsigned char *)"Hello äöüßabcd/#{🚀";
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, framebuffer);
+    _state = DRAW_FONTS;
+
+  } else if (_state == DRAW_FONTS) {
+    printf("Squares cycle.\n");
+    timestamp = millis();
+    epd_draw_grayscale_image(epd_full_screen(), framebuffer);
     _state = DRAW_SCREEN;
 
   } else if (_state == DRAW_SCREEN) {
     printf("Draw cycle.\n");
     timestamp = millis();
     Rect_t area = {
-        .x = 101,
+        .x = 100,
         .y = 100,
         .width = shells_width,
         .height = shells_height,
@@ -74,18 +90,6 @@ void loop() {
         .height = 825 - 200,
     };
     epd_clear_area(area);
-    _state = DRAW_SQUARES;
-  } else if (_state == DRAW_SQUARES) {
-    printf("Squares cycle.\n");
-    timestamp = millis();
-    int cursor_x = 100;
-    int cursor_y = 200;
-    unsigned char *string = (unsigned char *)"Hello World! *g*";
-    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
-    cursor_y += FiraSans.advance_y;
-    cursor_x = 101;
-    string = (unsigned char *)"Hello äöüßabcd/#{🚀";
-    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
     _state = CLEAR_SCREEN;
   }
   timestamp = millis() - timestamp;
@@ -105,6 +109,9 @@ void epd_task() {
 
   original_image_ram =
       (uint8_t *)heap_caps_malloc(1200 * 825 / 2, MALLOC_CAP_SPIRAM);
+  framebuffer =
+      (uint8_t *)heap_caps_malloc(1200 * 825 / 2, MALLOC_CAP_SPIRAM);
+  memset(framebuffer, 0xFF, 1200 * 825 / 2);
 
   volatile uint32_t t = millis();
   memcpy(original_image_ram, img_bytes, 1200 * 825 / 2);

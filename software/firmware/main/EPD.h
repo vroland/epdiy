@@ -5,6 +5,9 @@
 #include "esp_attr.h"
 #include <stdint.h>
 
+#define EPD_WIDTH 1200
+#define EPD_HEIGHT 825
+
 typedef struct {
   uint16_t x;
   uint16_t y;

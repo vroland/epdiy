@@ -7,9 +7,6 @@
 #include "esp_assert.h"
 #include "esp_types.h"
 
-#define EPD_WIDTH 1200
-#define EPD_HEIGHT 825
-
 // number of bytes needed for one line of EPD pixel data.
 #define EPD_LINE_BYTES 1200 / 4
 

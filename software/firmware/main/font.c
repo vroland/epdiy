@@ -82,7 +82,7 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, uint16_t buf_width,
+void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
               uint16_t buf_height, int16_t baseline_height, uint32_t cp) {
 
   GFXglyph *glyph;
@@ -104,7 +104,7 @@ void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, uint16_t buf_width,
 
   for (uint32_t i = 0; i < bitmap_size; i++) {
     int xx = *cursor_x + left + i % width;
-    int yy = buf_height - (glyph->top + baseline_height - i / width) - 1;
+    int yy = buf_height - (glyph->top + baseline_height - i / width) - 1 + cursor_y;
     uint32_t buf_pos = yy * buf_width + xx / 2 + (xx % 2);
     if (xx % 2) {
       buffer[buf_pos] = (buffer[buf_pos] & 0xF0) | (bitmap[i] >> 4);
@@ -166,25 +166,34 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
   int baseline_height = *cursor_y - y1;
 
   uint8_t *buffer;
-  int buf_width = (w / 2 + w % 2);
+  int buf_width;
+
+  // The local cursor position:
+  // 0, if drawing to a local temporary buffer
+  // the given cursor position, if drawing to a full frame buffer
+  int local_cursor_x = 0;
+  int local_cursor_y = 0;
+
   if (framebuffer == NULL) {
+    buf_width = (w / 2 + w % 2);
     buffer = (uint8_t *)malloc(buf_width * h);
     memset(buffer, 255, buf_width * h);
   } else {
+    buf_width = EPD_WIDTH / 2;
     buffer = framebuffer;
+    local_cursor_x = *cursor_x;
+    local_cursor_y = *cursor_y;
   }
 
   uint32_t c;
 
-  Rect_t area = {
-      .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
-
-  int working_curor = 0;
   while ((c = next_cp(&string))) {
-    drawChar(font, buffer, &working_curor, buf_width, h, (*cursor_y - y1), c);
+    drawChar(font, buffer, &local_cursor_x, local_cursor_y, buf_width, h, (*cursor_y - y1), c);
   }
 
   if (framebuffer == NULL) {
+    Rect_t area = {
+      .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
     volatile uint32_t t = esp_timer_get_time();
     epd_draw_grayscale_image(area, buffer);
     volatile uint32_t t2 = esp_timer_get_time();
