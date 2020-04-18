@@ -47,8 +47,8 @@ static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf,
 
 /// Address of the currently front DMA descriptor.
 uint32_t dma_desc_addr() {
-  return (uint32_t)(current_buffer ? i2s_state.dma_desc_b
-                                   : i2s_state.dma_desc_a);
+  return (uint32_t)(current_buffer ? i2s_state.dma_desc_a
+                                   : i2s_state.dma_desc_b);
 }
 
 /// Set up a GPIO as output and route it to a signal.
