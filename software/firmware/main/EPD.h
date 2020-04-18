@@ -9,10 +9,10 @@
 #define EPD_HEIGHT 825
 
 typedef struct {
-  uint16_t x;
-  uint16_t y;
-  uint16_t width;
-  uint16_t height;
+  int x;
+  int y;
+  int width;
+  int height;
 } Rect_t;
 
 /* initialize the ePaper display */
@@ -31,7 +31,9 @@ void epd_clear();
 void epd_clear_area(Rect_t area);
 
 /*
- * Draw a picture to a given area. The picture must be given as
+ * Draw a picture to a given area.
+ *
+ * The picture must be given as
  * sequence of 4-bit brightness values, packed as two pixels per byte.
  * A byte cannot wrap over multiple rows, but if the image size is given as
  * uneven, the last half byte is ignored.
@@ -43,3 +45,16 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  * Returns a rectancle representing the whole screen area.
  */
 Rect_t epd_full_screen();
+
+
+/**
+ * Draw a picture to a given framebuffer.
+ *
+ * The picture must be given as
+ * sequence of 4-bit brightness values, packed as two pixels per byte.
+ * A byte cannot wrap over multiple rows, but if the image size is given as
+ * uneven, the last half byte is ignored.
+ * @param framebuffer: The framebuffer object,
+ * which must be EPD_WIDTH / 2 * EPD_HEIGHT large.
+ */
+void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data, uint8_t *framebuffer);

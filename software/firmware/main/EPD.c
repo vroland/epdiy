@@ -1,11 +1,11 @@
 #include "EPD.h"
 #include "ed097oc4.h"
 
+#include "esp_assert.h"
 #include "esp_heap_caps.h"
+#include "esp_types.h"
 #include "xtensa/core-macros.h"
 #include <string.h>
-#include "esp_assert.h"
-#include "esp_types.h"
 
 // number of bytes needed for one line of EPD pixel data.
 #define EPD_LINE_BYTES 1200 / 4
@@ -195,6 +195,39 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
 
 inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
 
+void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
+                             uint8_t *framebuffer) {
+
+  assert(framebuffer != NULL);
+
+  for (uint32_t i = 0; i < image_area.width * image_area.height; i++) {
+
+    uint32_t value_index = i;
+    // for images of uneven width,
+    // consume an additional nibble per row.
+    if (image_area.width % 2) {
+      value_index += i / image_area.width;
+    }
+    uint8_t val = (value_index % 2) ? (image_data[value_index / 2] & 0xF0) >> 4
+                                    : image_data[value_index / 2] & 0x0F;
+
+    int xx = image_area.x + i % image_area.width;
+    if (xx < 0 || xx >= EPD_WIDTH) {
+        continue;
+    }
+    int yy = image_area.y + i / image_area.width;
+    if (yy < 0 || yy >= EPD_HEIGHT) {
+        continue;
+    }
+    uint8_t *buf_ptr = &framebuffer[yy * EPD_WIDTH / 2 + xx / 2];
+    if (xx % 2) {
+      *buf_ptr = (*buf_ptr & 0x0F) | (val << 4);
+    } else {
+      *buf_ptr = (*buf_ptr & 0xF0) | val;
+    }
+  }
+}
+
 void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
@@ -204,6 +237,14 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
   for (uint8_t k = 0; k < frame_count; k++) {
     populate_LUT(conversion_lut, k);
     uint8_t *ptr = data;
+
+    if (area.x < 0) {
+        ptr += -area.x / 2;
+    }
+    if (area.y < 0) {
+        ptr += (area.width / 2 + area.width % 2) * -area.y;
+    }
+
     epd_start_frame();
     // initialize with null row to avoid artifacts
     for (int i = 0; i < EPD_HEIGHT; i++) {
@@ -217,10 +258,16 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
         lp = (uint32_t *)ptr;
         ptr += EPD_WIDTH / 2;
       } else {
-        uint8_t *buf_start = (uint8_t*)line + area.x / 2;
+        uint8_t *buf_start = (uint8_t*)line;
         uint32_t line_bytes = area.width / 2 + area.width % 2;
+        if (area.x >= 0) {
+            buf_start += area.x / 2;
+        } else {
+            // reduce line_bytes to actually used bytes
+            line_bytes += area.x / 2;
+        }
         memcpy(buf_start, ptr, line_bytes);
-        ptr += line_bytes;
+        ptr += area.width / 2 + area.width % 2;
 
         // mask last nibble for uneven width
         if (area.width % 2 == 1) {
