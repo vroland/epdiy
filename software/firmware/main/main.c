@@ -29,6 +29,7 @@ enum ScreenState {
   DRAW_FONTS = 3,
 };
 
+
 uint8_t *img_buf;
 
 uint8_t *framebuffer;
@@ -56,15 +57,37 @@ void loop() {
     unsigned char *string = (unsigned char *)"Hello World! *g*";
     writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, framebuffer);
     cursor_y += FiraSans.advance_y;
-    cursor_x = 101;
+    cursor_x = 850;
+    cursor_y = 100;
     string = (unsigned char *)"Hello äöüßabcd/#{🚀";
     writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, framebuffer);
+
     _state = DRAW_FONTS;
 
   } else if (_state == DRAW_FONTS) {
     printf("Squares cycle.\n");
+    Rect_t area = {
+        .x = -100,
+        .y = -100,
+        .width = shells_width,
+        .height = shells_height,
+    };
+    //epd_copy_to_framebuffer(area, (uint8_t*)shells_data, framebuffer);
+    epd_draw_grayscale_image(area, (uint8_t*)shells_data);
+
     timestamp = millis();
     epd_draw_grayscale_image(epd_full_screen(), framebuffer);
+    int cursor_x = 100;
+    int cursor_y = 600;
+    unsigned char* string = (unsigned char *)"Hello äöüßabcd/#{🚀";
+    writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
+
+    cursor_y = 20;
+    for (int i=0; i< 7; i++) {
+        cursor_x = 600;
+        writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
+        cursor_y += 100;
+    }
     _state = DRAW_SCREEN;
 
   } else if (_state == DRAW_SCREEN) {

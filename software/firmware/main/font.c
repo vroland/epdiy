@@ -83,7 +83,7 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
    @brief   Draw a single character to a pre-allocated buffer.
 */
 void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
-              uint16_t buf_height, int16_t baseline_height, uint32_t cp) {
+              uint16_t buf_height, uint32_t cp) {
 
   GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
@@ -104,7 +104,13 @@ void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint1
 
   for (uint32_t i = 0; i < bitmap_size; i++) {
     int xx = *cursor_x + left + i % width;
-    int yy = buf_height - (glyph->top + baseline_height - i / width) - 1 + cursor_y;
+    int yy = cursor_y - glyph->top + i / width;
+    if (xx < 0 || xx / 2 + (xx % 2) >= buf_width) {
+        continue;
+    }
+    if (yy < 0 || yy >= buf_height) {
+        continue;
+    }
     uint32_t buf_pos = yy * buf_width + xx / 2 + (xx % 2);
     if (xx % 2) {
       buffer[buf_pos] = (buffer[buf_pos] & 0xF0) | (bitmap[i] >> 4);
@@ -155,7 +161,7 @@ void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
   *x1 = min(x, minx);
   *w = maxx - *x1;
   *y1 = miny;
-  *h = maxy - miny + 1;
+  *h = maxy - miny;
 }
 
 void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
@@ -163,10 +169,11 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
   getTextBounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
-  int baseline_height = *cursor_y - y1;
 
   uint8_t *buffer;
   int buf_width;
+  int buf_height;
+  int baseline_height = *cursor_y - y1;
 
   // The local cursor position:
   // 0, if drawing to a local temporary buffer
@@ -176,10 +183,13 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
 
   if (framebuffer == NULL) {
     buf_width = (w / 2 + w % 2);
-    buffer = (uint8_t *)malloc(buf_width * h);
-    memset(buffer, 255, buf_width * h);
+    buf_height = h;
+    buffer = (uint8_t *)malloc(buf_width * buf_height);
+    memset(buffer, 255, buf_width *buf_height);
+    local_cursor_y = buf_height - baseline_height;
   } else {
     buf_width = EPD_WIDTH / 2;
+    buf_height = EPD_HEIGHT;
     buffer = framebuffer;
     local_cursor_x = *cursor_x;
     local_cursor_y = *cursor_y;
@@ -188,12 +198,13 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
   uint32_t c;
 
   while ((c = next_cp(&string))) {
-    drawChar(font, buffer, &local_cursor_x, local_cursor_y, buf_width, h, (*cursor_y - y1), c);
+    drawChar(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c);
   }
 
   if (framebuffer == NULL) {
     Rect_t area = {
       .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
+
     volatile uint32_t t = esp_timer_get_time();
     epd_draw_grayscale_image(area, buffer);
     volatile uint32_t t2 = esp_timer_get_time();
