@@ -205,26 +205,25 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
     populate_LUT(conversion_lut, k);
     uint8_t *ptr = data;
     epd_start_frame();
-
     // initialize with null row to avoid artifacts
     for (int i = 0; i < EPD_HEIGHT; i++) {
-      if (i < area.y || i > area.y + area.height) {
+      if (i < area.y || i >= area.y + area.height) {
         skip_row(contrast_lut[k]);
         continue;
       }
 
       uint32_t *lp;
-      if (area.width == EPD_WIDTH) {
+      if (area.width == EPD_WIDTH && area.x == 0) {
         lp = (uint32_t *)ptr;
         ptr += EPD_WIDTH / 2;
       } else {
-        uint8_t *buf_start = line + area.x / 2;
+        uint8_t *buf_start = (uint8_t*)line + area.x / 2;
         uint32_t line_bytes = area.width / 2 + area.width % 2;
         memcpy(buf_start, ptr, line_bytes);
         ptr += line_bytes;
 
         // mask last nibble for uneven width
-        if (area.width % 2) {
+        if (area.width % 2 == 1) {
           *(buf_start + line_bytes - 1) |= 0xF0;
         }
         if (area.x % 2 == 1) {
