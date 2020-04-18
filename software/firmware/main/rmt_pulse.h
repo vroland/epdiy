@@ -23,3 +23,7 @@ void rmt_pulse_init(gpio_num_t pin);
  */
 void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
                             bool wait);
+/**
+ * Indicates if the rmt is currently sending a pulse.
+ */
+bool IRAM_ATTR rmt_busy();

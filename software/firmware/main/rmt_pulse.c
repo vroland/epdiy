@@ -67,3 +67,7 @@ void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
   while (wait && !rmt_tx_done) {
   };
 }
+
+bool IRAM_ATTR rmt_busy() {
+  return !rmt_tx_done;
+}

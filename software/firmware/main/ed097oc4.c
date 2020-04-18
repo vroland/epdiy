@@ -164,7 +164,7 @@ void IRAM_ATTR epd_skip() { pulse_ckv_us(1, 1, true); }
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_us) {
 
-  while (i2s_is_busy()) {
+  while (i2s_is_busy() || rmt_busy()) {
   };
 
   latch_row();
