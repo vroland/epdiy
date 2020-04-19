@@ -13,7 +13,7 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-
+import subprocess, os
 
 # -- Project information -----------------------------------------------------
 
@@ -64,3 +64,8 @@ breathe_domain_by_extension = {
         "c" : "c",
 }
 
+read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
+
+if read_the_docs_build:
+
+    subprocess.call('cd ../doxygen; doxygen', shell=True)
