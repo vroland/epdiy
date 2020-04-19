@@ -195,6 +195,44 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
 
 inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
 
+void epd_draw_hline(int x, int y, int length, uint8_t color,
+                    uint8_t *framebuffer) {
+  if (y < 0 || y >= EPD_HEIGHT) {
+    return;
+  }
+  for (int i = 0; i < length; i++) {
+    int xx = x + i;
+    if (xx < 0 || xx >= EPD_WIDTH) {
+      continue;
+    }
+    uint8_t *buf_ptr = &framebuffer[y * EPD_WIDTH / 2 + xx / 2];
+    if (xx % 2) {
+      *buf_ptr = (*buf_ptr & 0x0F) | (color & 0xF0);
+    } else {
+      *buf_ptr = (*buf_ptr & 0xF0) | (color >> 4);
+    }
+  }
+}
+
+void epd_draw_vline(int x, int y, int length, uint8_t color,
+                    uint8_t *framebuffer) {
+  if (x < 0 || x >= EPD_WIDTH) {
+    return;
+  }
+  for (int i = 0; i < length; i++) {
+    int yy = y + i;
+    if (yy < 0 || yy >= EPD_HEIGHT) {
+      return;
+    }
+    uint8_t *buf_ptr = &framebuffer[yy * EPD_WIDTH / 2 + x / 2];
+    if (x % 2) {
+      *buf_ptr = (*buf_ptr & 0x0F) | (color & 0xF0);
+    } else {
+      *buf_ptr = (*buf_ptr & 0xF0) | (color >> 4);
+    }
+  }
+}
+
 void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
                              uint8_t *framebuffer) {
 
@@ -213,11 +251,11 @@ void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
 
     int xx = image_area.x + i % image_area.width;
     if (xx < 0 || xx >= EPD_WIDTH) {
-        continue;
+      continue;
     }
     int yy = image_area.y + i / image_area.width;
     if (yy < 0 || yy >= EPD_HEIGHT) {
-        continue;
+      continue;
     }
     uint8_t *buf_ptr = &framebuffer[yy * EPD_WIDTH / 2 + xx / 2];
     if (xx % 2) {
@@ -239,10 +277,10 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
     uint8_t *ptr = data;
 
     if (area.x < 0) {
-        ptr += -area.x / 2;
+      ptr += -area.x / 2;
     }
     if (area.y < 0) {
-        ptr += (area.width / 2 + area.width % 2) * -area.y;
+      ptr += (area.width / 2 + area.width % 2) * -area.y;
     }
 
     epd_start_frame();
@@ -258,13 +296,13 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
         lp = (uint32_t *)ptr;
         ptr += EPD_WIDTH / 2;
       } else {
-        uint8_t *buf_start = (uint8_t*)line;
+        uint8_t *buf_start = (uint8_t *)line;
         uint32_t line_bytes = area.width / 2 + area.width % 2;
         if (area.x >= 0) {
-            buf_start += area.x / 2;
+          buf_start += area.x / 2;
         } else {
-            // reduce line_bytes to actually used bytes
-            line_bytes += area.x / 2;
+          // reduce line_bytes to actually used bytes
+          line_bytes += area.x / 2;
         }
         memcpy(buf_start, ptr, line_bytes);
         ptr += area.width / 2 + area.width % 2;

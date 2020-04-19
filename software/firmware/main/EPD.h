@@ -46,7 +46,6 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  */
 Rect_t epd_full_screen();
 
-
 /**
  * Draw a picture to a given framebuffer.
  *
@@ -57,4 +56,31 @@ Rect_t epd_full_screen();
  * @param framebuffer: The framebuffer object,
  * which must be EPD_WIDTH / 2 * EPD_HEIGHT large.
  */
-void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data, uint8_t *framebuffer);
+void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
+                             uint8_t *framebuffer);
+
+/**
+ * Draw a horizontal line to a given framebuffer.
+ *
+ * @param x: Horizontal start position in pixels.
+ * @param y: Vertical start position in pixels.
+ * @param length: Length of the line in pixels.
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ *  which must be EPD_WIDTH / 2 * EPD_HEIGHT bytes large.
+ */
+void epd_draw_hline(int x, int y, int length, uint8_t color,
+                    uint8_t *framebuffer);
+
+/**
+ * Draw a horizontal line to a given framebuffer.
+ *
+ * @param x: Horizontal start position in pixels.
+ * @param y: Vertical start position in pixels.
+ * @param length: Length of the line in pixels.
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ *  which must be EPD_WIDTH / 2 * EPD_HEIGHT bytes large.
+ */
+void epd_draw_vline(int x, int y, int length, uint8_t color,
+                    uint8_t *framebuffer);

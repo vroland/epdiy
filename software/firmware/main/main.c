@@ -62,6 +62,11 @@ void loop() {
     string = (unsigned char *)"Hello äöüßabcd/#{🚀";
     writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, framebuffer);
 
+    epd_draw_hline(50, 20, 1100, 0x00, framebuffer);
+    epd_draw_hline(50, 800, 1100, 0x00, framebuffer);
+    epd_draw_vline(50, 20, 781, 0x00, framebuffer);
+    epd_draw_vline(1150, 20, 781, 0x00, framebuffer);
+
     _state = DRAW_FONTS;
 
   } else if (_state == DRAW_FONTS) {
@@ -81,13 +86,6 @@ void loop() {
     int cursor_y = 600;
     unsigned char* string = (unsigned char *)"Hello äöüßabcd/#{🚀";
     writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
-
-    cursor_y = 20;
-    for (int i=0; i< 7; i++) {
-        cursor_x = 600;
-        writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
-        cursor_y += 100;
-    }
     _state = DRAW_SCREEN;
 
   } else if (_state == DRAW_SCREEN) {
