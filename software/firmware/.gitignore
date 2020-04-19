@@ -1,3 +1,5 @@
 .pio
 build/
 sdkconfig.old
+doc/build/
+doc/source/xml/
