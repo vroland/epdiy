@@ -20,6 +20,7 @@
 #include "font.h"
 #include "image.h"
 #include "shells.h"
+#include "epd_temperature.h"
 
 /* Display State Machine */
 enum ScreenState {
@@ -43,6 +44,7 @@ void loop() {
   // Variables to set one time.
   static enum ScreenState _state = CLEAR_SCREEN;
 
+  printf("current temperature: %f\n", epd_ambient_temperature());
   delay(300);
   epd_poweron();
 
@@ -125,6 +127,7 @@ void loop() {
 
 void epd_task() {
   epd_init();
+  epd_temperature_init();
 
   ESP_LOGW("main", "allocating...\n");
 
