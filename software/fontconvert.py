@@ -1,3 +1,4 @@
+#!python3
 import freetype
 import zlib
 import sys
@@ -17,10 +18,11 @@ font_name = "FiraSans"
 intervals = [
     (32, 126),
     (160, 255),
+    (0x2700, 0x27BF),
     (0x1F600, 0x1F680),
 ]
 
-size = 24
+size = 20
 
 for face in font_stack:
     # shift by 6 bytes, because sizes are given as 6-bit fractions

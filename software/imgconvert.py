@@ -1,3 +1,5 @@
+#!python3
+
 from PIL import Image, ImageOps
 from argparse import ArgumentParser
 import sys
