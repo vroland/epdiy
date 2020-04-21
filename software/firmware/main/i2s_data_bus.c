@@ -45,10 +45,12 @@ static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf,
   dmadesc->offset = 0;
 }
 
-/// Address of the currently front DMA descriptor.
+/// Address of the currently front DMA descriptor,
+/// which uses only the lower 20bits (according to TRM)
 uint32_t dma_desc_addr() {
   return (uint32_t)(current_buffer ? i2s_state.dma_desc_a
-                                   : i2s_state.dma_desc_b);
+                                   : i2s_state.dma_desc_b) &
+         0x000FFFFF;
 }
 
 /// Set up a GPIO as output and route it to a signal.
