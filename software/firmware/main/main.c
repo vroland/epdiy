@@ -21,6 +21,7 @@
 #include "font.h"
 #include "giraffe.h"
 #include "image.h"
+#include "img_board.h"
 
 uint8_t *img_buf;
 
@@ -87,9 +88,18 @@ void loop() {
   epd_clear_area(to_clear);
 
   cursor_x = 500;
-  cursor_y = 600;
+  cursor_y = 390;
   string = "And partial update!";
   writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
+
+  Rect_t board_area = {
+      .x = 50 + giraffe_width + 50,
+      .y = 400,
+      .width = img_board_width,
+      .height = img_board_height,
+  };
+
+  epd_draw_grayscale_image(board_area, img_board_data);
   epd_poweroff();
 
   delay(2000);
