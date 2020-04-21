@@ -22,14 +22,6 @@
 #include "giraffe.h"
 #include "image.h"
 
-/* Display State Machine */
-enum ScreenState {
-  CLEAR_SCREEN = 0,
-  DRAW_SCREEN = 1,
-  CLEAR_PARTIAL = 2,
-  DRAW_FONTS = 3,
-};
-
 uint8_t *img_buf;
 
 uint8_t *framebuffer;
@@ -40,14 +32,16 @@ void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 uint32_t millis() { return esp_timer_get_time() / 1000; }
 
 void loop() {
-  // Variables to set one time.
-  static enum ScreenState _state = CLEAR_SCREEN;
 
   printf("current temperature: %f\n", epd_ambient_temperature());
   delay(300);
   epd_poweron();
 
+
+  volatile uint32_t t1 = millis();
   epd_clear();
+  volatile uint32_t t2 = millis();
+  printf("EPD clear took %dms.\n", t2 - t1);
 
   epd_draw_hline(20, 20, 1160, 0x00, framebuffer);
   epd_draw_hline(20, 800, 1160, 0x00, framebuffer);
@@ -69,7 +63,7 @@ void loop() {
   cursor_y += FiraSans.advance_y;
   cursor_x = 50 + giraffe_width + 20;
   writeln((GFXfont *)&FiraSans,
-          (unsigned char *)"➸ ~650ms for full frame draw 🚀", &cursor_x,
+          (unsigned char *)"➸ ~630ms for full frame draw 🚀", &cursor_x,
           &cursor_y, framebuffer);
   cursor_y += FiraSans.advance_y;
   cursor_x = 50 + giraffe_width + 20;
@@ -81,7 +75,10 @@ void loop() {
           (unsigned char *)"➸ High-quality font rendering ✎🙋", &cursor_x,
           &cursor_y, framebuffer);
 
+  t1 = millis();
   epd_draw_grayscale_image(epd_full_screen(), framebuffer);
+  t2 = millis();
+  printf("EPD draw took %dms.\n", t2 - t1);
 
   delay(1000);
   cursor_x = 500;
