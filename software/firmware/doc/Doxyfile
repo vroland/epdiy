@@ -116,7 +116,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = ../main/
+INPUT                  = ../components/epd_driver/include/
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
                          *.h

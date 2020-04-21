@@ -11,11 +11,7 @@ Welcome to EPDiy's documentation!
    :caption: Contents:
 
    about.rst
+   api.rst
    getting_started.rst
-   ref_internal.rst
 
-Public API
-==========
-
-.. doxygenfile:: EPD.h
-
+Work in progress. See API!
