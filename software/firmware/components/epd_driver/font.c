@@ -1,6 +1,4 @@
-#include "font.h"
-
-#include "EPD.h"
+#include "epd_driver.h"
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"

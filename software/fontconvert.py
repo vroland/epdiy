@@ -77,7 +77,7 @@ print("total", total_packed, file=sys.stderr)
 print("compressed", total_size, file=sys.stderr)
 
 
-print("#include \"font.h\"")
+print("#include \"epd_driver.h\"")
 print(f"const uint8_t {font_name}Bitmaps[{len(glyph_data)}] = {{")
 for c in chunks(glyph_data, 16):
     print ("    " + " ".join(f"0x{b:02X}," for b in c))

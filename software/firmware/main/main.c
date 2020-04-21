@@ -15,10 +15,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "EPD.h"
-#include "epd_temperature.h"
+#include "epd_driver.h"
 #include "firasans.h"
-#include "font.h"
 #include "giraffe.h"
 #include "image.h"
 #include "img_board.h"
@@ -107,7 +105,6 @@ void loop() {
 
 void epd_task() {
   epd_init();
-  epd_temperature_init();
 
   ESP_LOGW("main", "allocating...\n");
 

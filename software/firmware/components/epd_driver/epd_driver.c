@@ -1,5 +1,6 @@
-#include "EPD.h"
+#include "epd_driver.h"
 #include "ed097oc4.h"
+#include "epd_temperature.h"
 
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
@@ -35,6 +36,7 @@ void reorder_line_buffer(uint32_t *line_data);
 void epd_init() {
   skipping = 0;
   epd_base_init(EPD_WIDTH);
+  epd_temperature_init();
 
   conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
   assert(conversion_lut != NULL);
