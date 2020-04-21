@@ -160,7 +160,7 @@ static inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void IRAM_ATTR epd_skip() { pulse_ckv_us(5, 1, true); }
+void IRAM_ATTR epd_skip() { pulse_ckv_ticks(240, 1, true); }
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_us) {
 
@@ -186,5 +186,5 @@ void epd_end_frame() {
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
 uint8_t IRAM_ATTR *epd_get_current_buffer() {
-  return i2s_get_current_buffer();
+  return (uint8_t *)i2s_get_current_buffer();
 };
