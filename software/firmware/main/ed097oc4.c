@@ -160,7 +160,7 @@ static inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void IRAM_ATTR epd_skip() { pulse_ckv_us(1, 1, true); }
+void IRAM_ATTR epd_skip() { pulse_ckv_us(5, 1, true); }
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_us) {
 

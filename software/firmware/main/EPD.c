@@ -45,9 +45,9 @@ void skip_row(uint8_t pipeline_finish_time) {
   // output previously loaded row, fill buffer with no-ops.
   if (skipping == 0) {
     epd_switch_buffer();
-    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
+    memset(epd_get_current_buffer(), 255, EPD_LINE_BYTES);
     epd_switch_buffer();
-    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
+    memset(epd_get_current_buffer(), 255, EPD_LINE_BYTES);
     epd_output_row(pipeline_finish_time);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate

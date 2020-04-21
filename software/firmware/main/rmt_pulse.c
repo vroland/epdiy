@@ -27,7 +27,7 @@ void rmt_pulse_init(gpio_num_t pin) {
   row_rmt_config.mem_block_num = 2;
 
   // Divide 80MHz APB Clock by 80 -> 1us resolution delay
-  row_rmt_config.clk_div = 80;
+  row_rmt_config.clk_div = 1;
 
   row_rmt_config.tx_config.loop_en = false;
   row_rmt_config.tx_config.carrier_en = false;
@@ -42,20 +42,20 @@ void rmt_pulse_init(gpio_num_t pin) {
   rmt_set_tx_intr_en(row_rmt_config.channel, true);
 }
 
-void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
-                            bool wait) {
+void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
+                               uint16_t low_time_ticks, bool wait) {
   while (!rmt_tx_done) {
   };
   volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[row_rmt_config.channel].data32[0]);
-  if (high_time_us > 0) {
+  if (high_time_ticks > 0) {
     rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration0 = high_time_us;
+    rmt_mem_ptr->duration0 = high_time_ticks;
     rmt_mem_ptr->level1 = 0;
-    rmt_mem_ptr->duration1 = low_time_us;
+    rmt_mem_ptr->duration1 = low_time_ticks;
   } else {
     rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration0 = low_time_us;
+    rmt_mem_ptr->duration0 = low_time_ticks;
     rmt_mem_ptr->level1 = 0;
     rmt_mem_ptr->duration1 = 0;
   }
@@ -68,6 +68,9 @@ void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
   };
 }
 
-bool IRAM_ATTR rmt_busy() {
-  return !rmt_tx_done;
+void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
+                            bool wait) {
+  pulse_ckv_ticks(80 * high_time_us, 80 * low_time_us, wait);
 }
+
+bool IRAM_ATTR rmt_busy() { return !rmt_tx_done; }
