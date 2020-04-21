@@ -58,22 +58,12 @@ void loop() {
 
   int cursor_x = 50 + giraffe_width + 20;
   int cursor_y = 100;
-  writeln((GFXfont *)&FiraSans, (unsigned char *)"➸ 16 color grayscale",
-          &cursor_x, &cursor_y, framebuffer);
-  cursor_y += FiraSans.advance_y;
-  cursor_x = 50 + giraffe_width + 20;
-  writeln((GFXfont *)&FiraSans,
-          (unsigned char *)"➸ ~630ms for full frame draw 🚀", &cursor_x,
-          &cursor_y, framebuffer);
-  cursor_y += FiraSans.advance_y;
-  cursor_x = 50 + giraffe_width + 20;
-  writeln((GFXfont *)&FiraSans, (unsigned char *)"➸ Use with 6\" or 9.7\" EPDs",
-          &cursor_x, &cursor_y, framebuffer);
-  cursor_y += FiraSans.advance_y;
-  cursor_x = 50 + giraffe_width + 20;
-  writeln((GFXfont *)&FiraSans,
-          (unsigned char *)"➸ High-quality font rendering ✎🙋", &cursor_x,
-          &cursor_y, framebuffer);
+  write_string((GFXfont *)&FiraSans,
+        "➸ 16 color grayscale\n"
+        "➸ ~630ms for full frame draw 🚀\n"
+        "➸ Use with 6\" or 9.7\" EPDs\n"
+        "➸ High-quality font rendering ✎🙋",
+  &cursor_x, &cursor_y, framebuffer);
 
   t1 = millis();
   epd_draw_grayscale_image(epd_full_screen(), framebuffer);
@@ -83,7 +73,7 @@ void loop() {
   delay(1000);
   cursor_x = 500;
   cursor_y = 600;
-  unsigned char *string = (unsigned char *)"➠ With partial clear...";
+  char *string = "➠ With partial clear...";
   writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
 
   delay(1000);
@@ -98,7 +88,7 @@ void loop() {
 
   cursor_x = 500;
   cursor_y = 600;
-  string = (unsigned char *)"And partial update!";
+  string = "And partial update!";
   writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
   epd_poweroff();
 

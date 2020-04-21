@@ -3,7 +3,7 @@
 #include "EPD.h"
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
-#include "esp_timer.h"
+#include "esp_log.h"
 #include "lib/zlib/zlib.h"
 #include <math.h>
 #include <stdio.h>
@@ -82,7 +82,7 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
+void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
               uint16_t buf_height, uint32_t cp) {
 
   GFXglyph *glyph;
@@ -126,7 +126,7 @@ void drawChar(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint1
  * @brief Calculate the bounds of a character when drawn at (x, y), move the
  * cursor (*x) forward, adjust the given bounds.
  */
-void getCharBounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
+void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
                    int *miny, int *maxx, int *maxy) {
   GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
@@ -151,12 +151,12 @@ void getCharBounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
 
 int min(int x, int y) { return x < y ? x : y; }
 
-void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
-                   int *y1, int *w, int *h) {
+void get_text_bounds(GFXfont *font, char *string, int x, int y, int *x1,
+                     int *y1, int *w, int *h) {
   int xx = x, yy = y, minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   uint32_t c;
-  while ((c = next_cp(&string))) {
-    getCharBounds(font, c, &xx, &yy, &minx, &miny, &maxx, &maxy);
+  while ((c = next_cp((uint8_t**)&string))) {
+    get_char_bounds(font, c, &xx, &yy, &minx, &miny, &maxx, &maxy);
   }
   *x1 = min(x, minx);
   *w = maxx - *x1;
@@ -164,11 +164,11 @@ void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
   *h = maxy - miny;
 }
 
-void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
+void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer) {
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
-  getTextBounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
+  get_text_bounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
 
   uint8_t *buffer;
   int buf_width;
@@ -197,19 +197,37 @@ void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
 
   uint32_t c;
 
-  while ((c = next_cp(&string))) {
-    drawChar(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c);
+  while ((c = next_cp((uint8_t**)&string))) {
+    draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c);
   }
 
   if (framebuffer == NULL) {
     Rect_t area = {
       .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
-    volatile uint32_t t = esp_timer_get_time();
     epd_draw_grayscale_image(area, buffer);
-    volatile uint32_t t2 = esp_timer_get_time();
-    printf("drawing took %d us.\n", t2 - t);
 
     free(buffer);
   }
+}
+
+void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+             	  uint8_t *framebuffer) {
+   // taken from the strsep manpage
+   char *token, *newstring, *tofree;
+
+   tofree = newstring = strdup(string);
+   if (string == NULL) {
+	   ESP_LOGE("font.c", "cannot allocate string copy!");
+	   return;
+   }
+
+   int line_start = *cursor_x;
+   while ((token = strsep(&newstring, "\n")) != NULL) {
+	   *cursor_x = line_start;
+	   writeln(font, token, cursor_x, cursor_y, framebuffer);
+	   *cursor_y += font->advance_y;
+   }
+
+   free(tofree);
 }

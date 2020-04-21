@@ -35,13 +35,18 @@ typedef struct {
 /*!
  * Get the text bounds for string, when drawn at (x, y).
  */
-void getTextBounds(GFXfont *font, unsigned char *string, int x, int y, int *x1,
-                   int *y1, int *w, int *h);
+void get_text_bounds(GFXfont *font, char *string, int x, int y, int *x1,
+                     int *y1, int *w, int *h);
 
 /*!
  * Write a line of text to the EPD.
  */
-void writeln(GFXfont *font, unsigned char *string, int *cursor_x, int *cursor_y,
+void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer);
 
+/**
+ * Write a (multi-line) string to the EPD.
+ */
+void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+             	  uint8_t *framebuffer);
 #endif // _FONT_H_
