@@ -17,9 +17,16 @@ uint32_t skipping;
 #define CLEAR_BYTE 0B10101010
 #define DARK_BYTE 0B01010101
 
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_4[15] = {3, 3, 2, 2, 3,  3,  3, 4,
                                        4, 5, 5, 5, 10, 20, 30};
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
+const uint8_t contrast_cycles_4[15] = {1, 1, 1, 1, 2,  2,  2, 2,
+                                       2, 2, 2, 3, 5, 10, 20};
+#else
+#error "no display type defined!"
+#endif
 
 // Heap space to use for the EPD output lookup table, which
 // is calculated for each cycle.
