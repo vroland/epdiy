@@ -9,7 +9,7 @@
 #include <string.h>
 
 // number of bytes needed for one line of EPD pixel data.
-#define EPD_LINE_BYTES 1200 / 4
+#define EPD_LINE_BYTES EPD_WIDTH / 4
 
 // status tracker for row skipping
 uint32_t skipping;
@@ -285,6 +285,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
       ptr += (area.width / 2 + area.width % 2) * -area.y;
     }
 
+
     epd_start_frame();
     // initialize with null row to avoid artifacts
     for (int i = 0; i < EPD_HEIGHT; i++) {
@@ -306,14 +307,15 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
           // reduce line_bytes to actually used bytes
           line_bytes += area.x / 2;
         }
+        line_bytes = min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
         memcpy(buf_start, ptr, line_bytes);
         ptr += area.width / 2 + area.width % 2;
 
         // mask last nibble for uneven width
-        if (area.width % 2 == 1) {
+        if (area.width % 2 == 1 && area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
           *(buf_start + line_bytes - 1) |= 0xF0;
         }
-        if (area.x % 2 == 1) {
+        if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
           // shift one nibble to right
           nibble_shift_buffer_right(
               buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
