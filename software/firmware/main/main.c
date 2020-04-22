@@ -16,7 +16,11 @@
 #include <string.h>
 
 #include "epd_driver.h"
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+#include "firasans_12pt.h"
+#else
 #include "firasans.h"
+#endif
 #include "giraffe.h"
 #include "image.h"
 #include "img_board.h"
@@ -42,10 +46,10 @@ void loop() {
   volatile uint32_t t2 = millis();
   printf("EPD clear took %dms.\n", t2 - t1);
 
-  epd_draw_hline(20, 20, 1160, 0x00, framebuffer);
-  epd_draw_hline(20, 800, 1160, 0x00, framebuffer);
-  epd_draw_vline(20, 20, 781, 0x00, framebuffer);
-  epd_draw_vline(1180, 20, 781, 0x00, framebuffer);
+  epd_draw_hline(20, 20, EPD_WIDTH - 40, 0x00, framebuffer);
+  epd_draw_hline(20, EPD_HEIGHT - 20, EPD_WIDTH - 40, 0x00, framebuffer);
+  epd_draw_vline(20, 20, EPD_HEIGHT - 40 + 1, 0x00, framebuffer);
+  epd_draw_vline(EPD_WIDTH - 20, 20, EPD_HEIGHT - 40 + 1, 0x00, framebuffer);
 
   Rect_t area = {
       .x = 25,
@@ -55,7 +59,11 @@ void loop() {
   };
   epd_copy_to_framebuffer(area, (uint8_t *)giraffe_data, framebuffer);
 
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+  int cursor_x = 20 + giraffe_width + 20;
+#else
   int cursor_x = 50 + giraffe_width + 20;
+#endif
   int cursor_y = 100;
   write_string((GFXfont *)&FiraSans,
         "➸ 16 color grayscale\n"
@@ -71,7 +79,11 @@ void loop() {
 
   delay(1000);
   cursor_x = 500;
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+  cursor_y = 450;
+#else
   cursor_y = 600;
+#endif
   char *string = "➠ With partial clear...";
   writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
 
@@ -79,8 +91,12 @@ void loop() {
 
   Rect_t to_clear = {
       .x = 50 + giraffe_width + 20,
-      .y = 400,
-      .width = 1200 - 70 - 25 - giraffe_width,
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+  .y = 300,
+#else
+  .y = 400,
+#endif
+      .width = EPD_WIDTH - 70 - 25 - giraffe_width,
       .height = 400,
   };
   epd_clear_area(to_clear);
@@ -92,12 +108,16 @@ void loop() {
 
   Rect_t board_area = {
       .x = 50 + giraffe_width + 50,
-      .y = 400,
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+  .y = 300,
+#else
+  .y = 400,
+#endif
       .width = img_board_width,
       .height = img_board_height,
   };
 
-  epd_draw_grayscale_image(board_area, img_board_data);
+  epd_draw_grayscale_image(board_area, (uint8_t*)img_board_data);
   epd_poweroff();
 
   delay(2000);
@@ -109,21 +129,14 @@ void epd_task() {
   ESP_LOGW("main", "allocating...\n");
 
   original_image_ram =
-      (uint8_t *)heap_caps_malloc(1200 * 825 / 2, MALLOC_CAP_SPIRAM);
-  framebuffer = (uint8_t *)heap_caps_malloc(1200 * 825 / 2, MALLOC_CAP_SPIRAM);
-  memset(framebuffer, 0xFF, 1200 * 825 / 2);
+      (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
+  framebuffer = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
+  memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
 
   volatile uint32_t t = millis();
-  memcpy(original_image_ram, img_bytes, 1200 * 825 / 2);
+  memcpy(original_image_ram, img_bytes, EPD_WIDTH * EPD_HEIGHT / 2);
   volatile uint32_t t2 = millis();
   printf("original copy to PSRAM took %dms.\n", t2 - t);
-
-  // img_buf = (uint8_t *)heap_caps_malloc(1200 * 825 * 2, MALLOC_CAP_SPIRAM);
-
-  // t = millis();
-  // img_8bit_to_unary_image(img_buf, original_image_ram, 1200, 825);
-  // t2 = millis();
-  // printf("converting took %dms.\n", t2 - t);
 
   while (1) {
     loop();
