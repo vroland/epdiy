@@ -1,0 +1,14 @@
+menu "E-Paper Driver"
+    choice EPD_DRIVER_DISPLAY_TYPE
+        prompt "Display Type"
+        default EPD_DISPLAY_TYPE_ED097OC4
+        help
+            This option sets the display type to drive.
+
+        config EPD_DISPLAY_TYPE_ED097OC4
+            bool "ED097OC4"
+
+        config EPD_DISPLAY_TYPE_ED060SC4
+            bool "ED060SC4"
+    endchoice
+endmenu

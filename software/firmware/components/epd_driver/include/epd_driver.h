@@ -5,10 +5,21 @@
 #include "esp_attr.h"
 #include <stdint.h>
 
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED097OC4
 /// Width of the display area in pixels.
 #define EPD_WIDTH 1200
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 825
+#else
+#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+/// Width of the display area in pixels.
+#define EPD_WIDTH 800
+/// Height of the display area in pixels.
+#define EPD_HEIGHT 600
+#else
+#error "no display type defined!"
+#endif
+#endif
 
 /// An area on the display.
 typedef struct {
