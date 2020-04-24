@@ -25,7 +25,7 @@ For instructions and more information visit the [documentation](https://epdiy.re
 Hackaday Project
 ----------------
 
-For more details, see the project page on Hackaday: https://hackaday.io/project/168193-97-epaper-breakout-kindle-dx-screen
+For more details, see the project page on Hackaday: https://hackaday.io/project/168193-epdiy-976-e-paper-controller
 
 Licenses
 --------
