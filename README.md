@@ -18,9 +18,9 @@ Gettings Started
 
 For instructions and more information visit the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html)!
 
-[![demo image](doc/source/img/demo.jpg)]
-[![board front](doc/source/img/board_p1.jpg)]
-[![board back](doc/source/img/board_p2.jpg)]
+![demo image](doc/source/img/demo.jpg)
+![board front](doc/source/img/board_p1.jpg)
+![board back](doc/source/img/board_p2.jpg)
 
 Hackaday Project
 ----------------
