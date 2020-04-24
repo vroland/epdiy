@@ -1,11 +1,26 @@
-9.7" epaper breakout (Kindle DX screen)
+[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest)
+
+EPDiy E-Paper Driver
 =======================================
 
-I always wanted a large, affordable E-Ink screen to play around with. The result is a board to talk to a Kindle DX screen with an ESP32.
+EPDiy is a driver board which talks to affordable E-Paper (or E-Ink) screens, which are usually sold as replacement screens for E-Book readers. Why are they interesting?
 
-A breakout board for the ED097OC4 9.7" ePaper (or E-Ink) display. ePaper is a fascinating technology for low-power and pleasant-to-look-at screens. However, ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support are currently quite expensive.
+* Easy on the eyes and paper-like aesthetics
+* No power consumption when not updating
+* Sunlight-readable
 
-This project uses Kindle DX replacement screens, which are available for 30$ on ebay, making tinkering with those screens much more affordable.
+Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support are currently quite expensive. This project uses Kindle replacement screens, which are available for 20$ (small) / 30$ (large) on ebay!
+
+The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB features a 33pin and a 39pin connector, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2
+
+Gettings Started
+----------------
+
+For instructions and more information visit the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html)!
+
+[![demo image](doc/source/img/demo.jpg)]
+[![board front](doc/source/img/board_p1.jpg)]
+[![board back](doc/source/img/board_p2.jpg)]
 
 Hackaday Project
 ----------------
