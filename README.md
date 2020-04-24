@@ -18,14 +18,14 @@ Gettings Started
 
 For instructions and more information visit the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html)!
 
-![demo image](doc/source/img/demo.jpg)
-![board front](doc/source/img/board_p1.jpg)
-![board back](doc/source/img/board_p2.jpg)
-
 Hackaday Project
 ----------------
 
 For more details, see the project page on Hackaday: https://hackaday.io/project/168193-epdiy-976-e-paper-controller
+
+![demo image](doc/source/img/demo.jpg)
+![board front](doc/source/img/board_p1.jpg)
+![board back](doc/source/img/board_p2.jpg)
 
 Licenses
 --------
