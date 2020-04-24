@@ -132,6 +132,8 @@ void epd_poweroff() {
 }
 
 void epd_start_frame() {
+  while (i2s_is_busy() || rmt_busy()) {
+  };
   config_reg.ep_mode = true;
   push_cfg(&config_reg);
 
