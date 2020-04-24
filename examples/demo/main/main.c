@@ -22,7 +22,6 @@
 #include "firasans.h"
 #endif
 #include "giraffe.h"
-#include "image.h"
 #include "img_board.h"
 
 uint8_t *img_buf;
@@ -128,15 +127,8 @@ void epd_task() {
 
   ESP_LOGW("main", "allocating...\n");
 
-  original_image_ram =
-      (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
   framebuffer = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
   memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
-
-  volatile uint32_t t = millis();
-  memcpy(original_image_ram, img_bytes, EPD_WIDTH * EPD_HEIGHT / 2);
-  volatile uint32_t t2 = millis();
-  printf("original copy to PSRAM took %dms.\n", t2 - t);
 
   while (1) {
     loop();
