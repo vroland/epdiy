@@ -1,3 +1,5 @@
+.. _pub_api:
+
 Public API
 ==========
 
