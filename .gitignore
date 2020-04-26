@@ -1,5 +1,8 @@
 .pio
 build/
 sdkconfig.old
-doc/build/
+**/build/
+.ccls-cache
 doc/source/xml/
+compile_commands.json
+examples/mpd_status/main/wifi_config.h
