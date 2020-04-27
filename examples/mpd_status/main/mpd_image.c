@@ -131,7 +131,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
   uint32_t w = rect->right - rect->left + 1;
   uint32_t h = rect->bottom - rect->top + 1;
   uint32_t image_width = jd->width >> context->scale;
-  uint32_t even_img_width = image_width + image_width % 1;
+  uint32_t even_img_width = image_width + image_width % 2;
 
   uint8_t *bitmap_ptr = bitmap;
 
@@ -197,7 +197,7 @@ album_cover_t *readpicture(struct mpd_connection *c, char *uri,
   uint32_t width = jd.width >> scale;
   uint32_t height = jd.height >> scale;
 
-  uint32_t even_img_width = width + width % 1;
+  uint32_t even_img_width = width + width % 2;
   uint8_t *buf =
       heap_caps_malloc(even_img_width / 2 * height, MALLOC_CAP_SPIRAM);
   if (!buf) {
