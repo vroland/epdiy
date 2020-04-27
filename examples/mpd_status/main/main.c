@@ -23,6 +23,7 @@
 #include "mpd/client.h"
 #include "wifi_config.h"
 #include "mpd_image.h"
+#include "mpd_info.h"
 
 uint8_t *img_buf;
 
@@ -35,6 +36,7 @@ uint32_t millis() { return esp_timer_get_time() / 1000; }
 static bool got_ip = false;
 
 static album_cover_t *album_cover = NULL;
+static mpd_playback_info_t *playback_info = NULL;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
@@ -147,90 +149,49 @@ void epd_task() {
   while (true) {
     mpd_run_idle(mpd_conn);
 
-    if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS)
-      return handle_error(mpd_conn);
-
-    mpd_command_list_begin(mpd_conn, true);
-    mpd_send_status(mpd_conn);
-    mpd_send_current_song(mpd_conn);
-    mpd_command_list_end(mpd_conn);
-
-    struct mpd_status *status = mpd_recv_status(mpd_conn);
-    if (status == NULL)
-      return handle_error(mpd_conn);
-
-    printf("volume: %i\n", mpd_status_get_volume(status));
-    printf("repeat: %i\n", mpd_status_get_repeat(status));
-    printf("queue version: %u\n", mpd_status_get_queue_version(status));
-    printf("queue length: %i\n", mpd_status_get_queue_length(status));
-    if (mpd_status_get_error(status) != NULL)
-      printf("error: %s\n", mpd_status_get_error(status));
-
-    if (mpd_status_get_state(status) == MPD_STATE_PLAY ||
-        mpd_status_get_state(status) == MPD_STATE_PAUSE) {
-      printf("song: %i\n", mpd_status_get_song_pos(status));
-      printf("elaspedTime: %i\n", mpd_status_get_elapsed_time(status));
-      printf("elasped_ms: %u\n", mpd_status_get_elapsed_ms(status));
-      printf("totalTime: %i\n", mpd_status_get_total_time(status));
-      printf("bitRate: %i\n", mpd_status_get_kbit_rate(status));
-    }
-
-    if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS)
-      return handle_error(mpd_conn);
-
-    mpd_response_next(mpd_conn);
-
-    struct mpd_song *song;
-    while ((song = mpd_recv_song(mpd_conn)) != NULL) {
-      printf("uri: %s\n", mpd_song_get_uri(song));
-      print_tag(song, MPD_TAG_ARTIST, "artist");
-      print_tag(song, MPD_TAG_ALBUM, "album");
-      print_tag(song, MPD_TAG_TITLE, "title");
-      print_tag(song, MPD_TAG_TRACK, "track");
-      print_tag(song, MPD_TAG_NAME, "name");
-      print_tag(song, MPD_TAG_DATE, "date");
-
-      if (mpd_song_get_duration(song) > 0) {
-        printf("time: %u\n", mpd_song_get_duration(song));
-      }
-
-      printf("pos: %u\n", mpd_song_get_pos(song));
-      break;
-    }
-
-    mpd_status_free(status);
-
     if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS ||
         !mpd_response_finish(mpd_conn))
       return handle_error(mpd_conn);
 
-    show_status(status, song);
+    mpd_playback_info_t* new_info = fetch_playback_info(mpd_conn);
+    bool do_update = true;
+    if (playback_info != NULL && playback_info != NULL) {
+      do_update = memcmp(new_info->hash, playback_info->hash, crypto_generichash_BYTES) != 0;
+    }
+    if (playback_info) {
+      free_playback_info(playback_info);
+    }
+    playback_info = new_info;
 
-    char *album = (char*)mpd_song_get_tag(song, MPD_TAG_ALBUM, 0);
-    if (album_cover == NULL || strncmp(album_cover->identifier, album, 128) != 0) {
-      if (album_cover) {
-        free_album_cover(album_cover);
-        album_cover = NULL;
+    if (new_info == NULL) {
+      ESP_LOGW("main", "update is invalid!");
+    }
+    if (do_update && new_info) {
+      show_status(playback_info->status, playback_info->current_song);
+
+      char *album = (char*)mpd_song_get_tag(playback_info->current_song, MPD_TAG_ALBUM, 0);
+      if (album_cover == NULL || strncmp(album_cover->identifier, album, 128) != 0) {
+        if (album_cover) {
+          free_album_cover(album_cover);
+          album_cover = NULL;
+        }
+        album_cover = readpicture(mpd_conn, (char*)mpd_song_get_uri(playback_info->current_song), album);
       }
-      album_cover = readpicture(mpd_conn, (char*)mpd_song_get_uri(song), album);
+
+      if (album_cover) {
+        Rect_t area = {
+          .width = album_cover->width,
+          .height = album_cover->height,
+          .x = 50,
+          .y = (825 - album_cover->height) / 2,
+        };
+        printf("album cover dimensions: %dx%d\n", album_cover->width, album_cover->height);
+        epd_poweron();
+        epd_draw_grayscale_image(area, album_cover->data);
+        epd_poweroff();
+      }
     }
 
-    if (album_cover) {
-      Rect_t area = {
-        .width = album_cover->width,
-        .height = album_cover->height,
-        .x = 50,
-        .y = (825 - album_cover->height) / 2,
-      };
-      epd_poweron();
-      epd_draw_grayscale_image(area, album_cover->data);
-      epd_poweroff();
-    }
-
-    mpd_song_free(song);
-
-    heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-    heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
   }
 }
 
