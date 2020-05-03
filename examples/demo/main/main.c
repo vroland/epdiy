@@ -37,13 +37,14 @@ void loop() {
 
   printf("current temperature: %f\n", epd_ambient_temperature());
   delay(300);
+
+
   epd_poweron();
-
-
   volatile uint32_t t1 = millis();
   epd_clear();
   volatile uint32_t t2 = millis();
   printf("EPD clear took %dms.\n", t2 - t1);
+  epd_poweroff();
 
   epd_draw_hline(20, 20, EPD_WIDTH - 40, 0x00, framebuffer);
   epd_draw_hline(20, EPD_HEIGHT - 20, EPD_WIDTH - 40, 0x00, framebuffer);
@@ -71,9 +72,11 @@ void loop() {
         "➸ High-quality font rendering ✎🙋",
   &cursor_x, &cursor_y, framebuffer);
 
+  epd_poweron();
   t1 = millis();
   epd_draw_grayscale_image(epd_full_screen(), framebuffer);
   t2 = millis();
+  epd_poweroff();
   printf("EPD draw took %dms.\n", t2 - t1);
 
   delay(1000);
@@ -84,8 +87,9 @@ void loop() {
   cursor_y = 600;
 #endif
   char *string = "➠ With partial clear...";
+  epd_poweron();
   writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
-
+  epd_poweroff();
   delay(1000);
 
   Rect_t to_clear = {
@@ -98,11 +102,14 @@ void loop() {
       .width = EPD_WIDTH - 70 - 25 - giraffe_width,
       .height = 400,
   };
+  epd_poweron();
   epd_clear_area(to_clear);
+  epd_poweroff();
 
   cursor_x = 500;
   cursor_y = 390;
   string = "And partial update!";
+  epd_poweron();
   writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
 
   Rect_t board_area = {
