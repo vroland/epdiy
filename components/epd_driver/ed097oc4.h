@@ -68,3 +68,13 @@ uint8_t IRAM_ATTR *epd_get_current_buffer();
  * this function blocks until transmission is done.
  */
 void IRAM_ATTR epd_switch_buffer();
+
+/**
+ * Enable the gate driver output.
+ */
+void enable_gate_output();
+
+/**
+ * Disable the gate driver output.
+ */
+void disable_gate_output();

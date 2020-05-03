@@ -34,6 +34,9 @@ static uint8_t *conversion_lut;
 
 // output a row to the display.
 static void write_row(uint32_t output_time_us) {
+  if (skipping) {
+      enable_gate_output();
+  }
   skipping = 0;
   epd_output_row(output_time_us);
 }
@@ -58,6 +61,7 @@ void skip_row(uint8_t pipeline_finish_time) {
     epd_switch_buffer();
     memset(epd_get_current_buffer(), 255, EPD_LINE_BYTES);
     epd_output_row(pipeline_finish_time);
+    disable_gate_output();
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
     unsigned counts = XTHAL_GET_CCOUNT() + 50 * 240;
