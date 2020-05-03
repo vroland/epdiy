@@ -186,18 +186,6 @@ void epd_end_frame() {
   pulse_ckv_us(1, 1, true);
 }
 
-void disable_gate_output() {
-  config_reg.ep_mode = false;
-  config_reg.ep_output_enable = false;
-  push_cfg(&config_reg);
-}
-
-void enable_gate_output() {
-  config_reg.ep_mode = true;
-  config_reg.ep_output_enable = true;
-  push_cfg(&config_reg);
-}
-
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
 uint8_t IRAM_ATTR *epd_get_current_buffer() {
   return (uint8_t *)i2s_get_current_buffer();
