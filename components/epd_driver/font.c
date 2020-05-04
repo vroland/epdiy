@@ -195,9 +195,15 @@ void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
 
   uint32_t c;
 
+  int cursor_x_init = local_cursor_x;
+  int cursor_y_init = local_cursor_y;
+
   while ((c = next_cp((uint8_t**)&string))) {
     draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c);
   }
+
+  *cursor_x += local_cursor_x - cursor_x_init;
+  *cursor_y += local_cursor_y - cursor_y_init;
 
   if (framebuffer == NULL) {
     Rect_t area = {
