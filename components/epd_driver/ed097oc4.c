@@ -162,16 +162,16 @@ static inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void IRAM_ATTR epd_skip() { pulse_ckv_ticks(240, 1, true); }
+void IRAM_ATTR epd_skip() { pulse_ckv_ticks(30, 1, true); }
 
-void IRAM_ATTR epd_output_row(uint32_t output_time_us) {
+void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
   while (i2s_is_busy() || rmt_busy()) {
   };
 
   latch_row();
 
-  pulse_ckv_us(output_time_us, 5, false);
+  pulse_ckv_ticks(output_time_dus, 50, false);
 
   i2s_start_line_output();
   i2s_switch_buffer();

@@ -26,8 +26,8 @@ void rmt_pulse_init(gpio_num_t pin) {
   row_rmt_config.gpio_num = pin;
   row_rmt_config.mem_block_num = 2;
 
-  // Divide 80MHz APB Clock by 80 -> 1us resolution delay
-  row_rmt_config.clk_div = 1;
+  // Divide 80MHz APB Clock by 8 -> .1us resolution delay
+  row_rmt_config.clk_div = 8;
 
   row_rmt_config.tx_config.loop_en = false;
   row_rmt_config.tx_config.carrier_en = false;
@@ -70,7 +70,7 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
 
 void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
                             bool wait) {
-  pulse_ckv_ticks(80 * high_time_us, 80 * low_time_us, wait);
+  pulse_ckv_ticks(10 * high_time_us, 10 * low_time_us, wait);
 }
 
 bool IRAM_ATTR rmt_busy() { return !rmt_tx_done; }

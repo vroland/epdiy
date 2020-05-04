@@ -19,11 +19,11 @@ uint32_t skipping;
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
-const uint8_t contrast_cycles_4[15] = {3, 3, 2, 2, 3,  3,  3, 4,
-                                       4, 5, 5, 5, 10, 20, 30};
+const uint8_t contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
+                                       40, 50, 50, 50, 100, 200, 300};
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
-const uint8_t contrast_cycles_4[15] = {1, 1, 1, 1, 2,  2,  2, 2,
-                                       2, 2, 2, 3, 5, 10, 20};
+const uint8_t contrast_cycles_4[15] = {15, 8, 8, 8, 8,  8,  10, 10,
+                                       10, 10, 20, 20, 50, 100, 200};
 #else
 #error "no display type defined!"
 #endif
@@ -33,9 +33,9 @@ const uint8_t contrast_cycles_4[15] = {1, 1, 1, 1, 2,  2,  2, 2,
 static uint8_t *conversion_lut;
 
 // output a row to the display.
-static void write_row(uint32_t output_time_us) {
+static void write_row(uint32_t output_time_dus) {
   skipping = 0;
-  epd_output_row(output_time_us);
+  epd_output_row(output_time_dus);
 }
 
 void reorder_line_buffer(uint32_t *line_data);
@@ -65,7 +65,7 @@ void skip_row(uint8_t pipeline_finish_time) {
     };
   };
   if (skipping == 1) {
-    epd_output_row(1);
+    epd_output_row(10);
   }
   if (skipping > 1) {
     epd_skip();
@@ -98,17 +98,17 @@ void epd_push_pixels(Rect_t *area, short time, bool color) {
       epd_switch_buffer();
       memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
 
-      write_row(time);
+      write_row(time * 10);
       // load nop row if done with area
     } else if (i >= area->y + area->height) {
       skip_row(time);
       // output the same as before
     } else {
-      write_row(time);
+      write_row(time * 10);
     }
   }
   // Since we "pipeline" row output, we still have to latch out the last row.
-  write_row(time);
+  write_row(time * 10);
 
   epd_end_frame();
 }
