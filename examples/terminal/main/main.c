@@ -9,6 +9,7 @@
 #include "driver/gpio.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 #include "esp_types.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -35,11 +36,19 @@ void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
 uint32_t millis() { return esp_timer_get_time() / 1000; }
 
+int log_to_uart(const char* fmt, va_list args) {
+    char buffer[256];
+    int result = vsprintf(buffer, fmt, args);
+    uart_write_bytes(UART_NUM_1, buffer, strnlen(buffer, 256));
+    return result;
+}
+
 void epd_task() {
     epd_init();
     delay(300);
     epd_poweron();
     epd_clear();
+    epd_poweroff();
 
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
@@ -53,6 +62,9 @@ void epd_task() {
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
     uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
+
+    // Still log to the serial output
+    esp_log_set_vprintf(log_to_uart);
 
     // Configure a temporary buffer for the incoming data
     uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
@@ -71,7 +83,12 @@ void epd_task() {
 
         if (len > 0)
         {
+            uint32_t t1 = millis();
+            epd_poweron();
             writeln((GFXfont *) &FiraSans, (char *) data, &cur_x, &cur_y, NULL);
+            epd_poweroff();
+            uint32_t t2 = millis();
+            ESP_LOGI("main", "overall rendering took %dms.\n", t2 - t1);
             uart_write_bytes(UART_NUM_1, (const char *) data, len);
         }
     }
