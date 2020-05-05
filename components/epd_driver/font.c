@@ -29,7 +29,7 @@ utf_t *utf[] = {
     &(utf_t){0},
 };
 
-int utf8_len(const uint8_t ch) {
+static int utf8_len(const uint8_t ch) {
   int len = 0;
   for (utf_t **u = utf; *u; ++u) {
     if ((ch & ~(*u)->mask) == (*u)->lead) {

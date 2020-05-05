@@ -183,6 +183,11 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer, enum DrawMode mode);
 
 /**
+ * Get the font glyph for a unicode code point.
+ */
+void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph);
+
+/**
  * Write a (multi-line) string to the EPD.
  */
 void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
