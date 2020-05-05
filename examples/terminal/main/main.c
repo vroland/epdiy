@@ -6,6 +6,7 @@
  */
 
 #include "driver/uart.h"
+#include "esp_heap_caps.h"
 #include "driver/gpio.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
@@ -30,7 +31,6 @@
 
 #define BUF_SIZE (1024)
 
-int cursor_x = 100;
 
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
@@ -68,6 +68,8 @@ void epd_task() {
 
     // Configure a temporary buffer for the incoming data
     uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
+    uint8_t *framebuffer = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
+    memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
 
     delay(1000);
 
@@ -76,22 +78,59 @@ void epd_task() {
     int cur_x = 100;
     int cur_y = 100;
 
+    uint8_t current_string[256] = {0};
+    uint8_t* current_string_ptr = current_string;
+
     while (true) {
         // Read data from the UART
         int len = uart_read_bytes(UART_NUM_1, data, BUF_SIZE - 1, 20 / portTICK_RATE_MS);
         data[len] = 0;
 
-        if (len > 0)
-        {
+
+        // FIXME: handle control characters in mid-stream
+        if (data[0] == '\b') {
+            uint8_t skipped = 0;
+            // skip a utf8 code point backwards
+            do {
+                current_string_ptr--;
+                skipped++;
+            } while ((*current_string_ptr & 0xC0) == 0x80);
+
+            int tmp_cur_x = 0;
+            int tmp_cur_y = 0;
+            int x, y, w, h;
+            get_text_bounds((GFXfont *) &FiraSans, (char *) current_string_ptr, &tmp_cur_x, &tmp_cur_y, &x, &y, &w, &h);
+
+            int new_cur_x = cur_x - tmp_cur_x;
+            int new_cur_y = cur_y - tmp_cur_y;
+            cur_x = new_cur_x;
+            cur_y = new_cur_y;
+
+            epd_poweron();
+            write_mode((GFXfont *) &FiraSans, (char *) current_string_ptr, &new_cur_x, &new_cur_y, NULL, WHITE_ON_WHITE);
+            epd_poweroff();
+
+            memset(current_string_ptr, 0, skipped);
+
+        } else if (len > 0) {
+            strncpy((char*)current_string_ptr, (char*)data, len);
+            current_string_ptr += len;
+
             uint32_t t1 = millis();
+            int tmp_cur_x = cur_x;
+            int tmp_cur_y = cur_y;
+            writeln((GFXfont *) &FiraSans, (char *) data, &tmp_cur_x, &tmp_cur_y, framebuffer);
+
             epd_poweron();
             writeln((GFXfont *) &FiraSans, (char *) data, &cur_x, &cur_y, NULL);
             epd_poweroff();
+
             uint32_t t2 = millis();
             ESP_LOGI("main", "overall rendering took %dms.\n", t2 - t1);
             uart_write_bytes(UART_NUM_1, (const char *) data, len);
         }
     }
+    free(framebuffer);
 }
 
 void app_main() {
