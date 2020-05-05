@@ -166,7 +166,7 @@ typedef struct {
 /*!
  * Get the text bounds for string, when drawn at (x, y).
  */
-void get_text_bounds(GFXfont *font, char *string, int x, int y, int *x1,
+void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
                      int *y1, int *w, int *h);
 
 /*!

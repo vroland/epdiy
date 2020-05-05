@@ -149,24 +149,27 @@ void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
 
 int min(int x, int y) { return x < y ? x : y; }
 
-void get_text_bounds(GFXfont *font, char *string, int x, int y, int *x1,
+void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
                      int *y1, int *w, int *h) {
-  int xx = x, yy = y, minx = 100000, miny = 100000, maxx = -1, maxy = -1;
+  int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
+  int original_x = *x;
   uint32_t c;
   while ((c = next_cp((uint8_t**)&string))) {
-    get_char_bounds(font, c, &xx, &yy, &minx, &miny, &maxx, &maxy);
+    get_char_bounds(font, c, x, y, &minx, &miny, &maxx, &maxy);
   }
-  *x1 = min(x, minx);
+  *x1 = min(original_x, minx);
   *w = maxx - *x1;
   *y1 = miny;
   *h = maxy - miny;
 }
 
-void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer) {
+void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+             uint8_t *framebuffer, enum DrawMode mode) {
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
-  get_text_bounds(font, string, *cursor_x, *cursor_y, &x1, &y1, &w, &h);
+  int tmp_cur_x = *cursor_x;
+  int tmp_cur_y = *cursor_y;
+  get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h);
 
   uint8_t *buffer;
   int buf_width;
@@ -209,10 +212,16 @@ void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
     Rect_t area = {
       .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
-    epd_draw_grayscale_image(area, buffer);
+    epd_draw_image(area, buffer, mode);
 
     free(buffer);
   }
+
+}
+
+void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+             uint8_t *framebuffer) {
+    return write_mode(font, string, cursor_x, cursor_y, framebuffer, BLACK_ON_WHITE);
 }
 
 void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
