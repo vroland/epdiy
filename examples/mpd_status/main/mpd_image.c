@@ -21,6 +21,8 @@ typedef struct {
   uint32_t cover_offset;
   uint32_t scale;
   struct mpd_connection *conn;
+  // use albumart exclusively
+  bool use_albumart;
 } image_fetch_context_t;
 
 static void handle_error(struct mpd_connection *c) {
@@ -47,11 +49,20 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     char offset_s[32];
     snprintf(offset_s, sizeof(offset_s), "%u", context->cover_offset);
 
+    printf("use albumart: %d\n", context->use_albumart);
     struct mpd_connection *c = context->conn;
-    if (!mpd_send_command(c, "readpicture", context->image_uri, offset_s,
-                          NULL)) {
-      handle_error(c);
-      return -1;
+    if (context->use_albumart) {
+        if (!mpd_send_command(c, "albumart", context->image_uri, offset_s,
+                              NULL)) {
+          handle_error(c);
+          return -1;
+        }
+    } else {
+        if (!mpd_send_command(c, "readpicture", context->image_uri, offset_s,
+                              NULL)) {
+          handle_error(c);
+          return -1;
+        }
     }
 
     struct mpd_pair *pair = mpd_recv_pair_named(c, "size");
@@ -60,7 +71,24 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
         handle_error(c);
         return -1;
       }
+      if (!context->use_albumart) {
+          context->use_albumart = true;
+          ESP_LOGI("mpd_image", "no image with readpicture, trying albumart...\n");
+          if (!mpd_response_finish(c)) {
+            handle_error(c);
+            return -1;
+          }
+          int returned = feed_jpg_chunk(jd, buff, nd);
+          printf("returned: %d\n", returned);
+          return returned;
+      }
+
+      if (!mpd_response_finish(c)) {
+        handle_error(c);
+        return -1;
+      }
       fprintf(stderr, "No 'size'\n");
+
       return -1;
     }
 
@@ -77,10 +105,16 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     }
 
     uint32_t chunk_size = strtoull(pair->value, NULL, 10);
+    printf("chunk size: %d\n", chunk_size);
     mpd_return_pair(c, pair);
 
-    if (chunk_size == 0)
+    if (chunk_size == 0) {
+      if (!mpd_response_finish(c)) {
+        handle_error(c);
+        return -1;
+      }
       return 0;
+    }
 
     context->chunk_data = malloc(chunk_size);
     if (!mpd_recv_binary(c, context->chunk_data, chunk_size)) {
@@ -179,6 +213,7 @@ album_cover_t *readpicture(struct mpd_connection *c, char *uri,
   context.chunk_data_size = 0;
   context.chunk_data_offset = 0;
   context.conn = c;
+  context.use_albumart = false;
 
   /* Prepare to decompress the file */
   rc =
@@ -232,13 +267,17 @@ album_cover_t *readpicture(struct mpd_connection *c, char *uri,
     ESP_LOGW("mpd_image", "cannot allocate uri dup!");
     return NULL;
   }
-  cover->identifier = strndup(identifier, 128);
-  if (cover->identifier == NULL) {
-    free(cover->source_uri);
-    free(buf);
-    free(cover);
-    ESP_LOGW("mpd_image", "cannot allocate identifier dup!");
-    return NULL;
+  if (identifier != NULL) {
+    cover->identifier = strndup(identifier, 128);
+    if (cover->identifier == NULL) {
+      free(cover->source_uri);
+      free(buf);
+      free(cover);
+      ESP_LOGW("mpd_image", "cannot allocate identifier dup!");
+      return NULL;
+    }
+  } else {
+    cover->identifier = NULL;
   }
   return cover;
 }

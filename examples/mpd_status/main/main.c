@@ -57,15 +57,23 @@ void show_status(struct mpd_status *status, struct mpd_song *song) {
 
   int cursor_x = 700;
   int cursor_y = 200;
-  write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_TITLE, 0), &cursor_x,
-               &cursor_y, img_buf);
-  cursor_x = 700;
-  cursor_y = 200 + FiraSans.advance_y * 2;
-  write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_ALBUM, 0), &cursor_x,
-               &cursor_y, img_buf);
-  cursor_y = 200 + FiraSans.advance_y * 3;
-  write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_ARTIST, 0), &cursor_x,
-               &cursor_y, img_buf);
+  if (mpd_song_get_tag(song, MPD_TAG_TITLE, 0)) {
+    write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_TITLE, 0), &cursor_x, &cursor_y, img_buf);
+  }
+
+  if (mpd_song_get_tag(song, MPD_TAG_ALBUM, 0)) {
+    cursor_x = 700;
+    cursor_y = 200 + FiraSans.advance_y * 2;
+    write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_ALBUM, 0), &cursor_x,
+                 &cursor_y, img_buf);
+  }
+
+  if (mpd_song_get_tag(song, MPD_TAG_ARTIST, 0)) {
+    cursor_x = 700;
+    cursor_y = 200 + FiraSans.advance_y * 3;
+    write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_ARTIST, 0), &cursor_x,
+                 &cursor_y, img_buf);
+  }
 
   epd_poweron();
   epd_clear();
@@ -170,7 +178,7 @@ void epd_task() {
       show_status(playback_info->status, playback_info->current_song);
 
       char *album = (char*)mpd_song_get_tag(playback_info->current_song, MPD_TAG_ALBUM, 0);
-      if (album_cover == NULL || strncmp(album_cover->identifier, album, 128) != 0) {
+      if (album_cover == NULL || album_cover->identifier == NULL || album == NULL || strncmp(album_cover->identifier, album, 128) != 0) {
         if (album_cover) {
           free_album_cover(album_cover);
           album_cover = NULL;
