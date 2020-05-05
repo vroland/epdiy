@@ -5,6 +5,7 @@
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
 #include "esp_types.h"
+#include "esp_log.h"
 #include "xtensa/core-macros.h"
 #include <string.h>
 
@@ -174,11 +175,24 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
   }
 }
 
-void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k) {
+void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode) {
   const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
 
   uint8_t r = k + 1;
   uint32_t add_mask = (r << 24) | (r << 16) | (r << 8) | r;
+  uint8_t shift_amount;
+  switch (mode) {
+    case BLACK_ON_WHITE:
+      shift_amount = 25;
+      break;
+    case WHITE_ON_WHITE:
+      shift_amount = 24;
+      break;
+    default:
+      ESP_LOGW("epd_driver", "unknown draw mode %d!", mode);
+      shift_amount = 25;
+      break;
+  }
 
   for (uint32_t i = 0; i < (1 << 16); i++) {
     uint32_t val = i;
@@ -189,7 +203,7 @@ void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k) {
     // now the bits we need are masked
     val &= 0x10101010;
     // shift relevant bits to the most significant byte, then shift down
-    lut_mem[i] = ((val * shiftmul) >> 25);
+    lut_mem[i] = ((val * shiftmul) >> shift_amount);
   }
 }
 
@@ -276,13 +290,17 @@ void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
 }
 
 void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
+  epd_draw_image(area, data, BLACK_ON_WHITE);
+}
+
+void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
   const uint8_t *contrast_lut = contrast_cycles_4;
 
   for (uint8_t k = 0; k < frame_count; k++) {
-    populate_LUT(conversion_lut, k);
+    populate_LUT(conversion_lut, k, mode);
     uint8_t *ptr = data;
 
     if (area.x < 0) {

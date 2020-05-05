@@ -33,6 +33,14 @@ typedef struct {
   int height;
 } Rect_t;
 
+/// The image drawing mode.
+enum DrawMode {
+  /// Draw black / grayscale image on a white display.
+  BLACK_ON_WHITE = 0,
+  /// "Draw with white ink" on a white display.
+  WHITE_ON_WHITE = 1,
+};
+
 /** Initialize the ePaper display */
 void epd_init();
 
@@ -63,6 +71,19 @@ void epd_clear_area(Rect_t area);
  *   rows, images of uneven width must add a padding nibble per line.
  */
 void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
+
+/**
+ * Draw a picture to a given area, with some draw mode.
+ * The image area is not cleared before drawing.
+ * For example, this can be used for pixel-aligned clearing.
+ *
+ * @param area: The display area to draw to. `width` and `height` of the area
+ *   must correspond to the image dimensions in pixels.
+ * @param data: The image data, as a buffer of 4 bit wide brightness values.
+ *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
+ *   rows, images of uneven width must add a padding nibble per line.
+ */
+void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
 
 /**
  * @returns Rectancle representing the whole screen area.
