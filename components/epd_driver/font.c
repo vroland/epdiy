@@ -109,8 +109,8 @@ void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint
     if (yy < 0 || yy >= buf_height) {
         continue;
     }
-    uint32_t buf_pos = yy * buf_width + xx / 2 + (xx % 2);
-    if (xx % 2) {
+    uint32_t buf_pos = yy * buf_width + xx / 2;
+    if (xx % 2 == 0) {
       buffer[buf_pos] = (buffer[buf_pos] & 0xF0) | (bitmap[i] >> 4);
     } else {
       buffer[buf_pos] = (buffer[buf_pos] & 0x0F) | (bitmap[i] & 0xF0);
