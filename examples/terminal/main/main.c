@@ -17,13 +17,9 @@
 #include <string.h>
 
 #include "epd_driver.h"
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-#include "firasans_12pt.h"
-#else
-#include "firasans.h"
+#include "firacode.h"
 #include "unicode.h"
 
-#endif
 
 #define ECHO_TEST_TXD  (GPIO_NUM_1)
 #define ECHO_TEST_RXD  (GPIO_NUM_3)
@@ -173,29 +169,29 @@ void render() {
       // the character has changed -> delete it
       // Overwriting only works well for monospaced fonts.
       if (chr != old_chr && old_chr) {
-        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraSans, term.old_line[y], x);
+        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.old_line[y], x);
         int px_x = term.pixel_start_x + horizontal_advance;
-        int px_y = term.pixel_start_y + FiraSans.advance_y * y;
+        int px_y = term.pixel_start_y + FiraCode.advance_y * y;
 
         char data[5];
         to_utf8(data, old_chr);
 
         epd_poweron();
-        write_mode((GFXfont *) &FiraSans, (char *) data, &px_x, &px_y, NULL, WHITE_ON_WHITE);
+        write_mode((GFXfont *) &FiraCode, (char *) data, &px_x, &px_y, NULL, WHITE_ON_WHITE);
         epd_poweroff();
       }
 
       // draw new character
       if (chr != old_chr && chr) {
-        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraSans, term.line[y], x);
+        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.line[y], x);
         int px_x = term.pixel_start_x + horizontal_advance;
-        int px_y = term.pixel_start_y + FiraSans.advance_y * y;
+        int px_y = term.pixel_start_y + FiraCode.advance_y * y;
         char data[5];
         to_utf8(data, chr);
 
         // FIXME: color currently ignored
         epd_poweron();
-        writeln((GFXfont *) &FiraSans, (char *) data, &px_x, &px_y, NULL);
+        writeln((GFXfont *) &FiraCode, (char *) data, &px_x, &px_y, NULL);
         epd_poweroff();
       }
       cm->dirty = false;
