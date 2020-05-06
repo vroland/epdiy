@@ -19,7 +19,7 @@ typedef struct {
  * UTF-8 decode inspired from rosetta code
  * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C
  */
-utf_t *utf[] = {
+static utf_t *utf[] = {
     /*             mask        lead        beg      end       bits */
     [0] = &(utf_t){0b00111111, 0b10000000, 0, 0, 6},
     [1] = &(utf_t){0b01111111, 0b00000000, 0000, 0177, 7},
@@ -43,7 +43,7 @@ static int utf8_len(const uint8_t ch) {
   return len;
 }
 
-uint32_t next_cp(uint8_t **string) {
+static uint32_t next_cp(uint8_t **string) {
   if (**string == 0) {
     return 0;
   }
@@ -80,7 +80,7 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
+static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
               uint16_t buf_height, uint32_t cp) {
 
   GFXglyph *glyph;
@@ -124,7 +124,7 @@ void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint
  * @brief Calculate the bounds of a character when drawn at (x, y), move the
  * cursor (*x) forward, adjust the given bounds.
  */
-void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
+static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
                    int *miny, int *maxx, int *maxy) {
   GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
@@ -147,7 +147,7 @@ void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
   *x += glyph->advance_x;
 }
 
-int min(int x, int y) { return x < y ? x : y; }
+static int min(int x, int y) { return x < y ? x : y; }
 
 void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
                      int *y1, int *w, int *h) {
