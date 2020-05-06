@@ -141,8 +141,8 @@ int calculate_horizontal_advance(GFXfont* font, Line line, int col) {
 
 
 void tmoveto(int x, int y) {
-  term.cursor.x = min(max(x, 0), COLUMNS);
-  term.cursor.y = min(max(y, 0), ROWS);
+  term.cursor.x = min(max(x, 0), COLUMNS - 1);
+  term.cursor.y = min(max(y, 0), ROWS - 1);
 }
 
 void tputc(uint32_t chr) {
