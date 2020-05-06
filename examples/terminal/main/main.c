@@ -158,19 +158,23 @@ enum RenderOperation {
   REPLACE = 3,
 };
 
+static uint8_t* render_fb_write = NULL;
+static uint8_t* render_fb_delete = NULL;
+
 void render() {
+  memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+  memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+
+  int write_min_line = 100000;
+  int write_max_line = 0;
+
+  int delete_min_line = 100000;
+  int delete_max_line = 0;
+
   for (int y = 0; y < ROWS; y++) {
     if (!term.meta[y].dirty) {
       continue;
     }
-
-    char utf8_line[4 * COLUMNS] = {0};
-    char utf8_replacement[4 * COLUMNS] = {0};
-    char* utf8_line_ptr = utf8_line;
-    char* utf8_replacement_ptr = utf8_replacement;
-    int start_x = 0;
-
-    enum RenderOperation last_operation = NOP;
 
     for (int x = 0; x < COLUMNS; x++) {
       CharMeta* cm = &term.meta[y].chars[x];
@@ -190,49 +194,71 @@ void render() {
         operation = WRITE;
       }
 
-      if (operation != last_operation || x == COLUMNS - 1) {
-        if (last_operation == DELETE || last_operation == REPLACE) {
-          int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.old_line[y], start_x);
-          int px_x = term.pixel_start_x + horizontal_advance;
-          int px_y = term.pixel_start_y + FiraCode.advance_y * y;
+      if (operation == DELETE || operation == REPLACE) {
+        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.old_line[y], x);
+        int px_x = term.pixel_start_x + horizontal_advance;
+        int px_y = term.pixel_start_y + FiraCode.advance_y * y;
+        char data[5];
+        to_utf8(data, old_chr);
 
-          epd_poweron();
-          write_mode((GFXfont *) &FiraCode, utf8_replacement, &px_x, &px_y, NULL, WHITE_ON_WHITE);
-          epd_poweroff();
-        }
-
-        if (last_operation == WRITE || last_operation == REPLACE) {
-          int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.line[y], start_x);
-          int px_x = term.pixel_start_x + horizontal_advance;
-          int px_y = term.pixel_start_y + FiraCode.advance_y * y;
-
-          // FIXME: color currently ignored
-          epd_poweron();
-          writeln((GFXfont *) &FiraCode, utf8_line, &px_x, &px_y, NULL);
-          epd_poweroff();
-        }
-
-        utf8_line_ptr = utf8_line;
-        utf8_replacement_ptr = utf8_replacement;
-        start_x = x;
+        writeln((GFXfont *) &FiraCode, data, &px_x, &px_y, render_fb_delete);
+        delete_min_line = min(y, delete_min_line);
+        delete_max_line = max(y, delete_max_line);
       }
 
-      if (operation != NOP) {
-        if (chr) {
-          to_utf8(utf8_line_ptr, chr);
-          utf8_line_ptr += codepoint_len(chr);
-        }
-        if (old_chr) {
-          to_utf8(utf8_replacement_ptr, old_chr);
-          utf8_replacement_ptr += codepoint_len(old_chr);
-        }
+      if (operation == WRITE || operation == REPLACE) {
+        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.line[y], x);
+        int px_x = term.pixel_start_x + horizontal_advance;
+        int px_y = term.pixel_start_y + FiraCode.advance_y * y;
+        char data[5];
+        to_utf8(data, chr);
+
+        // FIXME: color currently ignored
+        writeln((GFXfont *) &FiraCode, data, &px_x, &px_y, render_fb_write);
+        write_min_line = min(y, write_min_line);
+        write_max_line = max(y, write_max_line);
       }
-      last_operation = operation;
       cm->dirty = false;
     }
     term.meta[y].dirty = false;
   }
   memcpy(term.old_line, term.line, ROWS * sizeof(Line));
+
+  // delete buffer dirty
+  if (delete_min_line <= delete_max_line) {
+    int offset = term.pixel_start_y + (delete_min_line - 1) * FiraCode.advance_y;
+    offset = min(EPD_HEIGHT, max(0, offset));
+    int height = (delete_max_line - delete_min_line + 1) * FiraCode.advance_y;
+    height = min(height, EPD_HEIGHT - offset);
+    uint8_t* start_ptr = render_fb_delete + EPD_WIDTH / 2 * offset;
+    Rect_t area = {
+      .x = 0,
+      .y = offset,
+      .width = EPD_WIDTH,
+      .height = height,
+    };
+    epd_poweron();
+    epd_draw_image(area, start_ptr, WHITE_ON_WHITE);
+    epd_poweroff();
+  }
+
+  // write buffer dirty
+  if (write_min_line <= write_max_line) {
+    int offset = term.pixel_start_y + (write_min_line - 1) * FiraCode.advance_y;
+    offset = min(EPD_HEIGHT, max(0, offset));
+    int height = (write_max_line - write_min_line + 1) * FiraCode.advance_y;
+    height = min(height, EPD_HEIGHT - offset);
+    uint8_t* start_ptr = render_fb_write + EPD_WIDTH / 2 * offset;
+    Rect_t area = {
+      .x = 0,
+      .y = offset,
+      .width = EPD_WIDTH,
+      .height = height,
+    };
+    epd_poweron();
+    epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
+    epd_poweroff();
+  }
 }
 
 void epd_task() {
@@ -259,6 +285,8 @@ void epd_task() {
     esp_log_set_vprintf(log_to_uart);
 
     ESP_LOGI("terminal", "terminal struct size: %u", sizeof(Term));
+    render_fb_write = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    render_fb_delete = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
 
     delay(1000);
 
