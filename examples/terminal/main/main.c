@@ -28,7 +28,7 @@
 
 #define BUF_SIZE (1024)
 
-#define COLUMNS 40
+#define COLUMNS 70
 #define ROWS 20
 
 int min(int a, int b) {
@@ -151,49 +151,83 @@ void tputc(uint32_t chr) {
   term.line[term.cursor.y][term.cursor.x] = chr;
 }
 
+enum RenderOperation {
+  NOP = 0,
+  WRITE = 1,
+  DELETE = 2,
+  REPLACE = 3,
+};
+
 void render() {
   for (int y = 0; y < ROWS; y++) {
     if (!term.meta[y].dirty) {
       continue;
     }
 
+    char utf8_line[4 * COLUMNS] = {0};
+    char utf8_replacement[4 * COLUMNS] = {0};
+    char* utf8_line_ptr = utf8_line;
+    char* utf8_replacement_ptr = utf8_replacement;
+    int start_x = 0;
+
+    enum RenderOperation last_operation = NOP;
+
     for (int x = 0; x < COLUMNS; x++) {
       CharMeta* cm = &term.meta[y].chars[x];
-      if (!cm->dirty) {
-        continue;
-      }
 
       uint32_t chr = term.line[y][x];
       uint32_t old_chr = term.old_line[y][x];
 
-      // the character has changed -> delete it
-      // Overwriting only works well for monospaced fonts.
-      if (chr != old_chr && old_chr) {
-        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.old_line[y], x);
-        int px_x = term.pixel_start_x + horizontal_advance;
-        int px_y = term.pixel_start_y + FiraCode.advance_y * y;
-
-        char data[5];
-        to_utf8(data, old_chr);
-
-        epd_poweron();
-        write_mode((GFXfont *) &FiraCode, (char *) data, &px_x, &px_y, NULL, WHITE_ON_WHITE);
-        epd_poweroff();
+      // determine operation to perform
+      enum RenderOperation operation = NOP;
+      if (!cm->dirty) {
+        operation = NOP;
+      } else if (chr != old_chr && old_chr && chr) {
+        operation = REPLACE;
+      } else if (chr != old_chr && old_chr && !chr) {
+        operation = DELETE;
+      } else if (chr != old_chr && !old_chr && chr) {
+        operation = WRITE;
       }
 
-      // draw new character
-      if (chr != old_chr && chr) {
-        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.line[y], x);
-        int px_x = term.pixel_start_x + horizontal_advance;
-        int px_y = term.pixel_start_y + FiraCode.advance_y * y;
-        char data[5];
-        to_utf8(data, chr);
+      if (operation != last_operation || x == COLUMNS - 1) {
+        if (last_operation == DELETE || last_operation == REPLACE) {
+          int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.old_line[y], start_x);
+          int px_x = term.pixel_start_x + horizontal_advance;
+          int px_y = term.pixel_start_y + FiraCode.advance_y * y;
 
-        // FIXME: color currently ignored
-        epd_poweron();
-        writeln((GFXfont *) &FiraCode, (char *) data, &px_x, &px_y, NULL);
-        epd_poweroff();
+          epd_poweron();
+          write_mode((GFXfont *) &FiraCode, utf8_replacement, &px_x, &px_y, NULL, WHITE_ON_WHITE);
+          epd_poweroff();
+        }
+
+        if (last_operation == WRITE || last_operation == REPLACE) {
+          int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.line[y], start_x);
+          int px_x = term.pixel_start_x + horizontal_advance;
+          int px_y = term.pixel_start_y + FiraCode.advance_y * y;
+
+          // FIXME: color currently ignored
+          epd_poweron();
+          writeln((GFXfont *) &FiraCode, utf8_line, &px_x, &px_y, NULL);
+          epd_poweroff();
+        }
+
+        utf8_line_ptr = utf8_line;
+        utf8_replacement_ptr = utf8_replacement;
+        start_x = x;
       }
+
+      if (operation != NOP) {
+        if (chr) {
+          to_utf8(utf8_line_ptr, chr);
+          utf8_line_ptr += codepoint_len(chr);
+        }
+        if (old_chr) {
+          to_utf8(utf8_replacement_ptr, old_chr);
+          utf8_replacement_ptr += codepoint_len(old_chr);
+        }
+      }
+      last_operation = operation;
       cm->dirty = false;
     }
     term.meta[y].dirty = false;
@@ -239,16 +273,14 @@ void epd_task() {
 
         uint32_t chr = read_char();
         if (chr == 0) {
+          render();
           continue;
         };
-
-        ESP_LOGI("terminal", "read char %d", chr);
 
         switch (chr) {
           case '\b':
             tmoveto(term.cursor.x - 1, term.cursor.y);
             tputc(0);
-            render();
             break;
           case '\r':
             tmoveto(0, term.cursor.y);
@@ -260,7 +292,6 @@ void epd_task() {
             if (chr >= 32) {
               tputc(chr);
               tmoveto(term.cursor.x + 1, term.cursor.y);
-              render();
             } else {
               ESP_LOGI("terminal", "unhandled control: %u", chr);
             }
