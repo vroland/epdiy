@@ -261,6 +261,40 @@ void render() {
   }
 }
 
+
+void tcontrolcode(uint32_t chr) {
+  switch (chr) {
+    // ignore bell
+    case '\a':
+      break;
+    // TODO: tabstop movement
+    case '\t':
+      tputc(32);
+      tmoveto(term.cursor.x + 1, term.cursor.y);
+      return;
+    case '\b':
+      tmoveto(term.cursor.x - 1, term.cursor.y);
+      tputc(0);
+      return;
+    case '\r':
+      tmoveto(0, term.cursor.y);
+      return;
+    // next line
+    case '\v':
+    case '\f':
+    case '\n':
+      tmoveto(0, term.cursor.y + 1);
+      return;
+    // TODO: implement escape sequences
+    case '\033':
+      break;
+    default:
+      ESP_LOGI("terminal", "unhandled control: %u", chr);
+      return;
+  }
+}
+
+
 void epd_task() {
     epd_init();
     delay(300);
@@ -282,7 +316,7 @@ void epd_task() {
     uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
 
     // Still log to the serial output
-    esp_log_set_vprintf(log_to_uart);
+    //esp_log_set_vprintf(log_to_uart);
 
     ESP_LOGI("terminal", "terminal struct size: %u", sizeof(Term));
     render_fb_write = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
@@ -305,24 +339,11 @@ void epd_task() {
           continue;
         };
 
-        switch (chr) {
-          case '\b':
-            tmoveto(term.cursor.x - 1, term.cursor.y);
-            tputc(0);
-            break;
-          case '\r':
-            tmoveto(0, term.cursor.y);
-            break;
-          case '\n':
-            tmoveto(0, term.cursor.y + 1);
-            break;
-          default:
-            if (chr >= 32) {
-              tputc(chr);
-              tmoveto(term.cursor.x + 1, term.cursor.y);
-            } else {
-              ESP_LOGI("terminal", "unhandled control: %u", chr);
-            }
+        if (chr < 32 || (chr >= 0x7F && chr <= 0x9F)) {
+          tcontrolcode(chr);
+        } else {
+          tputc(chr);
+          tmoveto(term.cursor.x + 1, term.cursor.y);
         }
     }
 }
