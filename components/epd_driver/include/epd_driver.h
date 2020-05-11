@@ -36,10 +36,22 @@ typedef struct {
 /// The image drawing mode.
 enum DrawMode {
   /// Draw black / grayscale image on a white display.
-  BLACK_ON_WHITE = 0,
+  BLACK_ON_WHITE = 1 << 0,
   /// "Draw with white ink" on a white display.
-  WHITE_ON_WHITE = 1,
+  WHITE_ON_WHITE = 1 << 1,
 };
+
+/// Font properties.
+typedef struct {
+  /// Foreground color
+  uint8_t fg_color: 4;
+  /// Background color
+  uint8_t bg_color: 4;
+  /// Use the glyph for this codepoint for missing glyphs.
+  uint32_t fallback_glyph;
+  /// Additional flags, reserved for future use
+  uint32_t flags;
+} FontProperties;
 
 /** Initialize the ePaper display */
 void epd_init();
@@ -165,9 +177,10 @@ typedef struct {
 
 /*!
  * Get the text bounds for string, when drawn at (x, y).
+ * Set font properties to NULL to use the defaults.
  */
 void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
-                     int *y1, int *w, int *h);
+                     int *y1, int *w, int *h, FontProperties* props);
 
 /*!
  * Write text to the EPD.
@@ -180,7 +193,7 @@ void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
  * If framebuffer is NULL, draw mode `mode` is used for direct drawing.
  */
 void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer, enum DrawMode mode);
+             uint8_t *framebuffer, enum DrawMode mode, FontProperties* properties);
 
 /**
  * Get the font glyph for a unicode code point.

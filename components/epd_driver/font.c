@@ -61,6 +61,17 @@ static uint32_t next_cp(uint8_t **string) {
   return codep;
 }
 
+
+static FontProperties font_properties_default() {
+    FontProperties props =  {
+        .fg_color = 0,
+        .bg_color = 15,
+        .fallback_glyph = 0,
+        .flags = 0
+    };
+    return props;
+}
+
 void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
   UnicodeInterval *intervals = font->intervals;
   *glyph = NULL;
@@ -81,12 +92,15 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
    @brief   Draw a single character to a pre-allocated buffer.
 */
 static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
-              uint16_t buf_height, uint32_t cp) {
+              uint16_t buf_height, uint32_t cp, FontProperties* props) {
 
   GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
 
-  // TODO: Draw Tofu character
+  if (!glyph) {
+      get_glyph(font, props->fallback_glyph, &glyph);
+  }
+
   if (!glyph) {
     return;
   }
@@ -125,11 +139,14 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
  * cursor (*x) forward, adjust the given bounds.
  */
 static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
-                   int *miny, int *maxx, int *maxy) {
+                   int *miny, int *maxx, int *maxy, FontProperties* props) {
   GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
 
-  // TODO: Draw Tofu character
+  if (!glyph) {
+      get_glyph(font, props->fallback_glyph, &glyph);
+  }
+
   if (!glyph) {
     return;
   }
@@ -150,12 +167,20 @@ static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *min
 static int min(int x, int y) { return x < y ? x : y; }
 
 void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
-                     int *y1, int *w, int *h) {
+                     int *y1, int *w, int *h, FontProperties* properties) {
+
+  FontProperties props;
+  if (properties == NULL) {
+    props = font_properties_default();
+  } else {
+    props = *properties;
+  }
+
   int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   int original_x = *x;
   uint32_t c;
   while ((c = next_cp((uint8_t**)&string))) {
-    get_char_bounds(font, c, x, y, &minx, &miny, &maxx, &maxy);
+    get_char_bounds(font, c, x, y, &minx, &miny, &maxx, &maxy, &props);
   }
   *x1 = min(original_x, minx);
   *w = maxx - *x1;
@@ -164,12 +189,19 @@ void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
 }
 
 void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer, enum DrawMode mode) {
+             uint8_t *framebuffer, enum DrawMode mode, FontProperties* properties) {
+
+  FontProperties props;
+  if (properties == NULL) {
+    props = font_properties_default();
+  } else {
+    props = *properties;
+  }
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
   int tmp_cur_x = *cursor_x;
   int tmp_cur_y = *cursor_y;
-  get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h);
+  get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h, &props);
 
   uint8_t *buffer;
   int buf_width;
@@ -202,7 +234,7 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
   int cursor_y_init = local_cursor_y;
 
   while ((c = next_cp((uint8_t**)&string))) {
-    draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c);
+    draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c, &props);
   }
 
   *cursor_x += local_cursor_x - cursor_x_init;
@@ -221,7 +253,7 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
 
 void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer) {
-    return write_mode(font, string, cursor_x, cursor_y, framebuffer, BLACK_ON_WHITE);
+    return write_mode(font, string, cursor_x, cursor_y, framebuffer, BLACK_ON_WHITE, NULL);
 }
 
 void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
