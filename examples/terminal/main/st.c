@@ -19,7 +19,6 @@
 
 #include "driver/uart.h"
 #include "epd_driver.h"
-#include "firacode.h"
 #include "esp_log.h"
 #include "config.h"
 
@@ -224,6 +223,7 @@ static char *base64dec(const char *);
 static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
+static GFXfont* get_font(Glyph g);
 
 /* Globals */
 static uint8_t* render_fb_write = NULL;
@@ -2647,7 +2647,12 @@ int calculate_horizontal_advance(GFXfont* font, Line line, int col) {
     get_glyph(font, cp, &glyph);
 
     if (!glyph) {
+        get_glyph(font, fallback_glyph, &glyph);
+    }
+
+    if (!glyph) {
       ESP_LOGW("terminal", "no glyph for %d", cp);
+      continue;
     }
     total += glyph->advance_x;
   }
@@ -2665,6 +2670,13 @@ static int pixel_start_x = 50;
 static int pixel_start_y = 50;
 
 Line *old_line = NULL;   /* old screen */
+
+static GFXfont* get_font(Glyph g) {
+    if (g.mode & ATTR_BOLD) {
+        return bold_font;
+    }
+    return font;
+};
 
 void render() {
   memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
@@ -2700,26 +2712,40 @@ void render() {
       }
 
       if (operation == DELETE || operation == REPLACE) {
-        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.old_line[y], x);
+        GFXfont* f = get_font(old_chr);
+        int horizontal_advance = calculate_horizontal_advance(f, term.old_line[y], x);
         int px_x = pixel_start_x + horizontal_advance;
-        int px_y = pixel_start_y + FiraCode.advance_y * y;
+        int px_y = pixel_start_y + f->advance_y * y;
         char data[5] = {0};
         utf8encode(old_chr.u, data);
+        FontProperties fprops = {
+            .fg_color = old_chr.fg,
+            .bg_color = old_chr.bg,
+            .fallback_glyph = fallback_glyph,
+            .flags = 0,
+        };
 
-        writeln((GFXfont *) &FiraCode, data, &px_x, &px_y, render_fb_delete);
+        write_mode(f, data, &px_x, &px_y, render_fb_delete, WHITE_ON_WHITE, &fprops);
         delete_min_line = MIN(y, delete_min_line);
         delete_max_line = MAX(y, delete_max_line);
       }
 
       if (operation == WRITE || operation == REPLACE) {
-        int horizontal_advance = calculate_horizontal_advance((GFXfont *) &FiraCode, term.line[y], x);
+        GFXfont* f = get_font(chr);
+        int horizontal_advance = calculate_horizontal_advance(f, term.line[y], x);
         int px_x = pixel_start_x + horizontal_advance;
-        int px_y = pixel_start_y + FiraCode.advance_y * y;
+        int px_y = pixel_start_y + f->advance_y * y;
         char data[5] = {0};
         utf8encode(chr.u, data);
+        FontProperties fprops = {
+            .fg_color = chr.fg,
+            .bg_color = chr.bg,
+            .fallback_glyph = fallback_glyph,
+            .flags = 0,
+        };
 
         // FIXME: color currently ignored
-        writeln((GFXfont *) &FiraCode, data, &px_x, &px_y, render_fb_write);
+        write_mode(f, data, &px_x, &px_y, render_fb_write, BLACK_ON_WHITE, &fprops);
         write_min_line = MIN(y, write_min_line);
         write_max_line = MAX(y, write_max_line);
       }
@@ -2734,9 +2760,10 @@ void render() {
 
   // delete buffer dirty
   if (delete_min_line <= delete_max_line) {
-    int offset = pixel_start_y + (delete_min_line - 1) * FiraCode.advance_y;
+    // TODO: properly calculate line height
+    int offset = pixel_start_y + (delete_min_line - 1) * font->advance_y;
     offset = MIN(EPD_HEIGHT, MAX(0, offset));
-    int height = (delete_max_line - delete_min_line + 1) * FiraCode.advance_y;
+    int height = (delete_max_line - delete_min_line + 1) * font->advance_y;
     height = MIN(height, EPD_HEIGHT - offset);
     uint8_t* start_ptr = render_fb_delete + EPD_WIDTH / 2 * offset;
     Rect_t area = {
@@ -2752,9 +2779,9 @@ void render() {
 
   // write buffer dirty
   if (write_min_line <= write_max_line) {
-    int offset = pixel_start_y + (write_min_line - 1) * FiraCode.advance_y;
+    int offset = pixel_start_y + (write_min_line - 1) * font->advance_y;
     offset = MIN(EPD_HEIGHT, MAX(0, offset));
-    int height = (write_max_line - write_min_line + 1) * FiraCode.advance_y;
+    int height = (write_max_line - write_min_line + 1) * font->advance_y;
     height = MIN(height, EPD_HEIGHT - offset);
     uint8_t* start_ptr = render_fb_write + EPD_WIDTH / 2 * offset;
     Rect_t area = {

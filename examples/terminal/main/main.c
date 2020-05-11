@@ -17,7 +17,6 @@
 #include <string.h>
 
 #include "epd_driver.h"
-//#include "firacode.h"
 #include "st.h"
 
 #define ECHO_TEST_TXD  (GPIO_NUM_1)

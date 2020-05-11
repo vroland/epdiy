@@ -1,11 +1,16 @@
 /* See LICENSE file for copyright and license details. */
+#include "firacode.h"
+#include "firacode_bold.h"
 
+static unsigned int fallback_glyph = '?';
+static GFXfont* font = (GFXfont*)&FiraCode;
+static GFXfont* bold_font = (GFXfont*)&FiraCode_Bold;
 /*
  * appearance
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "Fira Mono:pixelsize=14:antialias=true:autohint=true";
+//static char *font = "Fira Mono:pixelsize=14:antialias=true:autohint=true";
 static int borderpx = 0;
 
 /*
