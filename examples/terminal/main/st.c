@@ -224,6 +224,7 @@ static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
 static GFXfont* get_font(Glyph g);
+static void full_refresh();
 
 /* Globals */
 static uint8_t* render_fb_write = NULL;
@@ -1580,6 +1581,7 @@ tsetmode(int priv, int set, int *args, int narg)
 					tclearregion(0, 0, term.col-1,
 							term.row-1);
 				}
+                full_refresh();
 				if (set ^ alt) /* set is always 1 or 0 */
 					tswapscreen();
 				if (*args != 1049)
@@ -1743,6 +1745,7 @@ csihandle(void)
 			tclearregion(0, term.c.y, term.c.x, term.c.y);
 			break;
 		case 2: /* all */
+            full_refresh();
 			tclearregion(0, 0, term.col-1, term.row-1);
 			break;
 		default:
@@ -2677,6 +2680,16 @@ static GFXfont* get_font(Glyph g) {
     }
     return font;
 };
+
+static void full_refresh() {
+  epd_poweron();
+  epd_clear();
+  epd_poweroff();
+
+  for (int i = 0; i < term.row; i++) {
+      memset(term.old_line[i], 0, term.col * sizeof(Glyph));
+  }
+}
 
 void render() {
   memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
