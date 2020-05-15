@@ -2,6 +2,8 @@
 #include "firacode.h"
 #include "firacode_bold.h"
 
+static uint64_t MAX_UPDATES_SINCE_LAST_CLEAR = 10000;
+
 static unsigned int fallback_glyph = '?';
 static GFXfont* font = (GFXfont*)&FiraCode;
 static GFXfont* bold_font = (GFXfont*)&FiraCode_Bold;

@@ -2691,6 +2691,8 @@ static void full_refresh() {
   }
 }
 
+static uint64_t updates_since_clear = 0;
+
 void render() {
   memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
@@ -2701,8 +2703,10 @@ void render() {
   int delete_min_line = INT_MAX;
   int delete_max_line = INT_MIN;
 
+  bool is_full_clear = updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
+
   for (int y = 0; y < term.row; y++) {
-    if (!term.dirty[y]) {
+    if (!term.dirty[y] && !is_full_clear) {
       continue;
     }
 
@@ -2713,8 +2717,12 @@ void render() {
 
       // determine operation to perform
       enum RenderOperation operation = NOP;
-      if (chr.u == old_chr.u && chr.fg == old_chr.fg &&
-          chr.bg == old_chr.bg && chr.mode == old_chr.mode) {
+      if (is_full_clear && chr.u != ' ') {
+        operation = WRITE;
+      } else if (is_full_clear && chr.u == ' ') {
+        operation = NOP;
+      } else if (chr.u == old_chr.u && chr.fg == old_chr.fg &&
+                 chr.bg == old_chr.bg && chr.mode == old_chr.mode) {
         operation = NOP;
       } else if (old_chr.u != ' ' && chr.u != ' ') {
         operation = REPLACE;
@@ -2725,6 +2733,7 @@ void render() {
       }
 
       if (operation == DELETE || operation == REPLACE) {
+        updates_since_clear += 1;
         GFXfont* f = get_font(old_chr);
         int horizontal_advance = calculate_horizontal_advance(f, term.old_line[y], x);
         int px_x = pixel_start_x + horizontal_advance;
@@ -2772,7 +2781,7 @@ void render() {
   }
 
   // delete buffer dirty
-  if (delete_min_line <= delete_max_line) {
+  if (delete_min_line <= delete_max_line && !is_full_clear) {
     // TODO: properly calculate line height
     int offset = pixel_start_y + (delete_min_line - 1) * font->advance_y;
     offset = MIN(EPD_HEIGHT, MAX(0, offset));
@@ -2804,8 +2813,15 @@ void render() {
       .height = height + 8,
     };
     epd_poweron();
+    if (is_full_clear) {
+      epd_clear();
+    }
     epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
     epd_poweroff();
+  }
+
+  if (is_full_clear) {
+    updates_since_clear = 0;
   }
 }
 
