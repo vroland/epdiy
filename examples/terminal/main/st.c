@@ -2783,7 +2783,7 @@ void render() {
       .x = 0,
       .y = offset,
       .width = EPD_WIDTH,
-      .height = height,
+      .height = height + 8,
     };
     epd_poweron();
     epd_draw_image(area, start_ptr, WHITE_ON_WHITE);
@@ -2801,7 +2801,7 @@ void render() {
       .x = 0,
       .y = offset,
       .width = EPD_WIDTH,
-      .height = height,
+      .height = height + 8,
     };
     epd_poweron();
     epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
