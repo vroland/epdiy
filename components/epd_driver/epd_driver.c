@@ -6,8 +6,11 @@
 #include "esp_heap_caps.h"
 #include "esp_types.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "xtensa/core-macros.h"
 #include <string.h>
+#include "waveform_gc4.h"
 
 // number of bytes needed for one line of EPD pixel data.
 #define EPD_LINE_BYTES EPD_WIDTH / 4
@@ -31,7 +34,12 @@ const uint8_t contrast_cycles_4[15] = {15, 8, 8, 8, 8,  8,  10, 10,
 
 // Heap space to use for the EPD output lookup table, which
 // is calculated for each cycle.
-static uint8_t *conversion_lut;
+static uint32_t* lines[EPD_HEIGHT];
+
+static uint8_t* ext_lut;
+
+// DEPRECATED
+static uint8_t* conversion_lut;
 
 // output a row to the display.
 static void write_row(uint32_t output_time_dus) {
@@ -46,8 +54,15 @@ void epd_init() {
   epd_base_init(EPD_WIDTH);
   epd_temperature_init();
 
-  conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
-  assert(conversion_lut != NULL);
+  ext_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
+  assert(ext_lut != NULL);
+
+  for (int i=0; i < EPD_HEIGHT; i++) {
+    lines[i] = heap_caps_malloc(EPD_WIDTH / 4, MALLOC_CAP_32BIT);
+    if (lines[i] == NULL) {
+       ESP_LOGE("epd_task", "Could not allocate line buffer!");
+    }
+  }
 }
 
 // skip a display row
@@ -175,6 +190,95 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
   }
 }
 
+void build_ext_lut(int frame) {
+  for (uint32_t x=0; x < 256; x++) {
+    for (uint32_t y=0; y < 256; y++) {
+      uint8_t val1 = waveform_gc4[frame][x & 0xF][y & 0xF];
+      uint8_t val2 = waveform_gc4[frame][(x & 0xF0) >> 4][(y & 0xF0) >> 4];
+      ext_lut[(x << 8) | y] = (val2 << 2) | val1;
+    }
+  }
+}
+
+typedef struct {
+  uint8_t* from;
+  uint8_t* to;
+  int h_min;
+  int h_max;
+  TaskHandle_t main_task;
+} output_calc_params_t;
+
+void IRAM_ATTR build_difference_image(output_calc_params_t* params) {
+    uint8_t* input1_ptr = params->to + (EPD_WIDTH / 2 * params->h_min);
+    uint8_t* input2_ptr = params->from + (EPD_WIDTH / 2 * params->h_min);
+    for (int y=params->h_min; y < params->h_max; y+=2) {
+        uint8_t input1[EPD_WIDTH / 2];
+        uint8_t input2[EPD_WIDTH / 2];
+        memcpy(input1, input1_ptr, sizeof(input1));
+        memcpy(input2, input2_ptr, sizeof(input2));
+        uint8_t* t_ptr = input1;
+        uint8_t* f_ptr = input2;
+        for (int x=0; x < EPD_WIDTH / 16; x++) {
+            uint32_t val = 0;
+            uint16_t t;
+            uint16_t f;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 28;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 24;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 20;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 16;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 12;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 8;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t] << 4;
+            t = *(t_ptr++);
+            f = *(f_ptr++);
+            val |= ext_lut[(f << 8) | t];
+            lines[y][x] = val;
+        }
+        input1_ptr += EPD_WIDTH / 2 * 2;
+        input2_ptr += EPD_WIDTH / 2 * 2;
+    }
+    xTaskNotifyGive(params->main_task);
+    vTaskDelete(NULL);
+}
+
+void IRAM_ATTR calculate_output(uint8_t* from, uint8_t* to, int frame) {
+  build_ext_lut(frame);
+  TaskHandle_t t1, t2, parent;
+  parent = xTaskGetCurrentTaskHandle();
+  output_calc_params_t p1 = {
+    .from = from,
+    .to = to,
+    .h_min = 0,
+    .h_max = EPD_HEIGHT,
+    .main_task = parent,
+  };
+  output_calc_params_t p2 = {
+    .from = from,
+    .to = to,
+    .h_min = 1,
+    .h_max = EPD_HEIGHT,
+    .main_task = parent,
+  };
+  xTaskCreate((void(*)(void*))build_difference_image, "calc_out1", 8000, &p1, 10, &t1);
+  xTaskCreate((void(*)(void*))build_difference_image, "calc_out2", 8000, &p2, 10, &t2);
+  ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+  ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+}
+
 void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode) {
   const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
 
@@ -291,6 +395,21 @@ void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
 
 void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
   epd_draw_image(area, data, BLACK_ON_WHITE);
+}
+
+void epd_change_image(Rect_t area, uint8_t* from, uint8_t* to) {
+  for (uint8_t k = 0; k < 16; k++) {
+    uint32_t t1 = esp_timer_get_time();
+    calculate_output(from, to, k);
+    uint32_t t2 = esp_timer_get_time();
+    printf("generate took %d.\n", t2 - t1);
+    epd_start_frame();
+    for (int i = 0; i < EPD_HEIGHT; i++) {
+      memcpy(epd_get_current_buffer(), lines[i], EPD_LINE_BYTES);
+      write_row(10);
+    }
+    epd_end_frame();
+  }
 }
 
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {

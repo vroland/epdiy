@@ -206,3 +206,6 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph);
 void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              	  uint8_t *framebuffer);
 
+
+
+void epd_change_image(Rect_t area, uint8_t* from, uint8_t* to);
