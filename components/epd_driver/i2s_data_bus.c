@@ -110,9 +110,10 @@ void IRAM_ATTR i2s_start_line_output() {
 }
 
 void i2s_bus_init(i2s_bus_config *cfg) {
-  gpio_num_t I2S_GPIO_BUS[] = {cfg->data_0, cfg->data_1, cfg->data_2,
-                               cfg->data_3, cfg->data_4, cfg->data_5,
-                               cfg->data_6, cfg->data_7};
+  // TODO: Why?
+  gpio_num_t I2S_GPIO_BUS[] = {cfg->data_6, cfg->data_7, cfg->data_4,
+                               cfg->data_5, cfg->data_2, cfg->data_3,
+                               cfg->data_0, cfg->data_1};
 
   gpio_set_direction(cfg->start_pulse, GPIO_MODE_OUTPUT);
   gpio_set_level(cfg->start_pulse, 1);
