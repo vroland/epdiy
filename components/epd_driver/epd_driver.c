@@ -7,6 +7,10 @@
 #include "esp_types.h"
 #include "esp_log.h"
 #include "xtensa/core-macros.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
 #include <string.h>
 
 // number of bytes needed for one line of EPD pixel data.
@@ -32,6 +36,7 @@ const uint8_t contrast_cycles_4[15] = {15, 8, 8, 8, 8,  8,  10, 10,
 // Heap space to use for the EPD output lookup table, which
 // is calculated for each cycle.
 static uint8_t *conversion_lut;
+static QueueHandle_t output_queue;
 
 // output a row to the display.
 static void write_row(uint32_t output_time_dus) {
@@ -48,6 +53,7 @@ void epd_init() {
 
   conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
   assert(conversion_lut != NULL);
+  output_queue = xQueueCreate(64, EPD_WIDTH / 2);
 }
 
 // skip a display row
@@ -175,36 +181,65 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
   }
 }
 
-void IRAM_ATTR populate_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode) {
-  const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
-
+/*
+static inline void calc_lut_pos(
+    uint8_t *lut,
+    uint32_t pos,
+    uint32_t add_mask,
+    uint32_t shift_amount
+) {
   uint8_t r = k + 1;
   uint32_t add_mask = (r << 24) | (r << 16) | (r << 8) | r;
   uint8_t shift_amount;
+  const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
+  uint32_t val = pos;
+  val = (val | (val << 8)) & 0x00FF00FF;
+  val = (val | (val << 4)) & 0x0F0F0F0F;
+  val += add_mask;
+  val = ~val;
+  // now the bits we need are masked
+  val &= 0x10101010;
+  // shift relevant bits to the most significant byte, then shift down
+  lut[pos] = ((val * shiftmul) >> shift_amount);
+}*/
+
+static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
   switch (mode) {
     case BLACK_ON_WHITE:
-      shift_amount = 25;
+      memset(lut_mem, 0x55, (1 << 16));
       break;
     case WHITE_ON_WHITE:
-      shift_amount = 24;
+      memset(lut_mem, 0xAA, (1 << 16));
       break;
     default:
       ESP_LOGW("epd_driver", "unknown draw mode %d!", mode);
-      shift_amount = 25;
       break;
   }
+}
 
-  for (uint32_t i = 0; i < (1 << 16); i++) {
-    uint32_t val = i;
-    val = (val | (val << 8)) & 0x00FF00FF;
-    val = (val | (val << 4)) & 0x0F0F0F0F;
-    val += add_mask;
-    val = ~val;
-    // now the bits we need are masked
-    val &= 0x10101010;
-    // shift relevant bits to the most significant byte, then shift down
-    lut_mem[i] = ((val * shiftmul) >> shift_amount);
+static void IRAM_ATTR update_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode) {
+  k = 15 - k;
+
+  // reset the pixels which are not to be lightened / darkened
+  // any longer in the current frame
+  for (uint32_t l = k; l < (1 << 16); l+=16) {
+    lut_mem[l] &= 0xFC;
   }
+
+  for (uint32_t l = (k << 4); l < (1 << 16); l+=(1 << 8)) {
+    for (uint32_t p = 0; p < 16; p++) {
+      lut_mem[l + p] &= 0xF3;
+    }
+  }
+  for (uint32_t l = (k << 8); l < (1 << 16); l+=(1 << 12)) {
+    for (uint32_t p = 0; p < (1 << 8); p++) {
+      lut_mem[l + p] &= 0xCF;
+    }
+  }
+  for (uint32_t p = (k << 12); p < ((k + 1) << 12); p++) {
+    lut_mem[p] &= 0x3F;
+  }
+
 }
 
 void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
@@ -293,68 +328,131 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
   epd_draw_image(area, data, BLACK_ON_WHITE);
 }
 
+typedef struct {
+  uint8_t* data_ptr;
+  SemaphoreHandle_t done_smphr;
+  Rect_t area;
+  int frame;
+  enum DrawMode mode;
+} OutputParams;
+
+void IRAM_ATTR provide_out(OutputParams* params) {
+  uint8_t line[EPD_WIDTH / 2];
+  memset(line, 255, EPD_WIDTH / 2);
+  Rect_t area = params->area;
+  uint8_t* ptr = params->data_ptr;
+
+  if (params->frame == 0) {
+    reset_lut(conversion_lut, params->mode);
+  }
+
+  update_LUT(conversion_lut, params->frame, params->mode);
+
+  if (area.x < 0) {
+    ptr += -area.x / 2;
+  }
+  if (area.y < 0) {
+    ptr += (area.width / 2 + area.width % 2) * -area.y;
+  }
+
+  for (int i = 0; i < EPD_HEIGHT; i++) {
+    if (i < area.y || i >= area.y + area.height) {
+      continue;
+    }
+
+    uint32_t *lp;
+    if (area.width == EPD_WIDTH && area.x == 0) {
+      lp = (uint32_t *)ptr;
+      ptr += EPD_WIDTH / 2;
+    } else {
+      uint8_t *buf_start = (uint8_t *)line;
+      uint32_t line_bytes = area.width / 2 + area.width % 2;
+      if (area.x >= 0) {
+        buf_start += area.x / 2;
+      } else {
+        // reduce line_bytes to actually used bytes
+        line_bytes += area.x / 2;
+      }
+      line_bytes = min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
+      memcpy(buf_start, ptr, line_bytes);
+      ptr += area.width / 2 + area.width % 2;
+
+      // mask last nibble for uneven width
+      if (area.width % 2 == 1 && area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
+        *(buf_start + line_bytes - 1) |= 0xF0;
+      }
+      if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
+        // shift one nibble to right
+        nibble_shift_buffer_right(
+            buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
+                                               (uint32_t)buf_start));
+      }
+      lp = (uint32_t *)line;
+    }
+    xQueueSendToBack(output_queue, lp, portMAX_DELAY);
+  }
+
+  xSemaphoreGive(params->done_smphr);
+  vTaskDelay(portMAX_DELAY);
+}
+
+void IRAM_ATTR feed_display(OutputParams* params) {
+  Rect_t area = params->area;
+  const uint8_t *contrast_lut = contrast_cycles_4;
+
+  epd_start_frame();
+  for (int i = 0; i < EPD_HEIGHT; i++) {
+    if (i < area.y || i >= area.y + area.height) {
+      skip_row(contrast_lut[params->frame]);
+      continue;
+    }
+    uint8_t output[EPD_WIDTH / 2];
+    xQueueReceive(output_queue, output, portMAX_DELAY);
+    calc_epd_input_4bpp((uint32_t*)output, epd_get_current_buffer(), params->frame, conversion_lut);
+    write_row(contrast_lut[params->frame]);
+  }
+  // Since we "pipeline" row output, we still have to latch out the last row.
+  write_row(contrast_lut[params->frame]);
+  epd_end_frame();
+
+  xSemaphoreGive(params->done_smphr);
+  vTaskDelay(portMAX_DELAY);
+}
+
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
-  const uint8_t *contrast_lut = contrast_cycles_4;
 
+  SemaphoreHandle_t fetch_sem = xSemaphoreCreateBinary();
+  SemaphoreHandle_t feed_sem = xSemaphoreCreateBinary();
   for (uint8_t k = 0; k < frame_count; k++) {
-    populate_LUT(conversion_lut, k, mode);
-    uint8_t *ptr = data;
 
-    if (area.x < 0) {
-      ptr += -area.x / 2;
-    }
-    if (area.y < 0) {
-      ptr += (area.width / 2 + area.width % 2) * -area.y;
-    }
+    OutputParams p1 = {
+      .area = area,
+      .data_ptr = data,
+      .frame = k,
+      .mode = mode,
+      .done_smphr = fetch_sem,
+    };
+    OutputParams p2 = {
+      .area = area,
+      .data_ptr = data,
+      .frame = k,
+      .mode = mode,
+      .done_smphr = feed_sem,
+    };
 
+    TaskHandle_t t1, t2;
+    xTaskCreatePinnedToCore((void (*)(void *))provide_out, "privide_out", 8000, &p1, 10, &t1, 0);
+    xTaskCreatePinnedToCore((void (*)(void *))feed_display, "render", 8000, &p2, 10, &t2, 1);
 
-    epd_start_frame();
-    // initialize with null row to avoid artifacts
-    for (int i = 0; i < EPD_HEIGHT; i++) {
-      if (i < area.y || i >= area.y + area.height) {
-        skip_row(contrast_lut[k]);
-        continue;
-      }
+    xSemaphoreTake(fetch_sem, portMAX_DELAY);
+    xSemaphoreTake(feed_sem, portMAX_DELAY);
 
-      uint32_t *lp;
-      if (area.width == EPD_WIDTH && area.x == 0) {
-        lp = (uint32_t *)ptr;
-        ptr += EPD_WIDTH / 2;
-      } else {
-        uint8_t *buf_start = (uint8_t *)line;
-        uint32_t line_bytes = area.width / 2 + area.width % 2;
-        if (area.x >= 0) {
-          buf_start += area.x / 2;
-        } else {
-          // reduce line_bytes to actually used bytes
-          line_bytes += area.x / 2;
-        }
-        line_bytes = min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
-        memcpy(buf_start, ptr, line_bytes);
-        ptr += area.width / 2 + area.width % 2;
-
-        // mask last nibble for uneven width
-        if (area.width % 2 == 1 && area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
-          *(buf_start + line_bytes - 1) |= 0xF0;
-        }
-        if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
-          // shift one nibble to right
-          nibble_shift_buffer_right(
-              buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
-                                                 (uint32_t)buf_start));
-        }
-        lp = (uint32_t *)line;
-      }
-
-      uint8_t *buf = epd_get_current_buffer();
-      calc_epd_input_4bpp(lp, buf, k, conversion_lut);
-      write_row(contrast_lut[k]);
-    }
-    // Since we "pipeline" row output, we still have to latch out the last row.
-    write_row(contrast_lut[k]);
-    epd_end_frame();
+    vTaskDelete(t1);
+    vTaskDelete(t2);
   }
+  vSemaphoreDelete(fetch_sem);
+  vSemaphoreDelete(feed_sem);
 }
