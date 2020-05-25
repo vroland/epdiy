@@ -2683,7 +2683,7 @@ static GFXfont* get_font(Glyph g) {
 
 static void full_refresh() {
   epd_poweron();
-  epd_clear();
+  epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
 
   for (int i = 0; i < term.row; i++) {
@@ -2781,7 +2781,11 @@ void render() {
   }
 
   // delete buffer dirty
-  if (delete_min_line <= delete_max_line && !is_full_clear) {
+  bool delete_dirty = delete_min_line <= delete_max_line;
+  // write buffer dirty
+  bool write_dirty = write_min_line <= write_max_line;
+
+  if (delete_dirty && !is_full_clear) {
     // TODO: properly calculate line height
     int offset = pixel_start_y + (delete_min_line - 1) * font->advance_y;
     offset = MIN(EPD_HEIGHT, MAX(0, offset));
@@ -2796,11 +2800,12 @@ void render() {
     };
     epd_poweron();
     epd_draw_image(area, start_ptr, WHITE_ON_WHITE);
-    epd_poweroff();
+    if (!write_dirty) {
+        epd_poweroff();
+    }
   }
 
-  // write buffer dirty
-  if (write_min_line <= write_max_line) {
+  if (write_dirty) {
     int offset = pixel_start_y + (write_min_line - 1) * font->advance_y;
     offset = MIN(EPD_HEIGHT, MAX(0, offset));
     int height = (write_max_line - write_min_line + 1) * font->advance_y;
@@ -2812,9 +2817,11 @@ void render() {
       .width = EPD_WIDTH,
       .height = height + 8,
     };
-    epd_poweron();
     if (is_full_clear) {
-      epd_clear();
+      full_refresh();
+      epd_poweron();
+    } else if (!delete_dirty) {
+      epd_poweron();
     }
     epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
     epd_poweroff();
