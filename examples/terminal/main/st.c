@@ -2681,7 +2681,13 @@ static GFXfont* get_font(Glyph g) {
     return font;
 };
 
+static uint64_t updates_since_clear = 0;
+static bool drawn_since_clear = true;
+
 static void full_refresh() {
+  if (!drawn_since_clear) {
+    return;
+  }
   epd_poweron();
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
@@ -2689,9 +2695,8 @@ static void full_refresh() {
   for (int i = 0; i < term.row; i++) {
       memset(term.old_line[i], 0, term.col * sizeof(Glyph));
   }
+  drawn_since_clear = false;
 }
-
-static uint64_t updates_since_clear = 0;
 
 void render() {
   memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
@@ -2825,6 +2830,7 @@ void render() {
     }
     epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
     epd_poweroff();
+    drawn_since_clear = true;
   }
 
   if (is_full_clear) {
