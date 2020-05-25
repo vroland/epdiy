@@ -73,6 +73,15 @@ void epd_clear();
 void epd_clear_area(Rect_t area);
 
 /**
+ * Clear an area by flashing it.
+ *
+ * @param area: The area to clear.
+ * @param cycles: The number of black-to-white clear cycles.
+ * @param cycle_time: Length of a cycle. Default: 50 (us).
+ */
+void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time);
+
+/**
  * Draw a picture to a given area. The image area is not cleared and assumed
  * to be white before drawing.
  *

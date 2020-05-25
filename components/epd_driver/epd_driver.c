@@ -121,26 +121,20 @@ void epd_push_pixels(Rect_t *area, short time, bool color) {
 }
 
 void epd_clear_area(Rect_t area) {
-  const short white_time = 50;
-  const short dark_time = 50;
+  epd_clear_area_cycles(area, 3, 50);
+}
 
-  for (int i = 0; i < 3; i++) {
-    epd_push_pixels(&area, dark_time, 0);
-  }
-  for (int i = 0; i < 3; i++) {
-    epd_push_pixels(&area, white_time, 1);
-  }
-  for (int i = 0; i < 3; i++) {
-    epd_push_pixels(&area, white_time, 0);
-  }
-  for (int i = 0; i < 3; i++) {
-    epd_push_pixels(&area, white_time, 1);
-  }
-  for (int i = 0; i < 3; i++) {
-    epd_push_pixels(&area, white_time, 0);
-  }
-  for (int i = 0; i < 3; i++) {
-    epd_push_pixels(&area, white_time, 1);
+void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time) {
+  const short white_time = cycle_time;
+  const short dark_time = cycle_time;
+
+  for (int c = 0; c < cycles; c++) {
+      for (int i = 0; i < 3; i++) {
+        epd_push_pixels(&area, dark_time, 0);
+      }
+      for (int i = 0; i < 3; i++) {
+        epd_push_pixels(&area, white_time, 1);
+      }
   }
 }
 
