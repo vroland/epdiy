@@ -2698,6 +2698,15 @@ static void full_refresh() {
   drawn_since_clear = false;
 }
 
+static uint8_t displaycolor(uint32_t col) {
+    if (IS_TRUECOL(col)) {
+        return (30 * ((col & 0xFF0000) >> 16) +
+                59 * ((col & 0x00FF00) >> 8) +
+                11 * (col & 0x0000FF)) / 100 / 16;
+    }
+    return colorscheme[col];
+}
+
 void render() {
   memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
@@ -2746,8 +2755,8 @@ void render() {
         char data[5] = {0};
         utf8encode(old_chr.u, data);
         FontProperties fprops = {
-            .fg_color = old_chr.fg,
-            .bg_color = old_chr.bg,
+            .fg_color = displaycolor(old_chr.fg),
+            .bg_color = displaycolor(old_chr.bg),
             .fallback_glyph = fallback_glyph,
             .flags = 0,
         };
@@ -2765,8 +2774,8 @@ void render() {
         char data[5] = {0};
         utf8encode(chr.u, data);
         FontProperties fprops = {
-            .fg_color = chr.fg,
-            .bg_color = chr.bg,
+            .fg_color = displaycolor(chr.fg),
+            .bg_color = displaycolor(chr.bg),
             .fallback_glyph = fallback_glyph,
             .flags = 0,
         };
