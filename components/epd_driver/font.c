@@ -111,6 +111,12 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
     return;
   }
 
+  uint8_t bitmap_color_transform[16];
+  uint8_t fg = props->fg_color;
+  for (int i = 0; i < 16; i++) {
+	bitmap_color_transform[i] = fg + ((15 - fg) * i / 16);
+  }
+
   uint32_t offset = glyph->data_offset;
   uint8_t width = glyph->width, height = glyph->height;
   int left = glyph->left;
@@ -131,10 +137,11 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
     }
     uint32_t buf_pos = yy * buf_width + xx / 2;
 	uint8_t old = buffer[buf_pos];
+	uint8_t col = bitmap_color_transform[bitmap[i] >> 4];
     if (xx % 2 == 0) {
-      buffer[buf_pos] = (old & 0xF0) | color_mix(old & 0x0F, bitmap[i] >> 4, props);
+      buffer[buf_pos] = (old & 0xF0) | color_mix(old & 0x0F, col, props);
     } else {
-      buffer[buf_pos] = (old & 0x0F) | color_mix((old & 0xF0) >> 4 , bitmap[i] >> 4, props) << 4;
+      buffer[buf_pos] = (old & 0x0F) | color_mix((old & 0xF0) >> 4 , col, props) << 4;
     }
   }
   free(bitmap);
