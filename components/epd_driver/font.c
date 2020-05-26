@@ -29,6 +29,8 @@ static utf_t *utf[] = {
     &(utf_t){0},
 };
 
+static inline int min(int x, int y) { return x < y ? x : y; }
+
 static int utf8_len(const uint8_t ch) {
   int len = 0;
   for (utf_t **u = utf; *u; ++u) {
@@ -88,6 +90,10 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
   return;
 }
 
+static uint8_t color_mix(uint8_t c1, uint8_t c2, FontProperties* props) {
+  return min(c1, c2);
+}
+
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
@@ -124,10 +130,11 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
         continue;
     }
     uint32_t buf_pos = yy * buf_width + xx / 2;
+	uint8_t old = buffer[buf_pos];
     if (xx % 2 == 0) {
-      buffer[buf_pos] = (buffer[buf_pos] & 0xF0) | (bitmap[i] >> 4);
+      buffer[buf_pos] = (old & 0xF0) | color_mix(old & 0x0F, bitmap[i] >> 4, props);
     } else {
-      buffer[buf_pos] = (buffer[buf_pos] & 0x0F) | (bitmap[i] & 0xF0);
+      buffer[buf_pos] = (old & 0x0F) | color_mix((old & 0xF0) >> 4 , bitmap[i] >> 4, props) << 4;
     }
   }
   free(bitmap);
@@ -163,8 +170,6 @@ static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *min
     *maxy = y2;
   *x += glyph->advance_x;
 }
-
-static int min(int x, int y) { return x < y ? x : y; }
 
 void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
                      int *y1, int *w, int *h, FontProperties* properties) {
