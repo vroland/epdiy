@@ -40,6 +40,10 @@ static QueueHandle_t output_queue;
 
 // output a row to the display.
 static void write_row(uint32_t output_time_dus) {
+  // avoid too light output after skipping on some displays
+  if (skipping) {
+      vTaskDelay(2);
+  }
   skipping = 0;
   epd_output_row(output_time_dus);
 }
@@ -418,10 +422,10 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
 
+  vTaskDelay(50);
   SemaphoreHandle_t fetch_sem = xSemaphoreCreateBinary();
   SemaphoreHandle_t feed_sem = xSemaphoreCreateBinary();
   for (uint8_t k = 0; k < frame_count; k++) {
-
     OutputParams p1 = {
       .area = area,
       .data_ptr = data,
