@@ -13,6 +13,16 @@ Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support 
 
 The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB features a 33pin and a 39pin connector, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2
 
+Building It
+-----------
+
+If you want to build a board right now, there are two possible routes:
+ - Use the current master-branch PCB (`hardware/epaper-breakout/gerbers`), contributed by @sebastius.
+   They, offer some improvements over the original v2 PCB, as described here: https://github.com/vroland/epdiy/issues/3.
+   Although this version *should* work, it was not physically built yet. (if you did, please contact me!)
+ - Use the original v2 PCB (`hardware/epaper-breakout/gerbers_v2_rev0.zip`). 
+   However, you might run into issue #3 with some selections of parts.
+
 Gettings Started
 ----------------
 
