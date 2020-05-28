@@ -1880,11 +1880,6 @@ F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21942e.pdf" H 6050 5700 50 
 	1    6200 5450
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	6050 4350 5900 4350
-Wire Wire Line
-	5900 4350 5900 4450
-Connection ~ 5900 4450
 Text Label 7500 1900 0    50   ~ 0
 V_TEMP
 Text Label 7000 5450 2    50   ~ 0
@@ -1918,19 +1913,8 @@ Wire Wire Line
 	11950 1900 11450 1900
 Text Label 11950 1900 2    50   ~ 0
 ~SMPS_CTRL
-$Comp
-L Connector_Generic:Conn_02x01 J?
-U 1 1 5E8C42DF
-P 7750 4000
-F 0 "J?" H 7800 4217 50  0000 C CNN
-F 1 "Conn_02x01" H 7800 4126 50  0000 C CNN
-F 2 "" H 7750 4000 50  0001 C CNN
-F 3 "~" H 7750 4000 50  0001 C CNN
-	1    7750 4000
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	7550 4000 7300 4000
-Text Label 7300 4000 0    50   ~ 0
+Text Label 5550 4350 0    50   ~ 0
 5V
+Wire Wire Line
+	5550 4350 6050 4350
 $EndSCHEMATC
