@@ -3,26 +3,37 @@ import freetype
 import zlib
 import sys
 import re
+import math
 from collections import namedtuple
 
 GlyphProps = namedtuple("GlyphProps", ["width", "height", "advance_x", "left", "top", "compressed_size", "data_offset", "code_point"])
 
 font_stack = [
-    freetype.Face("/usr/share/fonts/TTF/FiraSans-Regular.ttf"),
+    freetype.Face("/usr/share/fonts/TTF/FiraCode-Regular.ttf"),
     freetype.Face("/usr/share/fonts/TTF/Symbola.ttf")
 ]
-font_name = "FiraSans"
+font_name = "FiraCode"
 
 # inclusive unicode code point intervals
 # must not overlap and be in ascending order
 intervals = [
     (32, 126),
     (160, 255),
+    (0x2500, 0x259F),
     (0x2700, 0x27BF),
+    # powerline symbols
+    (0xE0A0, 0xE0A2),
+    (0xE0B0, 0xE0B3),
     (0x1F600, 0x1F680),
 ]
 
-size = 20
+size = 12
+
+def norm_floor(val):
+    return int(math.floor(val / (1 << 6)))
+
+def norm_ceil(val):
+    return int(math.ceil(val / (1 << 6)))
 
 for face in font_stack:
     # shift by 6 bytes, because sizes are given as 6-bit fractions
@@ -36,27 +47,31 @@ def chunks(l, n):
 total_size = 0
 total_packed = 0
 all_glyphs = []
+
+def load_glyph(code_point):
+    face_index = 0
+    while face_index < len(font_stack):
+        face = font_stack[face_index]
+        glyph_index = face.get_char_index(code_point)
+        if glyph_index > 0:
+            face.load_glyph(glyph_index, freetype.FT_LOAD_RENDER)
+            return face
+            break
+        face_index += 1
+        print (f"falling back to font {face_index} for {chr(code_point)}.", file=sys.stderr)
+    raise ValueError(f"code point {code_point} not found in font stack!")
+
 for i_start, i_end in intervals:
     for code_point in range(i_start, i_end + 1):
-        face_index = 0
-        face = None
-        while face_index < len(font_stack):
-            face = font_stack[face_index]
-            if face.get_char_index(code_point) > 0:
-                face.load_char(chr(code_point))
-                break
-            face_index += 1
-            print (f"falling back to font {face_index} for {chr(code_point)}.", file=sys.stderr)
-
+        face = load_glyph(code_point)
         bitmap = face.glyph.bitmap
-
         packed = bytes([255 - b for b in bitmap.buffer]);
         total_packed += len(packed)
         compressed = zlib.compress(packed)
         glyph = GlyphProps(
             width = bitmap.width,
             height = bitmap.rows,
-            advance_x = face.glyph.advance.x >> 6,
+            advance_x = norm_floor(face.glyph.advance.x),
             left = face.glyph.bitmap_left,
             top = face.glyph.bitmap_top,
             compressed_size = len(compressed),
@@ -65,6 +80,9 @@ for i_start, i_end in intervals:
         )
         total_size += len(compressed)
         all_glyphs.append((glyph, compressed))
+
+# pipe seems to be a good heuristic for the "real" descender
+face = load_glyph(ord('|'))
 
 glyph_data = []
 glyph_props = []
@@ -100,5 +118,7 @@ print(f"    (uint8_t*){font_name}Bitmaps,")
 print(f"    (GFXglyph*){font_name}Glyphs,")
 print(f"    (UnicodeInterval*){font_name}Intervals,")
 print(f"    {len(intervals)},")
-print(f"    {face.size.height >> 6},")
+print(f"    {norm_ceil(face.size.height)},")
+print(f"    {norm_ceil(face.size.ascender)},")
+print(f"    {norm_floor(face.size.descender)},")
 print("};")
