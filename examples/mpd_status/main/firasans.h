@@ -12107,5 +12107,7 @@ const GFXfont FiraSans = {
     (GFXglyph*)FiraSansGlyphs,
     (UnicodeInterval*)FiraSansIntervals,
     4,
-    53,
+    50,
+    39,
+    -12,
 };
