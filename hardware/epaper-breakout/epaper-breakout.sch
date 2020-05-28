@@ -1932,4 +1932,48 @@ Text GLabel 1400 2900 0    50   Input ~ 0
 ~SMPS_CTRL
 Text GLabel 800  3000 1    50   Input ~ 0
 +3.3V
+$Comp
+L Amplifier_Operational:LM358 U7
+U 2 1 5ED3784B
+P 6000 6850
+F 0 "U7" H 6000 7217 50  0000 C CNN
+F 1 "LM358" H 6000 7126 50  0000 C CNN
+F 2 "" H 6000 6850 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/lm2904-n.pdf" H 6000 6850 50  0001 C CNN
+	2    6000 6850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6300 6850 6550 6850
+Wire Wire Line
+	6550 6850 6550 7200
+Wire Wire Line
+	6550 7200 5500 7200
+Wire Wire Line
+	5500 7200 5500 6950
+Wire Wire Line
+	5500 6950 5700 6950
+$Comp
+L power:GND #PWR08
+U 1 1 5ED5315E
+P 5350 6750
+F 0 "#PWR08" H 5350 6500 50  0001 C CNN
+F 1 "GND" H 5355 6577 50  0000 C CNN
+F 2 "" H 5350 6750 50  0001 C CNN
+F 3 "" H 5350 6750 50  0001 C CNN
+	1    5350 6750
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5700 6750 5350 6750
+Wire Notes Line
+	5100 6150 5100 7550
+Wire Notes Line
+	5100 7550 6700 7550
+Wire Notes Line
+	6700 7550 6700 6150
+Wire Notes Line
+	6700 6150 5100 6150
+Text Notes 5400 6350 0    50   ~ 0
+Unused opamp neutralizer
 $EndSCHEMATC
