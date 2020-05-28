@@ -16,7 +16,7 @@ ED097OC4
 
 The ED097OC4 was the original target of this project. It is an 9.7 inch screen, with a resolution of 1200 * 825 pixels (150dpi).
 It is fairly available on Ebay and AliExpress, for around 30$ to 35$. 
-There is also a lower contrast version (ED097OC1), which was not tested and shoudl not be ordered.
+There is also a lower contrast version (ED097OC1) which also works. 
 
 .. image:: img/ed097oc4.jpg
 
