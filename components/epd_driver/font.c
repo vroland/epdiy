@@ -30,6 +30,7 @@ static utf_t *utf[] = {
 };
 
 static inline int min(int x, int y) { return x < y ? x : y; }
+static inline int max(int x, int y) { return x > y ? x : y; }
 
 static int utf8_len(const uint8_t ch) {
   int len = 0;
@@ -90,8 +91,11 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
   return;
 }
 
-static uint8_t color_mix(uint8_t c1, uint8_t c2, FontProperties* props) {
-  return min(c1, c2);
+static uint8_t pixel_on_bg(uint8_t bg, uint8_t strength, FontProperties* props) {
+  int d = (int)props->fg_color - (int)bg;
+  int col = (int)bg + (15 - strength) * d / 15;
+  col = min(15, max(0, col));
+  return (uint8_t)col;
 }
 
 /*!
@@ -109,12 +113,6 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
 
   if (!glyph) {
     return;
-  }
-
-  uint8_t bitmap_color_transform[16];
-  uint8_t fg = props->fg_color;
-  for (int i = 0; i < 16; i++) {
-	bitmap_color_transform[i] = fg + ((15 - fg) * i / 16);
   }
 
   uint32_t offset = glyph->data_offset;
@@ -137,11 +135,10 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
     }
     uint32_t buf_pos = yy * buf_width + xx / 2;
 	uint8_t old = buffer[buf_pos];
-	uint8_t col = bitmap_color_transform[bitmap[i] >> 4];
     if (xx % 2 == 0) {
-      buffer[buf_pos] = (old & 0xF0) | color_mix(old & 0x0F, col, props);
+      buffer[buf_pos] = (old & 0xF0) | pixel_on_bg(old & 0x0F, bitmap[i] >> 4, props);
     } else {
-      buffer[buf_pos] = (old & 0x0F) | color_mix((old & 0xF0) >> 4 , col, props) << 4;
+      buffer[buf_pos] = (old & 0x0F) | (pixel_on_bg((old & 0xF0) >> 4, bitmap[i] >> 4, props) << 4);
     }
   }
   free(bitmap);
@@ -167,14 +164,23 @@ static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *min
 
   int x1 = *x + glyph->left, y1 = *y + (glyph->top - glyph->height),
       x2 = x1 + glyph->width, y2 = y1 + glyph->height;
-  if (x1 < *minx)
-    *minx = x1;
-  if (y1 < *miny)
-    *miny = y1;
-  if (x2 > *maxx)
-    *maxx = x2;
-  if (y2 > *maxy)
-    *maxy = y2;
+
+  // background needs to be taken into account
+  if (props->flags & DRAW_BACKGROUND) {
+	*minx = min(*x, min(*minx, x1));
+	*maxx = max(max(*x + glyph->advance_x, x2), *maxx);
+	*miny = min(*y + font->descender, min(*miny, y1));
+	*maxy = max(font->descender + font->advance_y, max(*maxy, y2));
+  } else {
+	if (x1 < *minx)
+	  *minx = x1;
+	if (y1 < *miny)
+	  *miny = y1;
+	if (x2 > *maxx)
+	  *maxx = x2;
+	if (y2 > *maxy)
+	  *maxy = y2;
+  }
   *x += glyph->advance_x;
 }
 
@@ -188,6 +194,13 @@ void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
     props = *properties;
   }
 
+  if (*string == '\0') {
+	*w = 0;
+	*h = 0;
+	*y1 = *y;
+	*x1 = *x;
+	return;
+  }
   int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   int original_x = *x;
   uint32_t c;
@@ -202,6 +215,11 @@ void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
 
 void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer, enum DrawMode mode, FontProperties* properties) {
+
+
+  if (*string == '\0') {
+	return;
+  }
 
   FontProperties props;
   if (properties == NULL) {
@@ -245,6 +263,12 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
   int cursor_x_init = local_cursor_x;
   int cursor_y_init = local_cursor_y;
 
+  uint8_t bg = properties->bg_color;
+  if (props.flags & DRAW_BACKGROUND) {
+	for (int l = 0; l < font->advance_y; l++) {
+	  epd_draw_hline(local_cursor_x, local_cursor_y - (font->advance_y - baseline_height) + l, w, bg << 4, buffer);
+	}
+  }
   while ((c = next_cp((uint8_t**)&string))) {
     draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c, &props);
   }

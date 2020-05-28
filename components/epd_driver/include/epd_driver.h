@@ -41,6 +41,15 @@ enum DrawMode {
   WHITE_ON_WHITE = 1 << 1,
 };
 
+/// Font drawing flags
+enum DrawFlags {
+    /// Draw a background.
+    ///
+    /// Take the background into account
+    /// when calculating the size.
+    DRAW_BACKGROUND = 1 << 0,
+};
+
 /// Font properties.
 typedef struct {
   /// Foreground color
@@ -182,6 +191,8 @@ typedef struct {
   UnicodeInterval *intervals; ///< Valid unicode intervals for this font
   uint32_t interval_count;    ///< Number of unicode intervals.
   uint8_t advance_y;          ///< Newline distance (y axis)
+  int ascender;               ///< Maximal height of a glyph above the base line
+  int descender;              ///< Maximal height of a glyph below the base line
 } GFXfont;
 
 /*!
