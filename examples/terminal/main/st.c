@@ -2639,6 +2639,7 @@ resettitle(void)
 // }
 
 int calculate_horizontal_advance(GFXfont* font, Line line, int col) {
+  /*
   int total = 0;
   for (int i = 0; i < col; i++) {
     Rune cp = line[i].u;
@@ -2660,6 +2661,10 @@ int calculate_horizontal_advance(GFXfont* font, Line line, int col) {
     total += glyph->advance_x;
   }
   return total;
+  */
+  GFXglyph* glyph;
+  get_glyph(font, 32, &glyph);
+  return col * glyph->advance_x;
 }
 
 enum RenderOperation {
@@ -2707,15 +2712,53 @@ static uint8_t displaycolor(uint32_t col) {
     return colorscheme[col];
 }
 
+static bool glyph_empty(Glyph g) {
+    return g.u == ' ' && g.bg == defaultbg && g.fg == defaultfg
+        && !(g.mode & (ATTR_UNDERLINE));
+}
+
+static bool glyphs_equal(Glyph g1, Glyph g2) {
+    return g1.u == g2.u && g1.fg == g2.fg &&
+        g1.bg == g2.bg && g1.mode == g2.mode;
+}
+
+static void render_character(
+    enum RenderOperation operation,
+    GFXfont* f,
+    int line,
+    int horizontal_advance,
+    Glyph chr,
+    uint8_t* buffer,
+    int* min_y_px,
+    int* max_y_px
+) {
+    int px_x = pixel_start_x + horizontal_advance;
+    int px_y = pixel_start_y + f->advance_y * line;
+    char data[5] = {0};
+    utf8encode(chr.u, data);
+    FontProperties fprops = {
+        .fg_color = displaycolor(chr.fg),
+        .bg_color = displaycolor(chr.bg),
+        .fallback_glyph = fallback_glyph,
+        .flags = chr.bg != defaultbg ? DRAW_BACKGROUND : 0,
+    };
+
+    // record highest and lowest pixel, transformed from font coordinates
+    // around baseline
+    *min_y_px = MIN(px_y - font->ascender, *min_y_px);
+    *max_y_px = MAX(px_y - font->descender, *max_y_px);
+    write_mode(f, data, &px_x, &px_y, buffer, WHITE_ON_WHITE, &fprops);
+}
+
 void render() {
   memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
-  int write_min_line = INT_MAX;
-  int write_max_line = INT_MIN;
+  int write_min_y = 100000;
+  int delete_min_y = 100000;
+  int write_max_y = -1;
+  int delete_max_y = -1;
 
-  int delete_min_line = INT_MAX;
-  int delete_max_line = INT_MIN;
 
   bool is_full_clear = updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
 
@@ -2731,18 +2774,17 @@ void render() {
 
       // determine operation to perform
       enum RenderOperation operation = NOP;
-      if (is_full_clear && chr.u != ' ') {
+      if (is_full_clear && !glyph_empty(chr)) {
         operation = WRITE;
-      } else if (is_full_clear && chr.u == ' ') {
+      } else if (is_full_clear && glyph_empty(chr)) {
         operation = NOP;
-      } else if (chr.u == old_chr.u && chr.fg == old_chr.fg &&
-                 chr.bg == old_chr.bg && chr.mode == old_chr.mode) {
+      } else if (glyphs_equal(chr, old_chr)) {
         operation = NOP;
-      } else if (old_chr.u != ' ' && chr.u != ' ') {
+      } else if (!glyph_empty(old_chr) && !glyph_empty(chr)) {
         operation = REPLACE;
-      } else if (old_chr.u != ' ' && chr.u == ' ') {
+      } else if (!glyph_empty(old_chr) && glyph_empty(chr)) {
         operation = DELETE;
-      } else if (old_chr.u == ' ' && chr.u != ' ') {
+      } else if (glyph_empty(old_chr) && !glyph_empty(chr)) {
         operation = WRITE;
       }
 
@@ -2750,40 +2792,13 @@ void render() {
         updates_since_clear += 1;
         GFXfont* f = get_font(old_chr);
         int horizontal_advance = calculate_horizontal_advance(f, term.old_line[y], x);
-        int px_x = pixel_start_x + horizontal_advance;
-        int px_y = pixel_start_y + f->advance_y * y;
-        char data[5] = {0};
-        utf8encode(old_chr.u, data);
-        FontProperties fprops = {
-            .fg_color = displaycolor(old_chr.fg),
-            .bg_color = displaycolor(old_chr.bg),
-            .fallback_glyph = fallback_glyph,
-            .flags = 0,
-        };
-
-        write_mode(f, data, &px_x, &px_y, render_fb_delete, WHITE_ON_WHITE, &fprops);
-        delete_min_line = MIN(y, delete_min_line);
-        delete_max_line = MAX(y, delete_max_line);
+        render_character(operation, f, y, horizontal_advance, old_chr, render_fb_delete, &delete_min_y, &delete_max_y);
       }
 
       if (operation == WRITE || operation == REPLACE) {
         GFXfont* f = get_font(chr);
         int horizontal_advance = calculate_horizontal_advance(f, term.line[y], x);
-        int px_x = pixel_start_x + horizontal_advance;
-        int px_y = pixel_start_y + f->advance_y * y;
-        char data[5] = {0};
-        utf8encode(chr.u, data);
-        FontProperties fprops = {
-            .fg_color = displaycolor(chr.fg),
-            .bg_color = displaycolor(chr.bg),
-            .fallback_glyph = fallback_glyph,
-            .flags = 0,
-        };
-
-        // FIXME: color currently ignored
-        write_mode(f, data, &px_x, &px_y, render_fb_write, BLACK_ON_WHITE, &fprops);
-        write_min_line = MIN(y, write_min_line);
-        write_max_line = MAX(y, write_max_line);
+        render_character(operation, f, y, horizontal_advance, chr, render_fb_write, &write_min_y, &write_max_y);
       }
     }
     term.dirty[y] = 0;
@@ -2795,22 +2810,19 @@ void render() {
   }
 
   // delete buffer dirty
-  bool delete_dirty = delete_min_line <= delete_max_line;
+  bool delete_dirty = delete_min_y <= delete_max_y;
   // write buffer dirty
-  bool write_dirty = write_min_line <= write_max_line;
+  bool write_dirty = write_min_y <= write_max_y;
 
   if (delete_dirty && !is_full_clear) {
-    // TODO: properly calculate line height
-    int offset = pixel_start_y + (delete_min_line - 1) * font->advance_y;
-    offset = MIN(EPD_HEIGHT, MAX(0, offset));
-    int height = (delete_max_line - delete_min_line + 1) * font->advance_y;
-    height = MIN(height, EPD_HEIGHT - offset);
-    uint8_t* start_ptr = render_fb_delete + EPD_WIDTH / 2 * offset;
+    int height = delete_max_y - delete_min_y + 1;
+    height = MIN(height, EPD_HEIGHT - delete_min_y);
+    uint8_t* start_ptr = render_fb_delete + EPD_WIDTH / 2 * delete_min_y;
     Rect_t area = {
       .x = 0,
-      .y = offset,
+      .y = delete_min_y,
       .width = EPD_WIDTH,
-      .height = height + 8,
+      .height = height,
     };
     epd_poweron();
     epd_draw_image(area, start_ptr, WHITE_ON_WHITE);
@@ -2820,19 +2832,18 @@ void render() {
   }
 
   if (write_dirty) {
-    int offset = pixel_start_y + (write_min_line - 1) * font->advance_y;
-    offset = MIN(EPD_HEIGHT, MAX(0, offset));
-    int height = (write_max_line - write_min_line + 1) * font->advance_y;
-    height = MIN(height, EPD_HEIGHT - offset);
-    uint8_t* start_ptr = render_fb_write + EPD_WIDTH / 2 * offset;
+    int height = write_max_y - write_min_y + 1;
+    height = MIN(height, EPD_HEIGHT - write_min_y);
+    uint8_t* start_ptr = render_fb_write + EPD_WIDTH / 2 * write_min_y;
     Rect_t area = {
       .x = 0,
-      .y = offset,
+      .y = write_min_y,
       .width = EPD_WIDTH,
-      .height = height + 8,
+      .height = height,
     };
     if (is_full_clear) {
       full_refresh();
+      updates_since_clear = 0;
       epd_poweron();
     } else if (!delete_dirty) {
       epd_poweron();
@@ -2840,10 +2851,6 @@ void render() {
     epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
     epd_poweroff();
     drawn_since_clear = true;
-  }
-
-  if (is_full_clear) {
-    updates_since_clear = 0;
   }
 }
 
