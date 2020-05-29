@@ -407,45 +407,37 @@ Wire Wire Line
 $Comp
 L Transistor_FET:IRLML6402 Q1
 U 1 1 5D6CA8B2
-P 1250 3400
-F 0 "Q1" V 1501 3400 50  0000 C CNN
-F 1 "IRLML6402" V 1592 3400 50  0000 C CNN
-F 2 "Package_TO_SOT_SMD:SOT-23" H 1450 3325 50  0001 L CIN
-F 3 "https://www.infineon.com/dgdl/irlml6402pbf.pdf?fileId=5546d462533600a401535668d5c2263c" H 1250 3400 50  0001 L CNN
-	1    1250 3400
+P 1400 3400
+F 0 "Q1" V 1651 3400 50  0000 C CNN
+F 1 "IRLML6402" V 1742 3400 50  0000 C CNN
+F 2 "Package_TO_SOT_SMD:SOT-23" H 1600 3325 50  0001 L CIN
+F 3 "https://www.infineon.com/dgdl/irlml6402pbf.pdf?fileId=5546d462533600a401535668d5c2263c" H 1400 3400 50  0001 L CNN
+	1    1400 3400
 	0    1    1    0   
 $EndComp
 $Comp
 L Device:R R1
 U 1 1 5D6CD93A
-P 1000 3150
-F 0 "R1" H 1070 3196 50  0000 L CNN
-F 1 "10k" H 1070 3105 50  0000 L CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 930 3150 50  0001 C CNN
-F 3 "~" H 1000 3150 50  0001 C CNN
-	1    1000 3150
+P 1150 3150
+F 0 "R1" H 1220 3196 50  0000 L CNN
+F 1 "10k" H 1220 3105 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 1080 3150 50  0001 C CNN
+F 3 "~" H 1150 3150 50  0001 C CNN
+	1    1150 3150
 	0    1    1    0   
 $EndComp
 Wire Wire Line
-	800  3500 1050 3500
+	1300 3150 1400 3150
 Wire Wire Line
-	850  3150 800  3150
-Wire Wire Line
-	800  3150 800  3500
-Wire Wire Line
-	1150 3150 1250 3150
-Wire Wire Line
-	1250 3150 1250 3200
+	1400 3150 1400 3200
 Connection ~ 1650 2850
-Text Label 2250 3150 2    50   ~ 0
-~SMPS_CTRL
 Wire Wire Line
-	1450 3500 1650 3500
+	1600 3500 1650 3500
 Wire Wire Line
 	1650 2850 1650 3500
 Wire Wire Line
-	2250 3150 1250 3150
-Connection ~ 1250 3150
+	1400 2900 1400 3150
+Connection ~ 1400 3150
 Connection ~ 3100 2850
 Wire Wire Line
 	3100 2850 3050 2850
@@ -1004,7 +996,6 @@ Wire Wire Line
 	1300 6500 1200 6500
 Text Label 850  4950 0    50   ~ 0
 5V
-Connection ~ 800  3150
 $Comp
 L power:PWR_FLAG #FLG0101
 U 1 1 5DBF6789
@@ -1833,10 +1824,6 @@ Wire Wire Line
 Connection ~ 14350 8450
 Wire Wire Line
 	14350 8450 14450 8450
-Text Label 650  3150 0    50   ~ 0
-+3.3V
-Wire Wire Line
-	650  3150 800  3150
 Wire Wire Line
 	2150 4950 2650 4950
 $Comp
@@ -1917,4 +1904,32 @@ Text Label 5550 4350 0    50   ~ 0
 5V
 Wire Wire Line
 	5550 4350 6050 4350
+Wire Wire Line
+	800  3000 800  3150
+$Comp
+L Jumper:SolderJumper_3_Bridged12 JP1
+U 1 1 5ED6FC54
+P 800 3500
+F 0 "JP1" V 650 3250 50  0000 L CNN
+F 1 "5v or 3v to LT1945" V 400 2650 50  0000 L CNN
+F 2 "Jumper:SolderJumper-3_P1.3mm_Bridged12_RoundedPad1.0x1.5mm" H 800 3500 50  0001 C CNN
+F 3 "~" H 800 3500 50  0001 C CNN
+	1    800  3500
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	950  3500 1200 3500
+Wire Wire Line
+	800  3300 800  3150
+Connection ~ 800  3150
+Wire Wire Line
+	800  3150 1000 3150
+Wire Wire Line
+	800  3800 800  3700
+Text GLabel 800  3800 3    50   Input ~ 0
+5V
+Text GLabel 1400 2900 0    50   Input ~ 0
+~SMPS_CTRL
+Text GLabel 800  3000 1    50   Input ~ 0
++3.3V
 $EndSCHEMATC
