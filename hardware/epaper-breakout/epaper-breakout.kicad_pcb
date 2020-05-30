@@ -294,7 +294,7 @@
     (tags "mounting hole 2.2mm no annular m2")
     (path /5ED421F3)
     (attr virtual)
-    (fp_text reference H3 (at 0 -3.2) (layer F.SilkS)
+    (fp_text reference H3 (at 0 -3.2) (layer F.SilkS) hide
       (effects (font (size 1 1) (thickness 0.15)))
     )
     (fp_text value MountingHole (at 0 3.2) (layer F.Fab)
@@ -334,7 +334,7 @@
     (tags "mounting hole 2.2mm no annular m2")
     (path /5ED40F79)
     (attr virtual)
-    (fp_text reference H1 (at 0 -3.2) (layer F.SilkS)
+    (fp_text reference H1 (at 0 -3.2) (layer F.SilkS) hide
       (effects (font (size 1 1) (thickness 0.15)))
     )
     (fp_text value MountingHole (at 0 3.2) (layer F.Fab)
