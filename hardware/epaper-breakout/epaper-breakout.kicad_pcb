@@ -503,6 +503,11 @@
       (net 60 "Net-(J1-Pad34)"))
     (pad 35 smd rect (at 9.652 -6.4643 270) (size 1.524 1.7018) (layers F.Cu F.Paste F.Mask)
       (net 61 "Net-(J1-Pad35)"))
+    (model ${KIPRJMOD}/3dmodels/FH12-33S-0.5SH.stp
+      (offset (xyz -14.25 15 -68))
+      (scale (xyz 1 1 1))
+      (rotate (xyz 90 90 -90))
+    )
   )
 
   (module Capacitor_SMD:C_0603_1608Metric (layer F.Cu) (tedit 5B301BBE) (tstamp 5E693F9B)
@@ -600,6 +605,11 @@
     (pad GND smd rect (at -2.9 0 180) (size 1.2 1.7) (layers F.Cu F.Mask))
     (model ${KISYS3DMOD}/Connector_USB.3dshapes/USB_Micro-B_Molex-105017-0001.wrl
       (at (xyz 0 0 0))
+      (scale (xyz 1 1 1))
+      (rotate (xyz 0 0 0))
+    )
+    (model ${KISYS3DMOD}/Connector_USB.3dshapes/USB_Micro-B_Molex_47346-0001.step
+      (offset (xyz 0 1 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
     )
@@ -791,6 +801,11 @@
       (scale (xyz 2 2.8 1))
       (rotate (xyz 0 0 0))
     )
+    (model ${KIPRJMOD}/3dmodels/ESP32-WROVER-B.STEP
+      (offset (xyz 0 -9.5 0))
+      (scale (xyz 1 1 1))
+      (rotate (xyz -90 0 0))
+    )
   )
 
   (module Package_TO_SOT_SMD:SOT-23 (layer F.Cu) (tedit 5A02FF57) (tstamp 5E694447)
@@ -946,6 +961,11 @@
     (pad 1 smd roundrect (at -2.5375 -1.905 180) (size 1.975 0.65) (layers F.Cu F.Paste F.Mask) (roundrect_rratio 0.25)
       (net 27 /EP_VCOM))
     (model ${KISYS3DMOD}/Package_SO.3dshapes/SOP-8_3.76x4.96mm_P1.27mm.wrl
+      (at (xyz 0 0 0))
+      (scale (xyz 1 1 1))
+      (rotate (xyz 0 0 0))
+    )
+    (model ${KISYS3DMOD}/Package_SO.3dshapes/SSOP-8_3.9x5.05mm_P1.27mm.step
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -1283,6 +1303,11 @@
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
     )
+    (model ${KISYS3DMOD}/Potentiometer_SMD.3dshapes/Potentiometer_Bourns_3314G_Vertical.step
+      (at (xyz 0 0 0))
+      (scale (xyz 0.7 0.7 0.7))
+      (rotate (xyz 0 0 90))
+    )
   )
 
   (module epaper-breakout:SW_TS-1187A (layer F.Cu) (tedit 5D78CCA4) (tstamp 5E750285)
@@ -1321,6 +1346,11 @@
     (pad 1 smd rect (at 3 -1.875 90) (size 1.5 0.75) (layers F.Cu F.Paste F.Mask)
       (net 2 GND))
     (model ${KISYS3DMOD}/Button_Switch_SMD.3dshapes/SW_SPST_EVQP2.wrl
+      (at (xyz 0 0 0))
+      (scale (xyz 1 1 1))
+      (rotate (xyz 0 0 0))
+    )
+    (model "${KIPRJMOD}/3dmodels/Tactal Switch - SMD (5mmx 5mmx1.5mm).stp"
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -1914,6 +1944,11 @@
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
     )
+    (model ${KISYS3DMOD}/Inductor_SMD.3dshapes/L_Bourns-SRN4018.step
+      (at (xyz 0 0 0))
+      (scale (xyz 1.6 1.6 1))
+      (rotate (xyz 0 0 0))
+    )
   )
 
   (module Inductor_SMD:L_6.3x6.3_H3 (layer F.Cu) (tedit 5990349C) (tstamp 5E733F23)
@@ -1956,6 +1991,11 @@
     (model ${KISYS3DMOD}/Inductor_SMD.3dshapes/L_6.3x6.3_H3.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
+      (rotate (xyz 0 0 0))
+    )
+    (model ${KISYS3DMOD}/Inductor_SMD.3dshapes/L_Bourns-SRN4018.step
+      (at (xyz 0 0 0))
+      (scale (xyz 1.6 1.6 1))
       (rotate (xyz 0 0 0))
     )
   )
@@ -2945,6 +2985,11 @@
     (pad 1 smd rect (at 3 -1.875 180) (size 1.5 0.75) (layers F.Cu F.Paste F.Mask)
       (net 2 GND))
     (model ${KISYS3DMOD}/Button_Switch_SMD.3dshapes/SW_SPST_EVQP2.wrl
+      (at (xyz 0 0 0))
+      (scale (xyz 1 1 1))
+      (rotate (xyz 0 0 0))
+    )
+    (model "${KIPRJMOD}/3dmodels/Tactal Switch - SMD (5mmx 5mmx1.5mm).stp"
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
