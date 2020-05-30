@@ -1096,7 +1096,7 @@ EP_VCOM
 Wire Wire Line
 	4000 7050 4000 7150
 Wire Wire Line
-	4950 6750 4500 6750
+	4950 6750 4550 6750
 Wire Wire Line
 	3800 6850 3750 6850
 Wire Wire Line
@@ -2009,4 +2009,20 @@ F 3 "~" H 1000 8700 50  0001 C CNN
 	1    1000 8700
 	1    0    0    -1  
 $EndComp
+$Comp
+L Connector:TestPoint_Probe TP1
+U 1 1 5ED80CF9
+P 4550 6500
+F 0 "TP1" H 4703 6601 50  0000 L CNN
+F 1 "TestPoint_Probe" H 4703 6510 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Pad_D1.0mm" H 4750 6500 50  0001 C CNN
+F 3 "~" H 4750 6500 50  0001 C CNN
+	1    4550 6500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4550 6750 4550 6500
+Connection ~ 4550 6750
+Wire Wire Line
+	4550 6750 4500 6750
 $EndSCHEMATC
