@@ -1,3 +1,4 @@
+#pragma once
 #include "epd_driver.h"
 const uint8_t FiraCode_BoldBitmaps[90052] = {
     0x78, 0x9C, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01, 0x78, 0x9C, 0x5B, 0xC0, 0xC0, 0xC0, 0x70, 0x71,
@@ -5631,7 +5632,7 @@ const uint8_t FiraCode_BoldBitmaps[90052] = {
     0xE6, 0xA6, 0x27, 0x76,
 };
 const GFXglyph FiraCode_BoldGlyphs[] = {
-    { 0, 0, 13, 0, 0, 8, 0 }, //  
+    { 0, 0, 13, 0, 0, 8, 0 }, //
     { 5, 15, 13, 4, 15, 73, 8 }, // !
     { 9, 6, 13, 2, 16, 65, 81 }, // "
     { 13, 15, 13, 0, 15, 140, 146 }, // #

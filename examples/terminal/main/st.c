@@ -20,9 +20,9 @@
 #include "driver/uart.h"
 #include "epd_driver.h"
 #include "esp_log.h"
+#include "st.h"
 #include "config.h"
 
-#include "st.h"
 //#include "win.h"
 
 #if   defined(__linux)

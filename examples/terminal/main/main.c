@@ -31,8 +31,6 @@
 #define BUF_SIZE (1024)
 #define ESC_BUF_SIZE (128 * 4)
 #define ESC_ARG_SIZE  16
-#define COLUMNS 70
-#define ROWS 20
 
 void csihandle(void);
 void tclearregion(int x1, int y1, int x2, int y2);
@@ -119,7 +117,7 @@ void epd_task() {
 
     uart_write_bytes(UART_NUM_1, "listening\n", 11);
 
-    tnew(COLUMNS, ROWS);
+    tnew(cols, rows);
     selinit();
 
     while (true) {

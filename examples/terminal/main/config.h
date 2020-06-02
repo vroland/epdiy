@@ -1,4 +1,6 @@
 /* See LICENSE file for copyright and license details. */
+#pragma once
+
 #include "firacode.h"
 #include "firacode_bold.h"
 
@@ -377,8 +379,8 @@ static unsigned int cursorshape = 2;
  * Default columns and rows numbers
  */
 
-static unsigned int cols = 80;
-static unsigned int rows = 24;
+unsigned int cols = 100;
+unsigned int rows = 30;
 
 /*
  * Default colour and shape of the mouse cursor
