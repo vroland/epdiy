@@ -1096,7 +1096,7 @@ EP_VCOM
 Wire Wire Line
 	4000 7050 4000 7150
 Wire Wire Line
-	4950 6750 4500 6750
+	4950 6750 4550 6750
 Wire Wire Line
 	3800 6850 3750 6850
 Wire Wire Line
@@ -1938,7 +1938,7 @@ U 2 1 5ED3784B
 P 6000 6850
 F 0 "U7" H 6000 7217 50  0000 C CNN
 F 1 "LM358" H 6000 7126 50  0000 C CNN
-F 2 "" H 6000 6850 50  0001 C CNN
+F 2 "Package_SO:SOP-8_3.76x4.96mm_P1.27mm" H 6000 6850 50  0001 C CNN
 F 3 "http://www.ti.com/lit/ds/symlink/lm2904-n.pdf" H 6000 6850 50  0001 C CNN
 	2    6000 6850
 	1    0    0    -1  
@@ -1976,4 +1976,53 @@ Wire Notes Line
 	6700 6150 5100 6150
 Text Notes 5400 6350 0    50   ~ 0
 Unused opamp neutralizer
+$Comp
+L Mechanical:MountingHole H1
+U 1 1 5ED40F79
+P 1000 8200
+F 0 "H1" H 1100 8246 50  0000 L CNN
+F 1 "MountingHole" H 1100 8155 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2" H 1000 8200 50  0001 C CNN
+F 3 "~" H 1000 8200 50  0001 C CNN
+	1    1000 8200
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H2
+U 1 1 5ED4192F
+P 1000 8450
+F 0 "H2" H 1100 8496 50  0000 L CNN
+F 1 "MountingHole" H 1100 8405 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2" H 1000 8450 50  0001 C CNN
+F 3 "~" H 1000 8450 50  0001 C CNN
+	1    1000 8450
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H3
+U 1 1 5ED421F3
+P 1000 8700
+F 0 "H3" H 1100 8746 50  0000 L CNN
+F 1 "MountingHole" H 1100 8655 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2" H 1000 8700 50  0001 C CNN
+F 3 "~" H 1000 8700 50  0001 C CNN
+	1    1000 8700
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:TestPoint_Probe TP1
+U 1 1 5ED80CF9
+P 4550 6500
+F 0 "TP1" H 4703 6601 50  0000 L CNN
+F 1 "TestPoint_Probe" H 4703 6510 50  0000 L CNN
+F 2 "TestPoint:TestPoint_Pad_D1.0mm" H 4750 6500 50  0001 C CNN
+F 3 "~" H 4750 6500 50  0001 C CNN
+	1    4550 6500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4550 6750 4550 6500
+Connection ~ 4550 6750
+Wire Wire Line
+	4550 6750 4500 6750
 $EndSCHEMATC

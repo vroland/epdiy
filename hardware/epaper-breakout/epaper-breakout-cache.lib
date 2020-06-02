@@ -99,6 +99,24 @@ X Pin_9 9 300 100 150 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
+# Connector_TestPoint_Probe
+#
+DEF Connector_TestPoint_Probe TP 0 30 N N 1 F N
+F0 "TP" 65 230 50 H V C CNN
+F1 "Connector_TestPoint_Probe" 65 160 50 H V C CNN
+F2 "" 200 0 50 H I C CNN
+F3 "" 200 0 50 H I C CNN
+$FPLIST
+ Pin*
+ Test*
+$ENDFPLIST
+DRAW
+P 4 0 1 0 50 30 0 0 30 50 50 30 F
+P 5 0 1 0 55 25 25 55 95 125 125 95 55 25 f
+X 1 1 0 0 0 U 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
 # Device_C
 #
 DEF Device_C C 0 10 N Y 1 F N
@@ -265,6 +283,21 @@ P 2 0 1 0 100 0 80 0 N
 X A 1 -200 0 100 R 50 50 1 1 P
 X C 2 0 -150 100 U 50 50 1 1 I
 X B 3 200 0 100 L 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# Mechanical_MountingHole
+#
+DEF Mechanical_MountingHole H 0 40 Y Y 1 F N
+F0 "H" 0 200 50 H V C CNN
+F1 "Mechanical_MountingHole" 0 125 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ MountingHole*
+$ENDFPLIST
+DRAW
+C 0 0 50 0 1 50 N
 ENDDRAW
 ENDDEF
 #
