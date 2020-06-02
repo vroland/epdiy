@@ -3,6 +3,25 @@
 Getting Started
 ===============
 
+Calibrate VCOM
+--------------
+
+EPaper displays use electrical fields to drive colored particles.
+One of the required voltages, VCOM (Common Voltage) is display-dependent
+and must be calibrated for each display individually.
+
+Fortunately, the VCOM voltage is usually printed on the display, similar to this:
+
+.. image:: img/vcom.jpg
+
+The VCOM value is usually between -1V and -3V. 
+
+To tune the controller output voltage, use the trimmer marked :code:`RV1`.
+You can measure the VCOM on the VCOM test pad (if your board has one) or directly
+at the amplifier:
+
+.. image:: img/vcom_opamp.jpg
+
 Flashing the demo
 -----------------
 
