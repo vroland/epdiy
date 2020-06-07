@@ -65,9 +65,9 @@ void skip_row(uint8_t pipeline_finish_time) {
   // output previously loaded row, fill buffer with no-ops.
   if (skipping == 0) {
     epd_switch_buffer();
-    memset(epd_get_current_buffer(), 255, EPD_LINE_BYTES);
+    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
     epd_switch_buffer();
-    memset(epd_get_current_buffer(), 255, EPD_LINE_BYTES);
+    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
     epd_output_row(pipeline_finish_time);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
@@ -409,8 +409,10 @@ void IRAM_ATTR feed_display(OutputParams* params) {
     calc_epd_input_4bpp((uint32_t*)output, epd_get_current_buffer(), params->frame, conversion_lut);
     write_row(contrast_lut[params->frame]);
   }
-  // Since we "pipeline" row output, we still have to latch out the last row.
-  write_row(contrast_lut[params->frame]);
+  if (!skipping) {
+      // Since we "pipeline" row output, we still have to latch out the last row.
+      write_row(contrast_lut[params->frame]);
+  }
   epd_end_frame();
 
   xSemaphoreGive(params->done_smphr);
@@ -422,9 +424,9 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
 
-  vTaskDelay(50);
   SemaphoreHandle_t fetch_sem = xSemaphoreCreateBinary();
   SemaphoreHandle_t feed_sem = xSemaphoreCreateBinary();
+  vTaskDelay(10);
   for (uint8_t k = 0; k < frame_count; k++) {
     OutputParams p1 = {
       .area = area,
