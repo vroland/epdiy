@@ -2539,7 +2539,8 @@ tresize(int col, int row)
     if (render_fb_delete == NULL) {
       render_fb_delete = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
     }
-
+    memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+    memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
 	/*
 	 * slide screen to keep cursor where we expect it -
@@ -2751,8 +2752,6 @@ static void render_character(
 }
 
 void render() {
-  memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-  memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
   int write_min_y = 100000;
   int delete_min_y = 100000;
@@ -2829,6 +2828,7 @@ void render() {
     if (!write_dirty) {
         epd_poweroff();
     }
+    memset(start_ptr, 255, EPD_WIDTH / 2 * height);
   }
 
   if (write_dirty) {
@@ -2851,6 +2851,7 @@ void render() {
     epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
     epd_poweroff();
     drawn_since_clear = true;
+    memset(start_ptr, 255, EPD_WIDTH / 2 * height);
   }
 }
 
