@@ -26,9 +26,16 @@ uint32_t skipping;
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
                                        40, 50, 50, 50, 100, 200, 300};
+
+const uint8_t contrast_cycles_4_white[15] = {30, 30, 20, 20, 30,  30,  30, 40,
+                                       40, 50, 50, 50, 100, 200, 300};
+
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
 const uint8_t contrast_cycles_4[15] = {15, 8, 8, 8, 8,  8,  10, 10,
                                        10, 10, 20, 20, 50, 100, 200};
+
+const uint8_t contrast_cycles_4_white[15] = {7, 8, 8, 6, 6,  6,  6, 6,
+                                       6, 6, 6, 8, 8, 10, 100};
 #else
 #error "no display type defined!"
 #endif
@@ -84,15 +91,15 @@ void skip_row(uint8_t pipeline_finish_time) {
   skipping++;
 }
 
-void epd_push_pixels(Rect_t *area, short time, bool color) {
+void epd_push_pixels(Rect_t area, short time, int color) {
 
   uint8_t row[EPD_LINE_BYTES] = {0};
 
-  for (uint32_t i = 0; i < area->width; i++) {
-    uint32_t position = i + area->x % 4;
+  for (uint32_t i = 0; i < area.width; i++) {
+    uint32_t position = i + area.x % 4;
     uint8_t mask =
         (color ? CLEAR_BYTE : DARK_BYTE) & (0b00000011 << (2 * (position % 4)));
-    row[area->x / 4 + position / 4] |= mask;
+    row[area.x / 4 + position / 4] |= mask;
   }
   reorder_line_buffer((uint32_t *)row);
 
@@ -100,10 +107,10 @@ void epd_push_pixels(Rect_t *area, short time, bool color) {
 
   for (int i = 0; i < EPD_HEIGHT; i++) {
     // before are of interest: skip
-    if (i < area->y) {
+    if (i < area.y) {
       skip_row(time);
       // start area of interest: set row data
-    } else if (i == area->y) {
+    } else if (i == area.y) {
       epd_switch_buffer();
       memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
       epd_switch_buffer();
@@ -111,7 +118,7 @@ void epd_push_pixels(Rect_t *area, short time, bool color) {
 
       write_row(time * 10);
       // load nop row if done with area
-    } else if (i >= area->y + area->height) {
+    } else if (i >= area.y + area.height) {
       skip_row(time);
       // output the same as before
     } else {
@@ -134,10 +141,10 @@ void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time) {
 
   for (int c = 0; c < cycles; c++) {
       for (int i = 0; i < 3; i++) {
-        epd_push_pixels(&area, dark_time, 0);
+        epd_push_pixels(area, dark_time, 0);
       }
       for (int i = 0; i < 3; i++) {
-        epd_push_pixels(&area, white_time, 1);
+        epd_push_pixels(area, white_time, 1);
       }
   }
 }
@@ -206,6 +213,7 @@ static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
     case BLACK_ON_WHITE:
       memset(lut_mem, 0x55, (1 << 16));
       break;
+    case WHITE_ON_BLACK:
     case WHITE_ON_WHITE:
       memset(lut_mem, 0xAA, (1 << 16));
       break;
@@ -216,7 +224,9 @@ static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
 }
 
 static void IRAM_ATTR update_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode) {
-  k = 15 - k;
+  if (mode == BLACK_ON_WHITE || mode == WHITE_ON_WHITE) {
+      k = 15 - k;
+  }
 
   // reset the pixels which are not to be lightened / darkened
   // any longer in the current frame
@@ -397,6 +407,15 @@ void IRAM_ATTR provide_out(OutputParams* params) {
 void IRAM_ATTR feed_display(OutputParams* params) {
   Rect_t area = params->area;
   const uint8_t *contrast_lut = contrast_cycles_4;
+  switch (params->mode) {
+    case WHITE_ON_WHITE:
+    case BLACK_ON_WHITE:
+      contrast_lut = contrast_cycles_4;
+      break;
+    case WHITE_ON_BLACK:
+      contrast_lut = contrast_cycles_4_white;
+      break;
+  }
 
   epd_start_frame();
   for (int i = 0; i < EPD_HEIGHT; i++) {

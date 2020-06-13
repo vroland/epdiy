@@ -39,6 +39,8 @@ enum DrawMode {
   BLACK_ON_WHITE = 1 << 0,
   /// "Draw with white ink" on a white display.
   WHITE_ON_WHITE = 1 << 1,
+  /// Draw with white ink on a black display.
+  WHITE_ON_BLACK = 1 << 2,
 };
 
 /// Font drawing flags
@@ -89,6 +91,15 @@ void epd_clear_area(Rect_t area);
  * @param cycle_time: Length of a cycle. Default: 50 (us).
  */
 void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time);
+
+/**
+ * Darken / lighten an area for a given time.
+ *
+ * @param area: The area to darken / lighten.
+ * @param time: The time in us to apply voltage to each pixel.
+ * @param color: 1: lighten, 0: darken.
+ */
+void epd_push_pixels(Rect_t area, short time, int color);
 
 /**
  * Draw a picture to a given area. The image area is not cleared and assumed
