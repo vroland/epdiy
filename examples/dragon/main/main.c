@@ -28,7 +28,10 @@ void loop() {
   epd_poweron();
   epd_clear();
   volatile uint32_t t1 = millis();
-  epd_draw_grayscale_image(epd_full_screen(), img_buf);
+  epd_push_pixels(epd_full_screen(), 10, 0);
+  epd_push_pixels(epd_full_screen(), 10, 0);
+  epd_push_pixels(epd_full_screen(), 10, 0);
+  epd_draw_image(epd_full_screen(), img_buf, WHITE_ON_BLACK);
   volatile uint32_t t2 = millis();
   printf("EPD draw took %dms.\n", t2 - t1);
 
