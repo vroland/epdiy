@@ -369,6 +369,7 @@ void IRAM_ATTR provide_out(OutputParams* params) {
     }
 
     uint32_t *lp;
+    bool shifted = false;
     if (area.width == EPD_WIDTH && area.x == 0) {
       lp = (uint32_t *)ptr;
       ptr += EPD_WIDTH / 2;
@@ -390,6 +391,7 @@ void IRAM_ATTR provide_out(OutputParams* params) {
         *(buf_start + line_bytes - 1) |= 0xF0;
       }
       if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
+        shifted = true;
         // shift one nibble to right
         nibble_shift_buffer_right(
             buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
@@ -398,6 +400,9 @@ void IRAM_ATTR provide_out(OutputParams* params) {
       lp = (uint32_t *)line;
     }
     xQueueSendToBack(output_queue, lp, portMAX_DELAY);
+    if (shifted) {
+      memset(line, 255, EPD_WIDTH / 2);
+    }
   }
 
   xSemaphoreGive(params->done_smphr);
