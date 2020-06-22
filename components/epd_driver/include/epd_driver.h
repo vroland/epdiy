@@ -126,6 +126,9 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  */
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
 
+
+
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time);
 /**
  * @returns Rectancle representing the whole screen area.
  */

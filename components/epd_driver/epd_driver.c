@@ -186,6 +186,25 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
   }
 }
 
+void IRAM_ATTR calc_epd_input_1bpp(uint8_t *line_data, uint8_t *epd_input, enum DrawMode mode) {
+
+  uint32_t *wide_epd_input = (uint32_t *)epd_input;
+
+  // this is reversed for little-endian, but this is later compensated
+  // through the output peripheral.
+  for (uint32_t j = 0; j < EPD_WIDTH / 16; j++) {
+
+    uint8_t v1 = *(line_data++);
+    uint8_t v2 = *(line_data++);
+
+    uint32_t pixel = (v1 & 0x0F) << 16 | (v1 & 0xF0) << 20 |
+                     (v2 & 0x0F) | (v2 & 0xF0) << 4;
+    pixel = (pixel | (pixel << 2)) & 0x33333333;
+    pixel = (pixel | (pixel << 1)) & 0x55555555;
+    wide_epd_input[j] = pixel;
+  }
+}
+
 /*
 static inline void calc_lut_pos(
     uint8_t *lut,
@@ -256,6 +275,19 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
     uint8_t val = buf[i];
     buf[i] = (val << 4) | carry;
     carry = (val & 0xF0) >> 4;
+  }
+}
+
+/*
+ * bit-shift a buffer `shift` <= 7 bits to the right.
+ */
+void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
+  uint8_t carry = 0x00;
+  uint8_t mask = 0;
+  for (uint32_t i = 0; i < len; i++) {
+    uint8_t val = buf[i];
+    buf[i] = (val << shift) | carry;
+    carry = val >> (8 - shift);
   }
 }
 
@@ -441,6 +473,77 @@ void IRAM_ATTR feed_display(OutputParams* params) {
 
   xSemaphoreGive(params->done_smphr);
   vTaskDelay(portMAX_DELAY);
+}
+
+
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time) {
+
+
+  epd_start_frame();
+  uint8_t line[EPD_WIDTH / 8];
+  memset(line, 0, sizeof(line));
+
+  if (area.x < 0) {
+    ptr += -area.x / 8;
+  }
+
+  int ceil_byte_width = (area.width / 8 + (area.width % 8 > 0));
+  if (area.y < 0) {
+    ptr += ceil_byte_width * -area.y;
+  }
+
+  for (int i = 0; i < EPD_HEIGHT; i++) {
+    if (i < area.y || i >= area.y + area.height) {
+      skip_row(time);
+      continue;
+    }
+
+    uint8_t *lp;
+    bool shifted = 0;
+    if (area.width == EPD_WIDTH && area.x == 0) {
+      lp = ptr;
+      ptr += EPD_WIDTH / 8;
+    } else {
+      uint8_t *buf_start = (uint8_t *)line;
+      uint32_t line_bytes = ceil_byte_width;
+      if (area.x >= 0) {
+        buf_start += area.x / 8;
+      } else {
+        // reduce line_bytes to actually used bytes
+        line_bytes += area.x / 8;
+      }
+      line_bytes = min(line_bytes, EPD_WIDTH / 8 - (uint32_t)(buf_start - line));
+      memcpy(buf_start, ptr, line_bytes);
+      ptr += ceil_byte_width;
+
+      // mask last n bits if width is not divisible by 8
+      if (area.width % 8 != 0 && ceil_byte_width + 1 < EPD_WIDTH) {
+        uint8_t mask = 0;
+        for (int s = 0; s < area.width % 8; s++) {
+          mask = (mask << 1) | 1;
+        }
+        *(buf_start + line_bytes - 1) &= mask;
+      }
+
+      if (area.x % 8 != 0 && area.x < EPD_WIDTH) {
+        // shift to right
+        shifted = true;
+        bit_shift_buffer_right(
+            buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 8 -
+                                               (uint32_t)buf_start), area.x % 8);
+      }
+      lp = line;
+    }
+    calc_epd_input_1bpp(lp, epd_get_current_buffer(), mode);
+    write_row(time);
+    if (shifted) {
+      memset(line, 0, sizeof(line));
+    }
+  }
+  if (!skipping) {
+    write_row(time);
+  }
+  epd_end_frame();
 }
 
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
