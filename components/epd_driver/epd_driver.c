@@ -4,13 +4,13 @@
 
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
-#include "esp_types.h"
 #include "esp_log.h"
-#include "xtensa/core-macros.h"
+#include "esp_types.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
+#include "xtensa/core-macros.h"
 #include <string.h>
 
 // number of bytes needed for one line of EPD pixel data.
@@ -22,20 +22,21 @@ uint32_t skipping;
 #define CLEAR_BYTE 0B10101010
 #define DARK_BYTE 0B01010101
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
 const uint8_t contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
                                        40, 50, 50, 50, 100, 200, 300};
 
 const uint8_t contrast_cycles_4_white[15] = {30, 30, 20, 20, 30,  30,  30, 40,
-                                       40, 50, 50, 50, 100, 200, 300};
+                                             40, 50, 50, 50, 100, 200, 300};
 
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
-const uint8_t contrast_cycles_4[15] = {15, 8, 8, 8, 8,  8,  10, 10,
+const uint8_t contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
                                        10, 10, 20, 20, 50, 100, 200};
 
-const uint8_t contrast_cycles_4_white[15] = {7, 8, 8, 6, 6,  6,  6, 6,
-                                       6, 6, 6, 8, 8, 10, 100};
+const uint8_t contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
+                                             6, 6, 6, 8, 8, 10, 100};
 #else
 #error "no display type defined!"
 #endif
@@ -49,7 +50,7 @@ static QueueHandle_t output_queue;
 static void write_row(uint32_t output_time_dus) {
   // avoid too light output after skipping on some displays
   if (skipping) {
-      vTaskDelay(2);
+    vTaskDelay(2);
   }
   skipping = 0;
   epd_output_row(output_time_dus);
@@ -131,21 +132,19 @@ void epd_push_pixels(Rect_t area, short time, int color) {
   epd_end_frame();
 }
 
-void epd_clear_area(Rect_t area) {
-  epd_clear_area_cycles(area, 3, 50);
-}
+void epd_clear_area(Rect_t area) { epd_clear_area_cycles(area, 3, 50); }
 
 void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time) {
   const short white_time = cycle_time;
   const short dark_time = cycle_time;
 
   for (int c = 0; c < cycles; c++) {
-      for (int i = 0; i < 3; i++) {
-        epd_push_pixels(area, dark_time, 0);
-      }
-      for (int i = 0; i < 3; i++) {
-        epd_push_pixels(area, white_time, 1);
-      }
+    for (int i = 0; i < 3; i++) {
+      epd_push_pixels(area, dark_time, 0);
+    }
+    for (int i = 0; i < 3; i++) {
+      epd_push_pixels(area, white_time, 1);
+    }
   }
 }
 
@@ -186,7 +185,8 @@ void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
   }
 }
 
-void IRAM_ATTR calc_epd_input_1bpp(uint8_t *line_data, uint8_t *epd_input, enum DrawMode mode) {
+void IRAM_ATTR calc_epd_input_1bpp(uint8_t *line_data, uint8_t *epd_input,
+                                   enum DrawMode mode) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
 
@@ -197,8 +197,8 @@ void IRAM_ATTR calc_epd_input_1bpp(uint8_t *line_data, uint8_t *epd_input, enum 
     uint8_t v1 = *(line_data++);
     uint8_t v2 = *(line_data++);
 
-    uint32_t pixel = (v1 & 0x0F) << 16 | (v1 & 0xF0) << 20 |
-                     (v2 & 0x0F) | (v2 & 0xF0) << 4;
+    uint32_t pixel =
+        (v1 & 0x0F) << 16 | (v1 & 0xF0) << 20 | (v2 & 0x0F) | (v2 & 0xF0) << 4;
     pixel = (pixel | (pixel << 2)) & 0x33333333;
     pixel = (pixel | (pixel << 1)) & 0x55555555;
     wide_epd_input[j] = pixel;
@@ -229,36 +229,37 @@ static inline void calc_lut_pos(
 
 static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
   switch (mode) {
-    case BLACK_ON_WHITE:
-      memset(lut_mem, 0x55, (1 << 16));
-      break;
-    case WHITE_ON_BLACK:
-    case WHITE_ON_WHITE:
-      memset(lut_mem, 0xAA, (1 << 16));
-      break;
-    default:
-      ESP_LOGW("epd_driver", "unknown draw mode %d!", mode);
-      break;
+  case BLACK_ON_WHITE:
+    memset(lut_mem, 0x55, (1 << 16));
+    break;
+  case WHITE_ON_BLACK:
+  case WHITE_ON_WHITE:
+    memset(lut_mem, 0xAA, (1 << 16));
+    break;
+  default:
+    ESP_LOGW("epd_driver", "unknown draw mode %d!", mode);
+    break;
   }
 }
 
-static void IRAM_ATTR update_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode) {
+static void IRAM_ATTR update_LUT(uint8_t *lut_mem, uint8_t k,
+                                 enum DrawMode mode) {
   if (mode == BLACK_ON_WHITE || mode == WHITE_ON_WHITE) {
-      k = 15 - k;
+    k = 15 - k;
   }
 
   // reset the pixels which are not to be lightened / darkened
   // any longer in the current frame
-  for (uint32_t l = k; l < (1 << 16); l+=16) {
+  for (uint32_t l = k; l < (1 << 16); l += 16) {
     lut_mem[l] &= 0xFC;
   }
 
-  for (uint32_t l = (k << 4); l < (1 << 16); l+=(1 << 8)) {
+  for (uint32_t l = (k << 4); l < (1 << 16); l += (1 << 8)) {
     for (uint32_t p = 0; p < 16; p++) {
       lut_mem[l + p] &= 0xF3;
     }
   }
-  for (uint32_t l = (k << 8); l < (1 << 16); l+=(1 << 12)) {
+  for (uint32_t l = (k << 8); l < (1 << 16); l += (1 << 12)) {
     for (uint32_t p = 0; p < (1 << 8); p++) {
       lut_mem[l + p] &= 0xCF;
     }
@@ -266,7 +267,6 @@ static void IRAM_ATTR update_LUT(uint8_t *lut_mem, uint8_t k, enum DrawMode mode
   for (uint32_t p = (k << 12); p < ((k + 1) << 12); p++) {
     lut_mem[p] &= 0x3F;
   }
-
 }
 
 void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
@@ -369,18 +369,18 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
 }
 
 typedef struct {
-  uint8_t* data_ptr;
+  uint8_t *data_ptr;
   SemaphoreHandle_t done_smphr;
   Rect_t area;
   int frame;
   enum DrawMode mode;
 } OutputParams;
 
-void IRAM_ATTR provide_out(OutputParams* params) {
+void IRAM_ATTR provide_out(OutputParams *params) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
   Rect_t area = params->area;
-  uint8_t* ptr = params->data_ptr;
+  uint8_t *ptr = params->data_ptr;
 
   if (params->frame == 0) {
     reset_lut(conversion_lut, params->mode);
@@ -414,7 +414,8 @@ void IRAM_ATTR provide_out(OutputParams* params) {
         // reduce line_bytes to actually used bytes
         line_bytes += area.x / 2;
       }
-      line_bytes = min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
+      line_bytes =
+          min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
       memcpy(buf_start, ptr, line_bytes);
       ptr += area.width / 2 + area.width % 2;
 
@@ -441,17 +442,17 @@ void IRAM_ATTR provide_out(OutputParams* params) {
   vTaskDelay(portMAX_DELAY);
 }
 
-void IRAM_ATTR feed_display(OutputParams* params) {
+void IRAM_ATTR feed_display(OutputParams *params) {
   Rect_t area = params->area;
   const uint8_t *contrast_lut = contrast_cycles_4;
   switch (params->mode) {
-    case WHITE_ON_WHITE:
-    case BLACK_ON_WHITE:
-      contrast_lut = contrast_cycles_4;
-      break;
-    case WHITE_ON_BLACK:
-      contrast_lut = contrast_cycles_4_white;
-      break;
+  case WHITE_ON_WHITE:
+  case BLACK_ON_WHITE:
+    contrast_lut = contrast_cycles_4;
+    break;
+  case WHITE_ON_BLACK:
+    contrast_lut = contrast_cycles_4_white;
+    break;
   }
 
   epd_start_frame();
@@ -462,12 +463,13 @@ void IRAM_ATTR feed_display(OutputParams* params) {
     }
     uint8_t output[EPD_WIDTH / 2];
     xQueueReceive(output_queue, output, portMAX_DELAY);
-    calc_epd_input_4bpp((uint32_t*)output, epd_get_current_buffer(), params->frame, conversion_lut);
+    calc_epd_input_4bpp((uint32_t *)output, epd_get_current_buffer(),
+                        params->frame, conversion_lut);
     write_row(contrast_lut[params->frame]);
   }
   if (!skipping) {
-      // Since we "pipeline" row output, we still have to latch out the last row.
-      write_row(contrast_lut[params->frame]);
+    // Since we "pipeline" row output, we still have to latch out the last row.
+    write_row(contrast_lut[params->frame]);
   }
   epd_end_frame();
 
@@ -475,9 +477,8 @@ void IRAM_ATTR feed_display(OutputParams* params) {
   vTaskDelay(portMAX_DELAY);
 }
 
-
-void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time) {
-
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
+                                   enum DrawMode mode, int time) {
 
   epd_start_frame();
   uint8_t line[EPD_WIDTH / 8];
@@ -512,7 +513,8 @@ void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode
         // reduce line_bytes to actually used bytes
         line_bytes += area.x / 8;
       }
-      line_bytes = min(line_bytes, EPD_WIDTH / 8 - (uint32_t)(buf_start - line));
+      line_bytes =
+          min(line_bytes, EPD_WIDTH / 8 - (uint32_t)(buf_start - line));
       memcpy(buf_start, ptr, line_bytes);
       ptr += ceil_byte_width;
 
@@ -529,8 +531,10 @@ void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode
         // shift to right
         shifted = true;
         bit_shift_buffer_right(
-            buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 8 -
-                                               (uint32_t)buf_start), area.x % 8);
+            buf_start,
+            min(line_bytes + 1,
+                (uint32_t)line + EPD_WIDTH / 8 - (uint32_t)buf_start),
+            area.x % 8);
       }
       lp = line;
     }
@@ -556,23 +560,25 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
   vTaskDelay(10);
   for (uint8_t k = 0; k < frame_count; k++) {
     OutputParams p1 = {
-      .area = area,
-      .data_ptr = data,
-      .frame = k,
-      .mode = mode,
-      .done_smphr = fetch_sem,
+        .area = area,
+        .data_ptr = data,
+        .frame = k,
+        .mode = mode,
+        .done_smphr = fetch_sem,
     };
     OutputParams p2 = {
-      .area = area,
-      .data_ptr = data,
-      .frame = k,
-      .mode = mode,
-      .done_smphr = feed_sem,
+        .area = area,
+        .data_ptr = data,
+        .frame = k,
+        .mode = mode,
+        .done_smphr = feed_sem,
     };
 
     TaskHandle_t t1, t2;
-    xTaskCreatePinnedToCore((void (*)(void *))provide_out, "privide_out", 8000, &p1, 10, &t1, 0);
-    xTaskCreatePinnedToCore((void (*)(void *))feed_display, "render", 8000, &p2, 10, &t2, 1);
+    xTaskCreatePinnedToCore((void (*)(void *))provide_out, "privide_out", 8000,
+                            &p1, 10, &t1, 0);
+    xTaskCreatePinnedToCore((void (*)(void *))feed_display, "render", 8000, &p2,
+                            10, &t2, 1);
 
     xSemaphoreTake(fetch_sem, portMAX_DELAY);
     xSemaphoreTake(feed_sem, portMAX_DELAY);
