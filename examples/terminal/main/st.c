@@ -227,8 +227,8 @@ static GFXfont* get_font(Glyph g);
 static void full_refresh();
 
 /* Globals */
-static uint8_t* render_fb_write = NULL;
-static uint8_t* render_fb_delete = NULL;
+static uint8_t* render_fb_back = NULL;
+static uint8_t* render_fb_front = NULL;
 static Term term;
 static Selection sel;
 static CSIEscape csiescseq;
@@ -1050,6 +1050,9 @@ treset(void)
 	term.mode = MODE_WRAP|MODE_UTF8;
 	memset(term.trantbl, CS_USA, sizeof(term.trantbl));
 	term.charset = 0;
+    memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+    memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+
 
 	for (i = 0; i < 2; i++) {
 		tmoveto(0, 0);
@@ -2533,14 +2536,14 @@ tresize(int col, int row)
 		return;
 	}
 
-    if (render_fb_write == NULL) {
-      render_fb_write = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    if (render_fb_front == NULL) {
+      render_fb_front = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
     }
-    if (render_fb_delete == NULL) {
-      render_fb_delete = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    if (render_fb_back == NULL) {
+      render_fb_back = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
     }
-    memset(render_fb_write, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_fb_delete, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+    memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+    memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
 	/*
 	 * slide screen to keep cursor where we expect it -
@@ -2694,6 +2697,10 @@ static void full_refresh() {
   if (!drawn_since_clear) {
     return;
   }
+
+  memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+  memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+
   epd_poweron();
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
@@ -2723,118 +2730,186 @@ static bool glyphs_equal(Glyph g1, Glyph g2) {
         g1.bg == g2.bg && g1.mode == g2.mode;
 }
 
-static void render_character(
-    enum RenderOperation operation,
-    GFXfont* f,
+static void render_line(
     int line,
     int horizontal_advance,
-    Glyph chr,
+    Glyph* chr,
+    int line_length,
     uint8_t* buffer,
     int* min_y_px,
     int* max_y_px
 ) {
-    int px_x = pixel_start_x + horizontal_advance;
-    int px_y = pixel_start_y + f->advance_y * line;
-    char data[5] = {0};
-    utf8encode(chr.u, data);
-    FontProperties fprops = {
-        .fg_color = displaycolor(chr.fg),
-        .bg_color = displaycolor(chr.bg),
-        .fallback_glyph = fallback_glyph,
-        .flags = chr.bg != defaultbg ? DRAW_BACKGROUND : 0,
-    };
+    char* data = malloc(4 * term.col + 1);
+    int idx = 0;
+    int px_x = pixel_start_x;
+    while (idx < term.col) {
+      int data_pos = 0;
+      Glyph c = chr[idx];
+      while (idx < term.col && (
+              chr[idx].fg == c.fg
+              && chr[idx].bg == c.bg
+              && chr[idx].mode == c.mode)) {
+        c = chr[idx];
+        data_pos += utf8encode(c.u, data + data_pos);
+        idx++;
+      }
+      // null-terminate
+      data[data_pos] = 0;
 
-    // record highest and lowest pixel, transformed from font coordinates
-    // around baseline
-    *min_y_px = MIN(px_y - font->ascender, *min_y_px);
-    *max_y_px = MAX(px_y - font->descender, *max_y_px);
-    write_mode(f, data, &px_x, &px_y, buffer, WHITE_ON_WHITE, &fprops);
+      FontProperties fprops = {
+          .fg_color = displaycolor(c.fg),
+          .bg_color = displaycolor(c.bg),
+          .fallback_glyph = fallback_glyph,
+          .flags = c.bg != defaultbg ? DRAW_BACKGROUND : 0,
+      };
+      GFXfont* f = get_font(c);
+      int px_y = pixel_start_y + f->advance_y * line;
+      // record highest and lowest pixel, transformed from font coordinates
+      // around baseline
+      *min_y_px = MIN(px_y - font->ascender, *min_y_px);
+      *max_y_px = MAX(px_y - font->descender, *max_y_px);
+      int tmp_px_x = px_x;
+      int tmp_px_y = px_y;
+      int x1, y1, w, h;
+      get_text_bounds(f, data, &tmp_px_x, &tmp_px_y, &x1, &y1, &w, &h, &fprops);
+      write_mode(f, data, &px_x, &px_y, buffer, WHITE_ON_WHITE, &fprops);
+    }
+    free(data);
+}
+
+// input buffers must be 32-bit line aligned.
+void IRAM_ATTR calculate_dirty_buffer(
+        uint8_t* dst, uint8_t* delete_buffer,
+        uint8_t* write_buffer, int lines)
+{
+  uint32_t* p1 = (uint32_t*)delete_buffer;
+  uint32_t* p2 = (uint32_t*)write_buffer;
+  for (int i = 0; i < EPD_WIDTH / 8 * lines; i++) {
+    uint32_t c = ((*p1++) ^ (*p2++));
+    uint8_t d = 0;
+    d = ((c & 0xF) > 0) << 0;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 1;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 2;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 3;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 4;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 5;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 6;
+    c = c >> 4;
+    d |= ((c & 0xF) > 0) << 7;
+    c = c >> 4;
+    (*dst++) = d;
+  }
+}
+
+static const DRAM_ATTR uint32_t mask_lut[256] = {
+    0x00000000, 0x0000000f, 0x000000f0, 0x000000ff, 0x00000f00, 0x00000f0f,
+    0x00000ff0, 0x00000fff, 0x0000f000, 0x0000f00f, 0x0000f0f0, 0x0000f0ff,
+    0x0000ff00, 0x0000ff0f, 0x0000fff0, 0x0000ffff, 0x000f0000, 0x000f000f,
+    0x000f00f0, 0x000f00ff, 0x000f0f00, 0x000f0f0f, 0x000f0ff0, 0x000f0fff,
+    0x000ff000, 0x000ff00f, 0x000ff0f0, 0x000ff0ff, 0x000fff00, 0x000fff0f,
+    0x000ffff0, 0x000fffff, 0x00f00000, 0x00f0000f, 0x00f000f0, 0x00f000ff,
+    0x00f00f00, 0x00f00f0f, 0x00f00ff0, 0x00f00fff, 0x00f0f000, 0x00f0f00f,
+    0x00f0f0f0, 0x00f0f0ff, 0x00f0ff00, 0x00f0ff0f, 0x00f0fff0, 0x00f0ffff,
+    0x00ff0000, 0x00ff000f, 0x00ff00f0, 0x00ff00ff, 0x00ff0f00, 0x00ff0f0f,
+    0x00ff0ff0, 0x00ff0fff, 0x00fff000, 0x00fff00f, 0x00fff0f0, 0x00fff0ff,
+    0x00ffff00, 0x00ffff0f, 0x00fffff0, 0x00ffffff, 0x0f000000, 0x0f00000f,
+    0x0f0000f0, 0x0f0000ff, 0x0f000f00, 0x0f000f0f, 0x0f000ff0, 0x0f000fff,
+    0x0f00f000, 0x0f00f00f, 0x0f00f0f0, 0x0f00f0ff, 0x0f00ff00, 0x0f00ff0f,
+    0x0f00fff0, 0x0f00ffff, 0x0f0f0000, 0x0f0f000f, 0x0f0f00f0, 0x0f0f00ff,
+    0x0f0f0f00, 0x0f0f0f0f, 0x0f0f0ff0, 0x0f0f0fff, 0x0f0ff000, 0x0f0ff00f,
+    0x0f0ff0f0, 0x0f0ff0ff, 0x0f0fff00, 0x0f0fff0f, 0x0f0ffff0, 0x0f0fffff,
+    0x0ff00000, 0x0ff0000f, 0x0ff000f0, 0x0ff000ff, 0x0ff00f00, 0x0ff00f0f,
+    0x0ff00ff0, 0x0ff00fff, 0x0ff0f000, 0x0ff0f00f, 0x0ff0f0f0, 0x0ff0f0ff,
+    0x0ff0ff00, 0x0ff0ff0f, 0x0ff0fff0, 0x0ff0ffff, 0x0fff0000, 0x0fff000f,
+    0x0fff00f0, 0x0fff00ff, 0x0fff0f00, 0x0fff0f0f, 0x0fff0ff0, 0x0fff0fff,
+    0x0ffff000, 0x0ffff00f, 0x0ffff0f0, 0x0ffff0ff, 0x0fffff00, 0x0fffff0f,
+    0x0ffffff0, 0x0fffffff, 0xf0000000, 0xf000000f, 0xf00000f0, 0xf00000ff,
+    0xf0000f00, 0xf0000f0f, 0xf0000ff0, 0xf0000fff, 0xf000f000, 0xf000f00f,
+    0xf000f0f0, 0xf000f0ff, 0xf000ff00, 0xf000ff0f, 0xf000fff0, 0xf000ffff,
+    0xf00f0000, 0xf00f000f, 0xf00f00f0, 0xf00f00ff, 0xf00f0f00, 0xf00f0f0f,
+    0xf00f0ff0, 0xf00f0fff, 0xf00ff000, 0xf00ff00f, 0xf00ff0f0, 0xf00ff0ff,
+    0xf00fff00, 0xf00fff0f, 0xf00ffff0, 0xf00fffff, 0xf0f00000, 0xf0f0000f,
+    0xf0f000f0, 0xf0f000ff, 0xf0f00f00, 0xf0f00f0f, 0xf0f00ff0, 0xf0f00fff,
+    0xf0f0f000, 0xf0f0f00f, 0xf0f0f0f0, 0xf0f0f0ff, 0xf0f0ff00, 0xf0f0ff0f,
+    0xf0f0fff0, 0xf0f0ffff, 0xf0ff0000, 0xf0ff000f, 0xf0ff00f0, 0xf0ff00ff,
+    0xf0ff0f00, 0xf0ff0f0f, 0xf0ff0ff0, 0xf0ff0fff, 0xf0fff000, 0xf0fff00f,
+    0xf0fff0f0, 0xf0fff0ff, 0xf0ffff00, 0xf0ffff0f, 0xf0fffff0, 0xf0ffffff,
+    0xff000000, 0xff00000f, 0xff0000f0, 0xff0000ff, 0xff000f00, 0xff000f0f,
+    0xff000ff0, 0xff000fff, 0xff00f000, 0xff00f00f, 0xff00f0f0, 0xff00f0ff,
+    0xff00ff00, 0xff00ff0f, 0xff00fff0, 0xff00ffff, 0xff0f0000, 0xff0f000f,
+    0xff0f00f0, 0xff0f00ff, 0xff0f0f00, 0xff0f0f0f, 0xff0f0ff0, 0xff0f0fff,
+    0xff0ff000, 0xff0ff00f, 0xff0ff0f0, 0xff0ff0ff, 0xff0fff00, 0xff0fff0f,
+    0xff0ffff0, 0xff0fffff, 0xfff00000, 0xfff0000f, 0xfff000f0, 0xfff000ff,
+    0xfff00f00, 0xfff00f0f, 0xfff00ff0, 0xfff00fff, 0xfff0f000, 0xfff0f00f,
+    0xfff0f0f0, 0xfff0f0ff, 0xfff0ff00, 0xfff0ff0f, 0xfff0fff0, 0xfff0ffff,
+    0xffff0000, 0xffff000f, 0xffff00f0, 0xffff00ff, 0xffff0f00, 0xffff0f0f,
+    0xffff0ff0, 0xffff0fff, 0xfffff000, 0xfffff00f, 0xfffff0f0, 0xfffff0ff,
+    0xffffff00, 0xffffff0f, 0xfffffff0, 0xffffffff,
+};
+
+void IRAM_ATTR mask_buffer(uint8_t* mask, uint32_t* input, uint32_t* output, int lines) {
+  for (int i=0; i < EPD_WIDTH / 8 * lines; i++) {
+    output[i] = input[i] & mask_lut[mask[i]];
+  }
 }
 
 void render() {
 
+  uint32_t ts = esp_timer_get_time();
   int write_min_y = 100000;
   int delete_min_y = 100000;
   int write_max_y = -1;
   int delete_max_y = -1;
+  // memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+  // memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
 
-  bool is_full_clear = updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
+  bool is_full_clear = false; //updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
 
   for (int y = 0; y < term.row; y++) {
     if (!term.dirty[y] && !is_full_clear) {
       continue;
     }
 
-    for (int x = 0; x < term.col; x++) {
+    int line_y = pixel_start_y + font->advance_y * y - font->ascender;
+    int line_height = font->ascender - font->descender;
+    memset(render_fb_front + line_y * EPD_WIDTH / 2, 255, EPD_WIDTH / 2 * line_height);
 
-      Glyph chr = term.line[y][x];
-      Glyph old_chr = term.old_line[y][x];
-
-      // determine operation to perform
-      enum RenderOperation operation = NOP;
-      if (is_full_clear && !glyph_empty(chr)) {
-        operation = WRITE;
-      } else if (is_full_clear && glyph_empty(chr)) {
-        operation = NOP;
-      } else if (glyphs_equal(chr, old_chr)) {
-        operation = NOP;
-      } else if (!glyph_empty(old_chr) && !glyph_empty(chr)) {
-        operation = REPLACE;
-      } else if (!glyph_empty(old_chr) && glyph_empty(chr)) {
-        operation = DELETE;
-      } else if (glyph_empty(old_chr) && !glyph_empty(chr)) {
-        operation = WRITE;
-      }
-
-      if (operation == DELETE || operation == REPLACE) {
-        updates_since_clear += 1;
-        GFXfont* f = get_font(old_chr);
-        int horizontal_advance = calculate_horizontal_advance(f, term.old_line[y], x);
-        render_character(operation, f, y, horizontal_advance, old_chr, render_fb_delete, &delete_min_y, &delete_max_y);
-      }
-
-      if (operation == WRITE || operation == REPLACE) {
-        GFXfont* f = get_font(chr);
-        int horizontal_advance = calculate_horizontal_advance(f, term.line[y], x);
-        render_character(operation, f, y, horizontal_advance, chr, render_fb_write, &write_min_y, &write_max_y);
-      }
-    }
+    render_line(y, 0, term.line[y], term.col, render_fb_front, &write_min_y, &write_max_y);
     term.dirty[y] = 0;
   }
 
-  /* resize each row to new width, zero-pad if needed */
-  for (int i = 0; i < term.row; i++) {
-      memcpy(term.old_line[i], term.line[i], term.col * sizeof(Glyph));
-  }
-
-  // delete buffer dirty
-  bool delete_dirty = delete_min_y <= delete_max_y;
   // write buffer dirty
   bool write_dirty = write_min_y <= write_max_y;
 
-  if (delete_dirty && !is_full_clear) {
-    int height = delete_max_y - delete_min_y + 1;
-    height = MIN(height, EPD_HEIGHT - delete_min_y);
-    uint8_t* start_ptr = render_fb_delete + EPD_WIDTH / 2 * delete_min_y;
-    Rect_t area = {
-      .x = 0,
-      .y = delete_min_y,
-      .width = EPD_WIDTH,
-      .height = height,
-    };
-    epd_poweron();
-    epd_draw_image(area, start_ptr, WHITE_ON_WHITE);
-    if (!write_dirty) {
-        epd_poweroff();
-    }
-    memset(start_ptr, 255, EPD_WIDTH / 2 * height);
-  }
-
   if (write_dirty) {
+    uint32_t t_draw = esp_timer_get_time();
+    ESP_LOGI("term", "draw time: %d", (t_draw - ts) / 1000);
+
     int height = write_max_y - write_min_y + 1;
     height = MIN(height, EPD_HEIGHT - write_min_y);
-    uint8_t* start_ptr = render_fb_write + EPD_WIDTH / 2 * write_min_y;
+    uint8_t* start_ptr = render_fb_front + EPD_WIDTH / 2 * write_min_y;
+
+    uint8_t* mask = heap_caps_malloc(EPD_WIDTH / 8 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    uint8_t* mask_start = mask + (write_min_y * EPD_WIDTH / 8);
+    uint32_t t1 = esp_timer_get_time();
+    //memset(mask, 0, EPD_WIDTH / 8 * EPD_HEIGHT);
+
+    calculate_dirty_buffer(
+            mask_start,
+            render_fb_back + (write_min_y * EPD_WIDTH / 2),
+            start_ptr,
+            height
+    );
+    uint32_t t2 = esp_timer_get_time();
+    ESP_LOGI("term", "dirty buffer time %d", (t2 - t1) / 1000);
+
     Rect_t area = {
       .x = 0,
       .y = write_min_y,
@@ -2844,14 +2919,38 @@ void render() {
     if (is_full_clear) {
       full_refresh();
       updates_since_clear = 0;
-      epd_poweron();
-    } else if (!delete_dirty) {
-      epd_poweron();
     }
-    epd_draw_image(area, start_ptr, BLACK_ON_WHITE);
+    epd_poweron();
+    uint8_t* masked_buf = heap_caps_malloc(EPD_WIDTH / 2 * height, MALLOC_CAP_SPIRAM);
+    uint32_t tm = esp_timer_get_time();
+    mask_buffer(mask_start, start_ptr, masked_buf, height);
+
+    uint32_t ta = esp_timer_get_time();
+    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 400);
+    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 400);
+    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 400);
+    uint32_t tb = esp_timer_get_time();
+    epd_draw_image(area, masked_buf, WHITE_ON_BLACK);
+    uint32_t tc = esp_timer_get_time();
     epd_poweroff();
+
+    memcpy(
+        render_fb_back + write_min_y * EPD_WIDTH / 2,
+        render_fb_front + write_min_y * EPD_WIDTH / 2,
+        EPD_WIDTH / 2 * height
+    );
+    uint32_t td = esp_timer_get_time();
+    ESP_LOGI("term", "mask draw: %d, masked draw: %d, maked calc %d, memcpy: %d",
+        (tb - ta) / 1000,
+        (tc - tb) / 1000,
+        (ta - tm) / 1000,
+        (td - tc) / 1000
+    );
     drawn_since_clear = true;
-    memset(start_ptr, 255, EPD_WIDTH / 2 * height);
+    free(mask);
+    free(masked_buf);
+    uint32_t te = esp_timer_get_time();
+      ESP_LOGI("term", "full draw %d", (te - ts) / 1000);
   }
 }
 
