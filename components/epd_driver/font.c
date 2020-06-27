@@ -91,17 +91,10 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
   return;
 }
 
-static uint8_t pixel_on_bg(uint8_t bg, uint8_t strength, FontProperties* props) {
-  int d = (int)props->fg_color - (int)bg;
-  int col = (int)bg + (15 - strength) * d / 15;
-  col = min(15, max(0, col));
-  return (uint8_t)col;
-}
-
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
+static void IRAM_ATTR draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
               uint16_t buf_height, uint32_t cp, FontProperties* props) {
 
   GFXglyph *glyph;
@@ -119,29 +112,54 @@ static void draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_
   uint8_t width = glyph->width, height = glyph->height;
   int left = glyph->left;
 
-  unsigned long bitmap_size = width * height;
-  uint8_t *bitmap = (uint8_t *)malloc(bitmap_size);
-  uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
-             glyph->compressed_size);
+  int byte_width = (width / 2 + width % 2);
+  unsigned long bitmap_size = byte_width * height;
+  uint8_t *bitmap = NULL;
+  if (font->compressed) {
+      bitmap = (uint8_t *)malloc(bitmap_size);
+      uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
+                 glyph->compressed_size);
+  } else {
+      bitmap = &font->bitmap[offset];
+  }
 
-  for (uint32_t i = 0; i < bitmap_size; i++) {
-    int xx = *cursor_x + left + i % width;
-    int yy = cursor_y - glyph->top + i / width;
-    if (xx < 0 || xx / 2 + (xx % 2) >= buf_width) {
-        continue;
-    }
+  uint8_t color_lut[16];
+  for (int c = 0; c < 16; c++) {
+    int color_difference = (int)props->fg_color - (int)props->bg_color;
+    color_lut[c] = max(0, min(15, props->bg_color + c * color_difference / 15));
+  }
+
+  for (int y = 0; y < height; y++) {
+    int yy = cursor_y - glyph->top + y;
     if (yy < 0 || yy >= buf_height) {
         continue;
     }
-    uint32_t buf_pos = yy * buf_width + xx / 2;
-	uint8_t old = buffer[buf_pos];
-    if (xx % 2 == 0) {
-      buffer[buf_pos] = (old & 0xF0) | pixel_on_bg(old & 0x0F, bitmap[i] >> 4, props);
-    } else {
-      buffer[buf_pos] = (old & 0x0F) | (pixel_on_bg((old & 0xF0) >> 4, bitmap[i] >> 4, props) << 4);
+    int start_pos = *cursor_x + left;
+    bool byte_complete = start_pos % 2;
+    int x = max(0, -start_pos);
+    int max_x = min(start_pos + width, buf_width * 2);
+    for (int xx = start_pos; xx < max_x; xx++) {
+      uint32_t buf_pos = yy * buf_width + xx / 2;
+      uint8_t old = buffer[buf_pos];
+      uint8_t bm = bitmap[y * byte_width + x / 2];
+      if ((x & 1) == 0) {
+        bm = bm & 0xF;
+      } else {
+        bm = bm >> 4;
+      }
+
+      if ((xx & 1) == 0) {
+        buffer[buf_pos] = (old & 0xF0) | color_lut[bm];
+      } else {
+        buffer[buf_pos] = (old & 0x0F) | (color_lut[bm] << 4);
+      }
+      byte_complete = !byte_complete;
+      x++;
     }
   }
-  free(bitmap);
+  if (font->compressed) {
+      free(bitmap);
+  }
   *cursor_x += glyph->advance_x;
 }
 

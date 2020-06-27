@@ -4,6 +4,7 @@
 #pragma once
 #include "esp_attr.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
 /// Width of the display area in pixels.
@@ -204,6 +205,7 @@ typedef struct {
   GFXglyph *glyph;            ///< Glyph array
   UnicodeInterval *intervals; ///< Valid unicode intervals for this font
   uint32_t interval_count;    ///< Number of unicode intervals.
+  bool compressed;            ///< Does this font use compressed glyph bitmaps?
   uint8_t advance_y;          ///< Newline distance (y axis)
   int ascender;               ///< Maximal height of a glyph above the base line
   int descender;              ///< Maximal height of a glyph below the base line
