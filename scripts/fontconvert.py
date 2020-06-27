@@ -4,15 +4,22 @@ import zlib
 import sys
 import re
 import math
+import argparse
 from collections import namedtuple
+
+parser = argparse.ArgumentParser(description="Generate a header file from a font to be used with epdiy.")
+parser.add_argument("name", action="store", help="name of the font.")
+parser.add_argument("size", type=int, help="font size to use.")
+parser.add_argument("fontstack", action="store", nargs='+', help="list of font files, ordered by descending priority.")
+parser.add_argument("--compress", dest="compress", action="store_true", help="compress glyph bitmaps.")
+args = parser.parse_args()
 
 GlyphProps = namedtuple("GlyphProps", ["width", "height", "advance_x", "left", "top", "compressed_size", "data_offset", "code_point"])
 
-font_stack = [
-    freetype.Face("/usr/share/fonts/TTF/FiraCode-Regular.ttf"),
-    freetype.Face("/usr/share/fonts/TTF/Symbola.ttf")
-]
-font_name = "FiraCode"
+font_stack = [freetype.Face(f) for f in args.fontstack]
+compress = args.compress
+size = args.size
+font_name = args.name
 
 # inclusive unicode code point intervals
 # must not overlap and be in ascending order
@@ -27,7 +34,6 @@ intervals = [
     (0x1F600, 0x1F680),
 ]
 
-size = 12
 
 def norm_floor(val):
     return int(math.floor(val / (1 << 6)))
@@ -65,9 +71,28 @@ for i_start, i_end in intervals:
     for code_point in range(i_start, i_end + 1):
         face = load_glyph(code_point)
         bitmap = face.glyph.bitmap
-        packed = bytes([255 - b for b in bitmap.buffer]);
+        pixels = []
+        px = 0
+        for i, v in enumerate(bitmap.buffer):
+            y = i / bitmap.width
+            x = i % bitmap.width
+            if x % 2 == 0:
+                px = (v >> 4)
+            else:
+                px = px | (v & 0xF0)
+                pixels.append(px);
+                px = 0
+            # eol
+            if x == bitmap.width - 1 and bitmap.width % 2 > 0:
+                pixels.append(px)
+                px = 0
+
+        packed = bytes(pixels);
         total_packed += len(packed)
-        compressed = zlib.compress(packed)
+        compressed = packed
+        if compress:
+            compressed = zlib.compress(packed)
+
         glyph = GlyphProps(
             width = bitmap.width,
             height = bitmap.rows,
@@ -94,7 +119,7 @@ for index, glyph in enumerate(all_glyphs):
 print("total", total_packed, file=sys.stderr)
 print("compressed", total_size, file=sys.stderr)
 
-
+print("#pragma once")
 print("#include \"epd_driver.h\"")
 print(f"const uint8_t {font_name}Bitmaps[{len(glyph_data)}] = {{")
 for c in chunks(glyph_data, 16):
@@ -118,6 +143,7 @@ print(f"    (uint8_t*){font_name}Bitmaps,")
 print(f"    (GFXglyph*){font_name}Glyphs,")
 print(f"    (UnicodeInterval*){font_name}Intervals,")
 print(f"    {len(intervals)},")
+print(f"    {1 if compress else 0},")
 print(f"    {norm_ceil(face.size.height)},")
 print(f"    {norm_ceil(face.size.ascender)},")
 print(f"    {norm_floor(face.size.descender)},")
