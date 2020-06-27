@@ -99,3 +99,14 @@ sufficiently configurable.
 
 However, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
 which allows you to use the Arduino ecosystem (Except for a different build process).
+
+Generating Font Files
+---------------------
+
+Fonts are provided in a special header format (inspired by the Adafruit GFX library), which need to be generated from TTF fonts.
+For this purpose, the :code:`scripts/fontconvert.py` utility is provided.
+The following example generates a header file for Fira Code at size 10, where glyphs that are not found in Fira Code will be taken from Symbola:
+::
+    ./fontconvert.py FiraCode 10 /usr/share/fonts/TTF/FiraCode-Regular.ttf /usr/share/fonts/TTF/Symbola.ttf > ../examples/terminal/main/firacode.h
+
+You can change which unicode character codes are to be exported by modifying :code:`intervals` in :code:`fontconvert.py`.
