@@ -36,7 +36,7 @@ const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
                                    10, 10, 20, 20, 50, 100, 200};
 
 const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
-                                         6, 6, 6, 8, 8, 10, 100};
+                                         6, 6, 6, 8, 8, 50, 150};
 #else
 #error "no display type defined!"
 #endif
@@ -50,7 +50,7 @@ static QueueHandle_t output_queue;
 static void write_row(uint32_t output_time_dus) {
   // avoid too light output after skipping on some displays
   if (skipping) {
-    vTaskDelay(2);
+    //vTaskDelay(20);
   }
   skipping = 0;
   epd_output_row(output_time_dus);
@@ -79,14 +79,17 @@ void skip_row(uint8_t pipeline_finish_time) {
     epd_output_row(pipeline_finish_time);
     // avoid tainting of following rows by
     // allowing residual charge to dissipate
+    //vTaskDelay(10);
+    /*
     unsigned counts = XTHAL_GET_CCOUNT() + 50 * 240;
     while (XTHAL_GET_CCOUNT() < counts) {
     };
-  };
-  if (skipping == 1) {
+    */
+  } else if (skipping < 2) {
     epd_output_row(10);
   }
-  if (skipping > 1) {
+  else {
+    //epd_output_row(5);
     epd_skip();
   }
   skipping++;
@@ -229,28 +232,6 @@ void IRAM_ATTR calc_epd_input_1bpp(uint8_t *line_data, uint8_t *epd_input,
     wide_epd_input[j] = (lut_1bpp[v1] << 16) | lut_1bpp[v2];
   }
 }
-
-/*
-static inline void calc_lut_pos(
-    uint8_t *lut,
-    uint32_t pos,
-    uint32_t add_mask,
-    uint32_t shift_amount
-) {
-  uint8_t r = k + 1;
-  uint32_t add_mask = (r << 24) | (r << 16) | (r << 8) | r;
-  uint8_t shift_amount;
-  const uint32_t shiftmul = (1 << 15) + (1 << 21) + (1 << 3) + (1 << 9);
-  uint32_t val = pos;
-  val = (val | (val << 8)) & 0x00FF00FF;
-  val = (val | (val << 4)) & 0x0F0F0F0F;
-  val += add_mask;
-  val = ~val;
-  // now the bits we need are masked
-  val &= 0x10101010;
-  // shift relevant bits to the most significant byte, then shift down
-  lut[pos] = ((val * shiftmul) >> shift_amount);
-}*/
 
 static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
   switch (mode) {
@@ -564,13 +545,13 @@ void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
       lp = line;
     }
     calc_epd_input_1bpp(lp, epd_get_current_buffer(), mode);
-    write_row(time);
+    epd_output_row(time);
     if (shifted) {
       memset(line, 0, sizeof(line));
     }
   }
   if (!skipping) {
-    write_row(time);
+    epd_output_row(time);
   }
   epd_end_frame();
 }
