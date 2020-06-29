@@ -84,7 +84,8 @@ void epd_base_init(uint32_t epd_row_width) {
 
   // Setup I2S
   i2s_bus_config i2s_config;
-  i2s_config.epd_row_width = epd_row_width;
+  // add an offset off dummy bytes to allow for enough timing headroom
+  i2s_config.epd_row_width = epd_row_width + 32;
   i2s_config.clock = CKH;
   i2s_config.start_pulse = STH;
   i2s_config.data_0 = D0;
@@ -138,8 +139,6 @@ void epd_start_frame() {
   push_cfg(&config_reg);
 
   pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
 
   // This is very timing-sensitive!
   config_reg.ep_stv = false;
@@ -152,6 +151,8 @@ void epd_start_frame() {
 
   config_reg.ep_output_enable = true;
   push_cfg(&config_reg);
+
+  pulse_ckv_us(1, 1, true);
 }
 
 static inline void latch_row() {
@@ -162,13 +163,16 @@ static inline void latch_row() {
   push_cfg(&config_reg);
 }
 
-void IRAM_ATTR epd_skip() { pulse_ckv_ticks(30, 1, true); }
+void IRAM_ATTR epd_skip() {
+  //config_reg.ep_latch_enable = true;
+  //push_cfg(&config_reg);
+  pulse_ckv_ticks(2, 2, false);
+}
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
   while (i2s_is_busy() || rmt_busy()) {
   };
-
   latch_row();
 
   pulse_ckv_ticks(output_time_dus, 50, false);
