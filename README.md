@@ -13,6 +13,15 @@ Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support 
 
 The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB features a 33pin and a 39pin connector, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2
 
+Displays
+--------
+
+| Display  | Size | Resolution | Grey levels | Connector | Bom-Part
+| --: | --: | --: | --: | --: | --: |
+| ED097OC4  | 9.7" | 1200 x 825 | 16 | 33 | XF2M-3315-1A |
+| ED060SC4  | 6" | 800 x 600  | 16 | 39 | FH26W-39S-0.3SHW(60) |
+| ED097TC2  | 9.7" | 1200 x 825  | 16 | 33 | XF2M-3315-1A |
+
 Building It
 -----------
 
