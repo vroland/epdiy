@@ -113,8 +113,6 @@ void epd_task() {
     // Still log to the serial output
     esp_log_set_vprintf(log_to_uart);
 
-    delay(1000);
-
     uart_write_bytes(UART_NUM_1, "listening\n", 11);
 
     tnew(cols, rows);

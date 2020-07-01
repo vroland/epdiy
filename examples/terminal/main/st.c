@@ -2679,7 +2679,7 @@ enum RenderOperation {
 };
 
 static int pixel_start_x = 50;
-static int pixel_start_y = 50;
+static int pixel_start_y = 30;
 
 Line *old_line = NULL;   /* old screen */
 
@@ -2730,26 +2730,32 @@ static bool glyphs_equal(Glyph g1, Glyph g2) {
         g1.bg == g2.bg && g1.mode == g2.mode;
 }
 
-static void render_line(
-    int line,
-    int horizontal_advance,
-    Glyph* chr,
-    int line_length,
-    uint8_t* buffer,
-    int* min_y_px,
-    int* max_y_px
-) {
+
+typedef struct {
+  int line;
+  Glyph* glyphs;
+  uint8_t* buffer;
+  int* min_y_px;
+  int* max_y_px;
+  int done;
+} LineParams_t;
+
+static void render_line(LineParams_t* p) {
+    int line_y = pixel_start_y + font->advance_y * p->line - font->ascender;
+    int line_height = font->ascender - font->descender;
+    memset(render_fb_front + line_y * EPD_WIDTH / 2, 255, EPD_WIDTH / 2 * line_height);
+
     char* data = malloc(4 * term.col + 1);
     int idx = 0;
     int px_x = pixel_start_x;
     while (idx < term.col) {
       int data_pos = 0;
-      Glyph c = chr[idx];
+      Glyph c = p->glyphs[idx];
       while (idx < term.col && (
-              chr[idx].fg == c.fg
-              && chr[idx].bg == c.bg
-              && chr[idx].mode == c.mode)) {
-        c = chr[idx];
+              p->glyphs[idx].fg == c.fg
+              && p->glyphs[idx].bg == c.bg
+              && p->glyphs[idx].mode == c.mode)) {
+        c = p->glyphs[idx];
         data_pos += utf8encode(c.u, data + data_pos);
         idx++;
       }
@@ -2763,18 +2769,21 @@ static void render_line(
           .flags = c.bg != defaultbg ? DRAW_BACKGROUND : 0,
       };
       GFXfont* f = get_font(c);
-      int px_y = pixel_start_y + f->advance_y * line;
+      int px_y = pixel_start_y + f->advance_y * p->line;
       // record highest and lowest pixel, transformed from font coordinates
       // around baseline
-      *min_y_px = MIN(px_y - font->ascender, *min_y_px);
-      *max_y_px = MAX(px_y - font->descender, *max_y_px);
+      *(p->min_y_px) = MIN(px_y - font->ascender, *(p->min_y_px));
+      *(p->max_y_px) = MAX(px_y - font->descender, *(p->max_y_px));
       int tmp_px_x = px_x;
       int tmp_px_y = px_y;
       int x1, y1, w, h;
       get_text_bounds(f, data, &tmp_px_x, &tmp_px_y, &x1, &y1, &w, &h, &fprops);
-      write_mode(f, data, &px_x, &px_y, buffer, WHITE_ON_WHITE, &fprops);
+      write_mode(f, data, &px_x, &px_y, p->buffer, WHITE_ON_WHITE, &fprops);
     }
     free(data);
+    p->done = true;
+    vTaskDelete(NULL);
+    vTaskDelay(portMAX_DELAY);
 }
 
 // input buffers must be 32-bit line aligned.
@@ -2871,19 +2880,36 @@ void render() {
 
 
   bool is_full_clear = false; //updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
+  LineParams_t* line_task_params = malloc(term.row * sizeof(LineParams_t));
+  int drawn_lines = 0;
 
   for (int y = 0; y < term.row; y++) {
     if (!term.dirty[y] && !is_full_clear) {
       continue;
     }
 
-    int line_y = pixel_start_y + font->advance_y * y - font->ascender;
-    int line_height = font->ascender - font->descender;
-    memset(render_fb_front + line_y * EPD_WIDTH / 2, 255, EPD_WIDTH / 2 * line_height);
-
-    render_line(y, 0, term.line[y], term.col, render_fb_front, &write_min_y, &write_max_y);
+    // dynamically allocate! (or move all to function)
+    LineParams_t params = {
+      .line = y,
+      .glyphs = term.line[y],
+      .buffer = render_fb_front,
+      .min_y_px = &write_min_y,
+      .max_y_px = &write_max_y,
+      .done = 0,
+    };
+    line_task_params[drawn_lines] = params;
+    //ESP_LOGI("term", "render line %d", drawn_lines);
+    xTaskCreate((void (*)(void *))render_line, "ld", 4000, &line_task_params[drawn_lines], 10, NULL);
+    //render_line(y, 0, term.line[y], term.col, render_fb_front, &write_min_y, &write_max_y);
     term.dirty[y] = 0;
+    drawn_lines++;
   }
+  for (int i=0; i < drawn_lines; i++) {
+    while (!line_task_params[i].done) {
+      vTaskDelay(1);
+    }
+  }
+  free(line_task_params);
 
   // write buffer dirty
   bool write_dirty = write_min_y <= write_max_y;
@@ -2924,11 +2950,18 @@ void render() {
     uint8_t* masked_buf = heap_caps_malloc(EPD_WIDTH / 2 * height, MALLOC_CAP_SPIRAM);
     uint32_t tm = esp_timer_get_time();
     mask_buffer(mask_start, start_ptr, masked_buf, height);
-
     uint32_t ta = esp_timer_get_time();
-    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 400);
-    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 400);
-    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 400);
+    // wait for power on
+    if (height < 200) vTaskDelay(10);
+
+    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 200);
+    // for some reason, we need to wait some time before the next frame,
+    // or drawing will not be as strong.
+    if (height < 200) vTaskDelay(20);
+    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 200);
+    if (height < 200) vTaskDelay(20);
+    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 200);
+    if (height < 200) vTaskDelay(20);
     uint32_t tb = esp_timer_get_time();
     epd_draw_image(area, masked_buf, WHITE_ON_BLACK);
     uint32_t tc = esp_timer_get_time();
@@ -2940,7 +2973,7 @@ void render() {
         EPD_WIDTH / 2 * height
     );
     uint32_t td = esp_timer_get_time();
-    ESP_LOGI("term", "mask draw: %d, masked draw: %d, maked calc %d, memcpy: %d",
+    ESP_LOGI("term", "mask draw: %d, masked draw: %d, masked calc %d, memcpy: %d",
         (tb - ta) / 1000,
         (tc - tb) / 1000,
         (ta - tm) / 1000,
