@@ -159,21 +159,19 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   dev->sample_rate_conf.tx_bits_mod = 8;
 
   // Half speed of bit clock in LCD mode.
+  // (Smallest possible divider according to the spec).
   dev->sample_rate_conf.tx_bck_div_num = 2;
 
-  // Initialize Audio Clock (APLL) for 48 Mhz.
-  rtc_clk_apll_enable(1, 0, 0, 8, 3);
+  // Initialize Audio Clock (APLL) for 80 Mhz.
+  rtc_clk_apll_enable(1, 0, 0, 8, 1);
 
-  // Enable undivided Audio Clock
+  // Set Audio Clock Dividers
   dev->clkm_conf.val = 0;
   dev->clkm_conf.clka_en = 1;
   dev->clkm_conf.clkm_div_a = 1;
   dev->clkm_conf.clkm_div_b = 0;
-
-  // The smallest stable divider for the internal PLL is 6 (13.33 MHz),
-  // While with the APLL, the display is stable up to 48 MHz!
-  // (Which is later halved by bck_div, so we use 24 MHz)
-  dev->clkm_conf.clkm_div_num = 1;
+  // 2 is the smallest possible divider according to the spec.
+  dev->clkm_conf.clkm_div_num = 2;
 
   // Set up FIFO
   dev->fifo_conf.val = 0;
