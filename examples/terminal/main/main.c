@@ -107,11 +107,11 @@ void epd_task() {
             .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
     uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, GPIO_NUM_15, GPIO_NUM_14, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, BUF_SIZE, 10, NULL, 0);
 
     // Still log to the serial output
-    esp_log_set_vprintf(log_to_uart);
+    //esp_log_set_vprintf(log_to_uart);
 
     uart_write_bytes(UART_NUM_1, "listening\n", 11);
 
