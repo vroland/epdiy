@@ -627,6 +627,7 @@ typedef struct {
   Rect_t area;
   int frame;
   enum DrawMode mode;
+  bool *drawn_lines;
 } OutputParams;
 
 void IRAM_ATTR provide_out(OutputParams *params) {
@@ -650,6 +651,10 @@ void IRAM_ATTR provide_out(OutputParams *params) {
 
   for (int i = 0; i < EPD_HEIGHT; i++) {
     if (i < area.y || i >= area.y + area.height) {
+      continue;
+    }
+    if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
+      ptr += area.width / 2 + area.width % 2;
       continue;
     }
 
@@ -714,6 +719,10 @@ void IRAM_ATTR feed_display(OutputParams *params) {
       skip_row(contrast_lut[params->frame]);
       continue;
     }
+    if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
+      skip_row(contrast_lut[params->frame]);
+      continue;
+    }
     uint8_t output[EPD_WIDTH / 2];
     xQueueReceive(output_queue, output, portMAX_DELAY);
     calc_epd_input_4bpp((uint32_t *)output, epd_get_current_buffer(),
@@ -730,9 +739,8 @@ void IRAM_ATTR feed_display(OutputParams *params) {
   vTaskDelay(portMAX_DELAY);
 }
 
-void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
-                                   enum DrawMode mode, int time) {
-
+void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr,
+                                   enum DrawMode mode, int time, bool* drawn_lines) {
   epd_start_frame();
   uint8_t line[EPD_WIDTH / 8];
   memset(line, 0, sizeof(line));
@@ -749,6 +757,11 @@ void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
   for (int i = 0; i < EPD_HEIGHT; i++) {
     if (i < area.y || i >= area.y + area.height) {
       skip_row(time);
+      continue;
+    }
+    if (drawn_lines != NULL && !drawn_lines[i - area.y]) {
+      skip_row(time);
+      ptr += ceil_byte_width;
       continue;
     }
 
@@ -803,7 +816,17 @@ void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
   epd_end_frame();
 }
 
+
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
+                                   enum DrawMode mode, int time) {
+    epd_draw_frame_1bit_lines(area, ptr, mode, time, NULL);
+}
+
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
+    epd_draw_image_lines(area, data, mode, NULL);
+}
+
+void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mode, bool* drawn_lines) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
@@ -818,6 +841,7 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
         .frame = k,
         .mode = mode,
         .done_smphr = fetch_sem,
+        .drawn_lines = drawn_lines,
     };
     OutputParams p2 = {
         .area = area,
@@ -825,6 +849,7 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
         .frame = k,
         .mode = mode,
         .done_smphr = feed_sem,
+        .drawn_lines = drawn_lines,
     };
 
     TaskHandle_t t1, t2;

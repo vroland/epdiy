@@ -131,9 +131,20 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  */
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
 
+/**
+ * Same as epd_draw_image, but with the option to specify
+ * which lines of the image should be drawn.
+ *
+ * @param drawn_lines: If not NULL, an array of at least the height of the image.
+ * 	Every line where the corresponding value in `lines` is `false` will be skipped.
+ */
+void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mode, bool* drawn_lines);
 
 
 void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time);
+
+void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time, bool* drawn_lines);
+
 /**
  * @returns Rectancle representing the whole screen area.
  */
