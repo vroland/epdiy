@@ -28,8 +28,8 @@ uint32_t skipping;
 const int contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
                                    40, 50, 50, 50, 100, 200, 300};
 
-const int contrast_cycles_4_white[15] = {30, 30, 20, 20, 30,  30,  30, 40,
-                                         40, 50, 50, 50, 100, 200, 300};
+const int contrast_cycles_4_white[15] = {10, 10, 8, 8, 8,  8,  8, 10,
+                                         10, 15, 15, 20, 20, 50, 200};
 
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
 const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
