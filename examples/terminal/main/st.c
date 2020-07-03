@@ -229,6 +229,8 @@ static void full_refresh();
 /* Globals */
 static uint8_t* render_fb_back = NULL;
 static uint8_t* render_fb_front = NULL;
+static uint8_t* render_mask = NULL;
+
 static Term term;
 static Selection sel;
 static CSIEscape csiescseq;
@@ -1052,6 +1054,7 @@ treset(void)
 	term.charset = 0;
     memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
     memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+    memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
 
 
 	for (i = 0; i < 2; i++) {
@@ -2542,8 +2545,12 @@ tresize(int col, int row)
     if (render_fb_back == NULL) {
       render_fb_back = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
     }
+    if (render_mask == NULL) {
+      render_mask = heap_caps_malloc(EPD_WIDTH / 8 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    }
     memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
     memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+    memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
 
 	/*
 	 * slide screen to keep cursor where we expect it -
@@ -2700,6 +2707,7 @@ static void full_refresh() {
 
   memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+  memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
 
   epd_poweron();
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
@@ -2730,89 +2738,35 @@ static bool glyphs_equal(Glyph g1, Glyph g2) {
         g1.bg == g2.bg && g1.mode == g2.mode;
 }
 
-
-typedef struct {
-  int line;
-  Glyph* glyphs;
-  uint8_t* buffer;
-  int* min_y_px;
-  int* max_y_px;
-  int done;
-} LineParams_t;
-
-static void render_line(LineParams_t* p) {
-    int line_y = pixel_start_y + font->advance_y * p->line - font->ascender;
-    int line_height = font->ascender - font->descender;
-    memset(render_fb_front + line_y * EPD_WIDTH / 2, 255, EPD_WIDTH / 2 * line_height);
-
-    char* data = malloc(4 * term.col + 1);
-    int idx = 0;
-    int px_x = pixel_start_x;
-    while (idx < term.col) {
-      int data_pos = 0;
-      Glyph c = p->glyphs[idx];
-      while (idx < term.col && (
-              p->glyphs[idx].fg == c.fg
-              && p->glyphs[idx].bg == c.bg
-              && p->glyphs[idx].mode == c.mode)) {
-        c = p->glyphs[idx];
-        data_pos += utf8encode(c.u, data + data_pos);
-        idx++;
-      }
-      // null-terminate
-      data[data_pos] = 0;
-
-      FontProperties fprops = {
-          .fg_color = displaycolor(c.fg),
-          .bg_color = displaycolor(c.bg),
-          .fallback_glyph = fallback_glyph,
-          .flags = c.bg != defaultbg ? DRAW_BACKGROUND : 0,
-      };
-      GFXfont* f = get_font(c);
-      int px_y = pixel_start_y + f->advance_y * p->line;
-      // record highest and lowest pixel, transformed from font coordinates
-      // around baseline
-      *(p->min_y_px) = MIN(px_y - font->ascender, *(p->min_y_px));
-      *(p->max_y_px) = MAX(px_y - font->descender, *(p->max_y_px));
-      int tmp_px_x = px_x;
-      int tmp_px_y = px_y;
-      int x1, y1, w, h;
-      get_text_bounds(f, data, &tmp_px_x, &tmp_px_y, &x1, &y1, &w, &h, &fprops);
-      write_mode(f, data, &px_x, &px_y, p->buffer, WHITE_ON_WHITE, &fprops);
-    }
-    free(data);
-    p->done = true;
-    vTaskDelete(NULL);
-    vTaskDelay(portMAX_DELAY);
-}
-
 // input buffers must be 32-bit line aligned.
 void IRAM_ATTR calculate_dirty_buffer(
         uint8_t* dst, uint8_t* delete_buffer,
-        uint8_t* write_buffer, int lines)
+        uint8_t* write_buffer, int lines, uint32_t* dirty_lines)
 {
   uint32_t* p1 = (uint32_t*)delete_buffer;
   uint32_t* p2 = (uint32_t*)write_buffer;
-  for (int i = 0; i < EPD_WIDTH / 8 * lines; i++) {
-    uint32_t c = ((*p1++) ^ (*p2++));
-    uint8_t d = 0;
-    d = ((c & 0xF) > 0) << 0;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 1;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 2;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 3;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 4;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 5;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 6;
-    c = c >> 4;
-    d |= ((c & 0xF) > 0) << 7;
-    c = c >> 4;
-    (*dst++) = d;
+  for (int l = 0; l < lines; l++) {
+    for (int i = 0; i < EPD_WIDTH / 8; i++) {
+      uint32_t c = ((*p1++) ^ (*p2++));
+      dirty_lines[l] |= c;
+      uint8_t d = 0;
+      d = ((c & 0xF) > 0) << 0;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 1;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 2;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 3;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 4;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 5;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 6;
+      c = c >> 4;
+      d |= ((c & 0xF) > 0) << 7;
+      (*dst++) = d;
+    }
   }
 }
 
@@ -2868,123 +2822,218 @@ void IRAM_ATTR mask_buffer(uint8_t* mask, uint32_t* input, uint32_t* output, int
   }
 }
 
+typedef struct {
+  int line;
+  Glyph* glyphs;
+  int min_y_px;
+  int max_y_px;
+  SemaphoreHandle_t done_smphr;
+  uint8_t* masked_buffer;
+  uint32_t* line_dirtyness;
+  TaskHandle_t task_handle;
+  bool in_use;
+} LineParams_t;
+
+static void render_line(LineParams_t* p) {
+    int line_y = pixel_start_y + font->advance_y * p->line - font->ascender;
+    int line_height = font->ascender - font->descender;
+    memset(render_fb_front + line_y * EPD_WIDTH / 2, 255, EPD_WIDTH / 2 * line_height);
+
+    char* data = malloc(4 * term.col + 1);
+    int idx = 0;
+    int px_x = pixel_start_x;
+    while (idx < term.col) {
+      int data_pos = 0;
+      Glyph c = p->glyphs[idx];
+      while (idx < term.col && (
+              p->glyphs[idx].fg == c.fg
+              && p->glyphs[idx].bg == c.bg
+              && p->glyphs[idx].mode == c.mode)) {
+        c = p->glyphs[idx];
+        data_pos += utf8encode(c.u, data + data_pos);
+        idx++;
+      }
+      // null-terminate
+      data[data_pos] = 0;
+
+      FontProperties fprops = {
+          .fg_color = displaycolor(c.fg),
+          .bg_color = displaycolor(c.bg),
+          .fallback_glyph = fallback_glyph,
+          .flags = c.bg != defaultbg ? DRAW_BACKGROUND : 0,
+      };
+      GFXfont* f = get_font(c);
+      int px_y = pixel_start_y + f->advance_y * p->line;
+      p->min_y_px = MIN(p->min_y_px, px_y - f->ascender);
+      p->max_y_px = MAX(p->min_y_px, px_y - f->descender);
+
+      write_mode(f, data, &px_x, &px_y, render_fb_front, WHITE_ON_WHITE, &fprops);
+    }
+    free(data);
+
+    int height = p->max_y_px - p->min_y_px;
+    if (height > 0) {
+      height = MIN(height, EPD_HEIGHT - p->min_y_px);
+      int y_offset = EPD_WIDTH / 2 * p->min_y_px;
+      uint8_t* start_ptr = render_fb_front + y_offset;
+
+      uint8_t* mask_start = render_mask + (p->min_y_px * EPD_WIDTH / 8);
+
+      calculate_dirty_buffer(
+              mask_start,
+              render_fb_back + y_offset,
+              start_ptr,
+              height,
+              p->line_dirtyness + p->min_y_px
+      );
+      mask_buffer(mask_start, start_ptr, p->masked_buffer + y_offset, height);
+    }
+    xSemaphoreGive(p->done_smphr);
+    vTaskDelay(portMAX_DELAY);
+}
+
+static void draw_mask(Rect_t area, uint8_t* mask, bool* dirtyness) {
+    uint32_t start = esp_timer_get_time();
+    epd_draw_frame_1bit_lines(area, mask, BLACK_ON_WHITE, 200, dirtyness);
+    uint32_t time_ms = (esp_timer_get_time() - start) / 1000;
+    // The particles must be given ~20ms to follow the applied charge.
+    if (time_ms < 20) {
+      vTaskDelay(20 - time_ms);
+    }
+}
+
+static void task_wait_and_delete(LineParams_t* params) {
+  if (params->in_use) {
+    xSemaphoreTake(params->done_smphr, portMAX_DELAY);
+    vTaskDelete(params->task_handle);
+  }
+}
 void render() {
 
   uint32_t ts = esp_timer_get_time();
-  int write_min_y = 100000;
-  int delete_min_y = 100000;
-  int write_max_y = -1;
-  int delete_max_y = -1;
-  // memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-  // memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
+  uint32_t line_dirtyness[EPD_HEIGHT] = {0};
 
+  uint8_t* masked_buf = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   bool is_full_clear = false; //updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
-  LineParams_t* line_task_params = malloc(term.row * sizeof(LineParams_t));
+
+  // run two render tasks in parallel
+  LineParams_t line_task_params[2];
+  line_task_params[0].in_use = false;
+  line_task_params[0].done_smphr = xSemaphoreCreateBinary();
+  line_task_params[1].in_use = false;
+  line_task_params[1].done_smphr = xSemaphoreCreateBinary();
+
+  int active_task = 0;
+
   int drawn_lines = 0;
+
+  epd_poweron();
+  uint32_t t_poweron = esp_timer_get_time();
 
   for (int y = 0; y < term.row; y++) {
     if (!term.dirty[y] && !is_full_clear) {
       continue;
     }
 
-    // dynamically allocate! (or move all to function)
+    task_wait_and_delete(&line_task_params[active_task]);
+
     LineParams_t params = {
       .line = y,
       .glyphs = term.line[y],
-      .buffer = render_fb_front,
-      .min_y_px = &write_min_y,
-      .max_y_px = &write_max_y,
-      .done = 0,
+      .min_y_px = EPD_WIDTH + 1,
+      .max_y_px = -1,
+      .line_dirtyness = line_dirtyness,
+      .masked_buffer = masked_buf,
+      .in_use = true,
+      .done_smphr = line_task_params[active_task].done_smphr,
     };
-    line_task_params[drawn_lines] = params;
-    //ESP_LOGI("term", "render line %d", drawn_lines);
-    xTaskCreate((void (*)(void *))render_line, "ld", 4000, &line_task_params[drawn_lines], 10, NULL);
-    //render_line(y, 0, term.line[y], term.col, render_fb_front, &write_min_y, &write_max_y);
+    line_task_params[active_task] = params;
+
+    xTaskCreate((void (*)(void *))render_line, "ld", 4000, &(line_task_params[active_task]), 10, &(line_task_params[active_task].task_handle));
     term.dirty[y] = 0;
     drawn_lines++;
+    active_task = !active_task;
   }
-  for (int i=0; i < drawn_lines; i++) {
-    while (!line_task_params[i].done) {
-      vTaskDelay(1);
-    }
-  }
-  free(line_task_params);
 
-  // write buffer dirty
-  bool write_dirty = write_min_y <= write_max_y;
+  task_wait_and_delete(&line_task_params[0]);
+  task_wait_and_delete(&line_task_params[1]);
 
-  if (write_dirty) {
+  vSemaphoreDelete(line_task_params[0].done_smphr);
+  vSemaphoreDelete(line_task_params[1].done_smphr);
+
+  if (drawn_lines) {
     uint32_t t_draw = esp_timer_get_time();
     ESP_LOGI("term", "draw time: %d", (t_draw - ts) / 1000);
 
-    int height = write_max_y - write_min_y + 1;
-    height = MIN(height, EPD_HEIGHT - write_min_y);
-    uint8_t* start_ptr = render_fb_front + EPD_WIDTH / 2 * write_min_y;
+    int min_y = EPD_HEIGHT + 1;
+    int max_y = -1;
 
-    uint8_t* mask = heap_caps_malloc(EPD_WIDTH / 8 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
-    uint8_t* mask_start = mask + (write_min_y * EPD_WIDTH / 8);
-    uint32_t t1 = esp_timer_get_time();
-    //memset(mask, 0, EPD_WIDTH / 8 * EPD_HEIGHT);
-
-    calculate_dirty_buffer(
-            mask_start,
-            render_fb_back + (write_min_y * EPD_WIDTH / 2),
-            start_ptr,
-            height
-    );
-    uint32_t t2 = esp_timer_get_time();
-    ESP_LOGI("term", "dirty buffer time %d", (t2 - t1) / 1000);
-
-    Rect_t area = {
-      .x = 0,
-      .y = write_min_y,
-      .width = EPD_WIDTH,
-      .height = height,
-    };
-    if (is_full_clear) {
-      full_refresh();
-      updates_since_clear = 0;
+    bool boolean_line_dirtyness[EPD_HEIGHT];
+    for (int i=0; i < EPD_HEIGHT; i++) {
+      boolean_line_dirtyness[i] = line_dirtyness[i] > 0;
+      if (boolean_line_dirtyness[i]) {
+        min_y = MIN(min_y, i);
+        max_y = MAX(max_y, i);
+      }
     }
-    epd_poweron();
-    uint8_t* masked_buf = heap_caps_malloc(EPD_WIDTH / 2 * height, MALLOC_CAP_SPIRAM);
-    uint32_t tm = esp_timer_get_time();
-    mask_buffer(mask_start, start_ptr, masked_buf, height);
-    uint32_t ta = esp_timer_get_time();
-    // wait for power on
-    if (height < 200) vTaskDelay(10);
+    min_y = 0;
+    max_y = EPD_HEIGHT - 1;
+    int height = max_y - min_y;
+    if (height > 0) {
+      Rect_t area = {
+        .x = 0,
+        .y = min_y,
+        .width = EPD_WIDTH,
+        .height = height,
+      };
+      if (is_full_clear) {
+        full_refresh();
+        updates_since_clear = 0;
+      }
+      uint32_t tm = esp_timer_get_time();
+      uint32_t ta = esp_timer_get_time();
 
-    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 200);
-    // for some reason, we need to wait some time before the next frame,
-    // or drawing will not be as strong.
-    if (height < 200) vTaskDelay(20);
-    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 200);
-    if (height < 200) vTaskDelay(20);
-    epd_draw_frame_1bit(area, mask_start, BLACK_ON_WHITE, 200);
-    if (height < 200) vTaskDelay(20);
-    uint32_t tb = esp_timer_get_time();
-    epd_draw_image(area, masked_buf, WHITE_ON_BLACK);
-    uint32_t tc = esp_timer_get_time();
-    epd_poweroff();
+      uint8_t* mask_start = render_mask + min_y * EPD_WIDTH / 8;
+      bool* dirtyness_start = boolean_line_dirtyness + min_y;
 
-    memcpy(
-        render_fb_back + write_min_y * EPD_WIDTH / 2,
-        render_fb_front + write_min_y * EPD_WIDTH / 2,
-        EPD_WIDTH / 2 * height
-    );
-    uint32_t td = esp_timer_get_time();
-    ESP_LOGI("term", "mask draw: %d, masked draw: %d, masked calc %d, memcpy: %d",
-        (tb - ta) / 1000,
-        (tc - tb) / 1000,
-        (ta - tm) / 1000,
-        (td - tc) / 1000
-    );
-    drawn_since_clear = true;
-    free(mask);
-    free(masked_buf);
-    uint32_t te = esp_timer_get_time();
-      ESP_LOGI("term", "full draw %d", (te - ts) / 1000);
+      uint32_t time_since_poweron_ms = (esp_timer_get_time() - t_poweron) / 1000;
+      // poweron takes ~10ms until all capacitors are charged
+      if (time_since_poweron_ms < 10) {
+        vTaskDelay(10 - time_since_poweron_ms);
+      }
+      draw_mask(area, mask_start, dirtyness_start);
+      draw_mask(area, mask_start, dirtyness_start);
+      draw_mask(area, mask_start, dirtyness_start);
+
+      uint8_t* masked_start = masked_buf + min_y * EPD_WIDTH / 2;
+      uint32_t tb = esp_timer_get_time();
+      epd_draw_image_lines(area, masked_start, WHITE_ON_BLACK, dirtyness_start);
+      uint32_t tc = esp_timer_get_time();
+      epd_poweroff();
+
+      for (int i=0; i < EPD_HEIGHT; i++) {
+        if (boolean_line_dirtyness[i]) {
+          memcpy(
+              render_fb_back + EPD_WIDTH / 2 * i,
+              render_fb_front + EPD_WIDTH / 2 * i,
+              EPD_WIDTH / 2
+          );
+        }
+      }
+      uint32_t td = esp_timer_get_time();
+      ESP_LOGI("term", "mask draw: %d, masked draw: %d, masked calc %d, memcpy: %d",
+          (tb - ta) / 1000,
+          (tc - tb) / 1000,
+          (ta - tm) / 1000,
+          (td - tc) / 1000
+      );
+      drawn_since_clear = true;
+      uint32_t te = esp_timer_get_time();
+        ESP_LOGI("term", "full draw %d", (te - ts) / 1000);
+    }
   }
+  free(masked_buf);
 }
 
 void
