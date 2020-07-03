@@ -281,7 +281,7 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
   int cursor_x_init = local_cursor_x;
   int cursor_y_init = local_cursor_y;
 
-  uint8_t bg = properties->bg_color;
+  uint8_t bg = props.bg_color;
   if (props.flags & DRAW_BACKGROUND) {
 	for (int l = 0; l < font->advance_y; l++) {
 	  epd_draw_hline(local_cursor_x, local_cursor_y - (font->advance_y - baseline_height) + l, w, bg << 4, buffer);
@@ -312,15 +312,18 @@ void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
 
 void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              	  uint8_t *framebuffer) {
-   // taken from the strsep manpage
    char *token, *newstring, *tofree;
-
-   tofree = newstring = strdup(string);
    if (string == NULL) {
-	   ESP_LOGE("font.c", "cannot allocate string copy!");
-	   return;
+     ESP_LOGE("font.c", "cannot draw a NULL string!");
+     return;
+   }
+   tofree = newstring = strdup(string);
+   if (newstring == NULL) {
+     ESP_LOGE("font.c", "cannot allocate string copy!");
+     return;
    }
 
+   // taken from the strsep manpage
    int line_start = *cursor_x;
    while ((token = strsep(&newstring, "\n")) != NULL) {
 	   *cursor_x = line_start;
