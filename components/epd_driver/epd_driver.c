@@ -56,10 +56,6 @@ static QueueHandle_t output_queue;
 
 // output a row to the display.
 static void write_row(uint32_t output_time_dus) {
-  // avoid too light output after skipping on some displays
-  if (skipping) {
-    //vTaskDelay(20);
-  }
   skipping = 0;
   epd_output_row(output_time_dus);
 }
@@ -79,25 +75,10 @@ void epd_init() {
 // skip a display row
 void skip_row(uint8_t pipeline_finish_time) {
   // output previously loaded row, fill buffer with no-ops.
-  if (skipping == 0) {
-    epd_switch_buffer();
-    memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
-    epd_switch_buffer();
+  if (skipping < 2) {
     memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
     epd_output_row(pipeline_finish_time);
-    // avoid tainting of following rows by
-    // allowing residual charge to dissipate
-    //vTaskDelay(10);
-    /*
-    unsigned counts = XTHAL_GET_CCOUNT() + 50 * 240;
-    while (XTHAL_GET_CCOUNT() < counts) {
-    };
-    */
-  } else if (skipping < 2) {
-    epd_output_row(10);
-  }
-  else {
-    //epd_output_row(5);
+  } else {
     epd_skip();
   }
   skipping++;
@@ -805,13 +786,13 @@ void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr,
       lp = line;
     }
     calc_epd_input_1bpp(lp, epd_get_current_buffer(), mode);
-    epd_output_row(time);
+    write_row(time);
     if (shifted) {
       memset(line, 0, sizeof(line));
     }
   }
   if (!skipping) {
-    epd_output_row(time);
+    write_row(time);
   }
   epd_end_frame();
 }
