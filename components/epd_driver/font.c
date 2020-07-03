@@ -180,15 +180,17 @@ static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *min
     return;
   }
 
-  int x1 = *x + glyph->left, y1 = *y + (glyph->top - glyph->height),
-      x2 = x1 + glyph->width, y2 = y1 + glyph->height;
+  int x1 = *x + glyph->left,
+      y1 = *y + glyph->top - glyph->height,
+      x2 = x1 + glyph->width,
+      y2 = y1 + glyph->height;
 
   // background needs to be taken into account
   if (props->flags & DRAW_BACKGROUND) {
 	*minx = min(*x, min(*minx, x1));
 	*maxx = max(max(*x + glyph->advance_x, x2), *maxx);
 	*miny = min(*y + font->descender, min(*miny, y1));
-	*maxy = max(font->descender + font->advance_y, max(*maxy, y2));
+	*maxy = max(*y + font->ascender, max(*maxy, y2));
   } else {
 	if (x1 < *minx)
 	  *minx = x1;
@@ -283,8 +285,8 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
 
   uint8_t bg = props.bg_color;
   if (props.flags & DRAW_BACKGROUND) {
-	for (int l = 0; l < font->advance_y; l++) {
-	  epd_draw_hline(local_cursor_x, local_cursor_y - (font->advance_y - baseline_height) + l, w, bg << 4, buffer);
+	for (int l = local_cursor_y - font->ascender; l < local_cursor_y - font->descender; l++) {
+	  epd_draw_hline(local_cursor_x, l, w, bg << 4, buffer);
 	}
   }
   while ((c = next_cp((uint8_t**)&string))) {
