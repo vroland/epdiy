@@ -1,6 +1,10 @@
 /**
  * A high-level library for drawing to an EPD.
  */
+#ifdef __cplusplus
+extern "C"{
+#endif 
+
 #pragma once
 #include "esp_attr.h"
 #include <stdint.h>
@@ -150,6 +154,17 @@ void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
                              uint8_t *framebuffer);
 
 /**
+ * Draw a pixel a given framebuffer.
+ *
+ * @param x: Horizontal position in pixels.
+ * @param y: Vertical position in pixels.
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_draw_pixel(int x, int y, uint8_t color,
+                    uint8_t *framebuffer);                             
+
+/**
  * Draw a horizontal line to a given framebuffer.
  *
  * @param x: Horizontal start position in pixels.
@@ -175,6 +190,119 @@ void epd_draw_hline(int x, int y, int length, uint8_t color,
 void epd_draw_vline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);
 
+void epd_fill_circle_helper(int16_t x0, int16_t y0, int16_t r,
+                                    uint8_t corners, int16_t delta,
+                                    uint16_t color,
+                                    uint8_t *framebuffer);
+
+/**
+ * Draw a circle with given center and radius
+ *
+ * @param x0: Center-point x coordinate
+ * @param y0: Center-point y coordinate
+ * @param r: Radius of the circle in pixels
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_draw_circle(int x, int y, int r, uint8_t color,
+                    uint8_t *framebuffer);
+
+/**
+ * Draw a circle with fill with given center and radius
+ *
+ * @param x0: Center-point x coordinate
+ * @param y0: Center-point y coordinate
+ * @param r: Radius of the circle in pixels
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_fill_circle(int x, int y, int r, uint8_t color,
+                    uint8_t *framebuffer);  
+
+/**
+ * Draw a rectanle with no fill color
+ *
+ * @param x: Top left corner x coordinate
+ * @param y: Top left corner y coordinate
+ * @param w: Width in pixels
+ * @param h: Height in pixels
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_draw_rect(int16_t x, int16_t y, int16_t w, int16_t h,
+                            uint16_t color, uint8_t *framebuffer);
+
+/**
+ * Draw a rectanle with fill color
+ *
+ * @param x: Top left corner x coordinate
+ * @param y: Top left corner y coordinate
+ * @param w: Width in pixels
+ * @param h: Height in pixels
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_fill_rect(int16_t x, int16_t y, int16_t w, int16_t h,
+                            uint16_t color, uint8_t *framebuffer);
+
+
+/**
+ * Write a line.  Bresenham's algorithm - thx wikpedia
+ * @param    x0  Start point x coordinate
+ * @param    y0  Start point y coordinate
+ * @param    x1  End point x coordinate
+ * @param    y1  End point y coordinate
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+/**************************************************************************/
+void epd_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                             uint16_t color, uint8_t *framebuffer);
+
+/**
+ * Draw a line
+ * 
+ * @param    x0  Start point x coordinate
+ * @param    y0  Start point y coordinate
+ * @param    x1  End point x coordinate
+ * @param    y1  End point y coordinate
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                            uint16_t color, uint8_t *framebuffer);
+
+/**
+ * Draw a triangle with no fill color
+ *
+ * @param    x0  Vertex #0 x coordinate
+ * @param    y0  Vertex #0 y coordinate
+ * @param    x1  Vertex #1 x coordinate
+ * @param    y1  Vertex #1 y coordinate
+ * @param    x2  Vertex #2 x coordinate
+ * @param    y2  Vertex #2 y coordinate
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_draw_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                                int16_t x2, int16_t y2, uint16_t color,
+                                uint8_t *framebuffer);
+
+/**
+ * Draw a triangle with color-fill
+ *
+ * @param    x0  Vertex #0 x coordinate
+ * @param    y0  Vertex #0 y coordinate
+ * @param    x1  Vertex #1 x coordinate
+ * @param    y1  Vertex #1 y coordinate
+ * @param    x2  Vertex #2 x coordinate
+ * @param    y2  Vertex #2 y coordinate
+ * @param color: The gray value of the line (0-255);
+ * @param framebuffer: The framebuffer to draw to,
+ */
+void epd_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                                int16_t x2, int16_t y2, uint16_t color,
+                                uint8_t *framebuffer);
 /**
  * Get the current ambient temperature in °C.
  */
@@ -242,3 +370,6 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph);
 void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
              	  uint8_t *framebuffer);
 
+#ifdef __cplusplus
+}
+#endif
