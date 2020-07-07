@@ -162,8 +162,14 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   // (Smallest possible divider according to the spec).
   dev->sample_rate_conf.tx_bck_div_num = 2;
 
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
+  // Initialize Audio Clock (APLL) for 120 Mhz.
+  rtc_clk_apll_enable(1, 0, 0, 8, 0);
+#else
   // Initialize Audio Clock (APLL) for 80 Mhz.
   rtc_clk_apll_enable(1, 0, 0, 8, 1);
+#endif
+  
 
   // Set Audio Clock Dividers
   dev->clkm_conf.val = 0;
