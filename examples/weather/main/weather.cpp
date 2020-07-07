@@ -573,7 +573,7 @@ void DisplayMainWeatherSection(int x, int y) {  // (x=500, y=190)
   DisplayConditionsSection(x + 3, y + 50, WxConditions[0].Icon, LargeIcon);
   DisplayTemperatureSection(x + 230, y - 30, 180, 170);
   DisplayPressureSection(x + 160, y + 70, 180, 170,  WxConditions[0].Pressure, WxConditions[0].Trend);
-  DisplayPrecipitationSection(x + 250, y - 8, 181, 170);
+  DisplayPrecipitationSection(x + 268, y - 8, 181, 170);
   //DisplayForecastTextSection(x + 147, y + 22, 548, 90);
 }
 
@@ -676,7 +676,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
   setFont(OpenSans12);
   if (WxForecast[1].Rainfall >= 0.005) { // Ignore small amounts
     drawString(x, y + 80, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), LEFT); // Only display rainfall total today if > 0
-    addraindrop(x + 94, y + 84, 7);
+    addraindrop(x + 102, y + 84, 7);
   }
   if (WxForecast[1].Snowfall >= 0.005)  {// Ignore small amounts
     drawString(x, y + 110, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
