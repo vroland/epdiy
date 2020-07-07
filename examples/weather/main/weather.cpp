@@ -21,7 +21,7 @@
 #include "Arduino.h"
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
 #include <ArduinoJson.h>
-#include <HttpClient.h>
+#include <HTTPClient.h>
 
 #include <WiFi.h>
 #include "time.h"
