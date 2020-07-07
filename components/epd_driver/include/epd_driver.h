@@ -190,9 +190,9 @@ void epd_draw_hline(int x, int y, int length, uint8_t color,
 void epd_draw_vline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);
 
-void epd_fill_circle_helper(int16_t x0, int16_t y0, int16_t r,
-                                    uint8_t corners, int16_t delta,
-                                    uint16_t color,
+void epd_fill_circle_helper(int x0, int y0, int r,
+                                    int corners, int delta,
+                                    uint8_t color,
                                     uint8_t *framebuffer);
 
 /**
@@ -229,8 +229,8 @@ void epd_fill_circle(int x, int y, int r, uint8_t color,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_rect(int16_t x, int16_t y, int16_t w, int16_t h,
-                            uint16_t color, uint8_t *framebuffer);
+void epd_draw_rect(int x, int y, int w, int h,
+                            uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a rectanle with fill color
@@ -242,8 +242,8 @@ void epd_draw_rect(int16_t x, int16_t y, int16_t w, int16_t h,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_fill_rect(int16_t x, int16_t y, int16_t w, int16_t h,
-                            uint16_t color, uint8_t *framebuffer);
+void epd_fill_rect(int x, int y, int w, int h,
+                            uint8_t color, uint8_t *framebuffer);
 
 
 /**
@@ -256,8 +256,8 @@ void epd_fill_rect(int16_t x, int16_t y, int16_t w, int16_t h,
  * @param framebuffer: The framebuffer to draw to,
  */
 /**************************************************************************/
-void epd_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                             uint16_t color, uint8_t *framebuffer);
+void epd_write_line(int x0, int y0, int x1, int y1,
+                             uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a line
@@ -269,8 +269,8 @@ void epd_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                            uint16_t color, uint8_t *framebuffer);
+void epd_draw_line(int x0, int y0, int x1, int y1,
+                            uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a triangle with no fill color
@@ -284,8 +284,8 @@ void epd_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                                int16_t x2, int16_t y2, uint16_t color,
+void epd_draw_triangle(int x0, int y0, int x1, int y1,
+                                int x2, int y2, uint8_t color,
                                 uint8_t *framebuffer);
 
 /**
@@ -300,8 +300,8 @@ void epd_draw_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                                int16_t x2, int16_t y2, uint16_t color,
+void epd_fill_triangle(int x0, int y0, int x1, int y1,
+                                int x2, int y2, uint8_t color,
                                 uint8_t *framebuffer);
 /**
  * Get the current ambient temperature in °C.

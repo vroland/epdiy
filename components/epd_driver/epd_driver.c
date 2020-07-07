@@ -41,10 +41,10 @@ const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
 #error "no display type defined!"
 #endif
 
-#ifndef _swap_int16_t
-#define _swap_int16_t(a, b)                                                    \
+#ifndef _swap_int
+#define _swap_int(a, b)                                                    \
   {                                                                            \
-    int16_t t = a;                                                             \
+    int t = a;                                                             \
     a = b;                                                                     \
     b = t;                                                                     \
   }
@@ -381,9 +381,9 @@ void epd_fill_circle(int x0, int y0, int r, uint8_t color,
 }
 
 
-void epd_fill_circle_helper(int16_t x0, int16_t y0, int16_t r,
-                                    uint8_t corners, int16_t delta,
-                                    uint16_t color,
+void epd_fill_circle_helper(int x0, int y0, int r,
+                                    int corners, int delta,
+                                    uint8_t color,
                                     uint8_t *framebuffer) {
 
   int f = 1 - r;
@@ -424,40 +424,40 @@ void epd_fill_circle_helper(int16_t x0, int16_t y0, int16_t r,
   }
 }
 
-void epd_draw_rect(int16_t x, int16_t y, int16_t w, int16_t h,
-                            uint16_t color, uint8_t *framebuffer) {
+void epd_draw_rect(int x, int y, int w, int h,
+                            uint8_t color, uint8_t *framebuffer) {
   epd_draw_hline(x, y, w, color, framebuffer);
   epd_draw_hline(x, y + h - 1, w, color, framebuffer);
   epd_draw_vline(x, y, h, color, framebuffer);
   epd_draw_vline(x + w - 1, y, h, color, framebuffer);
 }
 
-void epd_fill_rect(int16_t x, int16_t y, int16_t w, int16_t h,
-                            uint16_t color, uint8_t *framebuffer) {
-  for (int16_t i = x; i < x + w; i++) {
+void epd_fill_rect(int x, int y, int w, int h,
+                            uint8_t color, uint8_t *framebuffer) {
+  for (int i = x; i < x + w; i++) {
     epd_draw_vline(i, y, h, color, framebuffer);
   }  
 }
 
-void epd_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                             uint16_t color, uint8_t *framebuffer) {
-  int16_t steep = abs(y1 - y0) > abs(x1 - x0);
+void epd_write_line(int x0, int y0, int x1, int y1,
+                             uint8_t color, uint8_t *framebuffer) {
+  int steep = abs(y1 - y0) > abs(x1 - x0);
   if (steep) {
-    _swap_int16_t(x0, y0);
-    _swap_int16_t(x1, y1);
+    _swap_int(x0, y0);
+    _swap_int(x1, y1);
   }
 
   if (x0 > x1) {
-    _swap_int16_t(x0, x1);
-    _swap_int16_t(y0, y1);
+    _swap_int(x0, x1);
+    _swap_int(y0, y1);
   }
 
-  int16_t dx, dy;
+  int dx, dy;
   dx = x1 - x0;
   dy = abs(y1 - y0);
 
-  int16_t err = dx / 2;
-  int16_t ystep;
+  int err = dx / 2;
+  int ystep;
 
   if (y0 < y1) {
     ystep = 1;
@@ -479,48 +479,48 @@ void epd_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   }
 }
 
-void epd_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                            uint16_t color, uint8_t *framebuffer) {
+void epd_draw_line(int x0, int y0, int x1, int y1,
+                            uint8_t color, uint8_t *framebuffer) {
   // Update in subclasses if desired!
   if (x0 == x1) {
     if (y0 > y1)
-      _swap_int16_t(y0, y1);
+      _swap_int(y0, y1);
     epd_draw_vline(x0, y0, y1 - y0 + 1, color, framebuffer);
   } else if (y0 == y1) {
     if (x0 > x1)
-      _swap_int16_t(x0, x1);
+      _swap_int(x0, x1);
     epd_draw_hline(x0, y0, x1 - x0 + 1, color, framebuffer);
   } else {
     epd_write_line(x0, y0, x1, y1, color, framebuffer);
   }
 }
 
-void epd_draw_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                                int16_t x2, int16_t y2, uint16_t color,
+void epd_draw_triangle(int x0, int y0, int x1, int y1,
+                                int x2, int y2, uint8_t color,
                                 uint8_t *framebuffer) {
   epd_draw_line(x0, y0, x1, y1, color, framebuffer);
   epd_draw_line(x1, y1, x2, y2, color, framebuffer);
   epd_draw_line(x2, y2, x0, y0, color, framebuffer);
 }
 
-void epd_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                                int16_t x2, int16_t y2, uint16_t color,
+void epd_fill_triangle(int x0, int y0, int x1, int y1,
+                                int x2, int y2, uint8_t color,
                                 uint8_t *framebuffer) {
 
-  int16_t a, b, y, last;
+  int a, b, y, last;
 
   // Sort coordinates by Y order (y2 >= y1 >= y0)
   if (y0 > y1) {
-    _swap_int16_t(y0, y1);
-    _swap_int16_t(x0, x1);
+    _swap_int(y0, y1);
+    _swap_int(x0, x1);
   }
   if (y1 > y2) {
-    _swap_int16_t(y2, y1);
-    _swap_int16_t(x2, x1);
+    _swap_int(y2, y1);
+    _swap_int(x2, x1);
   }
   if (y0 > y1) {
-    _swap_int16_t(y0, y1);
-    _swap_int16_t(x0, x1);
+    _swap_int(y0, y1);
+    _swap_int(x0, x1);
   }
 
   if (y0 == y2) { // Handle awkward all-on-same-line case as its own thing
@@ -537,7 +537,7 @@ void epd_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
     return;
   }
 
-  int16_t dx01 = x1 - x0, dy01 = y1 - y0, dx02 = x2 - x0, dy02 = y2 - y0,
+  int dx01 = x1 - x0, dy01 = y1 - y0, dx02 = x2 - x0, dy02 = y2 - y0,
           dx12 = x2 - x1, dy12 = y2 - y1;
   int32_t sa = 0, sb = 0;
 
@@ -562,7 +562,7 @@ void epd_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
     b = x0 + (x2 - x0) * (y - y0) / (y2 - y0);
     */
     if (a > b)
-      _swap_int16_t(a, b);
+      _swap_int(a, b);
     epd_draw_hline(a, y, b - a + 1, color, framebuffer);
   }
 
@@ -580,7 +580,7 @@ void epd_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
     b = x0 + (x2 - x0) * (y - y0) / (y2 - y0);
     */
     if (a > b)
-      _swap_int16_t(a, b);
+      _swap_int(a, b);
     epd_draw_hline(a, y, b - a + 1, color, framebuffer);
   }
 }
