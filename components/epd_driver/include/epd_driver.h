@@ -10,7 +10,7 @@ extern "C"{
 #include <stdint.h>
 #include <stdbool.h>
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)  || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
 /// Width of the display area in pixels.
 #define EPD_WIDTH 1200
 /// Height of the display area in pixels.
