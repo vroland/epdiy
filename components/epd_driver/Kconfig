@@ -13,5 +13,8 @@ menu "E-Paper Driver"
 
         config EPD_DISPLAY_TYPE_ED097TC2
             bool "ED097TC2"
+
+        config EPD_DISPLAY_TYPE_ED097OC4_LQ
+            bool "ED097OC4 Low Quality"
     endchoice
 endmenu

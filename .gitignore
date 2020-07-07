@@ -6,3 +6,4 @@ sdkconfig.old
 doc/source/xml/
 compile_commands.json
 examples/mpd_status/main/wifi_config.h
+/.idea/
