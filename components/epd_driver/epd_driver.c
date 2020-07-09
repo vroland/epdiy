@@ -28,7 +28,7 @@ const int contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
                                    40, 50, 50, 50, 100, 200, 300};
 
 const int contrast_cycles_4_white[15] = {10, 10, 8, 8, 8,  8,  8, 10,
-                                         10, 15, 15, 20, 20, 50, 200};
+                                         10, 15, 15, 20, 20, 100, 300};
 
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
 const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
@@ -416,7 +416,7 @@ void epd_fill_rect(int x, int y, int w, int h,
                             uint8_t color, uint8_t *framebuffer) {
   for (int i = x; i < x + w; i++) {
     epd_draw_vline(i, y, h, color, framebuffer);
-  }  
+  }
 }
 
 void epd_write_line(int x0, int y0, int x1, int y1,
