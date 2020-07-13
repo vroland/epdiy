@@ -13,6 +13,13 @@
 #include "xtensa/core-macros.h"
 #include <string.h>
 
+#define RTOS_ERROR_CHECK(x) do {                                         \
+        esp_err_t __err_rc = (x);                                       \
+        if (__err_rc != pdPASS) {                                       \
+            abort();                                                    \
+        }                                                               \
+    } while(0)
+
 // number of bytes needed for one line of EPD pixel data.
 #define EPD_LINE_BYTES EPD_WIDTH / 4
 
@@ -54,6 +61,19 @@ const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
 static uint8_t *conversion_lut;
 static QueueHandle_t output_queue;
 
+typedef struct {
+  uint8_t *data_ptr;
+  SemaphoreHandle_t done_smphr;
+  SemaphoreHandle_t start_smphr;
+  Rect_t area;
+  int frame;
+  enum DrawMode mode;
+  bool *drawn_lines;
+} OutputParams;
+
+static OutputParams fetch_params;
+static OutputParams feed_params;
+
 // output a row to the display.
 static void write_row(uint32_t output_time_dus) {
   skipping = 0;
@@ -62,18 +82,8 @@ static void write_row(uint32_t output_time_dus) {
 
 void reorder_line_buffer(uint32_t *line_data);
 
-void epd_init() {
-  skipping = 0;
-  epd_base_init(EPD_WIDTH);
-  epd_temperature_init();
-
-  conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
-  assert(conversion_lut != NULL);
-  output_queue = xQueueCreate(64, EPD_WIDTH / 2);
-}
-
 // skip a display row
-void skip_row(uint8_t pipeline_finish_time) {
+void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
   // output previously loaded row, fill buffer with no-ops.
   if (skipping < 2) {
     memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
@@ -602,122 +612,119 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
   epd_draw_image(area, data, BLACK_ON_WHITE);
 }
 
-typedef struct {
-  uint8_t *data_ptr;
-  SemaphoreHandle_t done_smphr;
-  Rect_t area;
-  int frame;
-  enum DrawMode mode;
-  bool *drawn_lines;
-} OutputParams;
-
 void IRAM_ATTR provide_out(OutputParams *params) {
-  uint8_t line[EPD_WIDTH / 2];
-  memset(line, 255, EPD_WIDTH / 2);
-  Rect_t area = params->area;
-  uint8_t *ptr = params->data_ptr;
+  while (true) {
+    xSemaphoreTake(params->start_smphr, portMAX_DELAY);
 
-  if (params->frame == 0) {
-    reset_lut(conversion_lut, params->mode);
-  }
+    uint8_t line[EPD_WIDTH / 2];
+    memset(line, 255, EPD_WIDTH / 2);
+    Rect_t area = params->area;
+    uint8_t *ptr = params->data_ptr;
 
-  update_LUT(conversion_lut, params->frame, params->mode);
-
-  if (area.x < 0) {
-    ptr += -area.x / 2;
-  }
-  if (area.y < 0) {
-    ptr += (area.width / 2 + area.width % 2) * -area.y;
-  }
-
-  for (int i = 0; i < EPD_HEIGHT; i++) {
-    if (i < area.y || i >= area.y + area.height) {
-      continue;
-    }
-    if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
-      ptr += area.width / 2 + area.width % 2;
-      continue;
+    if (params->frame == 0) {
+      reset_lut(conversion_lut, params->mode);
     }
 
-    uint32_t *lp;
-    bool shifted = false;
-    if (area.width == EPD_WIDTH && area.x == 0) {
-      lp = (uint32_t *)ptr;
-      ptr += EPD_WIDTH / 2;
-    } else {
-      uint8_t *buf_start = (uint8_t *)line;
-      uint32_t line_bytes = area.width / 2 + area.width % 2;
-      if (area.x >= 0) {
-        buf_start += area.x / 2;
+    update_LUT(conversion_lut, params->frame, params->mode);
+
+    if (area.x < 0) {
+      ptr += -area.x / 2;
+    }
+    if (area.y < 0) {
+      ptr += (area.width / 2 + area.width % 2) * -area.y;
+    }
+
+    for (int i = 0; i < EPD_HEIGHT; i++) {
+      if (i < area.y || i >= area.y + area.height) {
+        continue;
+      }
+      if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
+        ptr += area.width / 2 + area.width % 2;
+        continue;
+      }
+
+      uint32_t *lp;
+      bool shifted = false;
+      if (area.width == EPD_WIDTH && area.x == 0) {
+        lp = (uint32_t *)ptr;
+        ptr += EPD_WIDTH / 2;
       } else {
-        // reduce line_bytes to actually used bytes
-        line_bytes += area.x / 2;
-      }
-      line_bytes =
-          min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
-      memcpy(buf_start, ptr, line_bytes);
-      ptr += area.width / 2 + area.width % 2;
+        uint8_t *buf_start = (uint8_t *)line;
+        uint32_t line_bytes = area.width / 2 + area.width % 2;
+        if (area.x >= 0) {
+          buf_start += area.x / 2;
+        } else {
+          // reduce line_bytes to actually used bytes
+          line_bytes += area.x / 2;
+        }
+        line_bytes =
+            min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
+        memcpy(buf_start, ptr, line_bytes);
+        ptr += area.width / 2 + area.width % 2;
 
-      // mask last nibble for uneven width
-      if (area.width % 2 == 1 && area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
-        *(buf_start + line_bytes - 1) |= 0xF0;
+        // mask last nibble for uneven width
+        if (area.width % 2 == 1 && area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
+          *(buf_start + line_bytes - 1) |= 0xF0;
+        }
+        if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
+          shifted = true;
+          // shift one nibble to right
+          nibble_shift_buffer_right(
+              buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
+                                                 (uint32_t)buf_start));
+        }
+        lp = (uint32_t *)line;
       }
-      if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
-        shifted = true;
-        // shift one nibble to right
-        nibble_shift_buffer_right(
-            buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
-                                               (uint32_t)buf_start));
+      xQueueSendToBack(output_queue, lp, portMAX_DELAY);
+      if (shifted) {
+        memset(line, 255, EPD_WIDTH / 2);
       }
-      lp = (uint32_t *)line;
     }
-    xQueueSendToBack(output_queue, lp, portMAX_DELAY);
-    if (shifted) {
-      memset(line, 255, EPD_WIDTH / 2);
-    }
+
+    xSemaphoreGive(params->done_smphr);
   }
-
-  xSemaphoreGive(params->done_smphr);
-  vTaskDelay(portMAX_DELAY);
 }
 
 void IRAM_ATTR feed_display(OutputParams *params) {
-  Rect_t area = params->area;
-  const int *contrast_lut = contrast_cycles_4;
-  switch (params->mode) {
-  case WHITE_ON_WHITE:
-  case BLACK_ON_WHITE:
-    contrast_lut = contrast_cycles_4;
-    break;
-  case WHITE_ON_BLACK:
-    contrast_lut = contrast_cycles_4_white;
-    break;
-  }
+  while (true) {
+    xSemaphoreTake(params->start_smphr, portMAX_DELAY);
 
-  epd_start_frame();
-  for (int i = 0; i < EPD_HEIGHT; i++) {
-    if (i < area.y || i >= area.y + area.height) {
-      skip_row(contrast_lut[params->frame]);
-      continue;
+    Rect_t area = params->area;
+    const int *contrast_lut = contrast_cycles_4;
+    switch (params->mode) {
+    case WHITE_ON_WHITE:
+    case BLACK_ON_WHITE:
+      contrast_lut = contrast_cycles_4;
+      break;
+    case WHITE_ON_BLACK:
+      contrast_lut = contrast_cycles_4_white;
+      break;
     }
-    if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
-      skip_row(contrast_lut[params->frame]);
-      continue;
-    }
-    uint8_t output[EPD_WIDTH / 2];
-    xQueueReceive(output_queue, output, portMAX_DELAY);
-    calc_epd_input_4bpp((uint32_t *)output, epd_get_current_buffer(),
-                        params->frame, conversion_lut);
-    write_row(contrast_lut[params->frame]);
-  }
-  if (!skipping) {
-    // Since we "pipeline" row output, we still have to latch out the last row.
-    write_row(contrast_lut[params->frame]);
-  }
-  epd_end_frame();
 
-  xSemaphoreGive(params->done_smphr);
-  vTaskDelay(portMAX_DELAY);
+    epd_start_frame();
+    for (int i = 0; i < EPD_HEIGHT; i++) {
+      if (i < area.y || i >= area.y + area.height) {
+        skip_row(contrast_lut[params->frame]);
+        continue;
+      }
+      if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
+        skip_row(contrast_lut[params->frame]);
+        continue;
+      }
+      uint8_t output[EPD_WIDTH / 2];
+      xQueueReceive(output_queue, output, portMAX_DELAY);
+      calc_epd_input_4bpp((uint32_t *)output, epd_get_current_buffer(),
+                          params->frame, conversion_lut);
+      write_row(contrast_lut[params->frame]);
+    }
+    if (!skipping) {
+      // Since we "pipeline" row output, we still have to latch out the last row.
+      write_row(contrast_lut[params->frame]);
+    }
+    epd_end_frame();
+
+    xSemaphoreGive(params->done_smphr);
+  }
 }
 
 void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr,
@@ -812,39 +819,60 @@ void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mo
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
 
-  SemaphoreHandle_t fetch_sem = xSemaphoreCreateBinary();
-  SemaphoreHandle_t feed_sem = xSemaphoreCreateBinary();
   vTaskDelay(10);
   for (uint8_t k = 0; k < frame_count; k++) {
-    OutputParams p1 = {
-        .area = area,
-        .data_ptr = data,
-        .frame = k,
-        .mode = mode,
-        .done_smphr = fetch_sem,
-        .drawn_lines = drawn_lines,
-    };
-    OutputParams p2 = {
-        .area = area,
-        .data_ptr = data,
-        .frame = k,
-        .mode = mode,
-        .done_smphr = feed_sem,
-        .drawn_lines = drawn_lines,
-    };
+    fetch_params.area = area;
+    fetch_params.data_ptr = data;
+    fetch_params.frame = k;
+    fetch_params.mode = mode;
+    fetch_params.drawn_lines = drawn_lines;
 
-    TaskHandle_t t1, t2;
-    xTaskCreatePinnedToCore((void (*)(void *))provide_out, "privide_out", 8000,
-                            &p1, 10, &t1, 0);
-    xTaskCreatePinnedToCore((void (*)(void *))feed_display, "render", 8000, &p2,
-                            10, &t2, 1);
+    feed_params.area = area;
+    feed_params.data_ptr = data;
+    feed_params.frame = k;
+    feed_params.mode = mode;
+    feed_params.drawn_lines = drawn_lines;
 
-    xSemaphoreTake(fetch_sem, portMAX_DELAY);
-    xSemaphoreTake(feed_sem, portMAX_DELAY);
-
-    vTaskDelete(t1);
-    vTaskDelete(t2);
+    xSemaphoreGive(fetch_params.start_smphr);
+    xSemaphoreGive(feed_params.start_smphr);
+    xSemaphoreTake(fetch_params.done_smphr, portMAX_DELAY);
+    xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
   }
-  vSemaphoreDelete(fetch_sem);
-  vSemaphoreDelete(feed_sem);
+}
+
+
+void epd_init() {
+  skipping = 0;
+  epd_base_init(EPD_WIDTH);
+  epd_temperature_init();
+
+  fetch_params.done_smphr = xSemaphoreCreateBinary();
+  fetch_params.start_smphr = xSemaphoreCreateBinary();
+
+  feed_params.done_smphr = xSemaphoreCreateBinary();
+  feed_params.start_smphr = xSemaphoreCreateBinary();
+
+  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
+      (void (*)(void *))provide_out,
+      "epd_out",
+      1 << 12,
+      &fetch_params,
+      5,
+      NULL,
+      0
+  ));
+
+  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
+      (void (*)(void *))feed_display,
+      "epd_render",
+      1 << 12,
+      &feed_params,
+      5,
+      NULL,
+      1
+  ));
+
+  conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
+  assert(conversion_lut != NULL);
+  output_queue = xQueueCreate(32, EPD_WIDTH / 2);
 }
