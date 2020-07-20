@@ -12,6 +12,7 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_types.h"
+#include "esp_sleep.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -28,7 +29,7 @@
 #define DEFAULT(a, b)		(a) = (a) ? (a) : (b)
 #define LIMIT(x, a, b)		(x) = (x) < (a) ? (a) : (x) > (b) ? (b) : (x)
 
-#define BUF_SIZE (1024)
+#define BUF_SIZE (4096)
 #define ESC_BUF_SIZE (128 * 4)
 #define ESC_ARG_SIZE  16
 
@@ -90,39 +91,49 @@ uint32_t read_char() {
 }
 */
 
-void epd_task() {
-    epd_init();
-    delay(300);
-    epd_poweron();
-    epd_clear();
-    epd_poweroff();
+TaskHandle_t render_task_hdl;
 
-    /* Configure parameters of an UART driver,
-     * communication pins and install the driver */
-    uart_config_t uart_config = {
-            .baud_rate = 115200,
-            .data_bits = UART_DATA_8_BITS,
-            .parity    = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
-            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    uart_param_config(UART_NUM_1, &uart_config);
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, GPIO_NUM_15, GPIO_NUM_14, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, BUF_SIZE, 10, NULL, 0);
 
-    // Still log to the serial output
-    //esp_log_set_vprintf(log_to_uart);
-
-    uart_write_bytes(UART_NUM_1, "listening\n", 11);
-
-    tnew(cols, rows);
-    selinit();
-
-    while (true) {
-        ttyread();
-    }
+void render_task() {
+  while (true) {
+    epd_render();
+  }
+}
+void read_task() {
+  while (true) {
+    ttyread();
+  }
 }
 
 void app_main() {
-  xTaskCreatePinnedToCore(&epd_task, "epd task", 10000, NULL, 2, NULL, 1);
+  epd_init();
+  delay(300);
+  epd_poweron();
+  epd_clear();
+  epd_poweroff();
+
+  /* Configure parameters of an UART driver,
+   * communication pins and install the driver */
+  uart_config_t uart_config = {
+          .baud_rate = 115200,
+          .data_bits = UART_DATA_8_BITS,
+          .parity    = UART_PARITY_DISABLE,
+          .stop_bits = UART_STOP_BITS_1,
+          .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+          .use_ref_tick = true
+  };
+  uart_param_config(UART_NUM_1, &uart_config);
+  ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, GPIO_NUM_15, GPIO_NUM_14, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+  uart_driver_install(UART_NUM_1, BUF_SIZE, 1024, 10, NULL, 0);
+
+  // Still log to the serial output
+  //esp_log_set_vprintf(log_to_uart);
+
+  //ESP_LOGI("term", "listening\n");
+
+  tnew(cols, rows);
+  selinit();
+
+  RTOS_ERROR_CHECK(xTaskCreate(&read_task, "read", 1 << 12, NULL, 1, NULL));
+  RTOS_ERROR_CHECK(xTaskCreate(&render_task, "render", 1 << 14, NULL, 1, &render_task_hdl));
 }
