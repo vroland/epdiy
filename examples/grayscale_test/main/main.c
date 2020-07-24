@@ -24,7 +24,6 @@ void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
 uint32_t millis() { return esp_timer_get_time() / 1000; }
 
-uint8_t* base_image;
 uint8_t* grayscale_img;
 uint8_t* grayscale_img2;
 
@@ -84,13 +83,6 @@ void app_main() {
   if (grayscale_img2 == NULL) {
      ESP_LOGE("epd_task", "Could not allocate framebuffer in PSRAM!");
   }
-
-  // base image
-  base_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT * 4, MALLOC_CAP_SPIRAM);
-  if (base_image == NULL) {
-     ESP_LOGE("epd_task", "Could not allocate framebuffer in PSRAM!");
-  }
-  memset(base_image, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
   uint8_t grayscale_line[EPD_WIDTH / 2];
   uint8_t value = 0;
