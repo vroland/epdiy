@@ -36,6 +36,7 @@ const int contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
 
 const int contrast_cycles_4_white[15] = {10, 10, 8, 8, 8,  8,  8, 10,
                                          10, 15, 15, 20, 20, 100, 300};
+const int clear_cycle_time = 12;
 
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
 const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
@@ -43,6 +44,18 @@ const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
 
 const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
                                          6, 6, 6, 8, 8, 50, 150};
+
+const int clear_cycle_time = 12;
+
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
+const int contrast_cycles_4[15] = {200, 200, 200, 200, 200,  200,  200, 200,
+                                   200, 200, 200, 200, 200, 200, 300};
+
+const int contrast_cycles_4_white[15] = {50, 30, 30, 30, 30, 30,  30, 30,
+                                         30, 30, 50, 50, 50, 100, 200};
+
+const int clear_cycle_time = 12;
+
 #else
 #error "no display type defined!"
 #endif
@@ -134,17 +147,17 @@ void epd_push_pixels(Rect_t area, short time, int color) {
   epd_end_frame();
 }
 
-void epd_clear_area(Rect_t area) { epd_clear_area_cycles(area, 3, 50); }
+void epd_clear_area(Rect_t area) { epd_clear_area_cycles(area, 3, clear_cycle_time); }
 
 void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time) {
   const short white_time = cycle_time;
   const short dark_time = cycle_time;
 
   for (int c = 0; c < cycles; c++) {
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 10; i++) {
       epd_push_pixels(area, dark_time, 0);
     }
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 10; i++) {
       epd_push_pixels(area, white_time, 1);
     }
   }
