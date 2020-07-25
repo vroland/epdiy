@@ -55,50 +55,6 @@ int log_to_uart(const char* fmt, va_list args) {
     return result;
 }
 
-/*
-static uint8_t uart_str_buffer[BUF_SIZE];
-static uint8_t* uart_buffer_end = uart_str_buffer;
-static uint8_t* uart_buffer_start = uart_str_buffer;
-
-uint32_t read_char() {
-    int remaining = uart_buffer_end - uart_buffer_start;
-    if (uart_buffer_start >= uart_buffer_end
-            || utf8_len(*uart_buffer_start) > remaining) {
-
-        memmove(uart_str_buffer, uart_buffer_start, remaining);
-        uart_buffer_start = uart_str_buffer;
-        uart_buffer_end = uart_buffer_start + remaining;
-        int unfilled = uart_str_buffer + BUF_SIZE - uart_buffer_end;
-        int len = uart_read_bytes(UART_NUM_1, uart_buffer_end, unfilled, 20 / portTICK_RATE_MS);
-        uart_buffer_end += len;
-        if (len < 0) {
-            ESP_LOGE("terminal", "uart read error");
-            return 0;
-        } else if (len == 0) {
-            return 0;
-        }
-        remaining = uart_buffer_end - uart_buffer_start;
-    }
-
-    int bytes = utf8_len(*uart_buffer_start);
-    if (remaining < bytes) {
-      return 0;
-    }
-
-    uint32_t cp = to_cp((char*)uart_buffer_start);
-    uart_buffer_start += bytes;
-    return cp;
-}
-*/
-
-TaskHandle_t render_task_hdl;
-
-
-void render_task() {
-  while (true) {
-    epd_render();
-  }
-}
 void read_task() {
   while (true) {
     ttyread();
@@ -120,11 +76,11 @@ void app_main() {
           .parity    = UART_PARITY_DISABLE,
           .stop_bits = UART_STOP_BITS_1,
           .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-          .use_ref_tick = true
+          .use_ref_tick = true,
   };
   uart_param_config(UART_NUM_1, &uart_config);
   ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, GPIO_NUM_15, GPIO_NUM_14, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-  uart_driver_install(UART_NUM_1, BUF_SIZE, 1024, 10, NULL, 0);
+  ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE, 1024, 0, NULL, 0));
 
   // Still log to the serial output
   //esp_log_set_vprintf(log_to_uart);
@@ -134,6 +90,5 @@ void app_main() {
   tnew(cols, rows);
   selinit();
 
-  RTOS_ERROR_CHECK(xTaskCreate(&read_task, "read", 1 << 12, NULL, 1, NULL));
-  RTOS_ERROR_CHECK(xTaskCreate(&render_task, "render", 1 << 14, NULL, 1, &render_task_hdl));
+  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(&read_task, "read", 1 << 14, NULL, 1, NULL, 0));
 }

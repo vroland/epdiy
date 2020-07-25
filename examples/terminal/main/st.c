@@ -233,10 +233,6 @@ static uint8_t* render_fb_back = NULL;
 static uint8_t* render_fb_front = NULL;
 static uint8_t* render_mask = NULL;
 
-static SemaphoreHandle_t render_start_smphr = NULL;
-static SemaphoreHandle_t render_end_smphr = NULL;
-static SemaphoreHandle_t render_mutex = NULL;
-
 static Term term;
 static Selection sel;
 static CSIEscape csiescseq;
@@ -867,13 +863,13 @@ ttynew(char *line, char *cmd, char *out, char **args)
 size_t
 ttyread(void)
 {
-	static char buf[BUFSIZ];
+	static char buf[256];
     static int buflen = 0;
 	int ret, written;
 
-	/* append read bytes to unprocessed bytes */
-    ret = uart_read_bytes(UART_NUM_1, (uint8_t *)buf+buflen, LEN(buf) - buflen, 20 / portTICK_RATE_MS);
-
+    size_t length = 0;
+    //uart_get_buffered_data_len(UART_NUM_1, &length);
+    ret = uart_read_bytes(UART_NUM_1, (uint8_t *)buf+buflen, 200, 5);
 	switch (ret) {
 	case 0:
         draw();
@@ -932,6 +928,7 @@ ttywriteraw(const char *s, size_t n)
 	 * dance.
 	 * FIXME: Migrate the world to Plan 9.
 	 */
+    ESP_LOGI("term", "ttywriteraw!");
 	while (n > 0) {
 		// FD_ZERO(&wfd);
 		// FD_ZERO(&rfd);
@@ -1764,6 +1761,7 @@ csihandle(void)
 		tputtab(csiescseq.arg[0]);
 		break;
 	case 'J': /* ED -- Clear screen */
+        ESP_LOGI("term", "clear mode: %d", csiescseq.arg[0]);
 		switch (csiescseq.arg[0]) {
 		case 0: /* below */
 			tclearregion(term.c.x, term.c.y, term.col-1, term.c.y);
@@ -1771,17 +1769,15 @@ csihandle(void)
 				tclearregion(0, term.c.y+1, term.col-1,
 						term.row-1);
 			}
-            full_refresh();
 			break;
 		case 1: /* above */
-            full_refresh();
 			if (term.c.y > 1)
 				tclearregion(0, 0, term.col-1, term.c.y-1);
 			tclearregion(0, term.c.y, term.c.x, term.c.y);
 			break;
 		case 2: /* all */
-            full_refresh();
 			tclearregion(0, 0, term.col-1, term.row-1);
+            full_refresh();
 			break;
 		default:
 			goto unknown;
@@ -2577,15 +2573,6 @@ tresize(int col, int row)
     if (render_mask == NULL) {
       render_mask = heap_caps_malloc(EPD_WIDTH / 8 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
     }
-    if (render_start_smphr == NULL) {
-      render_start_smphr = xSemaphoreCreateBinary();
-    }
-    if (render_end_smphr == NULL) {
-      render_end_smphr = xSemaphoreCreateBinary();
-    }
-    if (render_mutex == NULL) {
-      render_mutex = xSemaphoreCreateMutex();
-    }
     memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
     memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
     memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
@@ -2617,14 +2604,14 @@ tresize(int col, int row)
 
 	/* resize each row to new width, zero-pad if needed */
 	for (i = 0; i < minrow; i++) {
-		term.line[i] = xrealloc_32(term.line[i], col * sizeof(Glyph));
-		term.alt[i]  = xrealloc_32(term.alt[i],  col * sizeof(Glyph));
+		term.line[i] = xrealloc(term.line[i], col * sizeof(Glyph));
+		term.alt[i]  = xrealloc(term.alt[i],  col * sizeof(Glyph));
 	}
 
 	/* allocate any new rows */
 	for (/* i = minrow */; i < row; i++) {
-		term.line[i] = xmalloc_32(col * sizeof(Glyph));
-		term.alt[i] = xmalloc_32(col * sizeof(Glyph));
+		term.line[i] = xmalloc(col * sizeof(Glyph));
+		term.alt[i] = xmalloc(col * sizeof(Glyph));
 	}
 	if (col > term.col) {
 		bp = term.tabs + term.col;
@@ -2876,6 +2863,7 @@ static void render_line(LineParams_t* p) {
       p->max_y_px = MAX(p->min_y_px, px_y - f->descender);
 
       write_mode(f, data, &px_x, &px_y, render_fb_front, WHITE_ON_WHITE, &fprops);
+      //ESP_LOGI("term", "writing %s", data);
     }
     free(data);
 
@@ -2918,8 +2906,6 @@ static void task_wait_and_delete(LineParams_t* params) {
 }
 
 static void full_refresh() {
-  xSemaphoreTake(render_mutex, portMAX_DELAY);
-
   memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
@@ -2928,14 +2914,11 @@ static void full_refresh() {
   epd_poweron();
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
-  xSemaphoreGive(render_mutex);
+  tfulldirt();
 }
 
 
 void epd_render(void) {
-
-  xSemaphoreTake(render_start_smphr, portMAX_DELAY);
-  xSemaphoreTake(render_mutex, portMAX_DELAY);
 
   uint32_t ts = esp_timer_get_time();
 
@@ -2990,7 +2973,6 @@ void epd_render(void) {
   vSemaphoreDelete(line_task_params[0].done_smphr);
   vSemaphoreDelete(line_task_params[1].done_smphr);
 
-  xSemaphoreGive(render_end_smphr);
 
   if (drawn_lines) {
     epd_poweron();
@@ -3063,15 +3045,12 @@ void epd_render(void) {
     }
   }
   free(masked_buf);
-  xSemaphoreGive(render_mutex);
 }
 
 void
 draw(void)
 {
-    xSemaphoreGive(render_start_smphr);
-    xSemaphoreTake(render_end_smphr, portMAX_DELAY);
-	//xTaskNotifyGive(render_task_hdl);
+    epd_render();
 }
 
 void
