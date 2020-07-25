@@ -167,9 +167,9 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   rtc_clk_apll_enable(1, 0, 0, 8, 0);
 #else
   // Initialize Audio Clock (APLL) for 80 Mhz.
-  rtc_clk_apll_enable(1, 0, 0, 8, 1);
+  rtc_clk_apll_enable(0, 0, 0, 5, 1);
 #endif
-  
+
 
   // Set Audio Clock Dividers
   dev->clkm_conf.val = 0;

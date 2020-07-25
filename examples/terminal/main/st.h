@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+#include "freertos/FreeRTOS.h"
 
 /* macros */
 #define MIN(a, b)		((a) < (b) ? (a) : (b))
@@ -19,6 +20,13 @@
 
 #define TRUECOLOR(r,g,b)	(1 << 24 | (r) << 16 | (g) << 8 | (b))
 #define IS_TRUECOL(x)		(1 << 24 & (x))
+
+#define RTOS_ERROR_CHECK(x) do {                                         \
+        esp_err_t __err_rc = (x);                                       \
+        if (__err_rc != pdPASS) {                                       \
+            abort();                                                    \
+        }                                                               \
+    } while(0)
 
 enum glyph_attribute {
 	ATTR_NULL       = 0,
@@ -62,10 +70,10 @@ typedef uint_least32_t Rune;
 #define Glyph Glyph_
 typedef struct {
 	Rune u;           /* character code */
-	ushort mode;      /* attribute flags */
+	uint32_t mode;      /* attribute flags */
 	uint32_t fg;      /* foreground  */
 	uint32_t bg;      /* background  */
-} Glyph;
+} __attribute__((aligned(4))) Glyph;
 
 typedef Glyph *Line;
 
@@ -111,7 +119,9 @@ void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
 char *xstrdup(char *);
 
-/* config.h globals */
+void epd_render(void);
+
+  /* config.h globals */
 extern char *utmp;
 extern char *scroll;
 extern char *stty_args;
@@ -124,3 +134,4 @@ extern unsigned int defaultfg;
 extern unsigned int defaultbg;
 extern unsigned int cols;
 extern unsigned int rows;
+extern TaskHandle_t render_task_hdl;

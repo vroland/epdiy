@@ -3,7 +3,7 @@
  */
 #ifdef __cplusplus
 extern "C"{
-#endif 
+#endif
 
 #pragma once
 #include "esp_attr.h"
@@ -15,15 +15,16 @@ extern "C"{
 #define EPD_WIDTH 1200
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 825
-#else
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
+#define EPD_WIDTH 1600
+#define EPD_HEIGHT 1200
+#elif CONFIG_EPD_DISPLAY_TYPE_ED060SC4
 /// Width of the display area in pixels.
 #define EPD_WIDTH 800
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 600
 #else
 #error "no display type defined!"
-#endif
 #endif
 
 /// An area on the display.
@@ -131,9 +132,20 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  */
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
 
+/**
+ * Same as epd_draw_image, but with the option to specify
+ * which lines of the image should be drawn.
+ *
+ * @param drawn_lines: If not NULL, an array of at least the height of the image.
+ * 	Every line where the corresponding value in `lines` is `false` will be skipped.
+ */
+void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mode, bool* drawn_lines);
 
 
 void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time);
+
+void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time, bool* drawn_lines);
+
 /**
  * @returns Rectancle representing the whole screen area.
  */
@@ -162,7 +174,7 @@ void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_pixel(int x, int y, uint8_t color,
-                    uint8_t *framebuffer);                             
+                    uint8_t *framebuffer);
 
 /**
  * Draw a horizontal line to a given framebuffer.
@@ -217,7 +229,7 @@ void epd_draw_circle(int x, int y, int r, uint8_t color,
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_fill_circle(int x, int y, int r, uint8_t color,
-                    uint8_t *framebuffer);  
+                    uint8_t *framebuffer);
 
 /**
  * Draw a rectanle with no fill color
@@ -261,7 +273,7 @@ void epd_write_line(int x0, int y0, int x1, int y1,
 
 /**
  * Draw a line
- * 
+ *
  * @param    x0  Start point x coordinate
  * @param    y0  Start point y coordinate
  * @param    x1  End point x coordinate

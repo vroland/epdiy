@@ -6,7 +6,7 @@
 
 static uint64_t MAX_UPDATES_SINCE_LAST_CLEAR = 10000;
 static int clear_cycles = 1;
-static int clear_cycle_length = 80;
+static int clear_cycle_length = 12;
 
 static unsigned int fallback_glyph = '?';
 static GFXfont* font = (GFXfont*)&FiraCode;
@@ -379,8 +379,8 @@ static unsigned int cursorshape = 2;
  * Default columns and rows numbers
  */
 
-unsigned int cols = 100;
-unsigned int rows = 30;
+unsigned int cols = 120;
+unsigned int rows = 38;
 
 /*
  * Default colour and shape of the mouse cursor
