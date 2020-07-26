@@ -70,7 +70,8 @@ enum cursor_movement {
 enum cursor_state {
 	CURSOR_DEFAULT  = 0,
 	CURSOR_WRAPNEXT = 1,
-	CURSOR_ORIGIN   = 2
+	CURSOR_ORIGIN   = 2,
+	CURSOR_HIDE     = 4
 };
 
 enum charset {
@@ -182,6 +183,8 @@ static void tdumpline(int);
 static void tdump(void);
 static void tclearregion(int, int, int, int);
 static void tcursor(int);
+static void tcurhide(void);
+static void tcurshow(void);
 static void tdeletechar(int);
 static void tdeleteline(int);
 static void tinsertblank(int);
@@ -1041,6 +1044,18 @@ tfulldirt(void)
 	tsetdirt(0, term.row-1);
 }
 
+void tcurhide(void)
+{
+    term.c.state |= CURSOR_HIDE;
+    term.dirty[term.c.y] = 1;
+}
+
+void tcurshow(void)
+{
+    term.c.state &= ~CURSOR_HIDE;
+    term.dirty[term.c.y] = 1;
+}
+
 void
 tcursor(int mode)
 {
@@ -1241,8 +1256,10 @@ tmoveto(int x, int y)
 		maxy = term.row - 1;
 	}
 	term.c.state &= ~CURSOR_WRAPNEXT;
+    term.dirty[term.c.y] = 1;
 	term.c.x = LIMIT(x, 0, term.col-1);
 	term.c.y = LIMIT(y, miny, maxy);
+    term.dirty[term.c.y] = 1;
 }
 
 void
@@ -1560,7 +1577,11 @@ tsetmode(int priv, int set, int *args, int narg)
 			case 12: /* att610 -- Start blinking cursor (IGNORED) */
 				break;
 			case 25: /* DECTCEM -- Text Cursor Enable Mode */
-                // TODO: Cursor rendering
+				if (!set) {
+					tcurhide();
+				} else {
+					tcurshow();
+				}
 				//xsetmode(!set, MODE_HIDE);
 				break;
 			case 9:    /* X10 mouse compatibility mode */
@@ -2837,6 +2858,19 @@ static void render_line(LineParams_t* p) {
     char* data = malloc(4 * term.col + 1);
     int idx = 0;
     int px_x = pixel_start_x;
+
+    Glyph cursor_char;
+
+    if (term.c.y == p->line) {
+        Glyph* cchar = &p->glyphs[term.c.x];
+        cursor_char = *cchar;
+        if (cchar->u == ' ') {
+            cchar->u = '_';
+        } else {
+            cchar->bg = 3;
+        }
+    }
+
     while (idx < term.col) {
       int data_pos = 0;
       Glyph c = p->glyphs[idx];
@@ -2866,6 +2900,10 @@ static void render_line(LineParams_t* p) {
       //ESP_LOGI("term", "writing %s", data);
     }
     free(data);
+
+    if (term.c.y == p->line) {
+        p->glyphs[term.c.x] = cursor_char;
+    }
 
     int height = p->max_y_px - p->min_y_px;
     if (height > 0) {
