@@ -853,8 +853,8 @@ void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mo
     xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
 
     uint64_t frame_end = esp_timer_get_time() / 1000;
-    if (frame_end - frame_start < 5) {
-        vTaskDelay(max(5 - (frame_end - frame_start), 5));
+    if (frame_end - frame_start < MINIMUM_FRAME_TIME) {
+        vTaskDelay(min(MINIMUM_FRAME_TIME - (frame_end - frame_start), MINIMUM_FRAME_TIME));
     }
   }
 }
