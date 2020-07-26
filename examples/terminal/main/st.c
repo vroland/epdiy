@@ -235,6 +235,7 @@ static void full_refresh();
 static uint8_t* render_fb_back = NULL;
 static uint8_t* render_fb_front = NULL;
 static uint8_t* render_mask = NULL;
+static int screen_tainted = 0;
 
 static Term term;
 static Selection sel;
@@ -879,7 +880,7 @@ ttyread(void)
 		return 0;
 	case -1:
 		die("couldn't read from shell: %s\n", esp_err_to_name(ret));
-	default:
+	default: {
 		buflen += ret;
 		written = twrite(buf, buflen, 0);
 		buflen -= written;
@@ -887,6 +888,7 @@ ttyread(void)
 		if (buflen > 0)
 			memmove(buf, buf + written, buflen);
 		return ret;
+	 }
 	}
 }
 
@@ -2944,6 +2946,9 @@ static void task_wait_and_delete(LineParams_t* params) {
 }
 
 static void full_refresh() {
+  if (!screen_tainted) {
+	return;
+  }
   memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
   memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
@@ -2953,6 +2958,7 @@ static void full_refresh() {
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
   tfulldirt();
+  screen_tainted = 0;
 }
 
 
@@ -3013,6 +3019,8 @@ void epd_render(void) {
 
 
   if (drawn_lines) {
+    screen_tainted = 1;
+
     epd_poweron();
     uint32_t t_poweron = esp_timer_get_time();
 
