@@ -310,6 +310,7 @@ void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
 }
 
 inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
+inline uint32_t max(uint32_t x, uint32_t y) { return x > y ? x : y; }
 
 void epd_draw_hline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer) {
@@ -832,8 +833,8 @@ void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mo
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;
 
-  vTaskDelay(10);
   for (uint8_t k = 0; k < frame_count; k++) {
+    uint64_t frame_start = esp_timer_get_time() / 1000;
     fetch_params.area = area;
     fetch_params.data_ptr = data;
     fetch_params.frame = k;
@@ -850,6 +851,11 @@ void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mo
     xSemaphoreGive(feed_params.start_smphr);
     xSemaphoreTake(fetch_params.done_smphr, portMAX_DELAY);
     xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
+
+    uint64_t frame_end = esp_timer_get_time() / 1000;
+    if (frame_end - frame_start < 5) {
+        vTaskDelay(max(5 - (frame_end - frame_start), 5));
+    }
   }
 }
 
