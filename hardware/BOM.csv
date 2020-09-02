@@ -1,20 +1,20 @@
 Designated Parts,LCSC Part Number,Manufacture Part Number,Manufacturer,Customer NO.,Package,Description,RoHS,Order Qty.,Min\Mult Order Qty.,Unit Price,Order Price
-,C5423,LM358DR,Texas Instruments,,SOIC-8_150mil,"General Purpose Amplifiers General Purpose 2 3V ~ 32V, ±1.5V ~ 16V 700kHz 0.3 V/us SOIC-8_150mil RoHS",Yes,20,1\1,$0.106485,$2.13
-,C5651,"74HC4094D,653",Nexperia,,SOIC-16_150mil,74 Series SOIC-16_150mil RoHS,Yes,25,1\1,$0.122727,$3.07
-,C10418,C10418,Jing Extension of the Electronic Co.,,SMD,USB Connectors SMD RoHS,Yes,20,5\5,$0.057314,$1.15
-,C11958,EVM3ESX50B25,PANASONIC,,3*3SMD,Variable Resistors 200KOhms ±25% 3*3SMD RoHS,Yes,30,10\10,$0.06229,$1.87
-,C14241,AMS1086CD-3.3,Advanced Monolithic Systems,,TO-252-2(DPAK),Low Dropout Regulators(LDO) positive Fixed 1.5V @ 1.5A 15V 3.3V 1.5A TO-252-2(DPAK) RoHS,Yes,20,1\1,$0.375758,$7.52
-,C21353,MBR0540T1G,ON Semiconductor,,SOD-123,Schottky Barrier Diodes (SBD) SOD-123 RoHS,Yes,70,10\10,$0.041145,$2.88
-,C92280,FH26W-39S-0.3SHW(60),HRS(Hirose),,SMD,"FFC, FPC Connectors SMD RoHS",Yes,25,1\1,$0.142424,$3.56
-,C108996,CH330N,WCH(Jiangsu Qin Heng),,SOP-8_150mil,"USB ICs 2Mbps 3.3V, 5V SOP-8_150mil RoHS",Yes,20,1\1,$0.354545,$7.09
-,C127949,MCP9700AT-E/TT,Microchip Tech,,SOT-23(SOT-23-3),Temperature Sensors SOT-23(SOT-23-3) RoHS,Yes,20,1\1,$0.210606,$4.21
-,C139827,CJ7815,Changjiang Electronics Tech (CJ),,TO-252-2(DPAK),Linear Voltage Regulators TO-252-2(DPAK) RoHS,Yes,20,1\1,$0.119697,$2.39
-,C177738,CJ7915,Changjiang Electronics Tech (CJ),,TO-252-2(DPAK),Linear Voltage Regulators TO-252-2(DPAK) RoHS,Yes,20,1\1,$0.156061,$3.12
-,C231420,XF2M-3315-1A,Omron Electronics,,"SMD,P=0.5mm","FFC, FPC Connectors SMD,P=0.5mm RoHS",Yes,20,1\1,$0.945455,$18.91
-,C326331,SNR6020K-220M,3L COILS,,"SMD,6.0x6.0mm","Inductors (SMD) SMD,6.0x6.0mm RoHS",Yes,40,1\1,$0.089394,$3.58
-,C475709,IRLML6402,Shikues,,SOT-23,"MOSFET P Channel 20V 3A 1V @ 250uA 120mΩ @ 3A,4.5V SOT-23 RoHS",Yes,30,10\10,$0.049021,$1.47
+,C5423,LM358DR,Texas Instruments,U7,SOIC-8_150mil,"General Purpose Amplifiers General Purpose 2 3V ~ 32V, ±1.5V ~ 16V 700kHz 0.3 V/us SOIC-8_150mil RoHS",Yes,20,1\1,$0.106485,$2.13
+,C5651,"74HC4094D,653",Nexperia,U8,SOIC-16_150mil,74 Series SOIC-16_150mil RoHS,Yes,25,1\1,$0.122727,$3.07
+,C10418,C10418,Jing Extension of the Electronic Co.,J2,SMD,USB Connectors SMD RoHS,Yes,20,5\5,$0.057314,$1.15
+,C11958,EVM3ESX50B25,PANASONIC,RV1,3*3SMD,Variable Resistors 200KOhms ±25% 3*3SMD RoHS,Yes,30,10\10,$0.06229,$1.87
+,C14241,AMS1086CD-3.3,Advanced Monolithic Systems,U1,TO-252-2(DPAK),Low Dropout Regulators(LDO) positive Fixed 1.5V @ 1.5A 15V 3.3V 1.5A TO-252-2(DPAK) RoHS,Yes,20,1\1,$0.375758,$7.52
+,C21353,MBR0540T1G,ON Semiconductor,D1-D3,SOD-123,Schottky Barrier Diodes (SBD) SOD-123 RoHS,Yes,70,10\10,$0.041145,$2.88
+,C92280,FH26W-39S-0.3SHW(60),HRS(Hirose),J4,SMD,"FFC, FPC Connectors SMD RoHS",Yes,25,1\1,$0.142424,$3.56
+,C108996,CH330N,WCH(Jiangsu Qin Heng),U6,SOP-8_150mil,"USB ICs 2Mbps 3.3V, 5V SOP-8_150mil RoHS",Yes,20,1\1,$0.354545,$7.09
+,C127949,MCP9700AT-E/TT,Microchip Tech,U9,SOT-23(SOT-23-3),Temperature Sensors SOT-23(SOT-23-3) RoHS,Yes,20,1\1,$0.210606,$4.21
+,C139827,CJ7815,Changjiang Electronics Tech (CJ),U4,TO-252-2(DPAK),Linear Voltage Regulators TO-252-2(DPAK) RoHS,Yes,20,1\1,$0.119697,$2.39
+,C177738,CJ7915,Changjiang Electronics Tech (CJ),U3,TO-252-2(DPAK),Linear Voltage Regulators TO-252-2(DPAK) RoHS,Yes,20,1\1,$0.156061,$3.12
+,C231420,XF2M-3315-1A,Omron Electronics,J1,"SMD,P=0.5mm","FFC, FPC Connectors SMD,P=0.5mm RoHS",Yes,20,1\1,$0.945455,$18.91
+,C326331,SNR6020K-220M,3L COILS,"L1,L2","SMD,6.0x6.0mm","Inductors (SMD) SMD,6.0x6.0mm RoHS",Yes,40,1\1,$0.089394,$3.58
+,C475709,IRLML6402,Shikues,Q1,SOT-23,"MOSFET P Channel 20V 3A 1V @ 250uA 120mΩ @ 3A,4.5V SOT-23 RoHS",Yes,30,10\10,$0.049021,$1.47
 ,C318884,TS-1187A-B-A-B,XKB Enterprise,"BOOT1, RESET1",SMD,Tactile Switches SPST 5.10mm x 5.10mm 0.40mm 50mA @ 12VDC SMD RoHS,Yes,20,20\20,$0.021,$0.42
-,C503591,ESP32-WROVER-B,Espressif Systems,,Module,Module WIFI Modules RoHS,,,,,
+,C503591,ESP32-WROVER-B,Espressif Systems,U5,Module,Module WIFI Modules RoHS,,,,,
 ,- / other sellers,LT1945EMS,Linear Technology,U2,MSOP-10,Dual Micropower DC/DC Converter with Positive andNegative Outputs,,,,,
 ,,,,,,,,,,,
 ,,,,,,,,,,,
