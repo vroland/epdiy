@@ -46,6 +46,17 @@ The following list is compiled from past experiences and GitHub issues:
  * **The second third of the image is replaced with the last third.** This seems to be a timing issue we could not yet quite figure out the reason for. For a workarround or suggestions please [join the discussion](https://github.com/vroland/epdiy/issues/15).
  * **The ESP does not boot correctly when external periperals are connected.** Make sure not to pull GPIO12 high during boot, as it is a strapping pin internal voltage selection (https://github.com/vroland/epdiy/issues/17).
  
+More on E-Paper Displays
+------------------------
+
+ * List of E-Paper devices and their screens: https://e-ink-reader.ru/chg_dsp_en.php (thanks, @mcer12)
+ * Reverse engineering of display pins, possible starting point for alternative drivers: https://linux-sunxi.org/PocketBook_Touch_Lux_3 (thanks, @mcer12)
+ * Reverse engineering and explanation on driving EPDs: http://essentialscrap.com/eink/index.html
+ * Earlier take on driving 6" EPDs with an ESP32, basis of original power circuit: http://spritesmods.com/?art=einkdisplay&page=1
+ * Related Hackaday projects: https://hackaday.io/project/21607 https://hackaday.io/project/11537
+
+If you know any other useful resources or have suggestions, please comment on #31!
+
 Hackaday Project
 ----------------
 
