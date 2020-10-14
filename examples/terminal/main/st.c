@@ -2949,16 +2949,17 @@ static void full_refresh() {
   if (!screen_tainted) {
 	return;
   }
-  memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-  memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-  memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
-  ESP_LOGI("term", "epd clear.");
 
+  ESP_LOGI("term", "epd clear.");
   epd_poweron();
+  epd_draw_image(epd_full_screen(), render_fb_front, WHITE_ON_WHITE);
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
   tfulldirt();
   screen_tainted = 0;
+  memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+  memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+  memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
 }
 
 
