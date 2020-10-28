@@ -20,4 +20,18 @@ menu "E-Paper Driver"
         config EPD_DISPLAY_TYPE_ED097OC4_LQ
             bool "ED097OC4 Low Quality"
     endchoice
+
+
+    choice EPD_DRIVER_BOARD_REVISION
+        prompt "Board Revision"
+        default EPD_BOARD_REVISION_V2
+        help
+            The board revision to compile for.
+
+        config EPD_BOARD_REVISION_V2
+            bool "Revision 2"
+
+        config EPD_BOARD_REVISION_V3
+            bool "Revision 3"
+    endchoice
 endmenu

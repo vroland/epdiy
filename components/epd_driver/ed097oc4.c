@@ -5,16 +5,15 @@
 
 #include "xtensa/core-macros.h"
 
-typedef struct {
-  bool ep_latch_enable : 1;
-  bool power_disable : 1;
-  bool pos_power_enable : 1;
-  bool neg_power_enable : 1;
-  bool ep_stv : 1;
-  bool ep_scan_direction : 1;
-  bool ep_mode : 1;
-  bool ep_output_enable : 1;
-} epd_config_register_t;
+#if defined(CONFIG_EPD_BOARD_REVISION_V2)
+#include "config_reg_v2.h"
+#else
+#if defined(CONFIG_EPD_BOARD_REVISION_V3)
+#include "config_reg_v3.h"
+#else
+#error "unknown revision"
+#endif
+#endif
 
 static epd_config_register_t config_reg;
 
@@ -46,38 +45,21 @@ inline static void IRAM_ATTR push_cfg_bit(bool bit) {
   fast_gpio_set_hi(CFG_CLK);
 }
 
-static void IRAM_ATTR push_cfg(epd_config_register_t *cfg) {
-  fast_gpio_set_lo(CFG_STR);
-
-  // push config bits in reverse order
-  push_cfg_bit(cfg->ep_output_enable);
-  push_cfg_bit(cfg->ep_mode);
-  push_cfg_bit(cfg->ep_scan_direction);
-  push_cfg_bit(cfg->ep_stv);
-
-  push_cfg_bit(cfg->neg_power_enable);
-  push_cfg_bit(cfg->pos_power_enable);
-  push_cfg_bit(cfg->power_disable);
-  push_cfg_bit(cfg->ep_latch_enable);
-
-  fast_gpio_set_hi(CFG_STR);
-}
-
 void epd_base_init(uint32_t epd_row_width) {
 
-  config_reg.ep_latch_enable = false;
-  config_reg.power_disable = true;
-  config_reg.pos_power_enable = false;
-  config_reg.neg_power_enable = false;
-  config_reg.ep_stv = true;
-  config_reg.ep_scan_direction = true;
-  config_reg.ep_mode = false;
-  config_reg.ep_output_enable = false;
+  config_reg_init(&config_reg);
 
   /* Power Control Output/Off */
   gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
+
+#if defined(CONFIG_EPD_BOARD_REVISION_V3)
+  // use latch pin as GPIO
+  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V3_LATCH_ENABLE], PIN_FUNC_GPIO);
+  ESP_ERROR_CHECK(gpio_set_direction(V3_LATCH_ENABLE, GPIO_MODE_OUTPUT));
+  gpio_set_level(V3_LATCH_ENABLE, 0);
+#endif
   fast_gpio_set_lo(CFG_STR);
 
   push_cfg(&config_reg);
@@ -103,33 +85,11 @@ void epd_base_init(uint32_t epd_row_width) {
 }
 
 void epd_poweron() {
-  // POWERON
-  config_reg.power_disable = false;
-  push_cfg(&config_reg);
-  busy_delay(100 * 240);
-  config_reg.neg_power_enable = true;
-  push_cfg(&config_reg);
-  busy_delay(500 * 240);
-  config_reg.pos_power_enable = true;
-  push_cfg(&config_reg);
-  busy_delay(100 * 240);
-  config_reg.ep_stv = true;
-  push_cfg(&config_reg);
-  fast_gpio_set_hi(STH);
-  // END POWERON
+    cfg_poweron(&config_reg);
 }
 
 void epd_poweroff() {
-  // POWEROFF
-  config_reg.pos_power_enable = false;
-  push_cfg(&config_reg);
-  busy_delay(10 * 240);
-  config_reg.neg_power_enable = false;
-  push_cfg(&config_reg);
-  busy_delay(100 * 240);
-  config_reg.power_disable = true;
-  push_cfg(&config_reg);
-  // END POWEROFF
+    cfg_poweroff(&config_reg);
 }
 
 void epd_start_frame() {
@@ -156,11 +116,20 @@ void epd_start_frame() {
 }
 
 static inline void latch_row() {
+#if defined(CONFIG_EPD_BOARD_REVISION_V2)
   config_reg.ep_latch_enable = true;
   push_cfg(&config_reg);
 
   config_reg.ep_latch_enable = false;
   push_cfg(&config_reg);
+#else
+#if defined(CONFIG_EPD_BOARD_REVISION_V3)
+  fast_gpio_set_hi(V3_LATCH_ENABLE);
+  fast_gpio_set_lo(V3_LATCH_ENABLE);
+#else
+#error "unknown revision"
+#endif
+#endif
 }
 
 void IRAM_ATTR epd_skip() {

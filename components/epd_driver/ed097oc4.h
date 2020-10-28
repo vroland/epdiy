@@ -11,6 +11,9 @@
 #define CKV GPIO_NUM_25
 #define STH GPIO_NUM_26
 
+
+#define V3_LATCH_ENABLE GPIO_NUM_15
+
 /* Edges */
 #define CKH GPIO_NUM_5
 
