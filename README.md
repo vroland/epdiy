@@ -17,20 +17,26 @@ Displays
 --------
 
 | Display  | Size | Resolution | Grey levels | Connector | Bom-Part
-| --: | --: | --: | --: | --: | --: |
-| ED097OC4  | 9.7" | 1200 x 825 | 16 | 33 | XF2M-3315-1A |
-| ED060SC4  | 6" | 800 x 600  | 16 | 39 | FH26W-39S-0.3SHW(60) |
-| ED097TC2  | 9.7" | 1200 x 825  | 16 | 33 | XF2M-3315-1A |
+| --:      | --:   | --:         | --: | --: | --:                  |
+| ED097OC4 | 9.7"  | 1200 x 825  | 16  | 33  | XF2M-3315-1A         |
+| ED060SC4 | 6"    | 800 x 600   | 16  | 39  | FH26W-39S-0.3SHW(60) |
+| ED097TC2 | 9.7"  | 1200 x 825  | 16  | 33  | XF2M-3315-1A         |
+| ED133UT2 | 13.3" | 1600 x 1200 | 16  | 39  | Adapter Board        |
 
 Building It
 -----------
 
 If you want to build a board right now, there are two possible routes:
- - Use the current master-branch PCB (`hardware/epaper-breakout/gerbers`), contributed by @sebastius.
-   They, offer some improvements over the original v2 PCB, as described here: https://github.com/vroland/epdiy/issues/3.
-   Although this version *should* work, it was not physically built yet. (if you did, please contact me!)
+ - Use the new v2 PCB (`hardware/epaper-breakout/gerbers_v4.zip`). This is a bit more fresh, but should work.
+   The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
+   Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
+   Please double check the part positioning and Rotation with your assembly service!
+ 
+   Make sure to select the `V4` board revision in `idf.py menuconfig` when building the examples.
  - Use the original v2 PCB (`hardware/epaper-breakout/gerbers_v2_rev0.zip`). 
    However, you might run into issue #3 with some selections of parts.
+    
+   Make sure to select the `v2/v3` board revision in `idf.py menuconfig` when building the examples.
 
 Gettings Started
 ----------------
