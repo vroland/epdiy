@@ -34,7 +34,7 @@
   )
 
   (setup
-    (last_trace_width 0.25)
+    (last_trace_width 0.2)
     (user_trace_width 0.2)
     (user_trace_width 0.5)
     (trace_clearance 0.2)
@@ -3248,7 +3248,7 @@
   (gr_text VCOM (at 68.6197 31.1563 90) (layer F.SilkS) (tstamp 5F74D047)
     (effects (font (size 1.2 1.2) (thickness 0.2)))
   )
-  (gr_text "EPaper Breakout v3\nby Valentin Roland 2020" (at 93.4 24.4 180) (layer B.SilkS)
+  (gr_text "EPaper Breakout v4\nby Valentin Roland 2020" (at 93.4 24.4 180) (layer B.SilkS)
     (effects (font (size 1 1) (thickness 0.15)) (justify mirror))
   )
   (gr_line (start 98.579992 39.440002) (end 100.91999 41.78) (layer B.SilkS) (width 0.1))

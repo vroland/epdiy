@@ -5,11 +5,11 @@
 
 #include "xtensa/core-macros.h"
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V2)
+#if defined(CONFIG_EPD_BOARD_REVISION_V2_V3)
 #include "config_reg_v2.h"
 #else
-#if defined(CONFIG_EPD_BOARD_REVISION_V3)
-#include "config_reg_v3.h"
+#if defined(CONFIG_EPD_BOARD_REVISION_V4)
+#include "config_reg_v4.h"
 #else
 #error "unknown revision"
 #endif
@@ -54,11 +54,11 @@ void epd_base_init(uint32_t epd_row_width) {
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V3)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4)
   // use latch pin as GPIO
-  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V3_LATCH_ENABLE], PIN_FUNC_GPIO);
-  ESP_ERROR_CHECK(gpio_set_direction(V3_LATCH_ENABLE, GPIO_MODE_OUTPUT));
-  gpio_set_level(V3_LATCH_ENABLE, 0);
+  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
+  ESP_ERROR_CHECK(gpio_set_direction(V4_LATCH_ENABLE, GPIO_MODE_OUTPUT));
+  gpio_set_level(V4_LATCH_ENABLE, 0);
 #endif
   fast_gpio_set_lo(CFG_STR);
 
@@ -116,16 +116,16 @@ void epd_start_frame() {
 }
 
 static inline void latch_row() {
-#if defined(CONFIG_EPD_BOARD_REVISION_V2)
+#if defined(CONFIG_EPD_BOARD_REVISION_V2_V3)
   config_reg.ep_latch_enable = true;
   push_cfg(&config_reg);
 
   config_reg.ep_latch_enable = false;
   push_cfg(&config_reg);
 #else
-#if defined(CONFIG_EPD_BOARD_REVISION_V3)
-  fast_gpio_set_hi(V3_LATCH_ENABLE);
-  fast_gpio_set_lo(V3_LATCH_ENABLE);
+#if defined(CONFIG_EPD_BOARD_REVISION_V4)
+  fast_gpio_set_hi(V4_LATCH_ENABLE);
+  fast_gpio_set_lo(V4_LATCH_ENABLE);
 #else
 #error "unknown revision"
 #endif

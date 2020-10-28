@@ -24,14 +24,14 @@ menu "E-Paper Driver"
 
     choice EPD_DRIVER_BOARD_REVISION
         prompt "Board Revision"
-        default EPD_BOARD_REVISION_V2
+        default EPD_BOARD_REVISION_V2_V3
         help
             The board revision to compile for.
 
-        config EPD_BOARD_REVISION_V2
-            bool "Revision 2"
+        config EPD_BOARD_REVISION_V2_V3
+            bool "Revision 2 / 3"
 
-        config EPD_BOARD_REVISION_V3
-            bool "Revision 3"
+        config EPD_BOARD_REVISION_V4
+            bool "Revision 4"
     endchoice
 endmenu
