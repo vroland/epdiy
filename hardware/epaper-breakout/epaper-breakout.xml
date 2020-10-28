@@ -2,8 +2,8 @@
 <export version="D">
   <design>
     <source>/home/vroland/dev/misc/epaper-breakout/hardware/epaper-breakout/epaper-breakout.sch</source>
-    <date>Fr 02 Okt 2020 22:42:13 CEST</date>
-    <tool>Eeschema 5.1.6</tool>
+    <date>Mi 28 Okt 2020 20:05:15 CET</date>
+    <tool>Eeschema 5.1.7</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
         <title>ED097OC4 Breakout</title>
@@ -23,6 +23,9 @@
       <value>MBR0540</value>
       <footprint>Diode_SMD:D_SOD-123</footprint>
       <datasheet>http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf</datasheet>
+      <fields>
+        <field name="LCSC">C21353</field>
+      </fields>
       <libsource lib="Diode" part="MBR0540" description="40V 0.5A Schottky Power Rectifier Diode, SOD-123"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D697AF4</tstamp>
@@ -31,6 +34,9 @@
       <value>XF2M-3315-1A</value>
       <footprint>epaper-breakout:CONN_ED097OC4</footprint>
       <datasheet>https://datasheet.lcsc.com/szlcsc/Omron-Electronics-XF2M-3315-1A_C231420.pdf</datasheet>
+      <fields>
+        <field name="LCSC">C231420</field>
+      </fields>
       <libsource lib="epd_breakout" part="XF2M-3315-1A" description="ED097OC4 9.7&quot; epaper display"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6A1D54</tstamp>
@@ -39,6 +45,9 @@
       <value>4.7uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C19666</field>
+      </fields>
       <libsource lib="Device" part="CP" description="Polarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6A725A</tstamp>
@@ -47,6 +56,9 @@
       <value>22uH</value>
       <footprint>Inductor_SMD:L_6.3x6.3_H3</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C326331</field>
+      </fields>
       <libsource lib="Device" part="L" description="Inductor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6A7C6B</tstamp>
@@ -55,6 +67,9 @@
       <value>22uH</value>
       <footprint>Inductor_SMD:L_6.3x6.3_H3</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C326331</field>
+      </fields>
       <libsource lib="Device" part="L" description="Inductor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6A849F</tstamp>
@@ -71,6 +86,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6CB0A8</tstamp>
@@ -79,6 +97,9 @@
       <value>0.1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C14663</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6AB538</tstamp>
@@ -87,6 +108,9 @@
       <value>4.7pF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C1669</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6ABA7F</tstamp>
@@ -95,6 +119,9 @@
       <value>MBR0540</value>
       <footprint>Diode_SMD:D_SOD-123</footprint>
       <datasheet>http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf</datasheet>
+      <fields>
+        <field name="LCSC">C21353</field>
+      </fields>
       <libsource lib="Diode" part="MBR0540" description="40V 0.5A Schottky Power Rectifier Diode, SOD-123"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6AE132</tstamp>
@@ -103,6 +130,9 @@
       <value>MBR0540</value>
       <footprint>Diode_SMD:D_SOD-123</footprint>
       <datasheet>http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf</datasheet>
+      <fields>
+        <field name="LCSC">C21353</field>
+      </fields>
       <libsource lib="Diode" part="MBR0540" description="40V 0.5A Schottky Power Rectifier Diode, SOD-123"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6AFBD6</tstamp>
@@ -111,6 +141,9 @@
       <value>100pF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C14858</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6B28F9</tstamp>
@@ -119,6 +152,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6CAD3A</tstamp>
@@ -127,6 +163,9 @@
       <value>560k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C15785</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6B394F</tstamp>
@@ -135,6 +174,9 @@
       <value>39k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C25826</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6B40B8</tstamp>
@@ -143,6 +185,9 @@
       <value>1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C15849</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6B7B00</tstamp>
@@ -151,6 +196,9 @@
       <value>2M</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C26112</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6BA5D8</tstamp>
@@ -159,6 +207,9 @@
       <value>120k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC"> C17436</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6BA915</tstamp>
@@ -167,6 +218,9 @@
       <value>1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C15849</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D6C12A4</tstamp>
@@ -175,6 +229,9 @@
       <value>10uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C19702</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D72494A</tstamp>
@@ -183,6 +240,9 @@
       <value>10uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C19702</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D72605F</tstamp>
@@ -191,6 +251,9 @@
       <value>CH330N</value>
       <footprint>Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</footprint>
       <datasheet>http://www.wch.cn/downloads/file/240.html</datasheet>
+      <fields>
+        <field name="LCSC">C108996</field>
+      </fields>
       <libsource lib="Interface_USB" part="CH330N" description="USB serial converter, UART, SOIC-8"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D82ECF5</tstamp>
@@ -199,6 +262,9 @@
       <value>C10418</value>
       <footprint>epaper-breakout:USB_Micro-B_A01SB141B1-067</footprint>
       <datasheet>https://lcsc.com/product-detail/USB-Connectors_Jing-Extension-of-the-Electronic-Co-Jing-Extension-of-the-Electronic-Co-MICRO-USB-5S-B-Type-horns-High-temperature_C10418.html</datasheet>
+      <fields>
+        <field name="LCSC">C10418</field>
+      </fields>
       <libsource lib="epd_breakout" part="C10418" description="USB Micro Type B connector"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D83555C</tstamp>
@@ -207,6 +273,9 @@
       <value>0.1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C14663</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D85BDA1</tstamp>
@@ -215,6 +284,9 @@
       <value>0.1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C14663</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5D866BE8</tstamp>
@@ -223,6 +295,9 @@
       <value>LM358</value>
       <footprint>Package_SO:SOP-8_3.76x4.96mm_P1.27mm</footprint>
       <datasheet>http://www.ti.com/lit/ds/symlink/lm2904-n.pdf</datasheet>
+      <fields>
+        <field name="LCSC">C7950</field>
+      </fields>
       <libsource lib="Amplifier_Operational" part="LM358" description="Low-Power, Dual Operational Amplifiers, DIP-8/SOIC-8/TO-99-8"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5DBF9904</tstamp>
@@ -231,6 +306,9 @@
       <value>200k</value>
       <footprint>epaper-breakout:EVM3ESX50B25</footprint>
       <datasheet>https://lcsc.com/product-detail/Variable-Resistors_PANASONIC-EVM3ESX50B25_C11958.html</datasheet>
+      <fields>
+        <field name="LCSC">C11958</field>
+      </fields>
       <libsource lib="Device" part="R_POT" description="Potentiometer"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5DC48245</tstamp>
@@ -239,6 +317,9 @@
       <value>390k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17656</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5DC497E2</tstamp>
@@ -246,6 +327,9 @@
     <comp ref="U8">
       <value>74HC4094-normal</value>
       <footprint>Package_SO:SOIC-16_3.9x9.9mm_P1.27mm</footprint>
+      <fields>
+        <field name="LCSC">C5651</field>
+      </fields>
       <libsource lib="74HC4094" part="74HC4094-normal" description=""/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5EAA330C</tstamp>
@@ -253,6 +337,9 @@
     <comp ref="U5">
       <value>ESP32-WROVER</value>
       <footprint>esp32-wrover:ESP32-WROVER</footprint>
+      <fields>
+        <field name="LCSC">C503591</field>
+      </fields>
       <libsource lib="esp32-wrover" part="ESP32-WROVER" description=""/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5E61FA0C</tstamp>
@@ -261,6 +348,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F3338F1</tstamp>
@@ -269,6 +359,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F394FFC</tstamp>
@@ -277,6 +370,9 @@
       <value>10uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C19702</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F441CFD</tstamp>
@@ -285,6 +381,9 @@
       <value>1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C15849</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F441D03</tstamp>
@@ -293,6 +392,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4C55F1</tstamp>
@@ -301,6 +403,9 @@
       <value>1nF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C1588</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4C55FF</tstamp>
@@ -309,6 +414,9 @@
       <value>SW1</value>
       <footprint>epaper-breakout:SW_TS-1187A</footprint>
       <datasheet>https://datasheet.lcsc.com/szlcsc/1901111503_XKB-Enterprise-TS-1187A-B-A-B_C318884.pdf</datasheet>
+      <fields>
+        <field name="LCSC">C318884</field>
+      </fields>
       <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4E5F0E</tstamp>
@@ -317,6 +425,9 @@
       <value>470</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17710</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4E5F14</tstamp>
@@ -325,6 +436,9 @@
       <value>1nF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC"> C1588</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4E5F1A</tstamp>
@@ -333,6 +447,9 @@
       <value>SW2</value>
       <footprint>epaper-breakout:SW_TS-1187A</footprint>
       <datasheet>https://datasheet.lcsc.com/szlcsc/1901111503_XKB-Enterprise-TS-1187A-B-A-B_C318884.pdf</datasheet>
+      <fields>
+        <field name="LCSC">C318884</field>
+      </fields>
       <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4E5F30</tstamp>
@@ -341,6 +458,9 @@
       <value>470</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17710</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F4E5F36</tstamp>
@@ -348,6 +468,9 @@
     <comp ref="J4">
       <value>ED060SC4</value>
       <footprint>epaper-breakout:HRS_FH26W-39S-0.3SHW(60)</footprint>
+      <fields>
+        <field name="LCSC">C92280</field>
+      </fields>
       <libsource lib="ed060sc4" part="ED060SC4" description=""/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5E684C5A</tstamp>
@@ -356,6 +479,9 @@
       <value>MCP9700AT-ETT</value>
       <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
       <datasheet>http://ww1.microchip.com/downloads/en/DeviceDoc/21942e.pdf</datasheet>
+      <fields>
+        <field name="LCSC">C127949</field>
+      </fields>
       <libsource lib="Sensor_Temperature" part="MCP9700AT-ETT" description="Low power, analog thermistor temperature sensor, ±2C accuracy, -40C to +125C, in SOT-23-3"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5EB1CA91</tstamp>
@@ -396,6 +522,9 @@
       <value>MBR0540</value>
       <footprint>Diode_SMD:D_SOD-123</footprint>
       <datasheet>http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf</datasheet>
+      <fields>
+        <field name="LCSC">C21353</field>
+      </fields>
       <libsource lib="Diode" part="MBR0540" description="40V 0.5A Schottky Power Rectifier Diode, SOD-123"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768531</tstamp>
@@ -404,6 +533,9 @@
       <value>4.7uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C19666</field>
+      </fields>
       <libsource lib="Device" part="CP" description="Polarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768537</tstamp>
@@ -412,6 +544,9 @@
       <value>22uH</value>
       <footprint>Inductor_SMD:L_6.3x6.3_H3</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C326331</field>
+      </fields>
       <libsource lib="Device" part="L" description="Inductor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F76853D</tstamp>
@@ -420,6 +555,9 @@
       <value>22uH</value>
       <footprint>Inductor_SMD:L_6.3x6.3_H3</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C326331</field>
+      </fields>
       <libsource lib="Device" part="L" description="Inductor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768543</tstamp>
@@ -436,6 +574,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768560</tstamp>
@@ -444,6 +585,9 @@
       <value>0.1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C14663</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F76857F</tstamp>
@@ -452,6 +596,9 @@
       <value>4.7pF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C1669</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768585</tstamp>
@@ -460,6 +607,9 @@
       <value>MBR0540</value>
       <footprint>Diode_SMD:D_SOD-123</footprint>
       <datasheet>http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf</datasheet>
+      <fields>
+        <field name="LCSC">C21353</field>
+      </fields>
       <libsource lib="Diode" part="MBR0540" description="40V 0.5A Schottky Power Rectifier Diode, SOD-123"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768590</tstamp>
@@ -468,6 +618,9 @@
       <value>MBR0540</value>
       <footprint>Diode_SMD:D_SOD-123</footprint>
       <datasheet>http://www.mccsemi.com/up_pdf/MBR0520~MBR0580(SOD123).pdf</datasheet>
+      <fields>
+        <field name="LCSC">C21353</field>
+      </fields>
       <libsource lib="Diode" part="MBR0540" description="40V 0.5A Schottky Power Rectifier Diode, SOD-123"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F76859C</tstamp>
@@ -476,6 +629,9 @@
       <value>100pF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C14858</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685A5</tstamp>
@@ -484,6 +640,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685AB</tstamp>
@@ -492,6 +651,9 @@
       <value>110k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17422</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685B1</tstamp>
@@ -500,6 +662,9 @@
       <value>10k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17414</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685B7</tstamp>
@@ -508,6 +673,9 @@
       <value>1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C15849</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685C7</tstamp>
@@ -516,6 +684,9 @@
       <value>300k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">  C17616</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685D3</tstamp>
@@ -524,6 +695,9 @@
       <value>27k</value>
       <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C17593</field>
+      </fields>
       <libsource lib="Device" part="R" description="Resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685D9</tstamp>
@@ -532,6 +706,9 @@
       <value>1uF</value>
       <footprint>Capacitor_SMD:C_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
+      <fields>
+        <field name="LCSC">C15849</field>
+      </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F7685ED</tstamp>
@@ -540,7 +717,10 @@
       <value>IRLML6402</value>
       <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
       <datasheet>https://www.infineon.com/dgdl/irlml6402pbf.pdf?fileId=5546d462533600a401535668d5c2263c</datasheet>
-      <libsource lib="Transistor_FET" part="IRLML6402" description="-3.7A Id, -20V Vds, P-Channel MOSFET, 65mOhm Rds, SOT-23"/>
+      <fields>
+        <field name="LCSC">C2593</field>
+      </fields>
+      <libsource lib="Transistor_FET" part="IRLML6402" description="-3.7A Id, -20V Vds, 65mOhm Rds, P-Channel HEXFET Power MOSFET, SOT-23"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5F768600</tstamp>
     </comp>
@@ -548,6 +728,9 @@
       <value>MCP1700-3302E_SOT23</value>
       <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
       <datasheet>http://ww1.microchip.com/downloads/en/DeviceDoc/20001826D.pdf</datasheet>
+      <fields>
+        <field name="LCSC">C39051</field>
+      </fields>
       <libsource lib="Regulator_Linear" part="MCP1700-3302E_SOT23" description="250mA Low Quiscent Current LDO, 3.3V output, SOT-23"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamp>5FC0FFE1</tstamp>
@@ -649,6 +832,7 @@
         <alias>LT6237</alias>
         <alias>OPA2277</alias>
         <alias>MCP6022</alias>
+        <alias>MCP6V67EMS</alias>
       </aliases>
       <description>Dual Operational Amplifiers, DIP-8/SOIC-8/TSSOP-8/VSSOP-8</description>
       <docs>http://www.ti.com/lit/ds/symlink/lm358.pdf</docs>
@@ -952,6 +1136,7 @@
         <alias>NTR2101P</alias>
         <alias>BSS83P</alias>
         <alias>Si2319CDS</alias>
+        <alias>IRLML6401</alias>
         <alias>IRLML6402</alias>
         <alias>DMG2301L</alias>
         <alias>AO3401A</alias>
@@ -959,6 +1144,7 @@
         <alias>IRLML5203</alias>
         <alias>Si2371EDS</alias>
         <alias>TSM2301ACX</alias>
+        <alias>FDN340P</alias>
       </aliases>
       <description>-0.18A Id, -60V Vds, P-Channel MOSFET, SOT-23</description>
       <docs>http://www.vishay.com/docs/70209/70209.pdf</docs>
