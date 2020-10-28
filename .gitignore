@@ -7,3 +7,6 @@ doc/source/xml/
 compile_commands.json
 examples/mpd_status/main/wifi_config.h
 /.idea/
+*.kicad_pcb-bak
+*.sch-bak
+fp-info-cache
