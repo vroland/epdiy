@@ -26,6 +26,15 @@ font_name = args.name
 intervals = [
     (32, 126),
     (160, 255),
+    # punctuation
+    (0x2010, 0x205F),
+    # arrows
+    (0x2190, 0x21FF),
+    # math
+    (0x2200, 0x22FF),
+    # symbols
+    (0x2300, 0x23FF),
+    # box drawing
     (0x2500, 0x259F),
     (0x2700, 0x27BF),
     # powerline symbols
