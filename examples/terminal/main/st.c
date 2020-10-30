@@ -236,6 +236,7 @@ static uint8_t* render_fb_back = NULL;
 static uint8_t* render_fb_front = NULL;
 static uint8_t* render_mask = NULL;
 static int screen_tainted = 0;
+static char* clipboard = NULL;
 
 static Term term;
 static Selection sel;
@@ -1940,7 +1941,9 @@ strhandle(void)
 	par = (narg = strescseq.narg) ? atoi(strescseq.args[0]) : 0;
 
 	switch (strescseq.type) {
+    // useful resources: https://github.com/terminalguide/terminalguide
 	case ']': /* OSC -- Operating System Command */
+        // TODO: 9 / 777 for system notification?
 		switch (par) {
 		case 0:
 		case 1:
@@ -1949,18 +1952,31 @@ strhandle(void)
 			// if (narg > 1)
 			// 	xsettitle(strescseq.args[1]);
 			return;
+        // clipboard handling
 		case 52:
-            // TODO: Clipboard handling. There are protocols for doing this via escape codes...
-			// if (narg > 2) {
-			// 	dec = base64dec(strescseq.args[2]);
-			// 	if (dec) {
-			// 		xsetsel(dec);
-			// 		xclipcopy();
-			// 	} else {
-			// 		fprintf(stderr, "erresc: invalid base64\n");
-			// 	}
-			// }
-			return;
+            if (narg <= 1 || !(strnlen(strescseq.args[1], 2) == 1)) {
+				fprintf(stderr, "OSC 52: invalid operation\n");
+                return;
+            }
+
+            char op = strescseq.args[1][0];
+			if (narg > 2 && op == 'c') {
+				dec = base64dec(strescseq.args[2]);
+				if (dec) {
+            	    fprintf(stderr, "copied.\n");
+                    free(clipboard);
+                    clipboard = dec;
+				} else {
+					fprintf(stderr, "erresc: invalid base64\n");
+				}
+			} else if (op == 'w') {
+                if (allow_clipboard_paste) {
+                    clipboard_paste();
+                } else {
+                    fprintf(stderr, "clipboard paste disabled.\n");
+                }
+            }
+            return;
 		case 4: /* color set */
 			if (narg < 3)
 				break;
@@ -1982,6 +1998,10 @@ strhandle(void)
 			// 	redraw();
 			// }
 			return;
+        case 800: /* EDP-specific: refresh screen. */
+            full_refresh();
+            fprintf(stderr, "refresh.\n");
+            return;
 		}
 		break;
 	case 'k': /* old title set compatibility */
@@ -3105,4 +3125,12 @@ redraw(void)
 {
 	tfulldirt();
 	draw();
+}
+
+void
+clipboard_paste(void)
+{
+    if (clipboard) {
+        ttywrite(clipboard, strlen(clipboard), 0);
+    }
 }

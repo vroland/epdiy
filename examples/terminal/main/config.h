@@ -11,6 +11,8 @@ static int clear_cycle_length = 12;
 static unsigned int fallback_glyph = '?';
 static GFXfont* font = (GFXfont*)&FiraCode;
 static GFXfont* bold_font = (GFXfont*)&FiraCode_Bold;
+bool allow_clipboard_paste = false;
+
 /*
  * appearance
  *

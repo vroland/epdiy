@@ -120,6 +120,7 @@ void *xrealloc(void *, size_t);
 char *xstrdup(char *);
 
 void epd_render(void);
+void clipboard_paste(void);
 
   /* config.h globals */
 extern char *utmp;
@@ -134,4 +135,5 @@ extern unsigned int defaultfg;
 extern unsigned int defaultbg;
 extern unsigned int cols;
 extern unsigned int rows;
+extern bool allow_clipboard_paste;
 extern TaskHandle_t render_task_hdl;
