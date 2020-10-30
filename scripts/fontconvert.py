@@ -36,6 +36,10 @@ intervals = [
     (0x2300, 0x23FF),
     # box drawing
     (0x2500, 0x259F),
+    # geometric shapes
+    (0x25A0, 0x25FF),
+    # misc symbols
+    (0x2600, 0x26F0),
     (0x2700, 0x27BF),
     # powerline symbols
     (0xE0A0, 0xE0A2),
