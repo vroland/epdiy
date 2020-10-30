@@ -3,14 +3,32 @@
 
 #include "firacode.h"
 #include "firacode_bold.h"
+#include "firasans.h"
+#include "firasans_bold.h"
+
+typedef struct {
+    const GFXfont* regular;
+    const GFXfont* bold;
+    const char* name;
+} FontSet;
 
 static uint64_t MAX_UPDATES_SINCE_LAST_CLEAR = 10000;
 static int clear_cycles = 1;
 static int clear_cycle_length = 12;
 
 static unsigned int fallback_glyph = '?';
-static GFXfont* font = (GFXfont*)&FiraCode;
-static GFXfont* bold_font = (GFXfont*)&FiraCode_Bold;
+static FontSet fontsets[] = {
+    {
+        .regular = &FiraCode,
+        .bold = &FiraCode_Bold,
+        .name = "FiraCode"
+    },
+    {
+        .regular = &FiraSans,
+        .bold = &FiraSans_Bold,
+        .name = "FiraSans"
+    }
+};
 bool allow_clipboard_paste = false;
 
 /*

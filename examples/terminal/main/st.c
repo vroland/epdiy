@@ -228,8 +228,9 @@ static char *base64dec(const char *);
 static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
-static GFXfont* get_font(Glyph g);
+static const GFXfont* get_font(Glyph g);
 static void full_refresh();
+static void next_fontset(void);
 
 /* Globals */
 static uint8_t* render_fb_back = NULL;
@@ -237,6 +238,8 @@ static uint8_t* render_fb_front = NULL;
 static uint8_t* render_mask = NULL;
 static int screen_tainted = 0;
 static char* clipboard = NULL;
+extern FontSet fontsets[];
+static int current_fontset = 0;
 
 static Term term;
 static Selection sel;
@@ -2002,6 +2005,10 @@ strhandle(void)
             full_refresh();
             fprintf(stderr, "refresh.\n");
             return;
+        case 801: /* EPD-specific: cycle fontset */
+            next_fontset();
+            full_refresh();
+            fprintf(stderr, "swiched to fontset %s.\n", fontsets[current_fontset].name);
 		}
 		break;
 	case 'k': /* old title set compatibility */
@@ -2747,12 +2754,19 @@ enum RenderOperation {
 static int pixel_start_x = 5;
 static int pixel_start_y = 30;
 
-static GFXfont* get_font(Glyph g) {
+static const GFXfont* get_font(Glyph g) {
+    const FontSet* fs = &fontsets[current_fontset];
     if (g.mode & ATTR_BOLD) {
-        return bold_font;
+        return fs->bold;
     }
-    return font;
+    return fs->regular;
 };
+
+static void next_fontset(void) {
+    current_fontset ++;
+    if (current_fontset >= sizeof(fontsets) / sizeof(FontSet))
+        current_fontset = 0;
+}
 
 static uint64_t updates_since_clear = 0;
 
@@ -2872,6 +2886,7 @@ typedef struct {
 } LineParams_t;
 
 static void render_line(LineParams_t* p) {
+    const GFXfont* font = get_font(p->glyphs[0]);
     int line_y = pixel_start_y + font->advance_y * p->line - font->ascender;
     int line_height = font->ascender - font->descender;
 
@@ -2913,12 +2928,12 @@ static void render_line(LineParams_t* p) {
           .fallback_glyph = fallback_glyph,
           .flags = c.bg != defaultbg ? DRAW_BACKGROUND : 0,
       };
-      GFXfont* f = get_font(c);
+      const GFXfont* f = get_font(c);
       int px_y = pixel_start_y + f->advance_y * p->line;
       p->min_y_px = MIN(p->min_y_px, px_y - f->ascender);
       p->max_y_px = MAX(p->min_y_px, px_y - f->descender);
 
-      write_mode(f, data, &px_x, &px_y, render_fb_front, WHITE_ON_WHITE, &fprops);
+      write_mode((GFXfont*)f, data, &px_x, &px_y, render_fb_front, WHITE_ON_WHITE, &fprops);
       //ESP_LOGI("term", "writing %s", data);
     }
     free(data);
