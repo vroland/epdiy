@@ -117,6 +117,9 @@ static void IRAM_ATTR draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, i
   uint8_t *bitmap = NULL;
   if (font->compressed) {
       bitmap = (uint8_t *)malloc(bitmap_size);
+      if (bitmap == NULL && bitmap_size) {
+        ESP_LOGE("font", "malloc failed.");
+      }
       uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
                  glyph->compressed_size);
   } else {
