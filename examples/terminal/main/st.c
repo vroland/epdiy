@@ -227,7 +227,7 @@ static size_t utf8validate(Rune *, size_t);
 static char *base64dec(const char *);
 static char base64dec_getc(const char **);
 
-static ssize_t xwrite(int, const char *, size_t);
+//static ssize_t xwrite(int, const char *, size_t);
 static const GFXfont* get_font(Glyph g);
 static void full_refresh();
 static void next_fontset(void);
@@ -263,29 +263,29 @@ static CSIEscape csiescseq;
 static STREscape strescseq;
 //static int iofd = 1;
 //static int cmdfd;
-static pid_t pid;
+//static pid_t pid;
 
 static uchar utfbyte[UTF_SIZ + 1] = {0x80,    0, 0xC0, 0xE0, 0xF0};
 static uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
 static Rune utfmin[UTF_SIZ + 1] = {       0,    0,  0x80,  0x800,  0x10000};
 static Rune utfmax[UTF_SIZ + 1] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
 
-ssize_t
-xwrite(int fd, const char *s, size_t len)
-{
-	size_t aux = len;
-	ssize_t r;
-
-	while (len > 0) {
-		r = write(fd, s, len);
-		if (r < 0)
-			return r;
-		len -= r;
-		s += r;
-	}
-
-	return aux;
-}
+// ssize_t
+// xwrite(int fd, const char *s, size_t len)
+// {
+// 	size_t aux = len;
+// 	ssize_t r;
+//
+// 	while (len > 0) {
+// 		r = write(fd, s, len);
+// 		if (r < 0)
+// 			return r;
+// 		len -= r;
+// 		s += r;
+// 	}
+//
+// 	return aux;
+// }
 
 void *
 xmalloc(size_t len)
@@ -900,6 +900,7 @@ ttyread(void)
 		return 0;
 	case -1:
 		die("couldn't read from shell: %s\n", esp_err_to_name(ret));
+        return 0;
 	default: {
 		buflen += ret;
 		written = twrite(buf, buflen, 0);
@@ -1952,8 +1953,8 @@ csireset(void)
 void
 strhandle(void)
 {
-	char *p = NULL, *dec;
-	int j, narg, par;
+	char *dec;
+	int narg, par;
 
 	term.esc &= ~(ESC_STR_END|ESC_STR);
 	strparse();
@@ -1997,12 +1998,12 @@ strhandle(void)
             }
             return;
 		case 4: /* color set */
-			if (narg < 3)
-				break;
-			p = strescseq.args[2];
+			// if (narg < 3)
+			// 	break;
+			// p = strescseq.args[2];
 			/* FALLTHROUGH */
 		case 104: /* color reset, here p = NULL */
-			j = (narg > 1) ? atoi(strescseq.args[1]) : -1;
+			//j = (narg > 1) ? atoi(strescseq.args[1]) : -1;
             // TODO: OS color set / reset
 			// if (xsetcolorname(j, p)) {
 			// 	if (par == 104 && narg <= 1)
@@ -2801,7 +2802,6 @@ static void next_fontset(void) {
         current_fontset = 0;
 }
 
-static uint64_t updates_since_clear = 0;
 
 static uint8_t displaycolor(uint32_t col) {
     if (IS_TRUECOL(col)) {
@@ -2810,16 +2810,6 @@ static uint8_t displaycolor(uint32_t col) {
                 11 * (col & 0x0000FF)) / 100 / 16;
     }
     return colorscheme[col];
-}
-
-static bool glyph_empty(Glyph g) {
-    return g.u == ' ' && g.bg == defaultbg && g.fg == defaultfg
-        && !(g.mode & (ATTR_UNDERLINE));
-}
-
-static bool glyphs_equal(Glyph g1, Glyph g2) {
-    return g1.u == g2.u && g1.fg == g2.fg &&
-        g1.bg == g2.bg && g1.mode == g2.mode;
 }
 
 // input buffers must be 32-bit line aligned.
@@ -2985,7 +2975,12 @@ static void render_line() {
                   height,
                   &line_dirtyness[min_y_px]
           );
-          mask_buffer(mask_start, start_ptr, render_masked_buf + y_offset, height);
+          mask_buffer(
+                  mask_start,
+                  (uint32_t*)start_ptr,
+                  (uint32_t*)(render_masked_buf + y_offset),
+                  height
+          );
         }
         xSemaphoreGive(render_lines_done_smphr);
     }
@@ -3021,11 +3016,9 @@ static void full_refresh() {
 
 void epd_render(void) {
 
-  uint32_t ts = esp_timer_get_time();
-
   memset(line_dirtyness, 0, sizeof(line_dirtyness));
 
-  bool is_full_clear = false; //updates_since_clear > MAX_UPDATES_SINCE_LAST_CLEAR;
+  bool is_full_clear = false;
 
   int drawn_lines = 0;
 
@@ -3054,19 +3047,13 @@ void epd_render(void) {
     epd_poweron();
     uint32_t t_poweron = esp_timer_get_time();
 
-    uint32_t t_draw = esp_timer_get_time();
-    ESP_LOGI("term", "draw time: %d (%d lines)", (t_draw - ts) / 1000, drawn_lines);
-
-    int min_y = EPD_HEIGHT + 1;
-    int max_y = -1;
-
     bool boolean_line_dirtyness[EPD_HEIGHT];
     for (int i=0; i < EPD_HEIGHT; i++) {
       boolean_line_dirtyness[i] = line_dirtyness[i] > 0;
     }
 
-    min_y = 0;
-    max_y = EPD_HEIGHT - 1;
+    int min_y = 0;
+    int max_y = EPD_HEIGHT - 1;
     int height = max_y - min_y;
     if (height > 0) {
       Rect_t area = {
@@ -3075,8 +3062,6 @@ void epd_render(void) {
         .width = EPD_WIDTH,
         .height = height,
       };
-      uint32_t tm = esp_timer_get_time();
-      uint32_t ta = esp_timer_get_time();
 
       uint8_t* mask_start = render_mask + min_y * EPD_WIDTH / 8;
       bool* dirtyness_start = boolean_line_dirtyness + min_y;
@@ -3092,9 +3077,7 @@ void epd_render(void) {
       draw_mask(area, mask_start, dirtyness_start);
 
       uint8_t* masked_start = render_masked_buf + min_y * EPD_WIDTH / 2;
-      uint32_t tb = esp_timer_get_time();
       epd_draw_image_lines(area, masked_start, WHITE_ON_BLACK, dirtyness_start);
-      uint32_t tc = esp_timer_get_time();
       epd_poweroff();
 
       for (int i=0; i < EPD_HEIGHT; i++) {
