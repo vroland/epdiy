@@ -135,6 +135,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  * @param data: The image data, as a buffer of 4 bit wide brightness values.
  *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
  *   rows, images of uneven width must add a padding nibble per line.
+ * @param mode: Configure image color and assumptions of the display state.
  */
 void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
 
@@ -143,7 +144,13 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
  * which lines of the image should be drawn.
  *
  * @param drawn_lines: If not NULL, an array of at least the height of the image.
- * 	Every line where the corresponding value in `lines` is `false` will be skipped.
+ * 	  Every line where the corresponding value in `lines` is `false` will be skipped.
+ * @param data: The image data, as a buffer of 4 bit wide brightness values.
+ *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
+ *   rows, images of uneven width must add a padding nibble per line.
+ * @param mode: Configure image color and assumptions of the display state.
+ * @param drawn_lines: Optional line mask.
+ *   If not NULL, only draw lines which are marked as `true`.
  */
 void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mode, bool* drawn_lines);
 
@@ -216,8 +223,8 @@ void epd_fill_circle_helper(int x0, int y0, int r,
 /**
  * Draw a circle with given center and radius
  *
- * @param x0: Center-point x coordinate
- * @param y0: Center-point y coordinate
+ * @param x: Center-point x coordinate
+ * @param y: Center-point y coordinate
  * @param r: Radius of the circle in pixels
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
@@ -228,8 +235,8 @@ void epd_draw_circle(int x, int y, int r, uint8_t color,
 /**
  * Draw a circle with fill with given center and radius
  *
- * @param x0: Center-point x coordinate
- * @param y0: Center-point y coordinate
+ * @param x: Center-point x coordinate
+ * @param y: Center-point y coordinate
  * @param r: Radius of the circle in pixels
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
