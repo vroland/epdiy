@@ -29,7 +29,8 @@ uint32_t skipping;
 #define CLEAR_BYTE 0B10101010
 #define DARK_BYTE 0B01010101
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4) ||\
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
 const int contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
                                    40, 50, 50, 50, 100, 200, 300};
@@ -44,15 +45,6 @@ const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
 
 const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
                                          6, 6, 6, 8, 8, 50, 150};
-
-const int clear_cycle_time = 12;
-
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-const int contrast_cycles_4[15] = {200, 200, 200, 200, 200,  200,  200, 200,
-                                   200, 200, 200, 200, 200, 200, 300};
-
-const int contrast_cycles_4_white[15] = {50, 30, 30, 30, 30, 30,  30, 30,
-                                         30, 30, 50, 50, 50, 100, 200};
 
 const int clear_cycle_time = 12;
 
