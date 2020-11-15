@@ -27,8 +27,6 @@
 
 uint8_t *img_buf;
 
-struct mpd_connection *mpd_conn;
-
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
 uint32_t millis() { return esp_timer_get_time() / 1000; }
@@ -74,18 +72,18 @@ void show_status(struct mpd_status *status, struct mpd_song *song) {
     write_string((GFXfont*)&FiraSans, (char*)mpd_song_get_tag(song, MPD_TAG_ARTIST, 0), &cursor_x,
                  &cursor_y, img_buf);
   }
-
-  epd_poweron();
-  epd_clear();
-  epd_draw_grayscale_image(epd_full_screen(), img_buf);
-  epd_poweroff();
 }
 
-static void handle_error(struct mpd_connection *c) {
-  assert(mpd_connection_get_error(c) != MPD_ERROR_SUCCESS);
+void handle_error(struct mpd_connection **c) {
+  enum mpd_error err = mpd_connection_get_error(*c);
+  if (err == MPD_ERROR_SUCCESS) return;
 
-  ESP_LOGE("mpd", "%s\n", mpd_connection_get_error_message(c));
-  mpd_connection_free(c);
+  ESP_LOGE("mpd", "%d %s\n", err, mpd_connection_get_error_message(*c));
+  // error is not recoverable
+  if (!mpd_connection_clear_error(*c)) {
+      mpd_connection_free(*c);
+      *c = NULL;
+  }
 }
 
 static void print_tag(const struct mpd_song *song, enum mpd_tag_type type,
@@ -141,41 +139,53 @@ void epd_task() {
     delay(100);
   }
 
-  mpd_conn = mpd_connection_new("192.168.42.50", 6600, 3000);
-
-  if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS)
-    return handle_error(mpd_conn);
-
-  {
-    int i;
-    for (i = 0; i < 3; i++) {
-      printf("version[%i]: %i\n", i,
-             mpd_connection_get_server_version(mpd_conn)[i]);
-    }
-  }
-
+  struct mpd_connection *mpd_conn = NULL;
   while (true) {
-    mpd_run_idle(mpd_conn);
+    // connect / reconnect
+    if (mpd_conn == NULL) {
+      mpd_conn = mpd_connection_new("192.168.42.50", 6600, 3000);
+      handle_error(&mpd_conn);
+      int i;
+      printf("mpd server version: ");
+      for (i = 0; i < 3; i++) {
+        printf("%d.", mpd_connection_get_server_version(mpd_conn)[i]);
+      }
+      printf("\n");
+    }
 
-    if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS ||
-        !mpd_response_finish(mpd_conn))
-      return handle_error(mpd_conn);
+    mpd_run_idle(mpd_conn);
+    handle_error(&mpd_conn);
+
+    mpd_response_finish(mpd_conn);
+    handle_error(&mpd_conn);
 
     mpd_playback_info_t* new_info = fetch_playback_info(mpd_conn);
+    handle_error(&mpd_conn);
     bool do_update = true;
+
     if (playback_info != NULL && playback_info != NULL) {
       do_update = memcmp(new_info->hash, playback_info->hash, crypto_generichash_BYTES) != 0;
     }
+
     if (playback_info) {
       free_playback_info(playback_info);
     }
+
     playback_info = new_info;
 
     if (new_info == NULL) {
       ESP_LOGW("main", "update is invalid!");
     }
+
     if (do_update && new_info) {
-      show_status(playback_info->status, playback_info->current_song);
+
+      epd_poweron();
+      {
+        int x = 50;
+        int y = EPD_HEIGHT - 100;
+        write_string((GFXfont*)&FiraSans, "updating...", &x, &y, NULL);
+      }
+      epd_poweroff();
 
       char *album = (char*)mpd_song_get_tag(playback_info->current_song, MPD_TAG_ALBUM, 0);
       if (album_cover == NULL || album_cover->identifier == NULL || album == NULL || strncmp(album_cover->identifier, album, 128) != 0) {
@@ -186,6 +196,8 @@ void epd_task() {
         album_cover = readpicture(mpd_conn, (char*)mpd_song_get_uri(playback_info->current_song), album);
       }
 
+      show_status(playback_info->status, playback_info->current_song);
+
       if (album_cover) {
         Rect_t area = {
           .width = album_cover->width,
@@ -194,10 +206,12 @@ void epd_task() {
           .y = (825 - album_cover->height) / 2,
         };
         printf("album cover dimensions: %dx%d\n", album_cover->width, album_cover->height);
-        epd_poweron();
-        epd_draw_grayscale_image(area, album_cover->data);
-        epd_poweroff();
+        epd_copy_to_framebuffer(area, album_cover->data, img_buf);
       }
+      epd_poweron();
+      epd_clear();
+      epd_draw_grayscale_image(epd_full_screen(), img_buf);
+      epd_poweroff();
     }
 
   }

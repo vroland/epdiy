@@ -25,19 +25,13 @@ typedef struct {
   bool use_albumart;
 } image_fetch_context_t;
 
-static void handle_error(struct mpd_connection *c) {
-  assert(mpd_connection_get_error(c) != MPD_ERROR_SUCCESS);
-
-  ESP_LOGE("mpd", "%s\n", mpd_connection_get_error_message(c));
-  mpd_connection_free(c);
-}
-
 void free_album_cover(album_cover_t *cover) {
   free(cover->data);
   free(cover->source_uri);
   free(cover->identifier);
   free(cover);
 }
+void handle_error(struct mpd_connection **c);
 
 static uint32_t
 feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
@@ -54,13 +48,13 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     if (context->use_albumart) {
         if (!mpd_send_command(c, "albumart", context->image_uri, offset_s,
                               NULL)) {
-          handle_error(c);
+          handle_error(&c);
           return -1;
         }
     } else {
         if (!mpd_send_command(c, "readpicture", context->image_uri, offset_s,
                               NULL)) {
-          handle_error(c);
+          handle_error(&c);
           return -1;
         }
     }
@@ -68,7 +62,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     struct mpd_pair *pair = mpd_recv_pair_named(c, "size");
     if (pair == NULL) {
       if (mpd_connection_get_error(c) != MPD_ERROR_SUCCESS) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       if (!context->use_albumart) {
@@ -241,7 +235,8 @@ album_cover_t *readpicture(struct mpd_connection *c, char *uri,
   }
   context.decoded_image = buf;
   context.scale = scale;
-  printf("width: %d height: %d\n", width, height);
+  printf("orig width: %d orig height: %d\n", jd.width, jd.height);
+  printf("scaled width: %d scaled height: %d\n", width, height);
 
   /* Start to decompress the JPEG file */
   rc = jd_decomp(&jd, tjd_output, scale);
