@@ -20,8 +20,9 @@
 #include "epd_driver.h"
 #include "st.h"
 
-#define ECHO_TEST_TXD  (GPIO_NUM_1)
-#define ECHO_TEST_RXD  (GPIO_NUM_3)
+#define USB_TXD  (GPIO_NUM_1)
+#define SERIAL_RXD  (GPIO_NUM_3)
+
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 
@@ -79,13 +80,15 @@ void app_main() {
           .use_ref_tick = true,
   };
   uart_param_config(UART_NUM_1, &uart_config);
-  ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, GPIO_NUM_15, GPIO_NUM_14, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+  // Change here to modify tx/rx pins
+  ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, USB_TXD, SERIAL_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
   ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE, 1024, 0, NULL, 0));
 
   // Still log to the serial output
-  //esp_log_set_vprintf(log_to_uart);
+  // Needed if reusing the USB TX/RX
+  esp_log_set_vprintf(log_to_uart);
 
-  //ESP_LOGI("term", "listening\n");
+  ESP_LOGI("term", "listening\n");
 
   tnew(cols, rows);
   selinit();
