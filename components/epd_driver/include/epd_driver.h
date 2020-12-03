@@ -2,13 +2,13 @@
  * A high-level library for drawing to an EPD.
  */
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 #pragma once
 #include "esp_attr.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // minimal draw time in ms for a frame layer,
 // which will allow all particles to set properly.
@@ -16,7 +16,9 @@ extern "C"{
 #define MINIMUM_FRAME_TIME (min(k, 10))
 #endif
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)  || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
 /// Width of the display area in pixels.
 #define EPD_WIDTH 1200
 /// Height of the display area in pixels.
@@ -57,19 +59,19 @@ enum DrawMode {
 
 /// Font drawing flags
 enum DrawFlags {
-    /// Draw a background.
-    ///
-    /// Take the background into account
-    /// when calculating the size.
-    DRAW_BACKGROUND = 1 << 0,
+  /// Draw a background.
+  ///
+  /// Take the background into account
+  /// when calculating the size.
+  DRAW_BACKGROUND = 1 << 0,
 };
 
 /// Font properties.
 typedef struct {
   /// Foreground color
-  uint8_t fg_color: 4;
+  uint8_t fg_color : 4;
   /// Background color
-  uint8_t bg_color: 4;
+  uint8_t bg_color : 4;
   /// Use the glyph for this codepoint for missing glyphs.
   uint32_t fallback_glyph;
   /// Additional flags, reserved for future use
@@ -120,8 +122,8 @@ void epd_push_pixels(Rect_t area, short time, int color);
  * @param area: The display area to draw to. `width` and `height` of the area
  *   must correspond to the image dimensions in pixels.
  * @param data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
- *   rows, images of uneven width must add a padding nibble per line.
+ *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
+ * multiple rows, images of uneven width must add a padding nibble per line.
  */
 void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
 
@@ -133,31 +135,37 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  * @param area: The display area to draw to. `width` and `height` of the area
  *   must correspond to the image dimensions in pixels.
  * @param data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
- *   rows, images of uneven width must add a padding nibble per line.
+ *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
+ * multiple rows, images of uneven width must add a padding nibble per line.
  * @param mode: Configure image color and assumptions of the display state.
  */
-void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data, enum DrawMode mode);
+void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
+                              enum DrawMode mode);
 
 /**
  * Same as epd_draw_image, but with the option to specify
  * which lines of the image should be drawn.
  *
- * @param drawn_lines: If not NULL, an array of at least the height of the image.
- * 	  Every line where the corresponding value in `lines` is `false` will be skipped.
+ * @param drawn_lines: If not NULL, an array of at least the height of the
+ * image. Every line where the corresponding value in `lines` is `false` will be
+ * skipped.
  * @param data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
- *   rows, images of uneven width must add a padding nibble per line.
+ *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
+ * multiple rows, images of uneven width must add a padding nibble per line.
  * @param mode: Configure image color and assumptions of the display state.
  * @param drawn_lines: Optional line mask.
  *   If not NULL, only draw lines which are marked as `true`.
  */
-void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data, enum DrawMode mode, const bool* drawn_lines);
+void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
+                                    enum DrawMode mode,
+                                    const bool *drawn_lines);
 
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr,
+                                   enum DrawMode mode, int time);
 
-void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr, enum DrawMode mode, int time);
-
-void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, const uint8_t *ptr, enum DrawMode mode, int time, const bool* drawn_lines);
+void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, const uint8_t *ptr,
+                                         enum DrawMode mode, int time,
+                                         const bool *drawn_lines);
 
 /**
  * @returns Rectancle representing the whole screen area.
@@ -169,9 +177,9 @@ Rect_t epd_full_screen();
  *
  * @param image_area: The area to copy to. `width` and `height` of the area
  *   must correspond to the image dimensions in pixels.
- * @param image_data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
- *   rows, images of uneven width must add a padding nibble per line.
+ * @param image_data: The image data, as a buffer of 4 bit wide brightness
+ * values. Pixel data is packed (two pixels per byte). A byte cannot wrap over
+ * multiple rows, images of uneven width must add a padding nibble per line.
  * @param framebuffer: The framebuffer object,
  *   which must be `EPD_WIDTH / 2 * EPD_HEIGHT` large.
  */
@@ -186,8 +194,7 @@ void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_pixel(int x, int y, uint8_t color,
-                    uint8_t *framebuffer);
+void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a horizontal line to a given framebuffer.
@@ -215,10 +222,8 @@ void epd_draw_hline(int x, int y, int length, uint8_t color,
 void epd_draw_vline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);
 
-void epd_fill_circle_helper(int x0, int y0, int r,
-                                    int corners, int delta,
-                                    uint8_t color,
-                                    uint8_t *framebuffer);
+void epd_fill_circle_helper(int x0, int y0, int r, int corners, int delta,
+                            uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a circle with given center and radius
@@ -229,8 +234,7 @@ void epd_fill_circle_helper(int x0, int y0, int r,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_circle(int x, int y, int r, uint8_t color,
-                    uint8_t *framebuffer);
+void epd_draw_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a circle with fill with given center and radius
@@ -241,8 +245,7 @@ void epd_draw_circle(int x, int y, int r, uint8_t color,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_fill_circle(int x, int y, int r, uint8_t color,
-                     uint8_t *framebuffer);
+void epd_fill_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a rectanle with no fill color
@@ -254,8 +257,8 @@ void epd_fill_circle(int x, int y, int r, uint8_t color,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_rect(int x, int y, int w, int h,
-                            uint8_t color, uint8_t *framebuffer);
+void epd_draw_rect(int x, int y, int w, int h, uint8_t color,
+                   uint8_t *framebuffer);
 
 /**
  * Draw a rectanle with fill color
@@ -267,9 +270,8 @@ void epd_draw_rect(int x, int y, int w, int h,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_fill_rect(int x, int y, int w, int h,
-                            uint8_t color, uint8_t *framebuffer);
-
+void epd_fill_rect(int x, int y, int w, int h, uint8_t color,
+                   uint8_t *framebuffer);
 
 /**
  * Write a line.  Bresenham's algorithm - thx wikpedia
@@ -281,8 +283,8 @@ void epd_fill_rect(int x, int y, int w, int h,
  * @param framebuffer: The framebuffer to draw to,
  */
 /**************************************************************************/
-void epd_write_line(int x0, int y0, int x1, int y1,
-                             uint8_t color, uint8_t *framebuffer);
+void epd_write_line(int x0, int y0, int x1, int y1, uint8_t color,
+                    uint8_t *framebuffer);
 
 /**
  * Draw a line
@@ -294,8 +296,8 @@ void epd_write_line(int x0, int y0, int x1, int y1,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_line(int x0, int y0, int x1, int y1,
-                            uint8_t color, uint8_t *framebuffer);
+void epd_draw_line(int x0, int y0, int x1, int y1, uint8_t color,
+                   uint8_t *framebuffer);
 
 /**
  * Draw a triangle with no fill color
@@ -309,9 +311,8 @@ void epd_draw_line(int x0, int y0, int x1, int y1,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_triangle(int x0, int y0, int x1, int y1,
-                                int x2, int y2, uint8_t color,
-                                uint8_t *framebuffer);
+void epd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
+                       uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a triangle with color-fill
@@ -325,14 +326,12 @@ void epd_draw_triangle(int x0, int y0, int x1, int y1,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_fill_triangle(int x0, int y0, int x1, int y1,
-                                int x2, int y2, uint8_t color,
-                                uint8_t *framebuffer);
+void epd_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
+                       uint8_t color, uint8_t *framebuffer);
 /**
  * Get the current ambient temperature in °C.
  */
 float epd_ambient_temperature();
-
 
 /// Font data stored PER GLYPH
 typedef struct {
@@ -368,32 +367,35 @@ typedef struct {
  * Get the text bounds for string, when drawn at (x, y).
  * Set font properties to NULL to use the defaults.
  */
-void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y, int *x1,
-                     int *y1, int *w, int *h, const FontProperties* props);
+void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y,
+                     int *x1, int *y1, int *w, int *h,
+                     const FontProperties *props);
 
 /*!
  * Write text to the EPD.
  */
-void writeln(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer);
+void writeln(const GFXfont *font, const char *string, int *cursor_x,
+             int *cursor_y, uint8_t *framebuffer);
 
 /**
  * Write text to the EPD.
  * If framebuffer is NULL, draw mode `mode` is used for direct drawing.
  */
-void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer, enum DrawMode mode, const FontProperties* properties);
+void write_mode(const GFXfont *font, const char *string, int *cursor_x,
+                int *cursor_y, uint8_t *framebuffer, enum DrawMode mode,
+                const FontProperties *properties);
 
 /**
  * Get the font glyph for a unicode code point.
  */
-void get_glyph(const GFXfont *font, uint32_t code_point, const GFXglyph **glyph);
+void get_glyph(const GFXfont *font, uint32_t code_point,
+               const GFXglyph **glyph);
 
 /**
  * Write a (multi-line) string to the EPD.
  */
-void write_string(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
-             	  uint8_t *framebuffer);
+void write_string(const GFXfont *font, const char *string, int *cursor_x,
+                  int *cursor_y, uint8_t *framebuffer);
 
 #ifdef __cplusplus
 }

@@ -64,18 +64,14 @@ static uint32_t next_cp(const uint8_t **string) {
   return codep;
 }
 
-
 static FontProperties font_properties_default() {
-    FontProperties props =  {
-        .fg_color = 0,
-        .bg_color = 15,
-        .fallback_glyph = 0,
-        .flags = 0
-    };
-    return props;
+  FontProperties props = {
+      .fg_color = 0, .bg_color = 15, .fallback_glyph = 0, .flags = 0};
+  return props;
 }
 
-void get_glyph(const GFXfont *font, uint32_t code_point, const GFXglyph **glyph) {
+void get_glyph(const GFXfont *font, uint32_t code_point,
+               const GFXglyph **glyph) {
   UnicodeInterval *intervals = font->intervals;
   *glyph = NULL;
   for (int i = 0; i < font->interval_count; i++) {
@@ -94,14 +90,16 @@ void get_glyph(const GFXfont *font, uint32_t code_point, const GFXglyph **glyph)
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
-              uint16_t buf_height, uint32_t cp, const FontProperties* props) {
+static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer,
+                                int *cursor_x, int cursor_y, uint16_t buf_width,
+                                uint16_t buf_height, uint32_t cp,
+                                const FontProperties *props) {
 
   const GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
 
   if (!glyph) {
-      get_glyph(font, props->fallback_glyph, &glyph);
+    get_glyph(font, props->fallback_glyph, &glyph);
   }
 
   if (!glyph) {
@@ -116,14 +114,14 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer, int *curso
   unsigned long bitmap_size = byte_width * height;
   uint8_t *bitmap = NULL;
   if (font->compressed) {
-      bitmap = (uint8_t *)malloc(bitmap_size);
-      if (bitmap == NULL && bitmap_size) {
-        ESP_LOGE("font", "malloc failed.");
-      }
-      uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
-                 glyph->compressed_size);
+    bitmap = (uint8_t *)malloc(bitmap_size);
+    if (bitmap == NULL && bitmap_size) {
+      ESP_LOGE("font", "malloc failed.");
+    }
+    uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
+               glyph->compressed_size);
   } else {
-      bitmap = &font->bitmap[offset];
+    bitmap = &font->bitmap[offset];
   }
 
   uint8_t color_lut[16];
@@ -135,7 +133,7 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer, int *curso
   for (int y = 0; y < height; y++) {
     int yy = cursor_y - glyph->top + y;
     if (yy < 0 || yy >= buf_height) {
-        continue;
+      continue;
     }
     int start_pos = *cursor_x + left;
     bool byte_complete = start_pos % 2;
@@ -161,7 +159,7 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer, int *curso
     }
   }
   if (font->compressed) {
-      free(bitmap);
+    free(bitmap);
   }
   *cursor_x += glyph->advance_x;
 }
@@ -170,45 +168,45 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer, int *curso
  * @brief Calculate the bounds of a character when drawn at (x, y), move the
  * cursor (*x) forward, adjust the given bounds.
  */
-static void get_char_bounds(const GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
-                   int *miny, int *maxx, int *maxy, const FontProperties* props) {
+static void get_char_bounds(const GFXfont *font, uint32_t cp, int *x, int *y,
+                            int *minx, int *miny, int *maxx, int *maxy,
+                            const FontProperties *props) {
   const GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
 
   if (!glyph) {
-      get_glyph(font, props->fallback_glyph, &glyph);
+    get_glyph(font, props->fallback_glyph, &glyph);
   }
 
   if (!glyph) {
     return;
   }
 
-  int x1 = *x + glyph->left,
-      y1 = *y + glyph->top - glyph->height,
-      x2 = x1 + glyph->width,
-      y2 = y1 + glyph->height;
+  int x1 = *x + glyph->left, y1 = *y + glyph->top - glyph->height,
+      x2 = x1 + glyph->width, y2 = y1 + glyph->height;
 
   // background needs to be taken into account
   if (props->flags & DRAW_BACKGROUND) {
-	*minx = min(*x, min(*minx, x1));
-	*maxx = max(max(*x + glyph->advance_x, x2), *maxx);
-	*miny = min(*y + font->descender, min(*miny, y1));
-	*maxy = max(*y + font->ascender, max(*maxy, y2));
+    *minx = min(*x, min(*minx, x1));
+    *maxx = max(max(*x + glyph->advance_x, x2), *maxx);
+    *miny = min(*y + font->descender, min(*miny, y1));
+    *maxy = max(*y + font->ascender, max(*maxy, y2));
   } else {
-	if (x1 < *minx)
-	  *minx = x1;
-	if (y1 < *miny)
-	  *miny = y1;
-	if (x2 > *maxx)
-	  *maxx = x2;
-	if (y2 > *maxy)
-	  *maxy = y2;
+    if (x1 < *minx)
+      *minx = x1;
+    if (y1 < *miny)
+      *miny = y1;
+    if (x2 > *maxx)
+      *maxx = x2;
+    if (y2 > *maxy)
+      *maxy = y2;
   }
   *x += glyph->advance_x;
 }
 
-void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y, int *x1,
-                     int *y1, int *w, int *h, const FontProperties* properties) {
+void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y,
+                     int *x1, int *y1, int *w, int *h,
+                     const FontProperties *properties) {
 
   FontProperties props;
   if (properties == NULL) {
@@ -218,16 +216,16 @@ void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y, in
   }
 
   if (*string == '\0') {
-	*w = 0;
-	*h = 0;
-	*y1 = *y;
-	*x1 = *x;
-	return;
+    *w = 0;
+    *h = 0;
+    *y1 = *y;
+    *x1 = *x;
+    return;
   }
   int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   int original_x = *x;
   uint32_t c;
-  while ((c = next_cp((const uint8_t**)&string))) {
+  while ((c = next_cp((const uint8_t **)&string))) {
     get_char_bounds(font, c, x, y, &minx, &miny, &maxx, &maxy, &props);
   }
   *x1 = min(original_x, minx);
@@ -236,12 +234,12 @@ void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y, in
   *h = maxy - miny;
 }
 
-void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer, enum DrawMode mode, const FontProperties* properties) {
-
+void write_mode(const GFXfont *font, const char *string, int *cursor_x,
+                int *cursor_y, uint8_t *framebuffer, enum DrawMode mode,
+                const FontProperties *properties) {
 
   if (*string == '\0') {
-	return;
+    return;
   }
 
   FontProperties props;
@@ -254,7 +252,8 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cur
   int x1 = 0, y1 = 0, w = 0, h = 0;
   int tmp_cur_x = *cursor_x;
   int tmp_cur_y = *cursor_y;
-  get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h, &props);
+  get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h,
+                  &props);
 
   uint8_t *buffer;
   int buf_width;
@@ -271,7 +270,7 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cur
     buf_width = (w / 2 + w % 2);
     buf_height = h;
     buffer = (uint8_t *)malloc(buf_width * buf_height);
-    memset(buffer, 255, buf_width *buf_height);
+    memset(buffer, 255, buf_width * buf_height);
     local_cursor_y = buf_height - baseline_height;
   } else {
     buf_width = EPD_WIDTH / 2;
@@ -288,12 +287,14 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cur
 
   uint8_t bg = props.bg_color;
   if (props.flags & DRAW_BACKGROUND) {
-	for (int l = local_cursor_y - font->ascender; l < local_cursor_y - font->descender; l++) {
-	  epd_draw_hline(local_cursor_x, l, w, bg << 4, buffer);
-	}
+    for (int l = local_cursor_y - font->ascender;
+         l < local_cursor_y - font->descender; l++) {
+      epd_draw_hline(local_cursor_x, l, w, bg << 4, buffer);
+    }
   }
-  while ((c = next_cp((const uint8_t**)&string))) {
-    draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c, &props);
+  while ((c = next_cp((const uint8_t **)&string))) {
+    draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width,
+              buf_height, c, &props);
   }
 
   *cursor_x += local_cursor_x - cursor_x_init;
@@ -301,40 +302,40 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cur
 
   if (framebuffer == NULL) {
     Rect_t area = {
-      .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
+        .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
     epd_draw_image(area, buffer, mode);
 
     free(buffer);
   }
-
 }
 
-void writeln(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer) {
-    return write_mode(font, string, cursor_x, cursor_y, framebuffer, BLACK_ON_WHITE, NULL);
+void writeln(const GFXfont *font, const char *string, int *cursor_x,
+             int *cursor_y, uint8_t *framebuffer) {
+  return write_mode(font, string, cursor_x, cursor_y, framebuffer,
+                    BLACK_ON_WHITE, NULL);
 }
 
-void write_string(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
-             	  uint8_t *framebuffer) {
-   char *token, *newstring, *tofree;
-   if (string == NULL) {
-     ESP_LOGE("font.c", "cannot draw a NULL string!");
-     return;
-   }
-   tofree = newstring = strdup(string);
-   if (newstring == NULL) {
-     ESP_LOGE("font.c", "cannot allocate string copy!");
-     return;
-   }
+void write_string(const GFXfont *font, const char *string, int *cursor_x,
+                  int *cursor_y, uint8_t *framebuffer) {
+  char *token, *newstring, *tofree;
+  if (string == NULL) {
+    ESP_LOGE("font.c", "cannot draw a NULL string!");
+    return;
+  }
+  tofree = newstring = strdup(string);
+  if (newstring == NULL) {
+    ESP_LOGE("font.c", "cannot allocate string copy!");
+    return;
+  }
 
-   // taken from the strsep manpage
-   int line_start = *cursor_x;
-   while ((token = strsep(&newstring, "\n")) != NULL) {
-	   *cursor_x = line_start;
-	   writeln(font, token, cursor_x, cursor_y, framebuffer);
-	   *cursor_y += font->advance_y;
-   }
+  // taken from the strsep manpage
+  int line_start = *cursor_x;
+  while ((token = strsep(&newstring, "\n")) != NULL) {
+    *cursor_x = line_start;
+    writeln(font, token, cursor_x, cursor_y, framebuffer);
+    *cursor_y += font->advance_y;
+  }
 
-   free(tofree);
+  free(tofree);
 }

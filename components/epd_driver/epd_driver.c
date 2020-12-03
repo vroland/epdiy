@@ -51,7 +51,7 @@ const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
 const int clear_cycle_time = 12;
 
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-const int contrast_cycles_4[15] = {60, 60, 40, 40, 60,  60,  60, 80,
+const int contrast_cycles_4[15] = {60, 60,  40,  40,  60,  60,  60, 80,
                                    80, 100, 100, 100, 200, 200, 300};
 
 const int contrast_cycles_4_white[15] = {50, 30, 30, 30, 30, 30,  30, 30,
@@ -185,8 +185,9 @@ void reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
-void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data, uint8_t *epd_input,
-                                   uint8_t k, const uint8_t *conversion_lut) {
+void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data,
+                                   uint8_t *epd_input, uint8_t k,
+                                   const uint8_t *conversion_lut) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
   const uint16_t *line_data_16 = (const uint16_t *)line_data;
@@ -876,12 +877,14 @@ void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr,
   epd_draw_frame_1bit_lines(area, ptr, mode, time, NULL);
 }
 
-void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data, enum DrawMode mode) {
+void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
+                              enum DrawMode mode) {
   epd_draw_image_lines(area, data, mode, NULL);
 }
 
 void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
-                                    enum DrawMode mode, const bool *drawn_lines) {
+                                    enum DrawMode mode,
+                                    const bool *drawn_lines) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;

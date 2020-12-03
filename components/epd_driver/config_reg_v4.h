@@ -22,7 +22,6 @@ static void config_reg_init(epd_config_register_t *cfg) {
   cfg->ep_output_enable = false;
 }
 
-
 inline static void IRAM_ATTR push_cfg_bit(bool bit);
 void IRAM_ATTR busy_delay(uint32_t cycles);
 inline static void fast_gpio_set_hi(gpio_num_t gpio_num);

@@ -23,7 +23,6 @@ static void config_reg_init(epd_config_register_t *cfg) {
   cfg->ep_output_enable = false;
 }
 
-
 inline static void IRAM_ATTR push_cfg_bit(bool bit);
 void IRAM_ATTR busy_delay(uint32_t cycles);
 inline static void fast_gpio_set_hi(gpio_num_t gpio_num);
@@ -46,7 +45,6 @@ static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
   fast_gpio_set_hi(CFG_STR);
 }
 
-
 static void cfg_poweron(epd_config_register_t *cfg) {
   // POWERON
   cfg->power_disable = false;
@@ -63,7 +61,6 @@ static void cfg_poweron(epd_config_register_t *cfg) {
   fast_gpio_set_hi(STH);
   // END POWERON
 }
-
 
 static void cfg_poweroff(epd_config_register_t *cfg) {
   // POWEROFF

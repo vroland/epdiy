@@ -1,7 +1,7 @@
 #include "i2s_data_bus.h"
 #include "driver/periph_ctrl.h"
-#include "esp_heap_caps.h"
 #include "esp32/rom/lldesc.h"
+#include "esp_heap_caps.h"
 #include "soc/i2s_reg.h"
 #include "soc/i2s_struct.h"
 #include "soc/rtc.h"
@@ -169,7 +169,6 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   // Initialize Audio Clock (APLL) for 60 Mhz.
   rtc_clk_apll_enable(1, 0, 0, 5, 1);
 #endif
-
 
   // Set Audio Clock Dividers
   dev->clkm_conf.val = 0;

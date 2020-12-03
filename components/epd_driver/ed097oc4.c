@@ -84,13 +84,9 @@ void epd_base_init(uint32_t epd_row_width) {
   rmt_pulse_init(CKV);
 }
 
-void epd_poweron() {
-    cfg_poweron(&config_reg);
-}
+void epd_poweron() { cfg_poweron(&config_reg); }
 
-void epd_poweroff() {
-    cfg_poweroff(&config_reg);
-}
+void epd_poweroff() { cfg_poweroff(&config_reg); }
 
 void epd_start_frame() {
   while (i2s_is_busy() || rmt_busy()) {
@@ -133,7 +129,8 @@ static inline void latch_row() {
 }
 
 void IRAM_ATTR epd_skip() {
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) || defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
   pulse_ckv_ticks(2, 2, false);
 #else
   // According to the spec, the OC4 maximum CKV frequency is 200kHz.
@@ -148,7 +145,8 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
   latch_row();
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) || defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
   pulse_ckv_ticks(output_time_dus, 1, false);
 #else
   pulse_ckv_ticks(output_time_dus, 50, false);
