@@ -4,12 +4,7 @@
 #include "esp_log.h"
 #include "string.h"
 
-static void handle_error(struct mpd_connection *c) {
-  assert(mpd_connection_get_error(c) != MPD_ERROR_SUCCESS);
-
-  ESP_LOGE("mpd", "%s\n", mpd_connection_get_error_message(c));
-  mpd_connection_free(c);
-}
+extern void handle_error(struct mpd_connection **c);
 
 void free_playback_info(mpd_playback_info_t *info) {
   mpd_song_free(info->current_song);
@@ -18,7 +13,7 @@ void free_playback_info(mpd_playback_info_t *info) {
 
 mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
   if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS) {
-    handle_error(mpd_conn);
+    handle_error(&mpd_conn);
     return NULL;
   }
 
@@ -29,7 +24,7 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
 
   struct mpd_status *status = mpd_recv_status(mpd_conn);
   if (status == NULL) {
-    handle_error(mpd_conn);
+    handle_error(&mpd_conn);
     return NULL;
   }
 
@@ -41,7 +36,7 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
 
   if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS) {
     mpd_status_free(status);
-    handle_error(mpd_conn);
+    handle_error(&mpd_conn);
     return NULL;
   }
 
@@ -49,7 +44,7 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
 
   struct mpd_song *song = mpd_recv_song(mpd_conn);
   if (song == NULL) {
-    handle_error(mpd_conn);
+    handle_error(&mpd_conn);
     return NULL;
   }
 
@@ -58,7 +53,7 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
 
     mpd_status_free(status);
     mpd_song_free(song);
-    handle_error(mpd_conn);
+    handle_error(&mpd_conn);
     return NULL;
   }
 
