@@ -123,7 +123,7 @@ void epd_push_pixels(Rect_t area, short time, int color);
  *   Pixel data is packed (two pixels per byte). A byte cannot wrap over multiple
  *   rows, images of uneven width must add a padding nibble per line.
  */
-void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
+void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
 
 /**
  * Draw a picture to a given area, with some draw mode.
@@ -137,7 +137,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data);
  *   rows, images of uneven width must add a padding nibble per line.
  * @param mode: Configure image color and assumptions of the display state.
  */
-void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
+void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data, enum DrawMode mode);
 
 /**
  * Same as epd_draw_image, but with the option to specify
@@ -152,12 +152,12 @@ void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode);
  * @param drawn_lines: Optional line mask.
  *   If not NULL, only draw lines which are marked as `true`.
  */
-void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data, enum DrawMode mode, bool* drawn_lines);
+void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data, enum DrawMode mode, const bool* drawn_lines);
 
 
-void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time);
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr, enum DrawMode mode, int time);
 
-void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr, enum DrawMode mode, int time, bool* drawn_lines);
+void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, const uint8_t *ptr, enum DrawMode mode, int time, const bool* drawn_lines);
 
 /**
  * @returns Rectancle representing the whole screen area.
@@ -175,7 +175,7 @@ Rect_t epd_full_screen();
  * @param framebuffer: The framebuffer object,
  *   which must be `EPD_WIDTH / 2 * EPD_HEIGHT` large.
  */
-void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
+void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
                              uint8_t *framebuffer);
 
 /**
@@ -242,7 +242,7 @@ void epd_draw_circle(int x, int y, int r, uint8_t color,
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_fill_circle(int x, int y, int r, uint8_t color,
-                    uint8_t *framebuffer);
+                     uint8_t *framebuffer);
 
 /**
  * Draw a rectanle with no fill color
@@ -368,31 +368,31 @@ typedef struct {
  * Get the text bounds for string, when drawn at (x, y).
  * Set font properties to NULL to use the defaults.
  */
-void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
-                     int *y1, int *w, int *h, FontProperties* props);
+void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y, int *x1,
+                     int *y1, int *w, int *h, const FontProperties* props);
 
 /*!
  * Write text to the EPD.
  */
-void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+void writeln(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer);
 
 /**
  * Write text to the EPD.
  * If framebuffer is NULL, draw mode `mode` is used for direct drawing.
  */
-void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer, enum DrawMode mode, FontProperties* properties);
+void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
+             uint8_t *framebuffer, enum DrawMode mode, const FontProperties* properties);
 
 /**
  * Get the font glyph for a unicode code point.
  */
-void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph);
+void get_glyph(const GFXfont *font, uint32_t code_point, const GFXglyph **glyph);
 
 /**
  * Write a (multi-line) string to the EPD.
  */
-void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+void write_string(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
              	  uint8_t *framebuffer);
 
 #ifdef __cplusplus

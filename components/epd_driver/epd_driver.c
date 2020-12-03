@@ -78,13 +78,13 @@ static uint8_t *conversion_lut;
 static QueueHandle_t output_queue;
 
 typedef struct {
-  uint8_t *data_ptr;
+  const uint8_t *data_ptr;
   SemaphoreHandle_t done_smphr;
   SemaphoreHandle_t start_smphr;
   Rect_t area;
   int frame;
   enum DrawMode mode;
-  bool *drawn_lines;
+  const bool *drawn_lines;
 } OutputParams;
 
 static OutputParams fetch_params;
@@ -185,11 +185,11 @@ void reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
-void IRAM_ATTR calc_epd_input_4bpp(uint32_t *line_data, uint8_t *epd_input,
-                                   uint8_t k, uint8_t *conversion_lut) {
+void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data, uint8_t *epd_input,
+                                   uint8_t k, const uint8_t *conversion_lut) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
-  uint16_t *line_data_16 = (uint16_t *)line_data;
+  const uint16_t *line_data_16 = (const uint16_t *)line_data;
 
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
@@ -275,7 +275,7 @@ const DRAM_ATTR uint32_t lut_1bpp_white[256] = {
     0xaa0a, 0xaa20, 0xaa22, 0xaa28, 0xaa2a, 0xaa80, 0xaa82, 0xaa88, 0xaa8a,
     0xaaa0, 0xaaa2, 0xaaa8, 0xaaaa};
 
-void IRAM_ATTR calc_epd_input_1bpp(uint8_t *line_data, uint8_t *epd_input,
+void IRAM_ATTR calc_epd_input_1bpp(const uint8_t *line_data, uint8_t *epd_input,
                                    enum DrawMode mode) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
@@ -358,7 +358,6 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
  */
 void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
   uint8_t carry = 0x00;
-  uint8_t mask = 0;
   for (uint32_t i = 0; i < len; i++) {
     uint8_t val = buf[i];
     buf[i] = (val << shift) | carry;
@@ -640,7 +639,7 @@ void epd_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
   }
 }
 
-void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
+void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
                              uint8_t *framebuffer) {
 
   assert(framebuffer != NULL);
@@ -673,7 +672,7 @@ void epd_copy_to_framebuffer(Rect_t image_area, uint8_t *image_data,
   }
 }
 
-void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, uint8_t *data) {
+void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data) {
   epd_draw_image(area, data, BLACK_ON_WHITE);
 }
 
@@ -684,7 +683,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
     uint8_t line[EPD_WIDTH / 2];
     memset(line, 255, EPD_WIDTH / 2);
     Rect_t area = params->area;
-    uint8_t *ptr = params->data_ptr;
+    const uint8_t *ptr = params->data_ptr;
 
     if (params->frame == 0) {
       reset_lut(conversion_lut, params->mode);
@@ -794,9 +793,9 @@ void IRAM_ATTR feed_display(OutputParams *params) {
   }
 }
 
-void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr,
+void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, const uint8_t *ptr,
                                          enum DrawMode mode, int time,
-                                         bool *drawn_lines) {
+                                         const bool *drawn_lines) {
   epd_start_frame();
   uint8_t line[EPD_WIDTH / 8];
   memset(line, 0, sizeof(line));
@@ -821,7 +820,7 @@ void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr,
       continue;
     }
 
-    uint8_t *lp;
+    const uint8_t *lp;
     bool shifted = 0;
     if (area.width == EPD_WIDTH && area.x == 0) {
       lp = ptr;
@@ -872,17 +871,17 @@ void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, uint8_t *ptr,
   epd_end_frame();
 }
 
-void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, uint8_t *ptr,
+void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr,
                                    enum DrawMode mode, int time) {
   epd_draw_frame_1bit_lines(area, ptr, mode, time, NULL);
 }
 
-void IRAM_ATTR epd_draw_image(Rect_t area, uint8_t *data, enum DrawMode mode) {
+void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data, enum DrawMode mode) {
   epd_draw_image_lines(area, data, mode, NULL);
 }
 
-void IRAM_ATTR epd_draw_image_lines(Rect_t area, uint8_t *data,
-                                    enum DrawMode mode, bool *drawn_lines) {
+void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
+                                    enum DrawMode mode, const bool *drawn_lines) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
   uint8_t frame_count = 15;

@@ -46,19 +46,19 @@ static int utf8_len(const uint8_t ch) {
   return len;
 }
 
-static uint32_t next_cp(uint8_t **string) {
+static uint32_t next_cp(const uint8_t **string) {
   if (**string == 0) {
     return 0;
   }
   int bytes = utf8_len(**string);
-  uint8_t *chr = *string;
+  const uint8_t *chr = *string;
   *string += bytes;
   int shift = utf[0]->bits_stored * (bytes - 1);
   uint32_t codep = (*chr++ & utf[bytes]->mask) << shift;
 
   for (int i = 1; i < bytes; ++i, ++chr) {
     shift -= utf[0]->bits_stored;
-    codep |= ((uint8_t)*chr & utf[0]->mask) << shift;
+    codep |= ((const uint8_t)*chr & utf[0]->mask) << shift;
   }
 
   return codep;
@@ -75,7 +75,7 @@ static FontProperties font_properties_default() {
     return props;
 }
 
-void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
+void get_glyph(const GFXfont *font, uint32_t code_point, const GFXglyph **glyph) {
   UnicodeInterval *intervals = font->intervals;
   *glyph = NULL;
   for (int i = 0; i < font->interval_count; i++) {
@@ -94,10 +94,10 @@ void get_glyph(GFXfont *font, uint32_t code_point, GFXglyph **glyph) {
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-static void IRAM_ATTR draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
-              uint16_t buf_height, uint32_t cp, FontProperties* props) {
+static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer, int *cursor_x, int cursor_y, uint16_t buf_width,
+              uint16_t buf_height, uint32_t cp, const FontProperties* props) {
 
-  GFXglyph *glyph;
+  const GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
 
   if (!glyph) {
@@ -170,9 +170,9 @@ static void IRAM_ATTR draw_char(GFXfont *font, uint8_t *buffer, int *cursor_x, i
  * @brief Calculate the bounds of a character when drawn at (x, y), move the
  * cursor (*x) forward, adjust the given bounds.
  */
-static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
-                   int *miny, int *maxx, int *maxy, FontProperties* props) {
-  GFXglyph *glyph;
+static void get_char_bounds(const GFXfont *font, uint32_t cp, int *x, int *y, int *minx,
+                   int *miny, int *maxx, int *maxy, const FontProperties* props) {
+  const GFXglyph *glyph;
   get_glyph(font, cp, &glyph);
 
   if (!glyph) {
@@ -207,8 +207,8 @@ static void get_char_bounds(GFXfont *font, uint32_t cp, int *x, int *y, int *min
   *x += glyph->advance_x;
 }
 
-void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
-                     int *y1, int *w, int *h, FontProperties* properties) {
+void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y, int *x1,
+                     int *y1, int *w, int *h, const FontProperties* properties) {
 
   FontProperties props;
   if (properties == NULL) {
@@ -227,7 +227,7 @@ void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
   int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   int original_x = *x;
   uint32_t c;
-  while ((c = next_cp((uint8_t**)&string))) {
+  while ((c = next_cp((const uint8_t**)&string))) {
     get_char_bounds(font, c, x, y, &minx, &miny, &maxx, &maxy, &props);
   }
   *x1 = min(original_x, minx);
@@ -236,8 +236,8 @@ void get_text_bounds(GFXfont *font, char *string, int *x, int *y, int *x1,
   *h = maxy - miny;
 }
 
-void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
-             uint8_t *framebuffer, enum DrawMode mode, FontProperties* properties) {
+void write_mode(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
+             uint8_t *framebuffer, enum DrawMode mode, const FontProperties* properties) {
 
 
   if (*string == '\0') {
@@ -292,7 +292,7 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
 	  epd_draw_hline(local_cursor_x, l, w, bg << 4, buffer);
 	}
   }
-  while ((c = next_cp((uint8_t**)&string))) {
+  while ((c = next_cp((const uint8_t**)&string))) {
     draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width, buf_height, c, &props);
   }
 
@@ -310,12 +310,12 @@ void write_mode(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
 
 }
 
-void writeln(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+void writeln(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
              uint8_t *framebuffer) {
     return write_mode(font, string, cursor_x, cursor_y, framebuffer, BLACK_ON_WHITE, NULL);
 }
 
-void write_string(GFXfont *font, char *string, int *cursor_x, int *cursor_y,
+void write_string(const GFXfont *font, const char *string, int *cursor_x, int *cursor_y,
              	  uint8_t *framebuffer) {
    char *token, *newstring, *tofree;
    if (string == NULL) {
