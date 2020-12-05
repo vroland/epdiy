@@ -251,6 +251,7 @@ void i2s_deinit() {
   free(i2s_state.buf_b);
   free((void *)i2s_state.dma_desc_a);
   free((void *)i2s_state.dma_desc_b);
-
+  
+  rtc_clk_apll_enable(0, 0, 0, 8, 0);
   periph_module_disable(PERIPH_I2S1_MODULE);
 }

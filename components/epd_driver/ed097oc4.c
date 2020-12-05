@@ -92,6 +92,11 @@ void epd_poweroff() {
     cfg_poweroff(&config_reg);
 }
 
+void epd_base_deinit(){
+  epd_poweroff();
+  i2s_deinit();
+}
+
 void epd_start_frame() {
   while (i2s_is_busy() || rmt_busy()) {
   };

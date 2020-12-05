@@ -937,3 +937,7 @@ void epd_init() {
   assert(conversion_lut != NULL);
   output_queue = xQueueCreate(32, EPD_WIDTH / 2);
 }
+
+void epd_deinit(){
+  epd_base_deinit();
+}
