@@ -81,6 +81,9 @@ typedef struct {
 /** Initialize the ePaper display */
 void epd_init();
 
+/** Deinit the ePaper display */
+void epd_deinit();
+
 /** Enable display power supply. */
 void epd_poweron();
 
