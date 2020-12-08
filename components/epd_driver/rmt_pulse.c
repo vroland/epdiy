@@ -1,5 +1,6 @@
 #include "rmt_pulse.h"
 #include "driver/rmt.h"
+#include "esp_system.h"
 
 static intr_handle_t gRMT_intr_handle = NULL;
 
@@ -35,6 +36,9 @@ void rmt_pulse_init(gpio_num_t pin) {
   row_rmt_config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
   row_rmt_config.tx_config.idle_output_en = true;
 
+  #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0) && ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 0, 2)
+    #error "This driver is not compatible with IDF version 4.1.\nPlease use 4.0 or >= 4.2!"
+  #endif
   esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3,
                  rmt_interrupt_handler, 0, &gRMT_intr_handle);
 
