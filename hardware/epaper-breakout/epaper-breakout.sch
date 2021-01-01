@@ -3055,7 +3055,7 @@ U 1 1 6485BF5A
 P 6150 5750
 F 0 "D7" V 6104 5830 50  0000 L CNN
 F 1 "1N5817" V 6195 5830 50  0000 L CNN
-F 2 "Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal" H 6150 5575 50  0001 C CNN
+F 2 "Diode_SMD:D_SOD-123" H 6150 5575 50  0001 C CNN
 F 3 "http://www.vishay.com/docs/88525/1n5817.pdf" H 6150 5750 50  0001 C CNN
 	1    6150 5750
 	0    1    1    0   
@@ -3194,4 +3194,23 @@ Wire Wire Line
 	6600 5300 7000 5300
 Wire Wire Line
 	7600 4250 7900 4250
+$Comp
+L Connector:Conn_01x02_Male J?
+U 1 1 655CB8A7
+P 5750 6750
+F 0 "J?" H 5858 6931 50  0000 C CNN
+F 1 "Conn_01x02_Male" H 5858 6840 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 5750 6750 50  0001 C CNN
+F 3 "~" H 5750 6750 50  0001 C CNN
+	1    5750 6750
+	1    0    0    -1  
+$EndComp
+Text GLabel 6100 6750 2    50   Input ~ 0
+BAT+
+Text GLabel 6100 6850 2    50   Input ~ 0
+BAT-
+Wire Wire Line
+	5950 6750 6100 6750
+Wire Wire Line
+	6100 6850 5950 6850
 $EndSCHEMATC
