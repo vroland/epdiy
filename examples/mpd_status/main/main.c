@@ -159,6 +159,7 @@ void epd_task() {
   memset(img_buf, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
 
   bool init = true;
+  bool already_idling = false;
 
   struct mpd_connection *mpd_conn = NULL;
   while (true) {
@@ -175,13 +176,13 @@ void epd_task() {
     }
 
     if (!init) {
+      vTaskDelay(100);
       mpd_run_idle(mpd_conn);
-      handle_error(&mpd_conn);
-
-      mpd_response_finish(mpd_conn);
+      ESP_LOGW("main", "idle returned");
       handle_error(&mpd_conn);
     }
 
+    ESP_LOGW("main", "fetching playback info");
     mpd_playback_info_t *new_info = fetch_playback_info(mpd_conn);
     handle_error(&mpd_conn);
 
@@ -190,26 +191,39 @@ void epd_task() {
     if (playback_info != NULL && new_info != NULL) {
       do_update = memcmp(new_info->hash, playback_info->hash,
                          crypto_generichash_BYTES) != 0;
+    } else if (playback_info == NULL && new_info != NULL) {
+        do_update = true;
     }
 
     if (playback_info)
       free_playback_info(playback_info);
 
     playback_info = new_info;
+    ESP_LOGW("info", "info is null? %X", (uint32_t)new_info);
+    ESP_LOGW("info", "do update? %d", do_update);
 
     // no song playing
-    if (new_info == NULL && (playback_info != new_info || init)) {
+    if (new_info == NULL && !already_idling) {
       ESP_LOGW("main", "no song playing");
-      epd_poweron();
-      epd_draw_image(epd_full_screen(), img_buf, WHITE_ON_WHITE);
-      epd_clear_area_cycles(epd_full_screen(), 2, 20);
-      memset(img_buf, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-      int x = album_cover_x;
-      int y = album_cover_y;
-      write_string((GFXfont*)&FiraSans24, "Warteschlange leer.", &x, &y, img_buf);
-      epd_draw_grayscale_image(epd_full_screen(), img_buf);
-      epd_poweroff();
+      if (!already_idling) {
+          ESP_LOGW("main", "drawing!");
+          epd_poweron();
+          epd_draw_image(epd_full_screen(), img_buf, WHITE_ON_WHITE);
+          epd_clear_area_cycles(epd_full_screen(), 2, 20);
+          memset(img_buf, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+          int x = album_cover_x;
+          int y = album_cover_y;
+          write_string((GFXfont*)&FiraSans24, "Warteschlange leer.", &x, &y, img_buf);
+          epd_draw_grayscale_image(epd_full_screen(), img_buf);
+          epd_poweroff();
+      }
+      vTaskDelay(100);
+      already_idling = true;
+      init = false;
+      continue;
     }
+
+    already_idling = false;
 
     if ((do_update || init) && new_info != NULL) {
       epd_poweron();
@@ -337,5 +351,5 @@ void app_main() {
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 
-  xTaskCreatePinnedToCore(&epd_task, "epd task", 1 << 15, NULL, 2, NULL, 1);
+  xTaskCreatePinnedToCore(&epd_task, "epd task", 1 << 12, NULL, 2, NULL, 1);
 }

@@ -23,8 +23,8 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
   mpd_command_list_end(mpd_conn);
 
   struct mpd_status *status = mpd_recv_status(mpd_conn);
+  handle_error(&mpd_conn);
   if (status == NULL) {
-    handle_error(&mpd_conn);
     return NULL;
   }
 
@@ -43,17 +43,18 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
   mpd_response_next(mpd_conn);
 
   struct mpd_song *song = mpd_recv_song(mpd_conn);
-  if (song == NULL) {
-    handle_error(&mpd_conn);
-    return NULL;
-  }
-
   if (mpd_connection_get_error(mpd_conn) != MPD_ERROR_SUCCESS ||
       !mpd_response_finish(mpd_conn)) {
 
     mpd_status_free(status);
     mpd_song_free(song);
     handle_error(&mpd_conn);
+    return NULL;
+  }
+
+  handle_error(&mpd_conn);
+  if (song == NULL) {
+    mpd_status_free(status);
     return NULL;
   }
 
@@ -72,8 +73,8 @@ mpd_playback_info_t *fetch_playback_info(struct mpd_connection *mpd_conn) {
   sprintf(str, "%d", mpd_status_get_song_id(status));
   crypto_generichash_update(&state, (uint8_t*)str, strlen(str));
 
-  sprintf(str, "%d", mpd_status_get_volume(status));
-  crypto_generichash_update(&state, (uint8_t*)str, strlen(str));
+  //sprintf(str, "%d", mpd_status_get_volume(status));
+  //crypto_generichash_update(&state, (uint8_t*)str, strlen(str));
 
   sprintf(str, "%d", mpd_status_get_queue_version(status));
   crypto_generichash_update(&state, (uint8_t*)str, strlen(str));
