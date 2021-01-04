@@ -255,6 +255,11 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
   get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h,
                   &props);
 
+  // no printable characters
+  if (w < 0 || h < 0) {
+      return;
+  }
+
   uint8_t *buffer;
   int buf_width;
   int buf_height;
