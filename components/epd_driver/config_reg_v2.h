@@ -46,6 +46,10 @@ static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
 }
 
 static void cfg_poweron(epd_config_register_t *cfg) {
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+  // This was re-purposed as power enable.
+  cfg->ep_scan_direction = true;
+#endif
   // POWERON
   cfg->power_disable = false;
   push_cfg(cfg);
@@ -63,6 +67,10 @@ static void cfg_poweron(epd_config_register_t *cfg) {
 }
 
 static void cfg_poweroff(epd_config_register_t *cfg) {
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+  // This was re-purposed as power enable.
+  cfg->ep_scan_direction = false;
+#endif
   // POWEROFF
   cfg->pos_power_enable = false;
   push_cfg(cfg);

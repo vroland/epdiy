@@ -32,7 +32,9 @@ uint32_t skipping;
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ) ||                            \
+    defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
+
 /* 4bpp Contrast cycles in order of contrast (Darkest first).  */
 const int contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
                                    40, 50, 50, 50, 100, 200, 300};

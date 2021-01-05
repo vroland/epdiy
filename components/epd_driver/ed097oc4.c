@@ -5,7 +5,7 @@
 
 #include "xtensa/core-macros.h"
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V2_V3)
+#if defined(CONFIG_EPD_BOARD_REVISION_V2_V3) || defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
 #include "config_reg_v2.h"
 #else
 #if defined(CONFIG_EPD_BOARD_REVISION_V4)
@@ -117,7 +117,7 @@ void epd_start_frame() {
 }
 
 static inline void latch_row() {
-#if defined(CONFIG_EPD_BOARD_REVISION_V2_V3)
+#if defined(CONFIG_EPD_BOARD_REVISION_V2_V3) || defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
   config_reg.ep_latch_enable = true;
   push_cfg(&config_reg);
 

@@ -26,11 +26,16 @@ extern "C" {
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
 #define EPD_WIDTH 1600
 #define EPD_HEIGHT 1200
-#elif CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
 /// Width of the display area in pixels.
 #define EPD_WIDTH 800
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 600
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
+/// Width of the display area in pixels.
+#define EPD_WIDTH 960
+/// Height of the display area in pixels.
+#define EPD_HEIGHT 540
 #else
 #error "no display type defined!"
 #endif
