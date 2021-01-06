@@ -10,7 +10,7 @@ Rev "v2.0"
 Comp ""
 Comment1 ""
 Comment2 ""
-Comment3 "License: CC-BY-4.0"
+Comment3 "License: CC-BY-SA-4.0"
 Comment4 "Author: Valentin Roland"
 $EndDescr
 $Comp
