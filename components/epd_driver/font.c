@@ -2,7 +2,7 @@
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
-#include "lib/zlib/zlib.h"
+#include "esp32/rom/miniz.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,6 +28,11 @@ static utf_t *utf[] = {
     [4] = &(utf_t){0b00000111, 0b11110000, 0200000, 04177777, 3},
     &(utf_t){0},
 };
+
+/**
+ * static decompressor object for compressed fonts.
+ */
+static tinfl_decompressor decomp;
 
 static inline int min(int x, int y) { return x < y ? x : y; }
 static inline int max(int x, int y) { return x > y ? x : y; }
@@ -87,6 +92,20 @@ void get_glyph(const GFXfont *font, uint32_t code_point,
   return;
 }
 
+static int uncompress(uint8_t *dest, uint32_t uncompressed_size, uint8_t *source, uint32_t source_size) {
+    if (uncompressed_size == 0 || dest == NULL || source_size == 0 || source == NULL) {
+        return -1;
+    }
+    tinfl_init(&decomp);
+
+    // we know everything will fit into the buffer.
+    tinfl_status decomp_status = tinfl_decompress(&decomp, source, &source_size, dest, dest, &uncompressed_size, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+    if (decomp_status != TINFL_STATUS_DONE) {
+        return decomp_status;
+    }
+    return 0;
+}
+
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
@@ -117,8 +136,9 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer,
     bitmap = (uint8_t *)malloc(bitmap_size);
     if (bitmap == NULL && bitmap_size) {
       ESP_LOGE("font", "malloc failed.");
+      return;
     }
-    uncompress(bitmap, &bitmap_size, &font->bitmap[offset],
+    uncompress(bitmap, bitmap_size, &font->bitmap[offset],
                glyph->compressed_size);
   } else {
     bitmap = &font->bitmap[offset];
