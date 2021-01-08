@@ -578,7 +578,7 @@ Text Label 10100 1800 2    50   ~ 0
 USB_TXD
 Text Label 7500 2300 0    50   ~ 0
 EP_CKV
-Text Label 10100 2700 2    50   ~ 0
+Text Label 7500 2200 0    50   ~ 0
 EP_D0
 Text Label 10100 2300 2    50   ~ 0
 EP_D2
@@ -2568,12 +2568,6 @@ Wire Wire Line
 Wire Wire Line
 	7100 2100 7100 3100
 Wire Wire Line
-	6750 2800 7200 2800
-Wire Wire Line
-	7200 2800 7200 2200
-Wire Wire Line
-	7200 2200 8000 2200
-Wire Wire Line
 	10100 2100 9750 2100
 Wire Wire Line
 	10100 1500 9750 1500
@@ -2874,21 +2868,8 @@ F 3 "~" H 6250 5300 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	7600 4250 7900 4250
-$Comp
-L Connector:Conn_01x02_Male J5
-U 1 1 655CB8A7
-P 5750 6750
-F 0 "J5" H 5858 6931 50  0000 C CNN
-F 1 "Conn_01x02_Male" H 5858 6840 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 5750 6750 50  0001 C CNN
-F 3 "~" H 5750 6750 50  0001 C CNN
-	1    5750 6750
-	1    0    0    -1  
-$EndComp
-Text GLabel 6100 6750 2    50   Input ~ 0
+Text GLabel 5650 6700 2    50   Input ~ 0
 BAT+
-Wire Wire Line
-	5950 6750 6100 6750
 Text GLabel 12600 1700 0    50   Input ~ 0
 VBUS
 Wire Wire Line
@@ -3059,9 +3040,10 @@ L Device:R R22
 U 1 1 6653BFFD
 P 11000 5050
 F 0 "R22" H 11070 5096 50  0000 L CNN
-F 1 "200k" H 11070 5005 50  0000 L CNN
+F 1 "150k" H 11070 5005 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 10930 5050 50  0001 C CNN
 F 3 "~" H 11000 5050 50  0001 C CNN
+F 4 " C17797" H 11000 5050 50  0001 C CNN "LCSC"
 	1    11000 5050
 	1    0    0    -1  
 $EndComp
@@ -3070,9 +3052,10 @@ L Device:R R21
 U 1 1 66586D13
 P 11000 4550
 F 0 "R21" H 11070 4596 50  0000 L CNN
-F 1 "800k" H 11070 4505 50  0000 L CNN
+F 1 "680k" H 11070 4505 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 10930 4550 50  0001 C CNN
 F 3 "~" H 11000 4550 50  0001 C CNN
+F 4 " C17797" H 11000 4550 50  0001 C CNN "LCSC"
 	1    11000 4550
 	1    0    0    -1  
 $EndComp
@@ -3102,14 +3085,10 @@ Text Label 9700 4950 2    50   ~ 0
 BAT-
 Wire Wire Line
 	9300 4950 9700 4950
-Text Label 6350 6900 2    50   ~ 0
+Text Label 5900 6950 2    50   ~ 0
 BAT-
 Wire Wire Line
-	5950 6850 6050 6850
-Wire Wire Line
-	6050 6850 6050 6900
-Wire Wire Line
-	6050 6900 6350 6900
+	5600 6950 5900 6950
 $Comp
 L power:PWR_FLAG #FLG0103
 U 1 1 66A7D201
@@ -3143,4 +3122,34 @@ Wire Wire Line
 Wire Wire Line
 	11450 5200 11000 5200
 Connection ~ 11000 5200
+Text Label 6950 2800 2    50   ~ 0
+IO0
+Wire Wire Line
+	8000 2200 7500 2200
+Wire Wire Line
+	6750 2800 6950 2800
+$Comp
+L Connector:Conn_01x01_Male J5
+U 1 1 6016D7FE
+P 5400 6700
+F 0 "J5" H 5508 6881 50  0000 C CNN
+F 1 "Conn_01x01_Male" H 5508 6790 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 5400 6700 50  0001 C CNN
+F 3 "~" H 5400 6700 50  0001 C CNN
+	1    5400 6700
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x01_Male J6
+U 1 1 6016F621
+P 5400 6950
+F 0 "J6" H 5508 7131 50  0000 C CNN
+F 1 "Conn_01x01_Male" H 5508 7040 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 5400 6950 50  0001 C CNN
+F 3 "~" H 5400 6950 50  0001 C CNN
+	1    5400 6950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5650 6700 5600 6700
 $EndSCHEMATC
