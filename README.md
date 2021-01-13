@@ -1,4 +1,4 @@
-[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest) [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-kx2yqjxg-BSlEOBC_QN7IKI5RYlrXkA)
 
 EPDiy E-Paper Driver
 =======================================
@@ -42,6 +42,11 @@ Gettings Started
 ----------------
 
 For instructions and more information visit the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html)!
+
+Join discussion on EPDiy Slack channel
+----------------
+
+[![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-kx2yqjxg-BSlEOBC_QN7IKI5RYlrXkA)
 
 Troubleshooting
 ---------------
