@@ -16,12 +16,32 @@ The EPDiy driver board targets multiple E-Paper displays. As the driving method 
 Displays
 --------
 
-| Display  | Size | Resolution | Grey levels | Connector | Bom-Part
-| --:      | --:   | --:         | --: | --: | --:                  |
-| ED097OC4 | 9.7"  | 1200 x 825  | 16  | 33  | XF2M-3315-1A         |
-| ED060SC4 | 6"    | 800 x 600   | 16  | 39  | FH26W-39S-0.3SHW(60) |
-| ED097TC2 | 9.7"  | 1200 x 825  | 16  | 33  | XF2M-3315-1A         |
-| ED133UT2 | 13.3" | 1600 x 1200 | 16  | 39  | Adapter Board        |
+|Name|Size|Resolution|Compatible|Connector|Pin count|Compatible since pcb version|Notes
+| --:      | --:   | --:         | --: | --: | --:                  |--: |--: |
+|ED060SC4|6"|800 x 600|yes, tested|FH26W-39S-0.3SHW(60)|39|v2|
+|ED097OC4|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|V2|Cheap, inferior contrast
+|ED097TC2|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|V2|Slightly higher price, better contrast
+|ED097OC1|9.7"|1200 x 825|yes (should work)|XF2M-3315-1A|33|V2|Cheap, inferior performance
+|ED047TC1|4.7"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
+|ED133UT2|13.3"|1600 x 1200|yes, tested|adapter board|39|V2|Adapter Board required, also PENG133D
+|ED060XC3|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|Cheapest, good contrast and resolution
+|ED060XD4|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|
+|ED060XC5|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
+|ED060XD6|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
+|ED060XH2|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
+|ED060XC9|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
+|ED060KD1|6"|1072 x 1448|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
+|ED060KC1|6"|1072 x 1448|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
+|ED060SCF|6"|600 x 800|yes, tested|THD0515-34CL-SN|34|V5|Different flex cable shape
+|ED060SCN|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
+|ED060SCP|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
+|ED060SC7|6"|600 x 800|yes (should work) |AXT434124|34|v5|
+|ED060SCG|6"|600 x 800|yes (should work) |AXT434124|34|v5|
+|ED060SCE|6"|600 x 800|yes (should work) |AXT434124|34|v5|
+|ED060SCM|6"|600 x 800|yes (should work) |AXT434124|34|v5|
+|ED060SCT|6"|600 x 800|yes (should work) |AXT434124|34|v5|
+
+**Please note that board revision v5 is still in prototype stage!**
 
 Building It
 -----------
