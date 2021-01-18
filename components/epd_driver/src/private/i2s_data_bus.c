@@ -1,6 +1,10 @@
 #include "i2s_data_bus.h"
 #include "driver/periph_ctrl.h"
+#ifdef ARDUINO_ARCH_ESP32
+#include "rom/lldesc.h"
+#else
 #include "esp32/rom/lldesc.h"
+#endif
 #include "esp_heap_caps.h"
 #include "soc/i2s_reg.h"
 #include "soc/i2s_struct.h"
@@ -250,7 +254,7 @@ void i2s_deinit() {
   free(i2s_state.buf_b);
   free((void *)i2s_state.dma_desc_a);
   free((void *)i2s_state.dma_desc_b);
-  
+
   rtc_clk_apll_enable(0, 0, 0, 8, 0);
   periph_module_disable(PERIPH_I2S1_MODULE);
 }

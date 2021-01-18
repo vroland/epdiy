@@ -1,8 +1,8 @@
-set(app_sources "epd_driver.c"
-                "ed097oc4.c"
-                "font.c"
-                "i2s_data_bus.c"
-                "rmt_pulse.c"
-				"epd_temperature.c")
+set(app_sources "src/private/epd_driver.c"
+                "src/private/ed097oc4.c"
+                "src/private/font.c"
+                "src/private/i2s_data_bus.c"
+                "src/private/rmt_pulse.c"
+				"src/private/epd_temperature.c")
 
-idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES esp_adc_cal)
+idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src" REQUIRES esp_adc_cal)
