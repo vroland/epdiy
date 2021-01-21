@@ -2433,7 +2433,7 @@ F 2 "Package_TO_SOT_SMD:SOT-23" H 13750 3725 50  0001 L CIN
 F 3 "http://www.aosmd.com/pdfs/datasheet/AO3401A.pdf" H 13550 3800 50  0001 L CNN
 F 4 " C15127" H 13550 3800 50  0001 C CNN "LCSC"
 	1    13550 3800
-	1    0    0    -1  
+	1    0    0    1   
 $EndComp
 $Comp
 L Device:R R20
@@ -2535,7 +2535,7 @@ F 2 "Package_TO_SOT_SMD:SOT-23" H 13750 4525 50  0001 L CIN
 F 3 "http://www.aosmd.com/pdfs/datasheet/AO3401A.pdf" H 13550 4600 50  0001 L CNN
 F 4 " C15127" H 13550 4600 50  0001 C CNN "LCSC"
 	1    13550 4600
-	1    0    0    -1  
+	1    0    0    1   
 $EndComp
 Text GLabel 14250 4850 2    50   Input ~ 0
 EPD_VDD
