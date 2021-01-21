@@ -11,8 +11,9 @@ The EPDiy Driver Board
    :caption: Quickstart:
 
    about.rst
-   api.rst
    getting_started.rst
+   tips.rst
+   api.rst
 
 EPDiy is a driver board which talks to affordable E-Paper (or E-Ink) screens, which are usually sold as replacement screens for E-Book readers. Why are they interesting?
 

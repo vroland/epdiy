@@ -3,6 +3,38 @@
 Getting Started
 ===============
 
+
+Getting your Board
+------------------
+
+At the current point in time, there is no official way to buy an epdiy board.
+Fortunately, it is quite easy to order your own. There are many PCB prototype services
+that will manufacture boards for a low price.
+
+To use one of those services, upload the "Gerber files", usually provided as a zip file,
+to the service.
+Please consult the README of the epdiy repository for a link to the gerber files for the current revision.
+Some services also offer automated assembly for all or a subset of components.
+Usually, you will have to upload a bill of materials (BOM) and a placement file.
+Both are provided in the `hardware/epaper-breakout` directory.
+
+Choosing and Finding Parts
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The parts needed to assemble the epdiy board are listed in the `BOM.csv` file.
+Commodity parts like resistors, capacitors, coils and diodes are interchangable, as long as they
+fit the footprint. 
+When in doubt, use the parts listed in the BOM file.
+
+However, some parts are not as common, especially the connectors. 
+Most of them can be found on sites like eBay or AliExpress. 
+
+Tips:
+    - Use the WROVER-B module instead of other WROVER variants.
+      This module exhibits a low deep sleep current and is proven to work.
+    - The LT1945 voltage booster seems to be out of stock with some distributors,
+      but they are available cheaply from AliExpress.
+
 Calibrate VCOM
 --------------
 
@@ -84,20 +116,20 @@ To select the display type you want to use for the project (see :ref:`display_ty
 And navigate to :code:`Component config -> E-Paper driver -> Display Type`, select the appropriate option and save the configuration. You can use the defines
 ::
 
+    EPD_WIDTH
+    EPD_HEIGHT
     CONFIG_EPD_DISPLAY_TYPE_ED097OC4
     CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-    CONFIG_EPD_DISPLAY_TYPE_ED097TC2
+    CONFIG_EPD_DISPLAY_TYPE_...
 
 to make your code portable.
 
 Use with Arduino
 ----------------
 
-Using the library from arduino framework is currently not recommended,
-as it uses a pre-compiled ESP-IDF, which only allows slower SPI RAM speeds and is not 
-sufficiently configurable. 
+Support for Arduino is coming soon.
 
-However, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
+In the meantime, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
 which allows you to use the Arduino ecosystem (Except for a different build process).
 
 Generating Font Files
@@ -105,8 +137,12 @@ Generating Font Files
 
 Fonts are provided in a special header format (inspired by the Adafruit GFX library), which need to be generated from TTF fonts.
 For this purpose, the :code:`scripts/fontconvert.py` utility is provided.
+::
+    fontconvert.py [-h] [--compress] name size fontstack [fontstack ...]
+
 The following example generates a header file for Fira Code at size 10, where glyphs that are not found in Fira Code will be taken from Symbola:
 ::
     ./fontconvert.py FiraCode 10 /usr/share/fonts/TTF/FiraCode-Regular.ttf /usr/share/fonts/TTF/Symbola.ttf > ../examples/terminal/main/firacode.h
 
 You can change which unicode character codes are to be exported by modifying :code:`intervals` in :code:`fontconvert.py`.
+You can enable compression with `--compress`, which reduces the size of the generated font but comes at a performance cost.
