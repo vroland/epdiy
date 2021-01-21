@@ -11,6 +11,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "xtensa/core-macros.h"
+#include "driver/rtc_io.h"
 #include <string.h>
 
 #define RTOS_ERROR_CHECK(x)                                                    \
@@ -943,5 +944,9 @@ void epd_init() {
 }
 
 void epd_deinit(){
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+  gpio_reset_pin(CKH);
+  rtc_gpio_isolate(CKH);
+#endif
   epd_base_deinit();
 }
