@@ -112,11 +112,13 @@ void epd_start_frame() {
   config_reg.ep_stv = true;
   push_cfg(&config_reg);
   pulse_ckv_us(0, 10, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
 
   config_reg.ep_output_enable = true;
   push_cfg(&config_reg);
-
-  pulse_ckv_us(1, 1, true);
 }
 
 static inline void latch_row() {
@@ -165,12 +167,18 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 }
 
 void epd_end_frame() {
-  config_reg.ep_output_enable = false;
+  config_reg.ep_stv = false;
   push_cfg(&config_reg);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
   config_reg.ep_mode = false;
   push_cfg(&config_reg);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(0, 10, true);
+  config_reg.ep_output_enable = false;
+  push_cfg(&config_reg);
 }
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
