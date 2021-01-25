@@ -39,5 +39,8 @@ menu "E-Paper Driver"
 
         config EPD_BOARD_REVISION_V4
             bool "epdiy v4"
+
+        config EPD_BOARD_REVISION_V5
+            bool "epdiy v5"
     endchoice
 endmenu

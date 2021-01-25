@@ -8,7 +8,7 @@
 #if defined(CONFIG_EPD_BOARD_REVISION_V2_V3) || defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
 #include "config_reg_v2.h"
 #else
-#if defined(CONFIG_EPD_BOARD_REVISION_V4)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
 #include "config_reg_v4.h"
 #else
 #error "unknown revision"
@@ -36,13 +36,13 @@ void IRAM_ATTR busy_delay(uint32_t cycles) {
 }
 
 inline static void IRAM_ATTR push_cfg_bit(bool bit) {
-  fast_gpio_set_lo(CFG_CLK);
+  gpio_set_level(CFG_CLK, 0);
   if (bit) {
-    fast_gpio_set_hi(CFG_DATA);
+    gpio_set_level(CFG_DATA, 1);
   } else {
-    fast_gpio_set_lo(CFG_DATA);
+    gpio_set_level(CFG_DATA, 0);
   }
-  fast_gpio_set_hi(CFG_CLK);
+  gpio_set_level(CFG_CLK, 1);
 }
 
 void epd_base_init(uint32_t epd_row_width) {
@@ -50,11 +50,14 @@ void epd_base_init(uint32_t epd_row_width) {
   config_reg_init(&config_reg);
 
   /* Power Control Output/Off */
+  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
+  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
+  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_STR], PIN_FUNC_GPIO);
   gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V4)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
   // use latch pin as GPIO
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
   ESP_ERROR_CHECK(gpio_set_direction(V4_LATCH_ENABLE, GPIO_MODE_OUTPUT));
@@ -124,7 +127,7 @@ static inline void latch_row() {
   config_reg.ep_latch_enable = false;
   push_cfg(&config_reg);
 #else
-#if defined(CONFIG_EPD_BOARD_REVISION_V4)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
   fast_gpio_set_hi(V4_LATCH_ENABLE);
   fast_gpio_set_lo(V4_LATCH_ENABLE);
 #else

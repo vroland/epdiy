@@ -13,21 +13,29 @@ Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support 
 
 The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB v4 features a 33pin and a 39pin connector, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2. With the upcoming revision v5, even more display types will be supported! For details, refer to the table below.
 
+Revision 5 of the board is optimized for the use with LiPo batteries, featuring a LiPo charger and ultra-low deep sleep current.
 
 Building It
 -----------
 
 If you want to build a board right now, there are two possible routes:
- - Use the new v2 PCB (`hardware/epaper-breakout/gerbers_v4.zip`). This is a bit more fresh, but should work.
+
+ - Use the new v5 PCB (`hardware/epaper-breakout/gerbers_v5.zip`). 
+   **So far, I only tested a prototype of it. The newest gerbers should work, but are untested!**
+   **If you have tested them, please let me know!**
+   The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
+   Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
+   Please double check the part positioning and Rotation with your assembly service!
+   More information on the order process and where to find parts is in the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
+ 
+   Make sure to select the `V5` board revision in `idf.py menuconfig` when building the examples.
+ 
+ - Use the old v4 PCB (`hardware/epaper-breakout/gerbers_v4.zip`). This is a bit more fresh, but should work.
    The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
    Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
    Please double check the part positioning and Rotation with your assembly service!
  
    Make sure to select the `V4` board revision in `idf.py menuconfig` when building the examples.
- - Use the original v2 PCB (`hardware/epaper-breakout/gerbers_v2_rev0.zip`). 
-   However, you might run into issue #3 with some selections of parts.
-    
-   Make sure to select the `v2/v3` board revision in `idf.py menuconfig` when building the examples.
 
 Gettings Started
 ----------------

@@ -1,7 +1,11 @@
 #include "ed097oc4.h"
 
 typedef struct {
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+  bool power_enable : 1;
+#else
   bool power_disable : 1;
+#endif
   bool power_enable_vpos : 1;
   bool power_enable_vneg : 1;
   bool power_enable_gl : 1;
@@ -12,7 +16,11 @@ typedef struct {
 } epd_config_register_t;
 
 static void config_reg_init(epd_config_register_t *cfg) {
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+  cfg->power_enable = false;
+#else
   cfg->power_disable = true;
+#endif
   cfg->power_enable_vpos = false;
   cfg->power_enable_vneg = false;
   cfg->power_enable_gl = false;
@@ -39,14 +47,23 @@ static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
   push_cfg_bit(cfg->power_enable_gl);
   push_cfg_bit(cfg->power_enable_vneg);
   push_cfg_bit(cfg->power_enable_vpos);
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+  push_cfg_bit(cfg->power_enable);
+#else
   push_cfg_bit(cfg->power_disable);
+#endif
 
   fast_gpio_set_hi(CFG_STR);
+  fast_gpio_set_lo(CFG_STR);
 }
 
 static void cfg_poweron(epd_config_register_t *cfg) {
   // POWERON
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+  cfg->power_enable = true;
+#else
   cfg->power_disable = false;
+#endif
   push_cfg(cfg);
   busy_delay(100 * 240);
   cfg->power_enable_gl = true;
@@ -77,7 +94,15 @@ static void cfg_poweroff(epd_config_register_t *cfg) {
   cfg->power_enable_vneg = false;
   push_cfg(cfg);
   busy_delay(100 * 240);
+
+  cfg->ep_stv = false;
+  cfg->ep_output_enable = false;
+  cfg->ep_mode = false;
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+  cfg->power_enable = false;
+#else
   cfg->power_disable = true;
+#endif
   push_cfg(cfg);
   // END POWEROFF
 }
