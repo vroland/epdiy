@@ -52,15 +52,53 @@ typedef struct {
   int height;
 } Rect_t;
 
+
+/// Possible failures when drawing.
+enum DrawError {
+  DRAW_SUCCESS = 0x0,
+  /// No valid framebuffer packing mode was specified.
+  DRAW_INVALID_PACKING_MODE = 0x1,
+
+  /// No lookup table implementation for this mode / packing.
+  DRAW_LOOKUP_NOT_IMPLEMENTED = 0x2,
+};
+
 /// The image drawing mode.
 enum DrawMode {
-  /// Draw black / grayscale image on a white display.
-  BLACK_ON_WHITE = 1 << 0,
-  /// "Draw with white ink" on a white display.
-  WHITE_ON_WHITE = 1 << 1,
-  /// Draw with white ink on a black display.
-  WHITE_ON_BLACK = 1 << 2,
+  /// Waveform modes.
+  MODE_INIT = 0x0,
+  MODE_DU = 0x1,
+  MODE_GC16 = 0x2,
+  MODE_GC16_FAST = 0x3,
+  MODE_A2 = 0x4,
+  MODE_GL16 = 0x5,
+  MODE_GL16_FAST = 0x6,
+  MODE_DU4 = 0x7,
+  MODE_GL4 = 0xA,
+  MODE_GL16_INV = 0xB,
+
+  /// Use a vendor waveform
+  VENDOR_WAVEFORM = 0x10,
+  /// Use EPDIY built-in waveform
+  EPDIY_WAVEFORM = 0x20,
+
+  /// Framebuffer packing mode
+  MODE_PACKING_8PPB = 0x40,
+  MODE_PACKING_2PPB = 0x80,
+  MODE_PACKING_1PPB = 0x100,
+  // reserver for 4PPB mode
+
+  /// Draw on monochrome background color
+  /// Draw on a white background
+  WHITE_BACKGROUND = 0x200,
+  /// Draw on a black background
+  BLACK_BACKGROUND = 0x400,
+
+  /// Invert colors in the framebuffer (0xF = black, 0x0 = White).
+  INVERT = 0x800,
 };
+
+#define DRAW_DEFAULT (EPDIY_WAVEFORM | MODE_GC16 | WHITE_BACKGROUND)
 
 /// Font drawing flags
 enum DrawFlags {
@@ -166,10 +204,6 @@ void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
  */
 void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
                                     enum DrawMode mode,
-                                    const bool *drawn_lines);
-
-void IRAM_ATTR epd_draw_image_lines_waveform(Rect_t area, const uint8_t *data,
-                                    enum DrawMode _mode,
                                     const bool *drawn_lines);
 
 void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr,

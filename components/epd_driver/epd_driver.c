@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "xtensa/core-macros.h"
 #include "driver/rtc_io.h"
+#include "ED097TC2.h"
 #include <string.h>
 
 #define RTOS_ERROR_CHECK(x)                                                    \
@@ -86,7 +87,12 @@ typedef struct {
   SemaphoreHandle_t start_smphr;
   Rect_t area;
   int frame;
+  /// waveform mode when using vendor waveforms
+  int waveform_mode;
+  /// waveform range when using vendor waveforms
+  int waveform_range;
   enum DrawMode mode;
+  enum DrawError error;
   const bool *drawn_lines;
 } OutputParams;
 
@@ -189,7 +195,7 @@ void reorder_line_buffer(uint32_t *line_data) {
 }
 
 void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data,
-                                   uint8_t *epd_input, uint8_t k,
+                                   uint8_t *epd_input,
                                    const uint8_t *conversion_lut) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
@@ -282,6 +288,7 @@ const DRAM_ATTR uint32_t lut_1bpp_white[256] = {
 void IRAM_ATTR calc_epd_input_1bpp(const uint8_t *line_data, uint8_t *epd_input,
                                    enum DrawMode mode) {
 
+/*
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
   const uint32_t *lut = NULL;
   switch (mode) {
@@ -304,9 +311,13 @@ void IRAM_ATTR calc_epd_input_1bpp(const uint8_t *line_data, uint8_t *epd_input,
     uint8_t v2 = *(line_data++);
     wide_epd_input[j] = (lut[v1] << 16) | lut[v2];
   }
+
+*/
 }
 
 static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
+  memset(lut_mem, 0x55, (1 << 16));
+  /*
   switch (mode) {
   case BLACK_ON_WHITE:
     memset(lut_mem, 0x55, (1 << 16));
@@ -319,13 +330,16 @@ static void IRAM_ATTR reset_lut(uint8_t *lut_mem, enum DrawMode mode) {
     ESP_LOGW("epd_driver", "unknown draw mode %d!", mode);
     break;
   }
+  */
 }
 
 static void IRAM_ATTR update_LUT(uint8_t *lut_mem, uint8_t k,
                                  enum DrawMode mode) {
+  /*
   if (mode == BLACK_ON_WHITE || mode == WHITE_ON_WHITE) {
     k = 15 - k;
   }
+  */
 
   // reset the pixels which are not to be lightened / darkened
   // any longer in the current frame
@@ -677,29 +691,123 @@ void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
 }
 
 void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data) {
-  epd_draw_image(area, data, BLACK_ON_WHITE);
+  epd_draw_image(area, data, DRAW_DEFAULT);
+}
+
+void IRAM_ATTR waveform_lut(uint8_t* lut, uint8_t mode, int range, int frame) {
+    const uint8_t* p_lut = waveform_info.mode_data[mode]->range_data[range]->luts + (16 * 4 * frame);
+    for (uint8_t to = 0; to < 16; to++) {
+        for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
+            uint8_t index = (to << 4) | (from_packed * 4);
+            uint8_t packed = *(p_lut++);
+            lut[index] = (packed >> 6) & 3;
+            lut[index + 1] = (packed >> 4) & 3;
+            lut[index + 2] = (packed >> 2) & 3;
+            lut[index + 3] = (packed >> 0) & 3;
+            //printf("%2X%2X%2X%2X (%d)", lut[index], lut[index + 1], lut[index + 2], lut[index + 3], index);
+        }
+        //printf("\n");
+    }
+    uint32_t index = 0x100;
+    for (uint8_t s = 2; s <=6; s+=2) {
+      for (int i=0; i<0x100; i++) {
+        lut[index] = lut[index % 0x100] << s;
+        index++;
+      }
+    }
+}
+
+void IRAM_ATTR waveform_lut_static_from(uint8_t* lut, uint8_t from, uint8_t mode, int range, int frame) {
+    const uint8_t* p_lut = waveform_info.mode_data[mode]->range_data[range]->luts + (16 * 4 * frame);
+
+    /// index into the packed "from" row
+    uint8_t fi = from >> 2;
+    /// bit shift amount for the packed "from" row
+    uint8_t fs = 2 * (from & 3);
+
+    // FIXME: Optimize this
+    for (uint8_t t1 = 0; t1 < 16; t1++) {
+      uint8_t v1 = (p_lut[(t1 << 2) + fi] >> fs) << 6;
+      uint32_t s1 = t1 << 12;
+      for (uint8_t t2 = 0; t2 < 16; t2++) {
+        uint8_t v2 = (p_lut[(t2 << 2) + fi] >> fs) << 4;
+        uint32_t s2 = t2 << 8;
+        for (uint8_t t3 = 0; t3 < 16; t3++) {
+          uint8_t v3 = (p_lut[(t3 << 2) + fi] >> fs) << 2;
+          uint32_t s3 = t3 << 4;
+          for (uint8_t t4 = 0; t4 < 16; t4++) {
+            uint8_t v4 = (p_lut[(t4 << 2) + fi] >> fs) << 0;
+            uint32_t s4 = t4;
+            lut[s1 | s2 | s3 | s4 ] = v1 | v2 | v3 | v4;
+          }
+        }
+      }
+    }
+}
+
+static inline uint8_t get_pixel_value(uint32_t in, const uint8_t* conversion_lut) {
+    uint8_t out = (conversion_lut + 0x100)[in & 0xFF];
+    in = in >> 8;
+    out |= conversion_lut[in & 0xFF];
+    in = in >> 8;
+    out |= (conversion_lut + 0x300)[in & 0xFF];
+    in = in >> 8;
+    out |= (conversion_lut + 0x200)[in];
+    return out;
+}
+
+
+void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
+                                   uint8_t *epd_input,
+                                   const uint8_t *conversion_lut) {
+
+
+  // this is reversed for little-endian, but this is later compensated
+  // through the output peripheral.
+  for (uint32_t j = 0; j < EPD_WIDTH / 4; j+=4) {
+    epd_input[j + 2] = get_pixel_value(*(ld++), conversion_lut);
+    epd_input[j + 3] = get_pixel_value(*(ld++), conversion_lut);
+    epd_input[j + 0] = get_pixel_value(*(ld++), conversion_lut);
+    epd_input[j + 1] = get_pixel_value(*(ld++), conversion_lut);
+  }
 }
 
 void IRAM_ATTR provide_out(OutputParams *params) {
   while (true) {
-    xSemaphoreTake(params->start_smphr, portMAX_DELAY);
+    // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
+    uint8_t line[EPD_WIDTH];
+    memset(line, 255, EPD_WIDTH);
 
-    uint8_t line[EPD_WIDTH / 2];
-    memset(line, 255, EPD_WIDTH / 2);
+    xSemaphoreTake(params->start_smphr, portMAX_DELAY);
     Rect_t area = params->area;
     const uint8_t *ptr = params->data_ptr;
 
-    if (params->frame == 0) {
-      reset_lut(conversion_lut, params->mode);
-    }
+    // number of pixels per byte of input data
+    int ppB = 0;
+    int bytes_per_line = 0;
+    int width_divider = 0;
 
-    update_LUT(conversion_lut, params->frame, params->mode);
+    if (params->mode & MODE_PACKING_1PPB) {
+      ppB = 1;
+      bytes_per_line = area.width;
+      width_divider = 1;
+    } else if (params->mode & MODE_PACKING_2PPB) {
+      ppB = 2;
+      bytes_per_line = area.width / 2 + area.width % 2;
+      width_divider = 2;
+    } else if (params->mode & MODE_PACKING_8PPB) {
+      ppB = 8;
+      bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
+      width_divider = 8;
+    } else {
+      params->error |= DRAW_INVALID_PACKING_MODE;
+    }
 
     if (area.x < 0) {
-      ptr += -area.x / 2;
+      ptr += -area.x / width_divider;
     }
     if (area.y < 0) {
-      ptr += (area.width / 2 + area.width % 2) * -area.y;
+      ptr += bytes_per_line * -area.y;
     }
 
     for (int i = 0; i < EPD_HEIGHT; i++) {
@@ -707,46 +815,67 @@ void IRAM_ATTR provide_out(OutputParams *params) {
         continue;
       }
       if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
-        ptr += area.width / 2 + area.width % 2;
+        ptr += bytes_per_line;
         continue;
       }
 
-      uint32_t *lp;
+      uint32_t *lp = (uint32_t *)line;
       bool shifted = false;
-      if (area.width == EPD_WIDTH && area.x == 0) {
+      if (area.width == EPD_WIDTH && area.x == 0 && !params->error) {
         lp = (uint32_t *)ptr;
-        ptr += EPD_WIDTH / 2;
-      } else {
+        ptr += bytes_per_line;
+      } else if (!params->error) {
         uint8_t *buf_start = (uint8_t *)line;
-        uint32_t line_bytes = area.width / 2 + area.width % 2;
+        uint32_t line_bytes = bytes_per_line;
         if (area.x >= 0) {
-          buf_start += area.x / 2;
+          buf_start += area.x / width_divider;
         } else {
           // reduce line_bytes to actually used bytes
-          line_bytes += area.x / 2;
+          line_bytes += area.x / width_divider;
         }
         line_bytes =
-            min(line_bytes, EPD_WIDTH / 2 - (uint32_t)(buf_start - line));
+            min(line_bytes, bytes_per_line - (uint32_t)(buf_start - line));
         memcpy(buf_start, ptr, line_bytes);
-        ptr += area.width / 2 + area.width % 2;
+        ptr += bytes_per_line;
 
-        // mask last nibble for uneven width
-        if (area.width % 2 == 1 &&
-            area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
-          *(buf_start + line_bytes - 1) |= 0xF0;
-        }
-        if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
-          shifted = true;
-          // shift one nibble to right
-          nibble_shift_buffer_right(
-              buf_start, min(line_bytes + 1, (uint32_t)line + EPD_WIDTH / 2 -
-                                                 (uint32_t)buf_start));
+        /// consider half-byte shifts in two-pixel-per-Byte mode.
+        if (ppB == 2) {
+          // mask last nibble for uneven width
+          if (area.width % 2 == 1 &&
+              area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
+            *(buf_start + line_bytes - 1) |= 0xF0;
+          }
+          if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
+            shifted = true;
+            uint32_t remaining = (uint32_t)line + EPD_WIDTH / 2 - (uint32_t)buf_start;
+            uint32_t to_shift = min(line_bytes + 1, remaining);
+            // shift one nibble to right
+            nibble_shift_buffer_right(buf_start, to_shift);
+          }
+        // consider bit shifts in bit buffers
+        } else if (ppB == 8) {
+          // mask last n bits if width is not divisible by 8
+          if (area.width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
+            uint8_t mask = 0;
+            for (int s = 0; s < area.width % 8; s++) {
+              mask = (mask << 1) | 1;
+            }
+            *(buf_start + line_bytes - 1) &= mask;
+          }
+
+          if (area.x % 8 != 0 && area.x < EPD_WIDTH) {
+            // shift to right
+            shifted = true;
+            uint32_t remaining = (uint32_t)line + EPD_WIDTH / 8 - (uint32_t)buf_start;
+            uint32_t to_shift = min(line_bytes + 1, remaining);
+            bit_shift_buffer_right(buf_start, to_shift, area.x % 8);
+          }
         }
         lp = (uint32_t *)line;
       }
       xQueueSendToBack(output_queue, lp, portMAX_DELAY);
       if (shifted) {
-        memset(line, 255, EPD_WIDTH / 2);
+        memset(line, 255, EPD_WIDTH / width_divider);
       }
     }
 
@@ -760,6 +889,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
 
     Rect_t area = params->area;
     const int *contrast_lut = contrast_cycles_4;
+    /*
     switch (params->mode) {
     case WHITE_ON_WHITE:
     case BLACK_ON_WHITE:
@@ -769,27 +899,66 @@ void IRAM_ATTR feed_display(OutputParams *params) {
       contrast_lut = contrast_cycles_4_white;
       break;
     }
+    */
+    enum DrawMode mode = params->mode;
+    int frame_time = 10;
+
+    // use approximated waveforms
+    if (mode & EPDIY_WAVEFORM) {
+      if (params->frame == 0) {
+        reset_lut(conversion_lut, mode);
+      }
+
+      update_LUT(conversion_lut, params->frame, mode);
+      frame_time = contrast_lut[params->frame];
+
+    // use vendor waveforms
+    } else if (mode & VENDOR_WAVEFORM) {
+      if (mode & MODE_PACKING_2PPB && mode & WHITE_BACKGROUND) {
+        waveform_lut_static_from(conversion_lut, 0x0F, params->waveform_mode, params->waveform_range, params->frame);
+      } else if (mode & MODE_PACKING_2PPB && mode & BLACK_BACKGROUND) {
+        waveform_lut_static_from(conversion_lut, 0x00, params->waveform_mode, params->waveform_range, params->frame);
+      } else if (mode & MODE_PACKING_1PPB) {
+        waveform_lut(conversion_lut, params->waveform_mode, params->waveform_range, params->frame);
+      } else {
+        params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+      }
+    }
+
+    void (*input_calc_func)(const uint32_t*, uint8_t*, const uint8_t*) = NULL;
+    if (mode & MODE_PACKING_2PPB) {
+      input_calc_func = &calc_epd_input_4bpp;
+    } else if (mode & (MODE_PACKING_1PPB | VENDOR_WAVEFORM)) {
+      input_calc_func = &calc_epd_input_1ppB;
+    } else {
+      params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+    }
+
+    if (!input_calc_func) {
+      ESP_LOGE("epdiy", "invalid draw mode");
+    }
 
     epd_start_frame();
     for (int i = 0; i < EPD_HEIGHT; i++) {
       if (i < area.y || i >= area.y + area.height) {
-        skip_row(contrast_lut[params->frame]);
+        skip_row(frame_time);
         continue;
       }
       if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
-        skip_row(contrast_lut[params->frame]);
+        skip_row(frame_time);
         continue;
       }
-      uint8_t output[EPD_WIDTH / 2];
+      uint8_t output[EPD_WIDTH];
       xQueueReceive(output_queue, output, portMAX_DELAY);
-      calc_epd_input_4bpp((uint32_t *)output, epd_get_current_buffer(),
-                          params->frame, conversion_lut);
-      write_row(contrast_lut[params->frame]);
+      if (!params->error) {
+        (*input_calc_func)((uint32_t*)output, epd_get_current_buffer(), conversion_lut);
+      }
+      write_row(frame_time);
     }
     if (!skipping) {
       // Since we "pipeline" row output, we still have to latch out the last
       // row.
-      write_row(contrast_lut[params->frame]);
+      write_row(frame_time);
     }
     epd_end_frame();
 
@@ -890,20 +1059,36 @@ void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
                                     const bool *drawn_lines) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
-  uint8_t frame_count = 15;
+
+  int waveform_range = 7;
+  int waveform_mode = 0;
+  uint8_t frame_count = 0;
+  if (mode & EPDIY_WAVEFORM) {
+    frame_count = 15;
+  } else if (mode & VENDOR_WAVEFORM) {
+    waveform_mode = mode & 0x0F;
+    frame_count = waveform_info.mode_data[waveform_mode]->range_data[waveform_range]->phases;
+    ESP_LOGI("epdiy", "using waveform mode %d with %d frames", waveform_mode, frame_count);
+  }
 
   for (uint8_t k = 0; k < frame_count; k++) {
     uint64_t frame_start = esp_timer_get_time() / 1000;
     fetch_params.area = area;
     fetch_params.data_ptr = data;
     fetch_params.frame = k;
+    fetch_params.waveform_range = waveform_range;
+    fetch_params.waveform_mode = waveform_mode;
     fetch_params.mode = mode;
+    fetch_params.error = DRAW_SUCCESS;
     fetch_params.drawn_lines = drawn_lines;
 
     feed_params.area = area;
     feed_params.data_ptr = data;
     feed_params.frame = k;
+    feed_params.waveform_range = waveform_range;
+    feed_params.waveform_mode = waveform_mode;
     feed_params.mode = mode;
+    feed_params.error = DRAW_SUCCESS;
     feed_params.drawn_lines = drawn_lines;
 
     xSemaphoreGive(fetch_params.start_smphr);
@@ -940,7 +1125,7 @@ void epd_init() {
 
   conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
   assert(conversion_lut != NULL);
-  output_queue = xQueueCreate(32, EPD_WIDTH / 2);
+  output_queue = xQueueCreate(32, EPD_WIDTH);
 }
 
 void epd_deinit(){

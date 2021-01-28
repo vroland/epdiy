@@ -338,7 +338,7 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
 void writeln(const GFXfont *font, const char *string, int *cursor_x,
              int *cursor_y, uint8_t *framebuffer) {
   return write_mode(font, string, cursor_x, cursor_y, framebuffer,
-                    BLACK_ON_WHITE, NULL);
+                    DRAW_DEFAULT, NULL);
 }
 
 void write_string(const GFXfont *font, const char *string, int *cursor_x,
