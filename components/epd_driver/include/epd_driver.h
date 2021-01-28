@@ -213,13 +213,6 @@ void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
                                     enum DrawMode mode,
                                     const bool *drawn_lines);
 
-void IRAM_ATTR epd_draw_frame_1bit(Rect_t area, const uint8_t *ptr,
-                                   enum DrawMode mode, int time);
-
-void IRAM_ATTR epd_draw_frame_1bit_lines(Rect_t area, const uint8_t *ptr,
-                                         enum DrawMode mode, int time,
-                                         const bool *drawn_lines);
-
 /**
  * @returns Rectancle representing the whole screen area.
  */
