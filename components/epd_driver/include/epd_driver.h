@@ -82,23 +82,30 @@ enum DrawMode {
   /// Use EPDIY built-in waveform
   EPDIY_WAVEFORM = 0x20,
 
-  /// Framebuffer packing mode
+  // Framebuffer packing modes
+  /// 1 bit-per-pixel framebuffer with 0 = black, 1 = white.
+  /// MSB is left is the leftmost pixel, LSB the rightmost pixel.
   MODE_PACKING_8PPB = 0x40,
+  /// 4 bit-per pixel framebuffer with 0x0 = black, 0xF = white.
+  /// The upper nibble corresponds to the left pixel.
   MODE_PACKING_2PPB = 0x80,
-  MODE_PACKING_1PPB = 0x100,
+  /// A difference image with one pixel per byte.
+  /// The upper nibble marks the "from" color,
+  /// the lower nibble the "to" color.
+  MODE_PACKING_1PPB_DIFFERENCE = 0x100,
   // reserver for 4PPB mode
 
   /// Draw on monochrome background color
   /// Draw on a white background
-  WHITE_BACKGROUND = 0x200,
+  PREVIOUSLY_WHITE = 0x200,
   /// Draw on a black background
-  BLACK_BACKGROUND = 0x400,
+  PREVIOUSLY_BLACK = 0x400,
 
   /// Invert colors in the framebuffer (0xF = black, 0x0 = White).
   INVERT = 0x800,
 };
 
-#define DRAW_DEFAULT (EPDIY_WAVEFORM | MODE_GC16 | WHITE_BACKGROUND)
+#define DRAW_DEFAULT (EPDIY_WAVEFORM | MODE_GC16 | PREVIOUSLY_WHITE)
 
 /// Font drawing flags
 enum DrawFlags {
