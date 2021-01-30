@@ -20,8 +20,13 @@
 #include "epd_driver.h"
 #include "st.h"
 
+/* USB */
 #define USB_TXD  (GPIO_NUM_1)
 #define SERIAL_RXD  (GPIO_NUM_3)
+
+/* GPIO 13 14 */
+#define USB_TXD  (GPIO_NUM_14)
+#define SERIAL_RXD  (GPIO_NUM_13)
 
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
