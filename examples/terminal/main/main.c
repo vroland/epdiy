@@ -91,7 +91,7 @@ void app_main() {
 
   // Still log to the serial output
   // Needed if reusing the USB TX/RX
-  esp_log_set_vprintf(log_to_uart);
+  //esp_log_set_vprintf(log_to_uart);
 
   ESP_LOGI("term", "listening\n");
 
