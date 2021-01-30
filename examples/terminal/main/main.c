@@ -45,9 +45,9 @@ int max(int a, int b) {
   return a > b ? a : b;
 }
 
-void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
+void delay(uint64_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
-uint32_t millis() { return esp_timer_get_time() / 1000; }
+uint64_t millis() { return esp_timer_get_time() / 1000; }
 
 int log_to_uart(const char* fmt, va_list args) {
     char buffer[256];
