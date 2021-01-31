@@ -3066,7 +3066,7 @@ void epd_render(void) {
       uint8_t* mask_start = render_mask + min_y * EPD_WIDTH / 8;
       bool* dirtyness_start = boolean_line_dirtyness + min_y;
 
-      uint32_t time_since_poweron_ms = (esp_timer_get_time() - t_poweron) / 1000;
+      uint64_t time_since_poweron_ms = (esp_timer_get_time() - t_poweron) / 1000;
       // poweron takes ~10ms until all capacitors are charged
       if (time_since_poweron_ms < 10) {
         vTaskDelay(10 - time_since_poweron_ms);
