@@ -2987,9 +2987,9 @@ static void render_line() {
 }
 
 static void draw_mask(Rect_t area, uint8_t* mask, bool* dirtyness) {
-    uint32_t start = esp_timer_get_time();
+    uint64_t start = esp_timer_get_time();
     epd_draw_frame_1bit_lines(area, mask, BLACK_ON_WHITE, 200, dirtyness);
-    uint32_t time_ms = (esp_timer_get_time() - start) / 1000;
+    uint64_t time_ms = (esp_timer_get_time() - start) / 1000;
     // The particles must be given ~20ms to follow the applied charge.
     if (time_ms < 20) {
       vTaskDelay(20 - time_ms);
@@ -3045,7 +3045,7 @@ void epd_render(void) {
     screen_tainted = 1;
 
     epd_poweron();
-    uint32_t t_poweron = esp_timer_get_time();
+    uint64_t t_poweron = esp_timer_get_time();
 
     bool boolean_line_dirtyness[EPD_HEIGHT];
     for (int i=0; i < EPD_HEIGHT; i++) {
