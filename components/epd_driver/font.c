@@ -329,7 +329,7 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
     Rect_t area = {
         .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
-    epd_draw_image(area, buffer, mode);
+    epd_draw_image(area, buffer, NULL);
 
     free(buffer);
   }

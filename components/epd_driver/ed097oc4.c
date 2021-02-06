@@ -2,6 +2,8 @@
 #include "esp_timer.h"
 #include "i2s_data_bus.h"
 #include "rmt_pulse.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "xtensa/core-macros.h"
 
@@ -87,7 +89,7 @@ void epd_base_init(uint32_t epd_row_width) {
   rmt_pulse_init(CKV);
 }
 
-void epd_poweron() { cfg_poweron(&config_reg); }
+void epd_poweron() { cfg_poweron(&config_reg);  }
 
 void epd_poweroff() { cfg_poweroff(&config_reg); }
 
@@ -107,11 +109,11 @@ void epd_start_frame() {
   // This is very timing-sensitive!
   config_reg.ep_stv = false;
   push_cfg(&config_reg);
-  busy_delay(240);
-  pulse_ckv_us(10, 10, false);
+  //busy_delay(240);
+  pulse_ckv_us(100, 100, false);
   config_reg.ep_stv = true;
   push_cfg(&config_reg);
-  pulse_ckv_us(0, 10, true);
+  //pulse_ckv_us(0, 10, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
@@ -179,6 +181,9 @@ void epd_end_frame() {
   pulse_ckv_us(0, 10, true);
   config_reg.ep_output_enable = false;
   push_cfg(&config_reg);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
 }
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }

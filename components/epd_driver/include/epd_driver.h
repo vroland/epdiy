@@ -7,6 +7,8 @@ extern "C" {
 
 #pragma once
 #include "esp_attr.h"
+#include "epd_waveforms.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -51,6 +53,29 @@ typedef struct {
   /// Area / image height, must be positive.
   int height;
 } Rect_t;
+
+typedef struct {
+  int phases;
+  uint8_t const *luts;
+} epd_waveform_t;
+
+typedef struct {
+  uint8_t type;
+  uint8_t temp_ranges;
+  epd_waveform_t const *range_data[14];
+} epd_waveform_mode_t;
+
+typedef struct {
+  int min;
+  int max;
+} epd_waveform_temp_interval_t;
+
+typedef struct {
+  uint8_t num_modes;
+  uint8_t num_temp_ranges;
+  epd_waveform_mode_t const *mode_data[8];
+  epd_waveform_temp_interval_t temp_intervals[14];
+} epd_waveform_info_t;
 
 
 /// Possible failures when drawing.
@@ -192,10 +217,11 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  * multiple rows, images of uneven width must add a padding nibble per line.
  * @param mode: Configure image color and assumptions of the display state.
  */
-void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
-                              enum DrawMode mode);
+//void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
+//                              enum DrawMode mode);
 
 /**
+ * FIXME: update
  * Same as epd_draw_image, but with the option to specify
  * which lines of the image should be drawn.
  *
@@ -209,9 +235,16 @@ void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
  * @param drawn_lines: Optional line mask.
  *   If not NULL, only draw lines which are marked as `true`.
  */
-void IRAM_ATTR epd_draw_image_lines(Rect_t area, const uint8_t *data,
-                                    enum DrawMode mode,
-                                    const bool *drawn_lines);
+enum DrawError IRAM_ATTR epd_draw_base(Rect_t area,
+                            const uint8_t *data,
+                            enum DrawMode mode,
+                            int temperature,
+                            const bool *drawn_lines,
+                            const epd_waveform_info_t *waveform);
+
+enum DrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform);
+
+void epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
 /**
  * @returns Rectancle representing the whole screen area.
