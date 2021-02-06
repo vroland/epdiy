@@ -418,8 +418,8 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     skipping = 0;
     Rect_t area = params->area;
     const int *contrast_lut = contrast_cycles_4;
-    enum DrawMode mode = params->mode;
-    int frame_time = 10;
+    enum EpdDrawMode mode = params->mode;
+    int frame_time = 20;
 
     // use approximated waveforms
     if (mode & EPDIY_WAVEFORM) {

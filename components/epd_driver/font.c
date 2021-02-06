@@ -69,30 +69,27 @@ static uint32_t next_cp(const uint8_t **string) {
   return codep;
 }
 
-static FontProperties font_properties_default() {
-  FontProperties props = {
+static EpdFontProperties font_properties_default() {
+  EpdFontProperties props = {
       .fg_color = 0, .bg_color = 15, .fallback_glyph = 0, .flags = 0};
   return props;
 }
 
-void get_glyph(const GFXfont *font, uint32_t code_point,
-               const GFXglyph **glyph) {
-  UnicodeInterval *intervals = font->intervals;
-  *glyph = NULL;
+const EpdGlyph* epd_get_glyph(const EpdFont *font, uint32_t code_point) {
+  const EpdUnicodeInterval *intervals = font->intervals;
   for (int i = 0; i < font->interval_count; i++) {
-    UnicodeInterval *interval = &intervals[i];
+    const EpdUnicodeInterval *interval = &intervals[i];
     if (code_point >= interval->first && code_point <= interval->last) {
-      *glyph = &font->glyph[interval->offset + (code_point - interval->first)];
-      return;
+      return &font->glyph[interval->offset + (code_point - interval->first)];
     }
     if (code_point < interval->first) {
-      return;
+      return NULL;
     }
   }
-  return;
+  return NULL;
 }
 
-static int uncompress(uint8_t *dest, uint32_t uncompressed_size, uint8_t *source, uint32_t source_size) {
+static int uncompress(uint8_t *dest, uint32_t uncompressed_size, const uint8_t *source, uint32_t source_size) {
     if (uncompressed_size == 0 || dest == NULL || source_size == 0 || source == NULL) {
         return -1;
     }
@@ -109,20 +106,18 @@ static int uncompress(uint8_t *dest, uint32_t uncompressed_size, uint8_t *source
 /*!
    @brief   Draw a single character to a pre-allocated buffer.
 */
-static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer,
+static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffer,
                                 int *cursor_x, int cursor_y, uint16_t buf_width,
                                 uint16_t buf_height, uint32_t cp,
-                                const FontProperties *props) {
+                                const EpdFontProperties *props) {
 
-  const GFXglyph *glyph;
-  get_glyph(font, cp, &glyph);
-
+  const EpdGlyph *glyph = epd_get_glyph(font, cp);
   if (!glyph) {
-    get_glyph(font, props->fallback_glyph, &glyph);
+    glyph = epd_get_glyph(font, props->fallback_glyph);
   }
 
   if (!glyph) {
-    return;
+    return DRAW_GLYPH_FALLBACK_FAILED;
   }
 
   uint32_t offset = glyph->data_offset;
@@ -131,15 +126,16 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer,
 
   int byte_width = (width / 2 + width % 2);
   unsigned long bitmap_size = byte_width * height;
-  uint8_t *bitmap = NULL;
+  const uint8_t *bitmap = NULL;
   if (font->compressed) {
-    bitmap = (uint8_t *)malloc(bitmap_size);
-    if (bitmap == NULL && bitmap_size) {
+    uint8_t* tmp_bitmap = (uint8_t *)malloc(bitmap_size);
+    if (tmp_bitmap == NULL && bitmap_size) {
       ESP_LOGE("font", "malloc failed.");
-      return;
+      return DRAW_FAILED_ALLOC;
     }
-    uncompress(bitmap, bitmap_size, &font->bitmap[offset],
+    uncompress(tmp_bitmap, bitmap_size, &font->bitmap[offset],
                glyph->compressed_size);
+    bitmap = tmp_bitmap;
   } else {
     bitmap = &font->bitmap[offset];
   }
@@ -179,23 +175,23 @@ static void IRAM_ATTR draw_char(const GFXfont *font, uint8_t *buffer,
     }
   }
   if (font->compressed) {
-    free(bitmap);
+    free((uint8_t*)bitmap);
   }
   *cursor_x += glyph->advance_x;
+  return DRAW_SUCCESS;
 }
 
 /*!
  * @brief Calculate the bounds of a character when drawn at (x, y), move the
  * cursor (*x) forward, adjust the given bounds.
  */
-static void get_char_bounds(const GFXfont *font, uint32_t cp, int *x, int *y,
+static void get_char_bounds(const EpdFont *font, uint32_t cp, int *x, int *y,
                             int *minx, int *miny, int *maxx, int *maxy,
-                            const FontProperties *props) {
-  const GFXglyph *glyph;
-  get_glyph(font, cp, &glyph);
+                            const EpdFontProperties *props) {
+  const EpdGlyph *glyph = epd_get_glyph(font, cp);
 
   if (!glyph) {
-    get_glyph(font, props->fallback_glyph, &glyph);
+    glyph = epd_get_glyph(font, props->fallback_glyph);
   }
 
   if (!glyph) {
@@ -224,11 +220,12 @@ static void get_char_bounds(const GFXfont *font, uint32_t cp, int *x, int *y,
   *x += glyph->advance_x;
 }
 
-void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y,
+void epd_get_text_bounds(const EpdFont *font, const char *string,
+                     const int *x, const int *y,
                      int *x1, int *y1, int *w, int *h,
-                     const FontProperties *properties) {
+                     const EpdFontProperties *properties) {
 
-  FontProperties props;
+  EpdFontProperties props;
   if (properties == NULL) {
     props = font_properties_default();
   } else {
@@ -244,9 +241,11 @@ void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y,
   }
   int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   int original_x = *x;
+  int temp_x = *x;
+  int temp_y = *y;
   uint32_t c;
   while ((c = next_cp((const uint8_t **)&string))) {
-    get_char_bounds(font, c, x, y, &minx, &miny, &maxx, &maxy, &props);
+    get_char_bounds(font, c, &temp_x, &temp_y, &minx, &miny, &maxx, &maxy, &props);
   }
   *x1 = min(original_x, minx);
   *w = maxx - *x1;
@@ -254,15 +253,17 @@ void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y,
   *h = maxy - miny;
 }
 
-void write_mode(const GFXfont *font, const char *string, int *cursor_x,
-                int *cursor_y, uint8_t *framebuffer, enum DrawMode mode,
-                const FontProperties *properties) {
+static enum EpdDrawError epd_write_line(
+        const EpdFont *font, const char *string, int *cursor_x,
+        int *cursor_y, uint8_t *framebuffer, enum EpdDrawMode mode,
+        const EpdFontProperties *properties)
+{
 
   if (*string == '\0') {
-    return;
+    return DRAW_SUCCESS;
   }
 
-  FontProperties props;
+  EpdFontProperties props;
   if (properties == NULL) {
     props = font_properties_default();
   } else {
@@ -272,12 +273,12 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
   int x1 = 0, y1 = 0, w = 0, h = 0;
   int tmp_cur_x = *cursor_x;
   int tmp_cur_y = *cursor_y;
-  get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h,
+  epd_get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h,
                   &props);
 
   // no printable characters
   if (w < 0 || h < 0) {
-      return;
+      return DRAW_NO_DRAWABLE_CHARACTERS;
   }
 
   uint8_t *buffer;
@@ -295,6 +296,9 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
     buf_width = (w / 2 + w % 2);
     buf_height = h;
     buffer = (uint8_t *)malloc(buf_width * buf_height);
+    if (buffer == NULL) {
+        return DRAW_FAILED_ALLOC;
+    }
     memset(buffer, 255, buf_width * buf_height);
     local_cursor_y = buf_height - baseline_height;
   } else {
@@ -317,8 +321,9 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
       epd_draw_hline(local_cursor_x, l, w, bg << 4, buffer);
     }
   }
+  enum EpdDrawError err = DRAW_SUCCESS;
   while ((c = next_cp((const uint8_t **)&string))) {
-    draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width,
+    err |= draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width,
               buf_height, c, &props);
   }
 
@@ -333,34 +338,40 @@ void write_mode(const GFXfont *font, const char *string, int *cursor_x,
 
     free(buffer);
   }
+  return err;
 }
 
-void writeln(const GFXfont *font, const char *string, int *cursor_x,
+enum EpdDrawError epd_write_string(const EpdFont *font, const char *string, int *cursor_x,
              int *cursor_y, uint8_t *framebuffer) {
-  return write_mode(font, string, cursor_x, cursor_y, framebuffer,
+  return epd_write_base(font, string, cursor_x, cursor_y, framebuffer,
                     DRAW_DEFAULT, NULL);
 }
 
-void write_string(const GFXfont *font, const char *string, int *cursor_x,
-                  int *cursor_y, uint8_t *framebuffer) {
+enum EpdDrawError epd_write_base(
+        const EpdFont *font, const char *string, int *cursor_x,
+        int *cursor_y, uint8_t *framebuffer, enum EpdDrawMode mode,
+        const EpdFontProperties *properties
+) {
   char *token, *newstring, *tofree;
   if (string == NULL) {
     ESP_LOGE("font.c", "cannot draw a NULL string!");
-    return;
+    return DRAW_STRING_INVALID;
   }
   tofree = newstring = strdup(string);
   if (newstring == NULL) {
     ESP_LOGE("font.c", "cannot allocate string copy!");
-    return;
+    return DRAW_FAILED_ALLOC;
   }
 
+  enum EpdDrawError err = DRAW_SUCCESS;
   // taken from the strsep manpage
   int line_start = *cursor_x;
   while ((token = strsep(&newstring, "\n")) != NULL) {
     *cursor_x = line_start;
-    writeln(font, token, cursor_x, cursor_y, framebuffer);
+    err |= epd_write_line(font, token, cursor_x, cursor_y, framebuffer, mode, properties);
     *cursor_y += font->advance_y;
   }
 
   free(tofree);
+  return err;
 }

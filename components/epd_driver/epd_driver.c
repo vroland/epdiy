@@ -151,7 +151,7 @@ void epd_fill_rect(int x, int y, int w, int h, uint8_t color,
   }
 }
 
-void epd_write_line(int x0, int y0, int x1, int y1, uint8_t color,
+static void epd_write_line(int x0, int y0, int x1, int y1, uint8_t color,
                     uint8_t *framebuffer) {
   int steep = abs(y1 - y0) > abs(x1 - x0);
   if (steep) {
@@ -328,9 +328,9 @@ void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
   }
 }
 
-enum DrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform) {
+enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform) {
     int temperature = epd_ambient_temperature();
-    enum DrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GC16) : EPDIY_WAVEFORM;
+    enum EpdDrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GC16) : EPDIY_WAVEFORM;
     mode |= MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
     return epd_draw_base(area, data, mode, temperature, NULL, waveform);
 }

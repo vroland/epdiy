@@ -79,17 +79,29 @@ typedef struct {
 
 
 /// Possible failures when drawing.
-enum DrawError {
+enum EpdDrawError {
   DRAW_SUCCESS = 0x0,
   /// No valid framebuffer packing mode was specified.
   DRAW_INVALID_PACKING_MODE = 0x1,
 
   /// No lookup table implementation for this mode / packing.
   DRAW_LOOKUP_NOT_IMPLEMENTED = 0x2,
+
+  /// The string to draw is invalid.
+  DRAW_STRING_INVALID = 0x4,
+
+  /// The string was not empty, but no characters where drawable.
+  DRAW_NO_DRAWABLE_CHARACTERS = 0x8,
+
+  /// Allocation failed
+  DRAW_FAILED_ALLOC = 0x10,
+
+  /// A glyph could not be drawn, and not fallback was present.
+  DRAW_GLYPH_FALLBACK_FAILED = 0x20,
 };
 
 /// The image drawing mode.
-enum DrawMode {
+enum EpdDrawMode {
   /// Waveform modes.
   MODE_INIT = 0x0,
   MODE_DU = 0x1,
@@ -133,12 +145,12 @@ enum DrawMode {
 #define DRAW_DEFAULT (EPDIY_WAVEFORM | MODE_GC16 | PREVIOUSLY_WHITE)
 
 /// Font drawing flags
-enum DrawFlags {
+enum EpdFontFlags {
   /// Draw a background.
   ///
   /// Take the background into account
   /// when calculating the size.
-  DRAW_BACKGROUND = 1 << 0,
+  DRAW_BACKGROUND = 0x1,
 };
 
 /// Font properties.
@@ -150,8 +162,8 @@ typedef struct {
   /// Use the glyph for this codepoint for missing glyphs.
   uint32_t fallback_glyph;
   /// Additional flags, reserved for future use
-  uint32_t flags;
-} FontProperties;
+  enum EpdFontFlags flags;
+} EpdFontProperties;
 
 /** Initialize the ePaper display */
 void epd_init();
@@ -218,7 +230,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  * @param mode: Configure image color and assumptions of the display state.
  */
 //void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
-//                              enum DrawMode mode);
+//                              enum EpdDrawMode mode);
 
 /**
  * FIXME: update
@@ -235,14 +247,14 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  * @param drawn_lines: Optional line mask.
  *   If not NULL, only draw lines which are marked as `true`.
  */
-enum DrawError IRAM_ATTR epd_draw_base(Rect_t area,
+enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
                             const uint8_t *data,
-                            enum DrawMode mode,
+                            enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
                             const epd_waveform_info_t *waveform);
 
-enum DrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform);
+enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform);
 
 void epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
@@ -353,19 +365,6 @@ void epd_fill_rect(int x, int y, int w, int h, uint8_t color,
                    uint8_t *framebuffer);
 
 /**
- * Write a line.  Bresenham's algorithm - thx wikpedia
- * @param    x0  Start point x coordinate
- * @param    y0  Start point y coordinate
- * @param    x1  End point x coordinate
- * @param    y1  End point y coordinate
- * @param color: The gray value of the line (0-255);
- * @param framebuffer: The framebuffer to draw to,
- */
-/**************************************************************************/
-void epd_write_line(int x0, int y0, int x1, int y1, uint8_t color,
-                    uint8_t *framebuffer);
-
-/**
  * Draw a line
  *
  * @param    x0  Start point x coordinate
@@ -420,61 +419,55 @@ typedef struct {
   int16_t left;             ///< X dist from cursor pos to UL corner
   int16_t top;              ///< Y dist from cursor pos to UL corner
   uint16_t compressed_size; ///< Size of the zlib-compressed font data.
-  uint32_t data_offset;     ///< Pointer into GFXfont->bitmap
-} GFXglyph;
+  uint32_t data_offset;     ///< Pointer into EpdFont->bitmap
+} EpdGlyph;
 
 /// Glyph interval structure
 typedef struct {
   uint32_t first;  ///< The first unicode code point of the interval
   uint32_t last;   ///< The last unicode code point of the interval
   uint32_t offset; ///< Index of the first code point into the glyph array
-} UnicodeInterval;
+} EpdUnicodeInterval;
 
 /// Data stored for FONT AS A WHOLE
 typedef struct {
-  uint8_t *bitmap;            ///< Glyph bitmaps, concatenated
-  GFXglyph *glyph;            ///< Glyph array
-  UnicodeInterval *intervals; ///< Valid unicode intervals for this font
+  const uint8_t *bitmap;            ///< Glyph bitmaps, concatenated
+  const EpdGlyph *glyph;            ///< Glyph array
+  const EpdUnicodeInterval *intervals; ///< Valid unicode intervals for this font
   uint32_t interval_count;    ///< Number of unicode intervals.
   bool compressed;            ///< Does this font use compressed glyph bitmaps?
   uint8_t advance_y;          ///< Newline distance (y axis)
   int ascender;               ///< Maximal height of a glyph above the base line
   int descender;              ///< Maximal height of a glyph below the base line
-} GFXfont;
+} EpdFont;
 
 /*!
  * Get the text bounds for string, when drawn at (x, y).
  * Set font properties to NULL to use the defaults.
  */
-void get_text_bounds(const GFXfont *font, const char *string, int *x, int *y,
+void epd_get_text_bounds(const EpdFont *font, const char *string,
+                     const int *x, const int *y,
                      int *x1, int *y1, int *w, int *h,
-                     const FontProperties *props);
-
-/*!
- * Write text to the EPD.
- */
-void writeln(const GFXfont *font, const char *string, int *cursor_x,
-             int *cursor_y, uint8_t *framebuffer);
+                     const EpdFontProperties *props);
 
 /**
  * Write text to the EPD.
  * If framebuffer is NULL, draw mode `mode` is used for direct drawing.
  */
-void write_mode(const GFXfont *font, const char *string, int *cursor_x,
-                int *cursor_y, uint8_t *framebuffer, enum DrawMode mode,
-                const FontProperties *properties);
-
-/**
- * Get the font glyph for a unicode code point.
- */
-void get_glyph(const GFXfont *font, uint32_t code_point,
-               const GFXglyph **glyph);
+enum EpdDrawError epd_write_base(const EpdFont *font, const char *string, int *cursor_x,
+                int *cursor_y, uint8_t *framebuffer, enum EpdDrawMode mode,
+                const EpdFontProperties *properties);
 
 /**
  * Write a (multi-line) string to the EPD.
  */
-void write_string(const GFXfont *font, const char *string, int *cursor_x,
+enum EpdDrawError epd_write_string(const EpdFont *font, const char *string, int *cursor_x,
                   int *cursor_y, uint8_t *framebuffer);
+
+/**
+ * Get the font glyph for a unicode code point.
+ */
+const EpdGlyph* epd_get_glyph(const EpdFont *font, uint32_t code_point);
 
 #ifdef __cplusplus
 }

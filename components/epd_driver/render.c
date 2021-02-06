@@ -99,9 +99,9 @@ int waveform_temp_range_index(const epd_waveform_info_t* waveform, int temperatu
 
 ////////////////////////////////  API Procedures //////////////////////////////////
 
-enum DrawError IRAM_ATTR epd_draw_base(Rect_t area,
+enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
                             const uint8_t *data,
-                            enum DrawMode mode,
+                            enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
                             const epd_waveform_info_t *waveform) {
@@ -156,7 +156,7 @@ enum DrawError IRAM_ATTR epd_draw_base(Rect_t area,
       vTaskDelay(min(MINIMUM_FRAME_TIME - (frame_end - frame_start),
                      MINIMUM_FRAME_TIME));
     }
-    enum DrawError all_errors = fetch_params.error | feed_params.error;
+    enum EpdDrawError all_errors = fetch_params.error | feed_params.error;
     if (all_errors != DRAW_SUCCESS) {
         return all_errors;
     }

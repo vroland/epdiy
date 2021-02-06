@@ -56,8 +56,8 @@ typedef struct {
   /// waveform range when using vendor waveforms
   int waveform_range;
   const epd_waveform_info_t* waveform;
-  enum DrawMode mode;
-  enum DrawError error;
+  enum EpdDrawMode mode;
+  enum EpdDrawError error;
   const bool *drawn_lines;
   // Queue of input data lines
   QueueHandle_t* output_queue;
