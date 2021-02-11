@@ -227,33 +227,44 @@ void epd_deinit() {
   epd_base_deinit();
 }
 
-Rect_t epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines) {
-    uint8_t dirty_cols[EPD_WIDTH];
-    memset(dirty_cols, 0, EPD_WIDTH);
-    for (int y=0; y < EPD_HEIGHT; y++) {
+
+Rect_t epd_difference_image_base(
+    const uint8_t* to,
+    const uint8_t* from,
+    Rect_t crop_to,
+    int fb_width,
+    int fb_height,
+    uint8_t* interlaced,
+    bool* dirty_lines
+) {
+    uint8_t dirty_cols[EPD_WIDTH] = {0};
+    int x_end = min(fb_width, crop_to.x + crop_to.width);
+    int y_end = min(fb_height, crop_to.y + crop_to.height);
+
+    for (int y=crop_to.y; y < fb_height; y++) {
         uint8_t dirty = 0;
-        for (int x = 0; x < EPD_WIDTH; x++) {
-            uint8_t t = *(to + y*EPD_WIDTH / 2 + x / 2);
+        for (int x = crop_to.x; x < fb_width; x++) {
+            uint8_t t = *(to + y*fb_width / 2 + x / 2);
             t = (x % 2) ? (t >> 4) : (t & 0x0f);
-            uint8_t f = *(from + y*EPD_WIDTH / 2+ x / 2);
+            uint8_t f = *(from + y*fb_width / 2+ x / 2);
             f = (x % 2) ? ((f >> 4) & 0x0f) : (f & 0x0f);
             dirty |= (t ^ f);
             dirty_cols[x] |= (t ^ f);
-            interlaced[y * EPD_WIDTH + x] = (t << 4) | f;
+            interlaced[y * fb_width + x] = (t << 4) | f;
         }
         dirty_lines[y] = dirty > 0;
     }
     int min_x, min_y, max_x, max_y;
-    for (min_x = 0; min_x < EPD_WIDTH; min_x++) {
+    for (min_x = crop_to.x; min_x < x_end; min_x++) {
       if (dirty_cols[min_x] != 0) break;
     }
-    for (max_x = EPD_WIDTH - 1; max_x >= 0; max_x--) {
+    for (max_x = x_end - 1; max_x >= crop_to.x; max_x--) {
       if (dirty_cols[max_x] != 0) break;
     }
-    for (min_y = 0; min_y < EPD_HEIGHT; min_y++) {
+    for (min_y = crop_to.y; min_y < y_end; min_y++) {
       if (dirty_lines[min_y] != 0) break;
     }
-    for (max_y = EPD_HEIGHT - 1; max_y >= 0; max_y--) {
+    for (max_y = y_end - 1; max_y >= crop_to.y; max_y--) {
       if (dirty_lines[max_y] != 0) break;
     }
     Rect_t crop_rect = {
@@ -263,4 +274,23 @@ Rect_t epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* int
       .height = max_y - min_y + 1
     };
     return crop_rect;
+}
+
+Rect_t epd_difference_image(
+    const uint8_t* to,
+    const uint8_t* from,
+    uint8_t* interlaced,
+    bool* dirty_lines
+) {
+  return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines);
+}
+
+Rect_t epd_difference_image_cropped(
+    const uint8_t* to,
+    const uint8_t* from,
+    Rect_t crop_to,
+    uint8_t* interlaced,
+    bool* dirty_lines
+) {
+  return epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines);
 }

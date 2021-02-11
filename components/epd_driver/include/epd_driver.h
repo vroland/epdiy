@@ -262,6 +262,13 @@ enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_wav
 
 Rect_t epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
+Rect_t epd_difference_image_cropped(
+    const uint8_t* to,
+    const uint8_t* from,
+    Rect_t crop_to,
+    uint8_t* interlaced,
+    bool* dirty_lines);
+
 /**
  * @returns Rectancle representing the whole screen area.
  */
