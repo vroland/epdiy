@@ -101,6 +101,7 @@ int waveform_temp_range_index(const epd_waveform_info_t* waveform, int temperatu
 
 enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
                             const uint8_t *data,
+                            Rect_t crop_to,
                             enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
@@ -120,12 +121,21 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
                       ->phases;
   }
 
+  const bool crop = (crop_to.width > 0 && crop_to.height > 0);
+  if (crop && (crop_to.width > area.width
+              || crop_to.height > area.height
+              || crop_to.x > area.width
+              || crop_to.y > area.height)) {
+      return DRAW_INVALID_CROP;
+  }
+
   for (uint8_t k = 0; k < frame_count; k++) {
     uint64_t frame_start = esp_timer_get_time() / 1000;
     fetch_params.area = area;
     // IMPORTANT: This must only ever read from PSRAM,
     //            Since the PSRAM workaround is disabled for lut.c
     fetch_params.data_ptr = data;
+    fetch_params.crop_to = crop_to;
     fetch_params.frame = k;
     fetch_params.waveform_range = waveform_range;
     fetch_params.waveform_mode = waveform_mode;
@@ -137,6 +147,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
 
     feed_params.area = area;
     feed_params.data_ptr = data;
+    feed_params.crop_to = crop_to;
     feed_params.frame = k;
     feed_params.waveform_range = waveform_range;
     feed_params.waveform_mode = waveform_mode;
@@ -216,17 +227,40 @@ void epd_deinit() {
   epd_base_deinit();
 }
 
-void epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines) {
+Rect_t epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines) {
+    uint8_t dirty_cols[EPD_WIDTH];
+    memset(dirty_cols, 0, EPD_WIDTH);
     for (int y=0; y < EPD_HEIGHT; y++) {
         uint8_t dirty = 0;
         for (int x = 0; x < EPD_WIDTH; x++) {
             uint8_t t = *(to + y*EPD_WIDTH / 2 + x / 2);
-            t = (x % 2) ? (t & 0x0f) : (t >> 4);
+            t = (x % 2) ? (t >> 4) : (t & 0x0f);
             uint8_t f = *(from + y*EPD_WIDTH / 2+ x / 2);
-            f = (x % 2) ? (f & 0x0f) : ((f >> 4) & 0x0f);
+            f = (x % 2) ? ((f >> 4) & 0x0f) : (f & 0x0f);
             dirty |= (t ^ f);
+            dirty_cols[x] |= (t ^ f);
             interlaced[y * EPD_WIDTH + x] = (t << 4) | f;
         }
         dirty_lines[y] = dirty > 0;
     }
+    int min_x, min_y, max_x, max_y;
+    for (min_x = 0; min_x < EPD_WIDTH; min_x++) {
+      if (dirty_cols[min_x] != 0) break;
+    }
+    for (max_x = EPD_WIDTH - 1; max_x >= 0; max_x--) {
+      if (dirty_cols[max_x] != 0) break;
+    }
+    for (min_y = 0; min_y < EPD_HEIGHT; min_y++) {
+      if (dirty_lines[min_y] != 0) break;
+    }
+    for (max_y = EPD_HEIGHT - 1; max_y >= 0; max_y--) {
+      if (dirty_lines[max_y] != 0) break;
+    }
+    Rect_t crop_rect = {
+      .x = min_x,
+      .y = min_y,
+      .width = max_x - min_x + 1,
+      .height = max_y - min_y + 1
+    };
+    return crop_rect;
 }

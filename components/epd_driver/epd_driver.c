@@ -332,5 +332,11 @@ enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_wav
     int temperature = epd_ambient_temperature();
     enum EpdDrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GC16) : EPDIY_WAVEFORM;
     mode |= MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
-    return epd_draw_base(area, data, mode, temperature, NULL, waveform);
+    Rect_t no_crop = {
+        .x = 0,
+        .y = 0,
+        .width = 0,
+        .height = 0,
+    };
+    return epd_draw_base(area, data, no_crop, mode, temperature, NULL, waveform);
 }

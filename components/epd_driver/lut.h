@@ -7,8 +7,6 @@
 #include "freertos/queue.h"
 #include "epd_driver.h"
 
-#define EPD_WIDTH 1200
-#define EPD_HEIGHT 825
 // number of bytes needed for one line of EPD pixel data.
 #define EPD_LINE_BYTES EPD_WIDTH / 4
 
@@ -47,6 +45,7 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len);
 
 typedef struct {
   const uint8_t *data_ptr;
+  Rect_t crop_to;
   SemaphoreHandle_t done_smphr;
   SemaphoreHandle_t start_smphr;
   Rect_t area;

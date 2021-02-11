@@ -98,6 +98,9 @@ enum EpdDrawError {
 
   /// A glyph could not be drawn, and not fallback was present.
   DRAW_GLYPH_FALLBACK_FAILED = 0x20,
+
+  /// The specified crop area is invalid.
+  DRAW_INVALID_CROP = 0x40,
 };
 
 /// The image drawing mode.
@@ -249,6 +252,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  */
 enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
                             const uint8_t *data,
+                            Rect_t crop_to,
                             enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
@@ -256,7 +260,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
 
 enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform);
 
-void epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
+Rect_t epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
 /**
  * @returns Rectancle representing the whole screen area.

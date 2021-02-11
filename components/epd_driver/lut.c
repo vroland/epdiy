@@ -2,6 +2,7 @@
 #include <string.h>
 #include "ed097oc4.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
 /*
  * Build Lookup tables and translate via LUTs.
@@ -85,7 +86,8 @@ const static uint32_t lut_1bpp_black[256] = {
 // is calculated for each cycle.
 static uint8_t DRAM_ATTR conversion_lut[1 << 16];
 
-inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
+inline int min(int x, int y) { return x < y ? x : y; }
+inline int max(int x, int y) { return x > y ? x : y; }
 
 // status tracker for row skipping
 uint32_t skipping;
@@ -176,13 +178,13 @@ void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data,
  */
 static inline uint8_t lookup_differential_pixels(uint32_t in,
                                       const uint8_t *conversion_lut) {
-  uint8_t out = (conversion_lut + 0x100)[in & 0xFF];
+  uint8_t out = conversion_lut[in & 0xFF];
   in = in >> 8;
-  out |= conversion_lut[in & 0xFF];
+  out |= (conversion_lut + 0x100)[in & 0xFF];
   in = in >> 8;
-  out |= (conversion_lut + 0x300)[in & 0xFF];
+  out |= (conversion_lut + 0x200)[in & 0xFF];
   in = in >> 8;
-  out |= (conversion_lut + 0x200)[in];
+  out |= (conversion_lut + 0x300)[in];
   return out;
 }
 
@@ -304,6 +306,8 @@ void IRAM_ATTR provide_out(OutputParams *params) {
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
     Rect_t area = params->area;
     const uint8_t *ptr = params->data_ptr;
+    const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
+
 
     // number of pixels per byte of input data
     int ppB = 0;
@@ -326,15 +330,25 @@ void IRAM_ATTR provide_out(OutputParams *params) {
       params->error |= DRAW_INVALID_PACKING_MODE;
     }
 
-    if (area.x < 0) {
-      ptr += -area.x / width_divider;
-    }
-    if (area.y < 0) {
-      ptr += bytes_per_line * -area.y;
+    int crop_x = (crop ? params->crop_to.x : 0);
+    int crop_y = (crop ? params->crop_to.y : 0);
+    int crop_w = (crop ? params->crop_to.width : 0);
+    int crop_h = (crop ? params->crop_to.height : 0);
+
+    // Adjust for negative starting coordinates with optional crop
+    if (area.x - crop_x < 0) {
+      ptr += -(area.x - crop_x) / width_divider;
     }
 
+    if (area.y - crop_y < 0) {
+      ptr += -(area.y - crop_y) * bytes_per_line;
+    }
+
+    // calculate start and end row with crop
+    int min_y = area.y + crop_y;
+    int max_y = min_y + (crop ? min(area.height, crop_h) : area.height);
     for (int i = 0; i < EPD_HEIGHT; i++) {
-      if (i < area.y || i >= area.y + area.height) {
+      if (i < min_y || i >= max_y) {
         continue;
       }
       if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
@@ -344,31 +358,35 @@ void IRAM_ATTR provide_out(OutputParams *params) {
 
       uint32_t *lp = (uint32_t *)line;
       bool shifted = false;
-      if (area.width == EPD_WIDTH && area.x == 0 && !params->error) {
+      if (area.width == EPD_WIDTH && area.x == 0 && !crop && !params->error) {
         lp = (uint32_t *)ptr;
         ptr += bytes_per_line;
       } else if (!params->error) {
         uint8_t *buf_start = (uint8_t *)line;
         uint32_t line_bytes = bytes_per_line;
-        if (area.x >= 0) {
-          buf_start += area.x / width_divider;
+
+        int min_x = area.x + crop_x;
+        if (min_x >= 0) {
+          buf_start += min_x / width_divider;
         } else {
           // reduce line_bytes to actually used bytes
-          line_bytes += area.x / width_divider;
+          // ptr was already adjusted above
+          line_bytes += min_x / width_divider;
         }
         line_bytes = min(line_bytes, EPD_WIDTH / width_divider -
                                          (uint32_t)(buf_start - line));
         memcpy(buf_start, ptr, line_bytes);
         ptr += bytes_per_line;
 
+        int cropped_width = (crop ? crop_w : area.width);
         /// consider half-byte shifts in two-pixel-per-Byte mode.
         if (ppB == 2) {
           // mask last nibble for uneven width
-          if (area.width % 2 == 1 &&
-              area.x / 2 + area.width / 2 + 1 < EPD_WIDTH) {
+          if (cropped_width % 2 == 1 &&
+              min_x / 2 + cropped_width / 2 + 1 < EPD_WIDTH) {
             *(buf_start + line_bytes - 1) |= 0xF0;
           }
-          if (area.x % 2 == 1 && area.x < EPD_WIDTH) {
+          if (min_x % 2 == 1 && min_x < EPD_WIDTH) {
             shifted = true;
             uint32_t remaining =
                 (uint32_t)line + EPD_WIDTH / 2 - (uint32_t)buf_start;
@@ -379,21 +397,21 @@ void IRAM_ATTR provide_out(OutputParams *params) {
           // consider bit shifts in bit buffers
         } else if (ppB == 8) {
           // mask last n bits if width is not divisible by 8
-          if (area.width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
+          if (cropped_width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
             uint8_t mask = 0;
-            for (int s = 0; s < area.width % 8; s++) {
+            for (int s = 0; s < cropped_width % 8; s++) {
               mask = (mask << 1) | 1;
             }
             *(buf_start + line_bytes - 1) |= ~mask;
           }
 
-          if (area.x % 8 != 0 && area.x < EPD_WIDTH) {
+          if (min_x % 8 != 0 && min_x < EPD_WIDTH) {
             // shift to right
             shifted = true;
             uint32_t remaining =
                 (uint32_t)line + EPD_WIDTH / 8 - (uint32_t)buf_start;
             uint32_t to_shift = min(line_bytes + 1, remaining);
-            bit_shift_buffer_right(buf_start, to_shift, area.x % 8);
+            bit_shift_buffer_right(buf_start, to_shift, min_x % 8);
           }
         }
         lp = (uint32_t *)line;
@@ -408,6 +426,48 @@ void IRAM_ATTR provide_out(OutputParams *params) {
   }
 }
 
+/**
+ * Set all pixels not in [xmin,xmax) to nop in the current line buffer.
+ */
+static void IRAM_ATTR mask_line_buffer(int xmin, int xmax) {
+  // lower bound to where byte order is not an issue.
+  int memset_start = (xmin / 16) * 4;
+  int memset_end = min(((xmax + 15) / 16) * 4, EPD_LINE_BYTES);
+  uint8_t* lb = epd_get_current_buffer();
+
+  // memset the areas where order is not an issue
+  memset(lb, 0, memset_start);
+  memset(lb + memset_end, 0, EPD_LINE_BYTES - memset_end);
+
+  const int offset_table[4] = {2, 3, 0, 1};
+
+  // mask unused pixels at the start of the output interval
+  uint8_t line_start_mask = 0xFF << (2 * (xmin % 4));
+  uint8_t line_end_mask = 0xFF >> (8 - 2 * (xmax % 4));
+
+  // number of full bytes to mask
+  int lower_full_bytes = max(0, (xmin / 4 - memset_start));
+  int upper_full_bytes = max(0, (memset_end - ((xmax + 3) / 4)));
+  assert(lower_full_bytes <= 3);
+  assert(upper_full_bytes <= 3);
+  assert(memset_end >= 4);
+
+  // mask full bytes
+  for (int i=0; i < lower_full_bytes; i++) {
+    lb[memset_start + offset_table[i]] = 0x0;
+  }
+  for (int i=0; i < upper_full_bytes; i++) {
+    lb[memset_end - 4 + offset_table[3 - i]] = 0x0;
+  }
+
+  // mask partial bytes
+  if ((memset_start + lower_full_bytes) * 4 < xmin) {
+    epd_get_current_buffer()[memset_start + offset_table[lower_full_bytes]] &= line_start_mask;
+  }
+  if ((memset_end - upper_full_bytes) * 4 > xmax) {
+    epd_get_current_buffer()[memset_end - 4 + offset_table[3 - upper_full_bytes]] &= line_end_mask;
+  }
+}
 
 void IRAM_ATTR busy_delay(uint32_t cycles);
 
@@ -464,9 +524,22 @@ void IRAM_ATTR feed_display(OutputParams *params) {
       params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
     }
 
+    // Adjust min and max row for crop.
+    const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
+    int crop_y = (crop ? params->crop_to.y : 0);
+    int min_y = area.y + crop_y;
+    int max_y = min_y + (crop ? min(area.height, params->crop_to.height) : area.height);
+
+    // interval of the output line that is needed
+    // FIXME: only lookup needed parts
+    int line_start_x = area.x + (crop ? params->crop_to.x : 0);
+    int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
+    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
+    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+
     epd_start_frame();
     for (int i = 0; i < EPD_HEIGHT; i++) {
-      if (i < area.y || i >= area.y + area.height) {
+      if (i < min_y || i >= max_y) {
         skip_row(frame_time);
         continue;
       }
@@ -479,6 +552,9 @@ void IRAM_ATTR feed_display(OutputParams *params) {
       if (!params->error) {
         (*input_calc_func)((uint32_t *)output, epd_get_current_buffer(),
                            conversion_lut);
+        if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
+          mask_line_buffer(line_start_x, line_end_x);
+        }
       }
       write_row(frame_time);
     }
