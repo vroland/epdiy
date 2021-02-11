@@ -1,7 +1,7 @@
 
 set(app_sources "epd_driver.c"
                 "render.c"
-                "ed097oc4.c"
+                "display_ops.c"
                 "font.c"
                 "lut.c"
                 "i2s_data_bus.c"

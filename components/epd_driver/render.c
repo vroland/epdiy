@@ -1,5 +1,5 @@
 #include "epd_temperature.h"
-#include "ed097oc4.h"
+#include "display_ops.h"
 #include "epd_driver.h"
 #include "lut.h"
 

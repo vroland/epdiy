@@ -1,6 +1,6 @@
 #include "lut.h"
 #include <string.h>
-#include "ed097oc4.h"
+#include "display_ops.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 
@@ -117,7 +117,7 @@ void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
-void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
+static void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
   uint8_t carry = 0xFF << (8 - shift);
   for (uint32_t i = 0; i < len; i++) {
     uint8_t val = buf[i];
@@ -126,7 +126,7 @@ void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
   }
 }
 
-void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
+static void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
   uint8_t carry = 0xF;
   for (uint32_t i = 0; i < len; i++) {
     uint8_t val = buf[i];
@@ -137,7 +137,7 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
 
 ///////////////////////////// Looking up EPD Pixels ///////////////////////////////
 
-void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
+static void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
                                    uint8_t *epd_input, const uint8_t *lut) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
@@ -152,7 +152,7 @@ void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
   }
 }
 
-void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data,
+static void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data,
                                    uint8_t *epd_input,
                                    const uint8_t *conversion_lut) {
 
@@ -191,7 +191,7 @@ static inline uint8_t lookup_differential_pixels(uint32_t in,
 /**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
-void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input,
+static void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input,
                                    const uint8_t *conversion_lut) {
 
   // this is reversed for little-endian, but this is later compensated
@@ -206,7 +206,7 @@ void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input,
 
 ///////////////////////////// Calculate Lookup Tables ///////////////////////////////
 
-void IRAM_ATTR update_epdiy_lut(uint8_t *lut_mem, uint8_t k) {
+static void IRAM_ATTR update_epdiy_lut(uint8_t *lut_mem, uint8_t k) {
   /*
   if (mode == BLACK_ON_WHITE || mode == WHITE_ON_WHITE) {
     k = 15 - k;
@@ -237,7 +237,7 @@ void IRAM_ATTR update_epdiy_lut(uint8_t *lut_mem, uint8_t k) {
 /**
  * Unpack the waveform data into a lookup table, with bit shifted copies.
  */
-void IRAM_ATTR waveform_lut(const epd_waveform_info_t *waveform, uint8_t *lut, uint8_t mode, int range, int frame) {
+static void IRAM_ATTR waveform_lut(const epd_waveform_info_t *waveform, uint8_t *lut, uint8_t mode, int range, int frame) {
   const uint8_t *p_lut =
       waveform->mode_data[mode]->range_data[range]->luts + (16 * 4 * frame);
   for (uint8_t to = 0; to < 16; to++) {
@@ -267,7 +267,7 @@ void IRAM_ATTR waveform_lut(const epd_waveform_info_t *waveform, uint8_t *lut, u
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
  */
-void IRAM_ATTR waveform_lut_static_from(const epd_waveform_info_t *waveform, uint8_t *lut, uint8_t from,
+static void IRAM_ATTR waveform_lut_static_from(const epd_waveform_info_t *waveform, uint8_t *lut, uint8_t from,
                                         uint8_t mode, int range, int frame) {
   const uint8_t *p_lut =
       waveform->mode_data[mode]->range_data[range]->luts + (16 * 4 * frame );

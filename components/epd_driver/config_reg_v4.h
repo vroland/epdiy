@@ -1,4 +1,4 @@
-#include "ed097oc4.h"
+#include "display_ops.h"
 
 typedef struct {
 #if defined(CONFIG_EPD_BOARD_REVISION_V5)
