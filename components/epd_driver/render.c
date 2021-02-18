@@ -35,7 +35,7 @@ static OutputParams fetch_params;
 static OutputParams feed_params;
 
 
-void epd_push_pixels(Rect_t area, short time, int color) {
+void epd_push_pixels(EpdRect area, short time, int color) {
 
   uint8_t row[EPD_LINE_BYTES] = {0};
 
@@ -99,9 +99,9 @@ int waveform_temp_range_index(const epd_waveform_info_t* waveform, int temperatu
 
 ////////////////////////////////  API Procedures //////////////////////////////////
 
-enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
+enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             const uint8_t *data,
-                            Rect_t crop_to,
+                            EpdRect crop_to,
                             enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
@@ -175,11 +175,11 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
   return DRAW_SUCCESS;
 }
 
-void epd_clear_area(Rect_t area) {
+void epd_clear_area(EpdRect area) {
   epd_clear_area_cycles(area, 3, clear_cycle_time);
 }
 
-void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time) {
+void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
   const short white_time = cycle_time;
   const short dark_time = cycle_time;
 
@@ -228,10 +228,10 @@ void epd_deinit() {
 }
 
 
-Rect_t epd_difference_image_base(
+EpdRect epd_difference_image_base(
     const uint8_t* to,
     const uint8_t* from,
-    Rect_t crop_to,
+    EpdRect crop_to,
     int fb_width,
     int fb_height,
     uint8_t* interlaced,
@@ -267,7 +267,7 @@ Rect_t epd_difference_image_base(
     for (max_y = y_end - 1; max_y >= crop_to.y; max_y--) {
       if (dirty_lines[max_y] != 0) break;
     }
-    Rect_t crop_rect = {
+    EpdRect crop_rect = {
       .x = min_x,
       .y = min_y,
       .width = max_x - min_x + 1,
@@ -276,7 +276,7 @@ Rect_t epd_difference_image_base(
     return crop_rect;
 }
 
-Rect_t epd_difference_image(
+EpdRect epd_difference_image(
     const uint8_t* to,
     const uint8_t* from,
     uint8_t* interlaced,
@@ -285,10 +285,10 @@ Rect_t epd_difference_image(
   return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines);
 }
 
-Rect_t epd_difference_image_cropped(
+EpdRect epd_difference_image_cropped(
     const uint8_t* to,
     const uint8_t* from,
-    Rect_t crop_to,
+    EpdRect crop_to,
     uint8_t* interlaced,
     bool* dirty_lines
 ) {

@@ -52,7 +52,7 @@ typedef struct {
   int width;
   /// Area / image height, must be positive.
   int height;
-} Rect_t;
+} EpdRect;
 
 typedef struct {
   int phases;
@@ -188,7 +188,7 @@ void epd_clear();
  *
  * @param area: The area to clear.
  */
-void epd_clear_area(Rect_t area);
+void epd_clear_area(EpdRect area);
 
 /**
  * Clear an area by flashing it.
@@ -197,7 +197,7 @@ void epd_clear_area(Rect_t area);
  * @param cycles: The number of black-to-white clear cycles.
  * @param cycle_time: Length of a cycle. Default: 50 (us).
  */
-void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time);
+void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time);
 
 /**
  * Darken / lighten an area for a given time.
@@ -206,7 +206,7 @@ void epd_clear_area_cycles(Rect_t area, int cycles, int cycle_time);
  * @param time: The time in us to apply voltage to each pixel.
  * @param color: 1: lighten, 0: darken.
  */
-void epd_push_pixels(Rect_t area, short time, int color);
+void epd_push_pixels(EpdRect area, short time, int color);
 
 /**
  * Draw a picture to a given area. The image area is not cleared and assumed
@@ -218,7 +218,7 @@ void epd_push_pixels(Rect_t area, short time, int color);
  *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
  * multiple rows, images of uneven width must add a padding nibble per line.
  */
-void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
+void IRAM_ATTR epd_draw_grayscale_image(EpdRect area, const uint8_t *data);
 
 /**
  * Draw a picture to a given area, with some draw mode.
@@ -232,7 +232,7 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  * multiple rows, images of uneven width must add a padding nibble per line.
  * @param mode: Configure image color and assumptions of the display state.
  */
-//void IRAM_ATTR epd_draw_image(Rect_t area, const uint8_t *data,
+//void IRAM_ATTR epd_draw_image(EpdRect area, const uint8_t *data,
 //                              enum EpdDrawMode mode);
 
 /**
@@ -250,29 +250,29 @@ void IRAM_ATTR epd_draw_grayscale_image(Rect_t area, const uint8_t *data);
  * @param drawn_lines: Optional line mask.
  *   If not NULL, only draw lines which are marked as `true`.
  */
-enum EpdDrawError IRAM_ATTR epd_draw_base(Rect_t area,
+enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             const uint8_t *data,
-                            Rect_t crop_to,
+                            EpdRect crop_to,
                             enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
                             const epd_waveform_info_t *waveform);
 
-enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform);
+enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const epd_waveform_info_t *waveform);
 
-Rect_t epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
+EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
-Rect_t epd_difference_image_cropped(
+EpdRect epd_difference_image_cropped(
     const uint8_t* to,
     const uint8_t* from,
-    Rect_t crop_to,
+    EpdRect crop_to,
     uint8_t* interlaced,
     bool* dirty_lines);
 
 /**
  * @returns Rectancle representing the whole screen area.
  */
-Rect_t epd_full_screen();
+EpdRect epd_full_screen();
 
 /**
  * Draw a picture to a given framebuffer.
@@ -285,7 +285,7 @@ Rect_t epd_full_screen();
  * @param framebuffer: The framebuffer object,
  *   which must be `EPD_WIDTH / 2 * EPD_HEIGHT` large.
  */
-void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
+void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
                              uint8_t *framebuffer);
 
 /**

@@ -304,7 +304,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
     memset(line, 255, EPD_WIDTH);
 
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
-    Rect_t area = params->area;
+    EpdRect area = params->area;
     const uint8_t *ptr = params->data_ptr;
     const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
 
@@ -476,7 +476,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
 
     skipping = 0;
-    Rect_t area = params->area;
+    EpdRect area = params->area;
     const int *contrast_lut = contrast_cycles_4;
     enum EpdDrawMode mode = params->mode;
     int frame_time = 20;

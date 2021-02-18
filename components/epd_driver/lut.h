@@ -19,10 +19,10 @@ void IRAM_ATTR reorder_line_buffer(uint32_t *line_data);
 
 typedef struct {
   const uint8_t *data_ptr;
-  Rect_t crop_to;
+  EpdRect crop_to;
   SemaphoreHandle_t done_smphr;
   SemaphoreHandle_t start_smphr;
-  Rect_t area;
+  EpdRect area;
   int frame;
   /// waveform mode when using vendor waveforms
   int waveform_mode;

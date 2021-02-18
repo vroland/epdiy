@@ -331,7 +331,7 @@ static enum EpdDrawError epd_write_line(
   *cursor_y += local_cursor_y - cursor_y_init;
 
   if (framebuffer == NULL) {
-    Rect_t area = {
+    EpdRect area = {
         .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
 
     epd_draw_image(area, buffer, NULL);

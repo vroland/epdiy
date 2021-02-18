@@ -17,8 +17,8 @@
 #endif
 
 
-Rect_t epd_full_screen() {
-  Rect_t area = {.x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT};
+EpdRect epd_full_screen() {
+  EpdRect area = {.x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT};
   return area;
 }
 
@@ -295,7 +295,7 @@ void epd_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
   }
 }
 
-void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
+void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
                              uint8_t *framebuffer) {
 
   assert(framebuffer != NULL);
@@ -328,11 +328,11 @@ void epd_copy_to_framebuffer(Rect_t image_area, const uint8_t *image_data,
   }
 }
 
-enum EpdDrawError epd_draw_image(Rect_t area, const uint8_t *data, const epd_waveform_info_t *waveform) {
+enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const epd_waveform_info_t *waveform) {
     int temperature = epd_ambient_temperature();
     enum EpdDrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GC16) : EPDIY_WAVEFORM;
     mode |= MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
-    Rect_t no_crop = {
+    EpdRect no_crop = {
         .x = 0,
         .y = 0,
         .width = 0,
