@@ -94,15 +94,15 @@ uint32_t skipping;
 
 // output a row to the display.
 void IRAM_ATTR write_row(uint32_t output_time_dus) {
-  skipping = 0;
   epd_output_row(output_time_dus);
+  skipping = 0;
 }
 
 // skip a display row
 void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
   // output previously loaded row, fill buffer with no-ops.
   if (skipping < 2) {
-    memset(epd_get_current_buffer(), 0xFF, EPD_LINE_BYTES);
+    memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
     epd_output_row(pipeline_finish_time);
   } else {
     epd_skip();
@@ -212,6 +212,7 @@ static void IRAM_ATTR update_epdiy_lut(uint8_t *lut_mem, uint8_t k) {
     k = 15 - k;
   }
   */
+  k = 15 - k;
 
   // reset the pixels which are not to be lightened / darkened
   // any longer in the current frame
@@ -479,7 +480,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     EpdRect area = params->area;
     const int *contrast_lut = contrast_cycles_4;
     enum EpdDrawMode mode = params->mode;
-    int frame_time = 20;
+    int frame_time = 250;
 
     // use approximated waveforms
     if (mode & EPDIY_WAVEFORM) {

@@ -159,7 +159,7 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-  pulse_ckv_ticks(output_time_dus, 1, false);
+  pulse_ckv_ticks(output_time_dus, 10, false);
 #else
   pulse_ckv_ticks(output_time_dus, 50, false);
 #endif
