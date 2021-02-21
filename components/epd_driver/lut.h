@@ -24,11 +24,13 @@ typedef struct {
   SemaphoreHandle_t start_smphr;
   EpdRect area;
   int frame;
-  /// waveform mode when using vendor waveforms
-  int waveform_mode;
+  /// index of the waveform mode when using vendor waveforms.
+  /// This is not necessarily the mode number if the waveform header
+  //only contains a selection of modes!
+  int waveform_index;
   /// waveform range when using vendor waveforms
   int waveform_range;
-  const epd_waveform_info_t* waveform;
+  const EpdWaveform* waveform;
   enum EpdDrawMode mode;
   enum EpdDrawError error;
   const bool *drawn_lines;

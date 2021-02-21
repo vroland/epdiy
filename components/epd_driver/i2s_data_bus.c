@@ -67,6 +67,7 @@ static void IRAM_ATTR i2s_int_hdl(void *arg) {
   i2s_dev_t *dev = &I2S1;
   if (dev->int_st.out_done) {
     gpio_set_level(start_pulse_pin, 1);
+    gpio_set_level(GPIO_NUM_26, 0);
     output_done = true;
   }
   // Clear the interrupt. Otherwise, the whole device would hang.
@@ -166,8 +167,8 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   // Initialize Audio Clock (APLL) for 120 Mhz.
   rtc_clk_apll_enable(1, 0, 0, 8, 0);
 #else
-  // Initialize Audio Clock (APLL) for 60 Mhz.
-  rtc_clk_apll_enable(1, 0, 0, 5, 1);
+  // Initialize Audio Clock (APLL) for 100 Mhz.
+  rtc_clk_apll_enable(1, 0, 0, 8, 0);
 #endif
 
   // Set Audio Clock Dividers

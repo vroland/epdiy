@@ -56,26 +56,30 @@ typedef struct {
 
 typedef struct {
   int phases;
-  uint8_t const *luts;
-} epd_waveform_t;
+  const uint8_t* luts;
+  /// If we have timing information for the individual
+  /// phases, this is an array of the on-times for each phase.
+  /// Otherwise, this is NULL.
+  const int* phase_times;
+} EpdWaveformPhases;
 
 typedef struct {
   uint8_t type;
   uint8_t temp_ranges;
-  epd_waveform_t const *range_data[14];
-} epd_waveform_mode_t;
+  EpdWaveformPhases const **range_data;
+} EpdWaveformMode;
 
 typedef struct {
   int min;
   int max;
-} epd_waveform_temp_interval_t;
+} EpdWaveformTempInterval;
 
 typedef struct {
   uint8_t num_modes;
   uint8_t num_temp_ranges;
-  epd_waveform_mode_t const *mode_data[8];
-  epd_waveform_temp_interval_t temp_intervals[14];
-} epd_waveform_info_t;
+  EpdWaveformMode const **mode_data;
+  EpdWaveformTempInterval const *temp_intervals;
+} EpdWaveform;
 
 
 /// Possible failures when drawing.
@@ -145,7 +149,7 @@ enum EpdDrawMode {
   INVERT = 0x800,
 };
 
-#define DRAW_DEFAULT (EPDIY_WAVEFORM | MODE_GC16 | PREVIOUSLY_WHITE)
+#define DRAW_DEFAULT (VENDOR_WAVEFORM | MODE_GL16 | PREVIOUSLY_WHITE)
 
 /// Font drawing flags
 enum EpdFontFlags {
@@ -256,9 +260,9 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
-                            const epd_waveform_info_t *waveform);
+                            const EpdWaveform *waveform);
 
-enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const epd_waveform_info_t *waveform);
+enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWaveform *waveform);
 
 EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 

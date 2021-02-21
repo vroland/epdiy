@@ -238,7 +238,7 @@ static void IRAM_ATTR update_epdiy_lut(uint8_t *lut_mem, uint8_t k) {
 /**
  * Unpack the waveform data into a lookup table, with bit shifted copies.
  */
-static void IRAM_ATTR waveform_lut(const epd_waveform_info_t *waveform, uint8_t *lut, uint8_t mode, int range, int frame) {
+static void IRAM_ATTR waveform_lut(const EpdWaveform *waveform, uint8_t *lut, uint8_t mode, int range, int frame) {
   const uint8_t *p_lut =
       waveform->mode_data[mode]->range_data[range]->luts + (16 * 4 * frame);
   for (uint8_t to = 0; to < 16; to++) {
@@ -268,7 +268,7 @@ static void IRAM_ATTR waveform_lut(const epd_waveform_info_t *waveform, uint8_t 
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
  */
-static void IRAM_ATTR waveform_lut_static_from(const epd_waveform_info_t *waveform, uint8_t *lut, uint8_t from,
+static void IRAM_ATTR waveform_lut_static_from(const EpdWaveform *waveform, uint8_t *lut, uint8_t from,
                                         uint8_t mode, int range, int frame) {
   const uint8_t *p_lut =
       waveform->mode_data[mode]->range_data[range]->luts + (16 * 4 * frame );
@@ -276,20 +276,20 @@ static void IRAM_ATTR waveform_lut_static_from(const epd_waveform_info_t *wavefo
   /// index into the packed "from" row
   uint8_t fi = from >> 2;
   /// bit shift amount for the packed "from" row
-  uint8_t fs = 2 * (from & 3);
+  uint8_t fs = 6 - 2 * (from & 3);
 
   // FIXME: Optimize this
   for (uint8_t t1 = 0; t1 < 16; t1++) {
-    uint8_t v1 = (p_lut[(t1 << 2) + fi] >> fs) << 6;
+    uint8_t v1 = ((p_lut[(t1 << 2) + fi] >> fs) & 0x03) << 6;
     uint32_t s1 = t1 << 12;
     for (uint8_t t2 = 0; t2 < 16; t2++) {
-      uint8_t v2 = (p_lut[(t2 << 2) + fi] >> fs) << 4;
+      uint8_t v2 = ((p_lut[(t2 << 2) + fi] >> fs) & 0x03) << 4;
       uint32_t s2 = t2 << 8;
       for (uint8_t t3 = 0; t3 < 16; t3++) {
-        uint8_t v3 = (p_lut[(t3 << 2) + fi] >> fs) << 2;
+        uint8_t v3 = ((p_lut[(t3 << 2) + fi] >> fs) & 0x03) << 2;
         uint32_t s3 = t3 << 4;
         for (uint8_t t4 = 0; t4 < 16; t4++) {
-          uint8_t v4 = (p_lut[(t4 << 2) + fi] >> fs) << 0;
+          uint8_t v4 = ((p_lut[(t4 << 2) + fi] >> fs) & 0x03) << 0;
           uint32_t s4 = t4;
           lut[s1 | s2 | s3 | s4] = v1 | v2 | v3 | v4;
         }
@@ -480,7 +480,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     EpdRect area = params->area;
     const int *contrast_lut = contrast_cycles_4;
     enum EpdDrawMode mode = params->mode;
-    int frame_time = 250;
+    int frame_time = 60;
 
     // use approximated waveforms
     if (mode & EPDIY_WAVEFORM) {
@@ -500,13 +500,13 @@ void IRAM_ATTR feed_display(OutputParams *params) {
       // use vendor waveforms
     } else if (mode & VENDOR_WAVEFORM) {
       if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE) {
-        waveform_lut_static_from(params->waveform, conversion_lut, 0x0F, params->waveform_mode,
+        waveform_lut_static_from(params->waveform, conversion_lut, 0x0F, params->waveform_index,
                                  params->waveform_range, params->frame);
       } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK) {
-        waveform_lut_static_from(params->waveform, conversion_lut, 0x00, params->waveform_mode,
+        waveform_lut_static_from(params->waveform, conversion_lut, 0x00, params->waveform_index,
                                  params->waveform_range, params->frame);
       } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-        waveform_lut(params->waveform, conversion_lut, params->waveform_mode,
+        waveform_lut(params->waveform, conversion_lut, params->waveform_index,
                      params->waveform_range, params->frame);
       } else {
         params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;

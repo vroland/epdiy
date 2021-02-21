@@ -328,9 +328,9 @@ void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
   }
 }
 
-enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const epd_waveform_info_t *waveform) {
+enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWaveform *waveform) {
     int temperature = epd_ambient_temperature();
-    enum EpdDrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GC16) : EPDIY_WAVEFORM;
+    enum EpdDrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GL16) : EPDIY_WAVEFORM;
     mode |= MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
     EpdRect no_crop = {
         .x = 0,

@@ -85,7 +85,7 @@ void epd_push_pixels(EpdRect area, short time, int color) {
  * closest one.
  * Returns -1 if the waveform does not contain any temperature range.
  */
-int waveform_temp_range_index(const epd_waveform_info_t* waveform, int temperature) {
+int waveform_temp_range_index(const EpdWaveform* waveform, int temperature) {
     int idx = 0;
     if (waveform->num_temp_ranges == 0) {
         return -1;
@@ -99,24 +99,34 @@ int waveform_temp_range_index(const epd_waveform_info_t* waveform, int temperatu
 
 ////////////////////////////////  API Procedures //////////////////////////////////
 
+static int get_waveform_index(const EpdWaveform* waveform, enum EpdDrawMode mode) {
+    for (int i=0; i < waveform->num_modes; i++) {
+        if (waveform->mode_data[i]->type == (mode & 0x0F)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             const uint8_t *data,
                             EpdRect crop_to,
                             enum EpdDrawMode mode,
                             int temperature,
                             const bool *drawn_lines,
-                            const epd_waveform_info_t *waveform) {
+                            const EpdWaveform *waveform) {
   uint8_t line[EPD_WIDTH / 2];
   memset(line, 255, EPD_WIDTH / 2);
 
   int waveform_range = waveform_temp_range_index(waveform, temperature);
-  int waveform_mode = 0;
+  int waveform_index = 0;
   uint8_t frame_count = 0;
   if (mode & EPDIY_WAVEFORM) {
     frame_count = 15;
   } else if (mode & VENDOR_WAVEFORM) {
-    waveform_mode = mode & 0x0F;
-    frame_count = waveform->mode_data[waveform_mode]
+    waveform_index = get_waveform_index(waveform, mode);
+    // FIXME: error if not present
+    frame_count = waveform->mode_data[waveform_index]
                       ->range_data[waveform_range]
                       ->phases;
   }
@@ -138,7 +148,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     fetch_params.crop_to = crop_to;
     fetch_params.frame = k;
     fetch_params.waveform_range = waveform_range;
-    fetch_params.waveform_mode = waveform_mode;
+    fetch_params.waveform_index = waveform_index;
     fetch_params.mode = mode;
     fetch_params.waveform = waveform;
     fetch_params.error = DRAW_SUCCESS;
@@ -150,7 +160,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     feed_params.crop_to = crop_to;
     feed_params.frame = k;
     feed_params.waveform_range = waveform_range;
-    feed_params.waveform_mode = waveform_mode;
+    feed_params.waveform_index = waveform_index;
     feed_params.mode = mode;
     feed_params.waveform = waveform;
     feed_params.error = DRAW_SUCCESS;
