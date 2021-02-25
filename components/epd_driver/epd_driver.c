@@ -330,13 +330,12 @@ void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
 
 enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWaveform *waveform) {
     int temperature = epd_ambient_temperature();
-    enum EpdDrawMode mode = waveform != NULL ? (VENDOR_WAVEFORM | MODE_GL16) : EPDIY_WAVEFORM;
-    mode |= MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
+	assert(waveform != NULL);
     EpdRect no_crop = {
         .x = 0,
         .y = 0,
         .width = 0,
         .height = 0,
     };
-    return epd_draw_base(area, data, no_crop, mode, temperature, NULL, waveform);
+    return epd_draw_base(area, data, no_crop, EPD_MODE_DEFAULT, temperature, NULL, waveform);
 }

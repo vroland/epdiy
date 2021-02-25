@@ -17,6 +17,8 @@ inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
 
 const int clear_cycle_time = 12;
 
+const int DEFAULT_FRAME_TIME = 25;
+
 #define RTOS_ERROR_CHECK(x)                                                    \
   do {                                                                         \
     esp_err_t __err_rc = (x);                                                  \
@@ -39,10 +41,10 @@ void epd_push_pixels(EpdRect area, short time, int color) {
 
   uint8_t row[EPD_LINE_BYTES] = {0};
 
+  const uint8_t color_choice[3] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
   for (uint32_t i = 0; i < area.width; i++) {
     uint32_t position = i + area.x % 4;
-    uint8_t mask =
-        (color ? CLEAR_BYTE : DARK_BYTE) & (0b00000011 << (2 * (position % 4)));
+    uint8_t mask = color_choice[color] & (0b00000011 << (2 * (position % 4)));
     row[area.x / 4 + position / 4] |= mask;
   }
   reorder_line_buffer((uint32_t *)row);
@@ -101,7 +103,7 @@ int waveform_temp_range_index(const EpdWaveform* waveform, int temperature) {
 
 static int get_waveform_index(const EpdWaveform* waveform, enum EpdDrawMode mode) {
     for (int i=0; i < waveform->num_modes; i++) {
-        if (waveform->mode_data[i]->type == (mode & 0x0F)) {
+        if (waveform->mode_data[i]->type == (mode & 0x3F)) {
             return i;
         }
     }
@@ -119,17 +121,22 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
   memset(line, 255, EPD_WIDTH / 2);
 
   int waveform_range = waveform_temp_range_index(waveform, temperature);
+  if (waveform_range < 0) {
+    return DRAW_NO_PHASES_AVAILABLE;
+  }
   int waveform_index = 0;
   uint8_t frame_count = 0;
-  if (mode & EPDIY_WAVEFORM) {
-    frame_count = 15;
-  } else if (mode & VENDOR_WAVEFORM) {
-    waveform_index = get_waveform_index(waveform, mode);
-    // FIXME: error if not present
-    frame_count = waveform->mode_data[waveform_index]
-                      ->range_data[waveform_range]
-                      ->phases;
+  const EpdWaveformPhases* waveform_phases = NULL;
+
+  waveform_index = get_waveform_index(waveform, mode);
+  if (waveform_index < 0) {
+	return DRAW_MODE_NOT_FOUND;
   }
+
+  waveform_phases = waveform->mode_data[waveform_index]
+							  ->range_data[waveform_range];
+   // FIXME: error if not present
+  frame_count = waveform_phases->phases;
 
   const bool crop = (crop_to.width > 0 && crop_to.height > 0);
   if (crop && (crop_to.width > area.width
@@ -140,6 +147,12 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
   }
 
   for (uint8_t k = 0; k < frame_count; k++) {
+
+	int frame_time = DEFAULT_FRAME_TIME;
+	if (waveform_phases != NULL && waveform_phases->phase_times != NULL) {
+		frame_time = waveform_phases->phase_times[k];
+	}
+
     uint64_t frame_start = esp_timer_get_time() / 1000;
     fetch_params.area = area;
     // IMPORTANT: This must only ever read from PSRAM,
@@ -149,6 +162,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     fetch_params.frame = k;
     fetch_params.waveform_range = waveform_range;
     fetch_params.waveform_index = waveform_index;
+    fetch_params.frame_time = frame_time;
     fetch_params.mode = mode;
     fetch_params.waveform = waveform;
     fetch_params.error = DRAW_SUCCESS;
@@ -159,6 +173,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     feed_params.data_ptr = data;
     feed_params.crop_to = crop_to;
     feed_params.frame = k;
+    feed_params.frame_time = frame_time;
     feed_params.waveform_range = waveform_range;
     feed_params.waveform_index = waveform_index;
     feed_params.mode = mode;
@@ -172,11 +187,6 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     xSemaphoreTake(fetch_params.done_smphr, portMAX_DELAY);
     xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
 
-    uint64_t frame_end = esp_timer_get_time() / 1000;
-    if (frame_end - frame_start < MINIMUM_FRAME_TIME) {
-      vTaskDelay(min(MINIMUM_FRAME_TIME - (frame_end - frame_start),
-                     MINIMUM_FRAME_TIME));
-    }
     enum EpdDrawError all_errors = fetch_params.error | feed_params.error;
     if (all_errors != DRAW_SUCCESS) {
         return all_errors;

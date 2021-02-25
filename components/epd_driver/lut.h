@@ -30,6 +30,8 @@ typedef struct {
   int waveform_index;
   /// waveform range when using vendor waveforms
   int waveform_range;
+  /// Draw time for the current frame in 1/10ths of us.
+  int frame_time;
   const EpdWaveform* waveform;
   enum EpdDrawMode mode;
   enum EpdDrawError error;

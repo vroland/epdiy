@@ -4,7 +4,7 @@
 all: include/epdiy_ED097TC2.h include/eink_ED097TC2.h include/eink_ED047TC2.h
 
 # Generate 16 grascale update waveforms
-EXPORT_EINK_MODES ?= 1,2,5
+EXPORT_EINK_MODES ?= 1,2,5,16,17
 # Generate waveforms in room temperature range
 EXPORT_TEMPERATURE_RANGE ?= 15,35
 

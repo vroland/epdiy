@@ -10,38 +10,6 @@
  *          Since we disable the PSRAM workaround here for performance reasons.
  */
 
-// FIXME: Waveform interface
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ) ||                            \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
-
-/* 4bpp Contrast cycles in order of contrast (Darkest first).  */
-const int contrast_cycles_4[15] = {30, 30, 20, 20, 30,  30,  30, 40,
-                                   40, 50, 50, 50, 100, 200, 300};
-
-const int contrast_cycles_4_white[15] = {10, 10, 8,  8,  8,  8,   8,  10,
-                                         10, 15, 15, 20, 20, 100, 300};
-
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
-const int contrast_cycles_4[15] = {15, 8,  8,  8,  8,  8,   10, 10,
-                                   10, 10, 20, 20, 50, 100, 200};
-
-const int contrast_cycles_4_white[15] = {7, 8, 8, 6, 6, 6,  6,  6,
-                                         6, 6, 6, 8, 8, 50, 150};
-
-
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-const int contrast_cycles_4[15] = {60, 60,  40,  40,  60,  60,  60, 80,
-                                   80, 100, 100, 100, 200, 200, 300};
-
-const int contrast_cycles_4_white[15] = {50, 30, 30, 30, 30, 30,  30, 30,
-                                         30, 30, 50, 50, 50, 100, 200};
-
-#else
-#error "no display type defined!"
-#endif
-
 /* Python script for generating the 1bpp lookup table:
  * for i in range(256):
      number = 0;
@@ -85,6 +53,11 @@ const static uint32_t lut_1bpp_black[256] = {
 // Space to use for the EPD output lookup table, which
 // is calculated for each cycle.
 static uint8_t DRAM_ATTR conversion_lut[1 << 16];
+
+// Timestamp when the last frame draw was started.
+// This is used to enforce a minimum frame draw time, allowing
+// all pixels to set.
+static uint64_t last_frame_start = 0;
 
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
@@ -206,35 +179,6 @@ static void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input
 
 ///////////////////////////// Calculate Lookup Tables ///////////////////////////////
 
-static void IRAM_ATTR update_epdiy_lut(uint8_t *lut_mem, uint8_t k) {
-  /*
-  if (mode == BLACK_ON_WHITE || mode == WHITE_ON_WHITE) {
-    k = 15 - k;
-  }
-  */
-  k = 15 - k;
-
-  // reset the pixels which are not to be lightened / darkened
-  // any longer in the current frame
-  for (uint32_t l = k; l < (1 << 16); l += 16) {
-    lut_mem[l] &= 0xFC;
-  }
-
-  for (uint32_t l = (k << 4); l < (1 << 16); l += (1 << 8)) {
-    for (uint32_t p = 0; p < 16; p++) {
-      lut_mem[l + p] &= 0xF3;
-    }
-  }
-  for (uint32_t l = (k << 8); l < (1 << 16); l += (1 << 12)) {
-    for (uint32_t p = 0; p < (1 << 8); p++) {
-      lut_mem[l + p] &= 0xCF;
-    }
-  }
-  for (uint32_t p = (k << 12); p < ((k + 1) << 12); p++) {
-    lut_mem[p] &= 0x3F;
-  }
-}
-
 /**
  * Unpack the waveform data into a lookup table, with bit shifted copies.
  */
@@ -278,23 +222,34 @@ static void IRAM_ATTR waveform_lut_static_from(const EpdWaveform *waveform, uint
   /// bit shift amount for the packed "from" row
   uint8_t fs = 6 - 2 * (from & 3);
 
-  // FIXME: Optimize this
-  for (uint8_t t1 = 0; t1 < 16; t1++) {
-    uint8_t v1 = ((p_lut[(t1 << 2) + fi] >> fs) & 0x03) << 6;
-    uint32_t s1 = t1 << 12;
-    for (uint8_t t2 = 0; t2 < 16; t2++) {
-      uint8_t v2 = ((p_lut[(t2 << 2) + fi] >> fs) & 0x03) << 4;
-      uint32_t s2 = t2 << 8;
-      for (uint8_t t3 = 0; t3 < 16; t3++) {
-        uint8_t v3 = ((p_lut[(t3 << 2) + fi] >> fs) & 0x03) << 2;
-        uint32_t s3 = t3 << 4;
-        for (uint8_t t4 = 0; t4 < 16; t4++) {
-          uint8_t v4 = ((p_lut[(t4 << 2) + fi] >> fs) & 0x03) << 0;
-          uint32_t s4 = t4;
-          lut[s1 | s2 | s3 | s4] = v1 | v2 | v3 | v4;
-        }
-      }
-    }
+  // populate the first 4096 bytes
+  uint8_t v1 = 0;
+  uint32_t s1 = 0;
+  for (uint8_t t2 = 0; t2 < 16; t2++) {
+	uint8_t v2 = ((p_lut[(t2 << 2) + fi] >> fs) & 0x03) << 4;
+	uint32_t s2 = t2 << 8;
+	for (uint8_t t3 = 0; t3 < 16; t3++) {
+	  uint8_t v3 = ((p_lut[(t3 << 2) + fi] >> fs) & 0x03) << 2;
+	  uint32_t s3 = t3 << 4;
+	  for (uint8_t t4 = 0; t4 < 16; t4++) {
+		uint8_t v4 = ((p_lut[(t4 << 2) + fi] >> fs) & 0x03) << 0;
+		uint32_t s4 = t4;
+		lut[s1 | s2 | s3 | s4] = v1 | v2 | v3 | v4;
+	  }
+	}
+  }
+
+  // now just copy and the first 4096 bytes and add the upper two bits
+  for (uint8_t t1 = 1; t1 < 16; t1++) {
+	memcpy(&lut[t1 << 12], lut, 1 << 12);
+  }
+
+  for (int i=0; i < 16; i++) {
+  	uint32_t v1 = ((p_lut[(i << 2) + fi] >> fs) & 0x03);
+	uint32_t mask = (v1 << 30) | (v1 << 22) | (v1 << 14) | (v1 << 6);
+	for (int j=0; j < 16*16*16 / 4; j++) {
+		((uint32_t*)lut)[(i << 10) + j] |= mask;
+	}
   }
 }
 
@@ -387,7 +342,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
               min_x / 2 + cropped_width / 2 + 1 < EPD_WIDTH) {
             *(buf_start + line_bytes - 1) |= 0xF0;
           }
-          if (min_x % 2 == 1 && min_x < EPD_WIDTH) {
+          if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < EPD_WIDTH) {
             shifted = true;
             uint32_t remaining =
                 (uint32_t)line + EPD_WIDTH / 2 - (uint32_t)buf_start;
@@ -478,48 +433,51 @@ void IRAM_ATTR feed_display(OutputParams *params) {
 
     skipping = 0;
     EpdRect area = params->area;
-    const int *contrast_lut = contrast_cycles_4;
     enum EpdDrawMode mode = params->mode;
-    int frame_time = 60;
+    int frame_time = params->frame_time;
+	enum EpdDrawMode selected_mode = mode & 0x3F;
 
-    // use approximated waveforms
-    if (mode & EPDIY_WAVEFORM) {
-      frame_time = contrast_lut[params->frame];
-      if (mode & MODE_PACKING_2PPB) {
-        if (params->frame == 0) {
-          memset(conversion_lut, 0x55, (1 << 16));
-        }
+    uint64_t lut_calc_start = esp_timer_get_time();
+	// two pixel per byte packing with only target color
+	if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE) {
+	  waveform_lut_static_from(params->waveform, conversion_lut, 0x0F, params->waveform_index,
+							   params->waveform_range, params->frame);
+	} else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK) {
+	  waveform_lut_static_from(params->waveform, conversion_lut, 0x00, params->waveform_index,
+							   params->waveform_range, params->frame);
 
-        update_epdiy_lut(conversion_lut, params->frame);
-      } else if (mode & MODE_PACKING_8PPB) {
-        memcpy(conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
-      } else {
-        params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
-      }
+	// one pixel per byte with from and to colors
+	} else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+	  waveform_lut(params->waveform, conversion_lut, params->waveform_index,
+				   params->waveform_range, params->frame);
 
-      // use vendor waveforms
-    } else if (mode & VENDOR_WAVEFORM) {
-      if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE) {
-        waveform_lut_static_from(params->waveform, conversion_lut, 0x0F, params->waveform_index,
-                                 params->waveform_range, params->frame);
-      } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK) {
-        waveform_lut_static_from(params->waveform, conversion_lut, 0x00, params->waveform_index,
-                                 params->waveform_range, params->frame);
-      } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-        waveform_lut(params->waveform, conversion_lut, params->waveform_index,
-                     params->waveform_range, params->frame);
-      } else {
-        params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
-      }
-    }
+	// 1bit per pixel monochrome with only target color
+	} else if (mode & MODE_PACKING_8PPB && selected_mode == MODE_EPDIY_MONOCHROME) {
+	  // FIXME: Pack into waveform?
+	  if (mode & PREVIOUSLY_WHITE) {
+		  memcpy(conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+	  } else if (mode & PREVIOUSLY_BLACK) {
+		  // FIXME: implement!
+		  //memcpy(conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
+		  params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+	  } else {
+		  params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+	  }
+
+	// unknown format.
+	} else {
+	  params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+	}
+
+    uint64_t lut_calc_end = esp_timer_get_time();
 
     void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) =
         NULL;
     if (mode & MODE_PACKING_2PPB) {
       input_calc_func = &calc_epd_input_4bpp;
-    } else if (mode & (MODE_PACKING_1PPB_DIFFERENCE | VENDOR_WAVEFORM)) {
+    } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
       input_calc_func = &calc_epd_input_1ppB;
-    } else if (mode & (MODE_PACKING_8PPB | EPDIY_WAVEFORM)) {
+    } else if (mode & MODE_PACKING_8PPB) {
       input_calc_func = &calc_epd_input_1bpp;
     } else {
       params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
@@ -537,6 +495,14 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
     line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
     line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+
+	uint64_t now = esp_timer_get_time();
+	uint64_t diff = (now - last_frame_start) / 1000;
+	if (diff < MINIMUM_FRAME_TIME) {
+	  vTaskDelay(MINIMUM_FRAME_TIME - diff);
+	}
+
+	last_frame_start = esp_timer_get_time();
 
     epd_start_frame();
     for (int i = 0; i < EPD_HEIGHT; i++) {

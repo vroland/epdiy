@@ -66,8 +66,8 @@ static void gpio_setup_out(int gpio, int sig, bool invert) {
 static void IRAM_ATTR i2s_int_hdl(void *arg) {
   i2s_dev_t *dev = &I2S1;
   if (dev->int_st.out_done) {
-    gpio_set_level(start_pulse_pin, 1);
-    gpio_set_level(GPIO_NUM_26, 0);
+    //gpio_set_level(start_pulse_pin, 1);
+    //gpio_set_level(GPIO_NUM_26, 0);
     output_done = true;
   }
   // Clear the interrupt. Otherwise, the whole device would hang.
@@ -106,6 +106,7 @@ void IRAM_ATTR i2s_start_line_output() {
   dev->out_link.start = 1;
 
   // sth is pulled up through peripheral interrupt
+  // This is timing-critical!
   gpio_set_level(start_pulse_pin, 0);
   dev->conf.tx_start = 1;
 }

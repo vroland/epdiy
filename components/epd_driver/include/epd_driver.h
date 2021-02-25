@@ -15,7 +15,7 @@ extern "C" {
 // minimal draw time in ms for a frame layer,
 // which will allow all particles to set properly.
 #ifndef MINIMUM_FRAME_TIME
-#define MINIMUM_FRAME_TIME (min(k, 10))
+#define MINIMUM_FRAME_TIME 0
 #endif
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
@@ -105,11 +105,20 @@ enum EpdDrawError {
 
   /// The specified crop area is invalid.
   DRAW_INVALID_CROP = 0x40,
+
+  /// No such mode is available with the current waveform.
+  DRAW_MODE_NOT_FOUND = 0x80,
+
+  /// The waveform info file contains no applicable temperature range.
+  DRAW_NO_PHASES_AVAILABLE = 0x100,
+
+  /// An invalid combination of font flags was used.
+  DRAW_INVALID_FONT_FLAGS = 0x200,
 };
 
 /// The image drawing mode.
 enum EpdDrawMode {
-  /// Waveform modes.
+  /// "Official" Waveform modes.
   MODE_INIT = 0x0,
   MODE_DU = 0x1,
   MODE_GC16 = 0x2,
@@ -121,10 +130,19 @@ enum EpdDrawMode {
   MODE_GL4 = 0xA,
   MODE_GL16_INV = 0xB,
 
+  /// Extended Waveform modes.
+  MODE_EPDIY_WHITE_TO_GL16 = 0x10,
+  MODE_EPDIY_BLACK_TO_GL16 = 0x11,
+
+  /// Monochrome mode. Only supported with 1bpp buffers.
+  MODE_EPDIY_MONOCHROME = 0x20,
+
+  MODE_UNKNOWN_WAVEFORM = 0x3F,
+
   /// Use a vendor waveform
-  VENDOR_WAVEFORM = 0x10,
+  //VENDOR_WAVEFORM = 0x10,
   /// Use EPDIY built-in waveform
-  EPDIY_WAVEFORM = 0x20,
+  //EPDIY_WAVEFORM = 0x20,
 
   // Framebuffer packing modes
   /// 1 bit-per-pixel framebuffer with 0 = black, 1 = white.
@@ -149,7 +167,7 @@ enum EpdDrawMode {
   INVERT = 0x800,
 };
 
-#define DRAW_DEFAULT (VENDOR_WAVEFORM | MODE_GL16 | PREVIOUSLY_WHITE)
+#define EPD_MODE_DEFAULT (MODE_GL16 | PREVIOUSLY_WHITE)
 
 /// Font drawing flags
 enum EpdFontFlags {
@@ -158,6 +176,13 @@ enum EpdFontFlags {
   /// Take the background into account
   /// when calculating the size.
   DRAW_BACKGROUND = 0x1,
+
+  /// Left-Align lines
+  DRAW_ALIGN_LEFT = 0x2,
+  /// Right-align lines
+  DRAW_ALIGN_RIGHT = 0x4,
+  /// Center-align lines
+  DRAW_ALIGN_CENTER = 0x8,
 };
 
 /// Font properties.
@@ -467,22 +492,26 @@ void epd_get_text_bounds(const EpdFont *font, const char *string,
 
 /**
  * Write text to the EPD.
- * If framebuffer is NULL, draw mode `mode` is used for direct drawing.
  */
-enum EpdDrawError epd_write_base(const EpdFont *font, const char *string, int *cursor_x,
-                int *cursor_y, uint8_t *framebuffer, enum EpdDrawMode mode,
+enum EpdDrawError epd_write_string(const EpdFont *font, const char *string, int *cursor_x,
+                int *cursor_y, uint8_t *framebuffer,
                 const EpdFontProperties *properties);
 
 /**
  * Write a (multi-line) string to the EPD.
  */
-enum EpdDrawError epd_write_string(const EpdFont *font, const char *string, int *cursor_x,
+enum EpdDrawError epd_write_default(const EpdFont *font, const char *string, int *cursor_x,
                   int *cursor_y, uint8_t *framebuffer);
 
 /**
  * Get the font glyph for a unicode code point.
  */
 const EpdGlyph* epd_get_glyph(const EpdFont *font, uint32_t code_point);
+
+/**
+ * The default font properties.
+ */
+EpdFontProperties epd_font_properties_default();
 
 #ifdef __cplusplus
 }

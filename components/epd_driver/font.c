@@ -69,9 +69,9 @@ static uint32_t next_cp(const uint8_t **string) {
   return codep;
 }
 
-static EpdFontProperties font_properties_default() {
+EpdFontProperties epd_font_properties_default() {
   EpdFontProperties props = {
-      .fg_color = 0, .bg_color = 15, .fallback_glyph = 0, .flags = 0};
+      .fg_color = 0, .bg_color = 15, .fallback_glyph = 0, .flags = DRAW_ALIGN_LEFT};
   return props;
 }
 
@@ -110,6 +110,8 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
                                 int *cursor_x, int cursor_y, uint16_t buf_width,
                                 uint16_t buf_height, uint32_t cp,
                                 const EpdFontProperties *props) {
+
+  assert(props != NULL);
 
   const EpdGlyph *glyph = epd_get_glyph(font, cp);
   if (!glyph) {
@@ -188,6 +190,9 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
 static void get_char_bounds(const EpdFont *font, uint32_t cp, int *x, int *y,
                             int *minx, int *miny, int *maxx, int *maxy,
                             const EpdFontProperties *props) {
+
+  assert(props != NULL);
+
   const EpdGlyph *glyph = epd_get_glyph(font, cp);
 
   if (!glyph) {
@@ -224,13 +229,10 @@ void epd_get_text_bounds(const EpdFont *font, const char *string,
                      const int *x, const int *y,
                      int *x1, int *y1, int *w, int *h,
                      const EpdFontProperties *properties) {
+  // FIXME: Does not respect alignment!
 
-  EpdFontProperties props;
-  if (properties == NULL) {
-    props = font_properties_default();
-  } else {
-    props = *properties;
-  }
+  assert(properties != NULL);
+  EpdFontProperties props = *properties;
 
   if (*string == '\0') {
     *w = 0;
@@ -255,64 +257,65 @@ void epd_get_text_bounds(const EpdFont *font, const char *string,
 
 static enum EpdDrawError epd_write_line(
         const EpdFont *font, const char *string, int *cursor_x,
-        int *cursor_y, uint8_t *framebuffer, enum EpdDrawMode mode,
+        int *cursor_y, uint8_t *framebuffer,
         const EpdFontProperties *properties)
 {
+
+  assert(framebuffer != NULL);
 
   if (*string == '\0') {
     return DRAW_SUCCESS;
   }
 
-  EpdFontProperties props;
-  if (properties == NULL) {
-    props = font_properties_default();
-  } else {
-    props = *properties;
+  assert(properties != NULL);
+  EpdFontProperties props = *properties;
+  enum EpdFontFlags alignment_mask = DRAW_ALIGN_LEFT | DRAW_ALIGN_RIGHT | DRAW_ALIGN_CENTER;
+  enum EpdFontFlags alignment = props.flags & alignment_mask;
+
+  // alignments are mutually exclusive!
+  if ((alignment & (alignment - 1)) != 0) {
+	return DRAW_INVALID_FONT_FLAGS;
   }
+
 
   int x1 = 0, y1 = 0, w = 0, h = 0;
   int tmp_cur_x = *cursor_x;
   int tmp_cur_y = *cursor_y;
-  epd_get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h,
-                  &props);
+  epd_get_text_bounds(font, string, &tmp_cur_x, &tmp_cur_y, &x1, &y1, &w, &h, &props);
 
   // no printable characters
   if (w < 0 || h < 0) {
       return DRAW_NO_DRAWABLE_CHARACTERS;
   }
 
-  uint8_t *buffer;
-  int buf_width;
-  int buf_height;
   int baseline_height = *cursor_y - y1;
 
-  // The local cursor position:
-  // 0, if drawing to a local temporary buffer
-  // the given cursor position, if drawing to a full frame buffer
-  int local_cursor_x = 0;
-  int local_cursor_y = 0;
+  int buf_width = EPD_WIDTH / 2;
+  int buf_height = EPD_HEIGHT;
 
-  if (framebuffer == NULL) {
-    buf_width = (w / 2 + w % 2);
-    buf_height = h;
-    buffer = (uint8_t *)malloc(buf_width * buf_height);
-    if (buffer == NULL) {
-        return DRAW_FAILED_ALLOC;
-    }
-    memset(buffer, 255, buf_width * buf_height);
-    local_cursor_y = buf_height - baseline_height;
-  } else {
-    buf_width = EPD_WIDTH / 2;
-    buf_height = EPD_HEIGHT;
-    buffer = framebuffer;
-    local_cursor_x = *cursor_x;
-    local_cursor_y = *cursor_y;
-  }
-
+  uint8_t* buffer = framebuffer;
+  int local_cursor_x = *cursor_x;
+  int local_cursor_y = *cursor_y;
   uint32_t c;
 
   int cursor_x_init = local_cursor_x;
   int cursor_y_init = local_cursor_y;
+
+  switch (alignment) {
+	case DRAW_ALIGN_LEFT: {
+	  break;
+	}
+    case DRAW_ALIGN_CENTER: {
+	  local_cursor_x -= w / 2;
+	  break;
+	}
+    case DRAW_ALIGN_RIGHT: {
+	  local_cursor_x -= w;
+	  break;
+	}
+	default:
+	  break;
+  }
 
   uint8_t bg = props.bg_color;
   if (props.flags & DRAW_BACKGROUND) {
@@ -329,27 +332,18 @@ static enum EpdDrawError epd_write_line(
 
   *cursor_x += local_cursor_x - cursor_x_init;
   *cursor_y += local_cursor_y - cursor_y_init;
-
-  if (framebuffer == NULL) {
-    EpdRect area = {
-        .x = x1, .y = *cursor_y - h + baseline_height, .width = w, .height = h};
-
-    epd_draw_image(area, buffer, NULL);
-
-    free(buffer);
-  }
   return err;
 }
 
-enum EpdDrawError epd_write_string(const EpdFont *font, const char *string, int *cursor_x,
+enum EpdDrawError epd_write_default(const EpdFont *font, const char *string, int *cursor_x,
              int *cursor_y, uint8_t *framebuffer) {
-  return epd_write_base(font, string, cursor_x, cursor_y, framebuffer,
-                    DRAW_DEFAULT, NULL);
+  const EpdFontProperties props = epd_font_properties_default();
+  return epd_write_string(font, string, cursor_x, cursor_y, framebuffer, &props);
 }
 
-enum EpdDrawError epd_write_base(
+enum EpdDrawError epd_write_string(
         const EpdFont *font, const char *string, int *cursor_x,
-        int *cursor_y, uint8_t *framebuffer, enum EpdDrawMode mode,
+        int *cursor_y, uint8_t *framebuffer,
         const EpdFontProperties *properties
 ) {
   char *token, *newstring, *tofree;
@@ -368,7 +362,7 @@ enum EpdDrawError epd_write_base(
   int line_start = *cursor_x;
   while ((token = strsep(&newstring, "\n")) != NULL) {
     *cursor_x = line_start;
-    err |= epd_write_line(font, token, cursor_x, cursor_y, framebuffer, mode, properties);
+    err |= epd_write_line(font, token, cursor_x, cursor_y, framebuffer, properties);
     *cursor_y += font->advance_y;
   }
 

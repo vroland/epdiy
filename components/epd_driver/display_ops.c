@@ -1,7 +1,8 @@
 #include "display_ops.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 #include "i2s_data_bus.h"
-//#include "rmt_pulse.h"
+#include "rmt_pulse.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -86,9 +87,7 @@ void epd_base_init(uint32_t epd_row_width) {
 
   i2s_bus_init(&i2s_config);
 
-  gpio_set_direction(CKV, GPIO_MODE_OUTPUT);
-  fast_gpio_set_lo(CKV);
-  //rmt_pulse_init(CKV);
+  rmt_pulse_init(CKV);
 }
 
 void epd_poweron() { cfg_poweron(&config_reg);  }
@@ -101,38 +100,28 @@ void epd_base_deinit(){
 }
 
 void epd_start_frame() {
-  while (i2s_is_busy()) {
+  while (i2s_is_busy() || rmt_busy()) {
   };
   config_reg.ep_mode = true;
   push_cfg(&config_reg);
-  config_reg.ep_output_enable = true;
-  push_cfg(&config_reg);
 
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  config_reg.ep_stv = false;
-  push_cfg(&config_reg);
+  pulse_ckv_us(1, 1, true);
 
   // This is very timing-sensitive!
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(10 * 240);
+  config_reg.ep_stv = false;
+  push_cfg(&config_reg);
+  //busy_delay(240);
+  pulse_ckv_us(100, 100, false);
   config_reg.ep_stv = true;
   push_cfg(&config_reg);
-  busy_delay(10 * 240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(10 * 240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(10 * 240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
+  //pulse_ckv_us(0, 10, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+
+  config_reg.ep_output_enable = true;
+  push_cfg(&config_reg);
 }
 
 static inline void latch_row() {
@@ -153,92 +142,51 @@ static inline void latch_row() {
 }
 
 void IRAM_ATTR epd_skip() {
-
-  fast_gpio_set_lo(CKV);
-  busy_delay(100);
-  fast_gpio_set_hi(CKV);
-
-/*
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-  pulse_ckv_ticks(2, 2, false);
+  pulse_ckv_ticks(2, 45, false);
 #else
   // According to the spec, the OC4 maximum CKV frequency is 200kHz.
   pulse_ckv_ticks(45, 5, false);
 #endif
-*/
 }
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
-  while (i2s_is_busy()) {
+  while (i2s_is_busy() || rmt_busy()) {
   };
 
-  //epd_skip();
+  fast_gpio_set_hi(STH);
 
-  /*
+  latch_row();
+
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-  pulse_ckv_ticks(0, 2, true);
+  pulse_ckv_ticks(output_time_dus, 1, false);
 #else
   pulse_ckv_ticks(output_time_dus, 50, false);
 #endif
-*/
-
-  latch_row();
 
   i2s_start_line_output();
   i2s_switch_buffer();
 }
 
 void epd_end_frame() {
-  return;
   config_reg.ep_stv = false;
   push_cfg(&config_reg);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  /*
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
-  */
   config_reg.ep_mode = false;
   push_cfg(&config_reg);
-  fast_gpio_set_lo(CKV);
-  busy_delay(10 * 240);
+  pulse_ckv_us(0, 10, true);
   config_reg.ep_output_enable = false;
   push_cfg(&config_reg);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
-  fast_gpio_set_hi(CKV);
-  busy_delay(240);
-  fast_gpio_set_lo(CKV);
-  busy_delay(240);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
 }
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
