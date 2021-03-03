@@ -9,4 +9,6 @@ examples/mpd_status/main/wifi_config.h
 /.idea/
 *.kicad_pcb-bak
 *.sch-bak
+eink_*.h
+eink_*.json
 fp-info-cache
