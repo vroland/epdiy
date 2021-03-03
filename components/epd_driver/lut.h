@@ -38,6 +38,11 @@ typedef struct {
   const bool *drawn_lines;
   // Queue of input data lines
   QueueHandle_t* output_queue;
+
+  // Lookup table size.
+  size_t conversion_lut_size;
+  // Lookup table space.
+  uint8_t* conversion_lut;
 } OutputParams;
 
 

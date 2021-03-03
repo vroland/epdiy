@@ -50,10 +50,6 @@ const static uint32_t lut_1bpp_black[256] = {
     0x5000, 0x1000, 0x4000, 0x0000};
 
 
-// Space to use for the EPD output lookup table, which
-// is calculated for each cycle.
-static uint8_t DRAM_ATTR conversion_lut[1 << 16];
-
 // Timestamp when the last frame draw was started.
 // This is used to enforce a minimum frame draw time, allowing
 // all pixels to set.
@@ -125,7 +121,7 @@ static void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
   }
 }
 
-static void IRAM_ATTR calc_epd_input_4bpp(const uint32_t *line_data,
+static void IRAM_ATTR calc_epd_input_4bpp_lut_64k(const uint32_t *line_data,
                                    uint8_t *epd_input,
                                    const uint8_t *conversion_lut) {
 
@@ -175,6 +171,53 @@ static void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input
     epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
   }
+}
+
+/**
+ * Look up 4 pixels in a 1K LUT with fixed "from" value.
+ */
+static inline uint8_t lookup_pixels_4bpp_1k(uint16_t in,
+                                      const uint8_t *conversion_lut, uint8_t from) {
+  uint8_t v;
+  uint8_t out;
+  v = ((in << 4) | from);
+  out = conversion_lut[v & 0xFF];
+  v = ((in & 0xF0) | from);
+  out |= (conversion_lut + 0x100)[v & 0xFF];
+  in = in >> 8;
+  v = ((in << 4) | from);
+  out |= (conversion_lut + 0x200)[v & 0xFF];
+  v = ((in & 0xF0) | from);
+  out |= (conversion_lut + 0x300)[v];
+  return out;
+}
+
+/**
+ * Calculate EPD input for a 4bpp buffer, but with a difference image LUT.
+ * This is used for small-LUT mode.
+ */
+static void IRAM_ATTR calc_epd_input_4bpp_1k_lut(const uint32_t *ld, uint8_t *epd_input,
+                                   const uint8_t *conversion_lut, uint8_t from) {
+
+  uint16_t* ptr = (uint16_t*)ld;
+  // this is reversed for little-endian, but this is later compensated
+  // through the output peripheral.
+  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+  }
+}
+
+static void IRAM_ATTR calc_epd_input_4bpp_1k_lut_white(const uint32_t *ld, uint8_t *epd_input,
+                                   const uint8_t *conversion_lut) {
+    calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0xF);
+}
+
+static void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(const uint32_t *ld, uint8_t *epd_input,
+                                   const uint8_t *conversion_lut) {
+    calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0x0);
 }
 
 ///////////////////////////// Calculate Lookup Tables ///////////////////////////////
@@ -427,6 +470,44 @@ static void IRAM_ATTR mask_line_buffer(int xmin, int xmax) {
 
 void IRAM_ATTR busy_delay(uint32_t cycles);
 
+static enum EpdDrawError calculate_lut(OutputParams* params) {
+
+    enum EpdDrawMode mode = params->mode;
+	enum EpdDrawMode selected_mode = mode & 0x3F;
+
+	// two pixel per byte packing with only target color
+	if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE && params->conversion_lut_size == (1<<16)) {
+	  waveform_lut_static_from(params->waveform, params->conversion_lut, 0x0F, params->waveform_index,
+							   params->waveform_range, params->frame);
+	} else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK && params->conversion_lut_size == (1<<16)) {
+	  waveform_lut_static_from(params->waveform, params->conversion_lut, 0x00, params->waveform_index,
+							   params->waveform_range, params->frame);
+
+	// one pixel per byte with from and to colors
+	} else if (mode & MODE_PACKING_1PPB_DIFFERENCE || (mode & MODE_PACKING_2PPB && params->conversion_lut_size == (1 << 10))) {
+	  waveform_lut(params->waveform, params->conversion_lut, params->waveform_index,
+				   params->waveform_range, params->frame);
+
+	// 1bit per pixel monochrome with only target color
+	} else if (mode & MODE_PACKING_8PPB && selected_mode == MODE_EPDIY_MONOCHROME) {
+	  // FIXME: Pack into waveform?
+	  if (mode & PREVIOUSLY_WHITE) {
+		  memcpy(params->conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+	  } else if (mode & PREVIOUSLY_BLACK) {
+		  // FIXME: implement!
+		  //memcpy(params->conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
+		  return DRAW_LOOKUP_NOT_IMPLEMENTED;
+	  } else {
+		  return DRAW_LOOKUP_NOT_IMPLEMENTED;
+	  }
+
+	// unknown format.
+	} else {
+	  return DRAW_LOOKUP_NOT_IMPLEMENTED;
+	}
+    return DRAW_SUCCESS;
+}
+
 void IRAM_ATTR feed_display(OutputParams *params) {
   while (true) {
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
@@ -435,46 +516,25 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     EpdRect area = params->area;
     enum EpdDrawMode mode = params->mode;
     int frame_time = params->frame_time;
-	enum EpdDrawMode selected_mode = mode & 0x3F;
 
-    uint64_t lut_calc_start = esp_timer_get_time();
-	// two pixel per byte packing with only target color
-	if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE) {
-	  waveform_lut_static_from(params->waveform, conversion_lut, 0x0F, params->waveform_index,
-							   params->waveform_range, params->frame);
-	} else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK) {
-	  waveform_lut_static_from(params->waveform, conversion_lut, 0x00, params->waveform_index,
-							   params->waveform_range, params->frame);
-
-	// one pixel per byte with from and to colors
-	} else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-	  waveform_lut(params->waveform, conversion_lut, params->waveform_index,
-				   params->waveform_range, params->frame);
-
-	// 1bit per pixel monochrome with only target color
-	} else if (mode & MODE_PACKING_8PPB && selected_mode == MODE_EPDIY_MONOCHROME) {
-	  // FIXME: Pack into waveform?
-	  if (mode & PREVIOUSLY_WHITE) {
-		  memcpy(conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
-	  } else if (mode & PREVIOUSLY_BLACK) {
-		  // FIXME: implement!
-		  //memcpy(conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
-		  params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
-	  } else {
-		  params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
-	  }
-
-	// unknown format.
-	} else {
-	  params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
-	}
-
-    uint64_t lut_calc_end = esp_timer_get_time();
+    params->error |= calculate_lut(params);
 
     void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) =
         NULL;
     if (mode & MODE_PACKING_2PPB) {
-      input_calc_func = &calc_epd_input_4bpp;
+      if (params->conversion_lut_size == 1024) {
+          if (mode & PREVIOUSLY_WHITE) {
+            input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
+          } else if (mode & PREVIOUSLY_BLACK) {
+            input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
+          } else {
+            params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+          }
+      } else if (params->conversion_lut_size == (1 << 16)) {
+          input_calc_func = &calc_epd_input_4bpp_lut_64k;
+      } else {
+          params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+      }
     } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
       input_calc_func = &calc_epd_input_1ppB;
     } else if (mode & MODE_PACKING_8PPB) {
@@ -518,7 +578,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
       xQueueReceive(*params->output_queue, output, portMAX_DELAY);
       if (!params->error) {
         (*input_calc_func)((uint32_t *)output, epd_get_current_buffer(),
-                           conversion_lut);
+                           params->conversion_lut);
         if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
           mask_line_buffer(line_start_x, line_end_x);
         }

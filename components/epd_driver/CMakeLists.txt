@@ -6,6 +6,7 @@ set(app_sources "epd_driver.c"
                 "lut.c"
                 "i2s_data_bus.c"
                 "rmt_pulse.c"
+				"highlevel.c"
 				"epd_temperature.c")
 
 

@@ -136,18 +136,21 @@ void epd_fill_circle_helper(int x0, int y0, int r, int corners, int delta,
   }
 }
 
-void epd_draw_rect(int x, int y, int w, int h, uint8_t color,
+void epd_draw_rect(EpdRect rect, uint8_t color,
                    uint8_t *framebuffer) {
+
+  int x = rect.x; int y = rect.y; int w = rect.width; int h = rect.height;
   epd_draw_hline(x, y, w, color, framebuffer);
   epd_draw_hline(x, y + h - 1, w, color, framebuffer);
   epd_draw_vline(x, y, h, color, framebuffer);
   epd_draw_vline(x + w - 1, y, h, color, framebuffer);
 }
 
-void epd_fill_rect(int x, int y, int w, int h, uint8_t color,
-                   uint8_t *framebuffer) {
-  for (int i = x; i < x + w; i++) {
-    epd_draw_vline(i, y, h, color, framebuffer);
+void epd_fill_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer) {
+
+  int x = rect.x; int y = rect.y; int w = rect.width; int h = rect.height;
+  for (int i = y; i < y + h; i++) {
+    epd_draw_hline(x, i, w, color, framebuffer);
   }
 }
 

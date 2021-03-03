@@ -15,7 +15,7 @@ extern "C" {
 // minimal draw time in ms for a frame layer,
 // which will allow all particles to set properly.
 #ifndef MINIMUM_FRAME_TIME
-#define MINIMUM_FRAME_TIME 0
+#define MINIMUM_FRAME_TIME 12
 #endif
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
@@ -116,6 +116,25 @@ enum EpdDrawError {
   DRAW_INVALID_FONT_FLAGS = 0x200,
 };
 
+/// Global EPD driver options.
+enum EpdInitOptions {
+    /// Use the default options.
+    EPD_OPTIONS_DEFAULT = 0,
+    /// Use a small look-up table of 1024 bytes.
+    /// The EPD driver will use less space, but performance may be worse.
+    EPD_LUT_1K = 1,
+    /// Use a 64K lookup table. (default)
+    /// Best performance, but permanently occupies a 64k block of internal memory.
+    EPD_LUT_64K = 2,
+
+    /// Use a small feed queue of 8 display lines.
+    /// This uses less memory, but may impact performance.
+    EPD_FEED_QUEUE_8 = 4,
+    /// Use a feed queue of 32 display lines. (default)
+    /// Best performance, but larger memory footprint.
+    EPD_FEED_QUEUE_32 = 8,
+};
+
 /// The image drawing mode.
 enum EpdDrawMode {
   /// "Official" Waveform modes.
@@ -198,7 +217,7 @@ typedef struct {
 } EpdFontProperties;
 
 /** Initialize the ePaper display */
-void epd_init();
+void epd_init(enum EpdInitOptions options);
 
 /** Deinit the ePaper display */
 void epd_deinit();
@@ -296,7 +315,10 @@ EpdRect epd_difference_image_cropped(
     const uint8_t* from,
     EpdRect crop_to,
     uint8_t* interlaced,
-    bool* dirty_lines);
+    bool* dirty_lines,
+    bool* previously_white,
+    bool* previously_black
+);
 
 /**
  * @returns Rectancle representing the whole screen area.
@@ -388,8 +410,7 @@ void epd_fill_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_draw_rect(int x, int y, int w, int h, uint8_t color,
-                   uint8_t *framebuffer);
+void epd_draw_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a rectanle with fill color
@@ -401,8 +422,7 @@ void epd_draw_rect(int x, int y, int w, int h, uint8_t color,
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
-void epd_fill_rect(int x, int y, int w, int h, uint8_t color,
-                   uint8_t *framebuffer);
+void epd_fill_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
 
 /**
  * Draw a line

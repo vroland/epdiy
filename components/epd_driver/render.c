@@ -36,12 +36,15 @@ static QueueHandle_t output_queue;
 static OutputParams fetch_params;
 static OutputParams feed_params;
 
+// Space to use for the EPD output lookup table, which
+// is calculated for each cycle.
+static uint8_t* conversion_lut;
 
 void epd_push_pixels(EpdRect area, short time, int color) {
 
   uint8_t row[EPD_LINE_BYTES] = {0};
 
-  const uint8_t color_choice[3] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
+  const uint8_t color_choice[4] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
   for (uint32_t i = 0; i < area.width; i++) {
     uint32_t position = i + area.x % 4;
     uint8_t mask = color_choice[color] & (0b00000011 << (2 * (position % 4)));
@@ -153,7 +156,6 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 		frame_time = waveform_phases->phase_times[k];
 	}
 
-    uint64_t frame_start = esp_timer_get_time() / 1000;
     fetch_params.area = area;
     // IMPORTANT: This must only ever read from PSRAM,
     //            Since the PSRAM workaround is disabled for lut.c
@@ -215,9 +217,30 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
 
 
 
-void epd_init() {
+void epd_init(enum EpdInitOptions options) {
   epd_base_init(EPD_WIDTH);
   epd_temperature_init();
+
+  size_t lut_size = 0;
+  if (options & EPD_LUT_1K) {
+    lut_size = 1 << 10;
+  } else if ((options & EPD_LUT_64K) || (options == EPD_OPTIONS_DEFAULT)) {
+    lut_size = 1 << 16;
+  } else {
+    ESP_LOGE("epd", "invalid init options: %d", options);
+    return;
+  }
+
+  conversion_lut = (uint8_t *)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+  if (conversion_lut == NULL) {
+    ESP_LOGE("epd", "could not allocate LUT!");
+  }
+  assert(conversion_lut != NULL);
+
+  fetch_params.conversion_lut = conversion_lut;
+  fetch_params.conversion_lut_size = lut_size;
+  feed_params.conversion_lut = conversion_lut;
+  feed_params.conversion_lut_size = lut_size;
 
   fetch_params.done_smphr = xSemaphoreCreateBinary();
   fetch_params.start_smphr = xSemaphoreCreateBinary();
@@ -226,7 +249,7 @@ void epd_init() {
   feed_params.start_smphr = xSemaphoreCreateBinary();
 
   RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))provide_out,
-                                           "epd_fetch", 1 << 12, &fetch_params, 5,
+                                           "epd_fetch", (1 << 12), &fetch_params, 5,
                                            NULL, 0));
 
   RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))feed_display,
@@ -235,7 +258,13 @@ void epd_init() {
 
   //conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
   //assert(conversion_lut != NULL);
-  output_queue = xQueueCreate(32, EPD_WIDTH);
+  int queue_len = 32;
+  if (options & EPD_FEED_QUEUE_32) {
+    queue_len = 32;
+  } else if (options & EPD_FEED_QUEUE_8) {
+    queue_len = 8;
+  }
+  output_queue = xQueueCreate(queue_len, EPD_WIDTH);
 }
 
 void epd_deinit() {
@@ -255,8 +284,17 @@ EpdRect epd_difference_image_base(
     int fb_width,
     int fb_height,
     uint8_t* interlaced,
-    bool* dirty_lines
+    bool* dirty_lines,
+    uint8_t* from_or,
+    uint8_t* from_and
 ) {
+    assert(from_or != NULL);
+    assert(from_and != NULL);
+    // OR over all pixels of the "from"-image
+    *from_or = 0x00;
+    // AND over all pixels of the "from"-image
+    *from_and = 0xFF;
+
     uint8_t dirty_cols[EPD_WIDTH] = {0};
     int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
@@ -267,6 +305,8 @@ EpdRect epd_difference_image_base(
             uint8_t t = *(to + y*fb_width / 2 + x / 2);
             t = (x % 2) ? (t >> 4) : (t & 0x0f);
             uint8_t f = *(from + y*fb_width / 2+ x / 2);
+            *from_or |= f;
+            *from_and &= f;
             f = (x % 2) ? ((f >> 4) & 0x0f) : (f & 0x0f);
             dirty |= (t ^ f);
             dirty_cols[x] |= (t ^ f);
@@ -302,7 +342,9 @@ EpdRect epd_difference_image(
     uint8_t* interlaced,
     bool* dirty_lines
 ) {
-  return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines);
+  uint8_t from_or = 0;
+  uint8_t from_and = 0;
+  return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
 }
 
 EpdRect epd_difference_image_cropped(
@@ -310,7 +352,15 @@ EpdRect epd_difference_image_cropped(
     const uint8_t* from,
     EpdRect crop_to,
     uint8_t* interlaced,
-    bool* dirty_lines
+    bool* dirty_lines,
+    bool* previously_white,
+    bool* previously_black
 ) {
-  return epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines);
+  uint8_t from_or, from_and;
+
+  EpdRect result = epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
+
+  if (previously_white != NULL) *previously_white = (from_and == 0xFF);
+  if (previously_black != NULL) *previously_black = (from_or == 0x00);
+  return result;
 }
