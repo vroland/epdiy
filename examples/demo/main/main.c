@@ -27,10 +27,10 @@
 #include "zebra.h"
 #include "img_window.h"
 #include "img_board.h"
-#include "epdiy_ED097TC2.h"
+//#include "epdiy_ED097TC2.h"
 //#include "eink_ED047TC2.h"
 
-#define WAVEFORM &ED097TC2
+#define WAVEFORM EPD_BUILTIN_WAVEFORM
 
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 

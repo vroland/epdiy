@@ -81,6 +81,25 @@ typedef struct {
   EpdWaveformTempInterval const *temp_intervals;
 } EpdWaveform;
 
+extern const EpdWaveform epdiy_ED060SC4;
+extern const EpdWaveform epdiy_ED097OC4;
+extern const EpdWaveform epdiy_ED047TC1;
+extern const EpdWaveform epdiy_ED097TC2;
+extern const EpdWaveform epdiy_ED133UT2;
+
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED047TC1
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED060SC4
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED097OC4
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED097TC2
+#elif defined (CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED133UT2
+#endif
+
+
 
 /// Possible failures when drawing.
 enum EpdDrawError {

@@ -18,12 +18,8 @@
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
-#include "dragon.h"
-//#include "eink_ED047TC2.h"
-#include "epdiy_ED097TC2.h"
-//#include "test.h"
 
-#define WAVEFORM &ED097TC2
+#define WAVEFORM EPD_BUILTIN_WAVEFORM
 
 EpdiyHighlevelState hl;
 
