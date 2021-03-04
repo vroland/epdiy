@@ -2,7 +2,7 @@
  * High-level API implementation for epdiy.
  */
 
-#include "epdiy_highlevel.h"
+#include "epd_highlevel.h"
 #include <assert.h>
 #include <esp_types.h>
 #include <string.h>
@@ -61,8 +61,6 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       &previously_white,
       &previously_black
   );
-
-  ESP_LOGI("highlevel", "all white: %d, all black: %d", previously_white, previously_black);
 
   enum EpdDrawError err;
   if (previously_white) {

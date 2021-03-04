@@ -16,7 +16,7 @@
 #include <string.h>
 
 #include "epd_driver.h"
-#include "epdiy_highlevel.h"
+#include "epd_highlevel.h"
 
 #ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
 #include "firasans_12pt.h"
@@ -27,10 +27,10 @@
 #include "zebra.h"
 #include "img_window.h"
 #include "img_board.h"
-//#include "epdiy_ED097TC2.h"
-#include "eink_ED047TC2.h"
+#include "epdiy_ED097TC2.h"
+//#include "eink_ED047TC2.h"
 
-#define WAVEFORM &ED047TC2
+#define WAVEFORM &ED097TC2
 
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
