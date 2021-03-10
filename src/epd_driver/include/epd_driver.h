@@ -1,5 +1,6 @@
 /**
- * A high-level library for drawing to an EPD.
+ * @file epd_driver.h
+ * A driver library for drawing to an EPD.
  */
 #ifdef __cplusplus
 extern "C" {
@@ -7,40 +8,10 @@ extern "C" {
 
 #pragma once
 #include "esp_attr.h"
-#include "epd_waveforms.h"
+#include "epd_internals.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-
-// minimal draw time in ms for a frame layer,
-// which will allow all particles to set properly.
-#ifndef MINIMUM_FRAME_TIME
-#define MINIMUM_FRAME_TIME 12
-#endif
-
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 1200
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 825
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-#define EPD_WIDTH 1600
-#define EPD_HEIGHT 1200
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 800
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 600
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 960
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 540
-#else
-#error "no display type defined!"
-#endif
 
 /// An area on the display.
 typedef struct {
@@ -53,53 +24,6 @@ typedef struct {
   /// Area / image height, must be positive.
   int height;
 } EpdRect;
-
-typedef struct {
-  int phases;
-  const uint8_t* luts;
-  /// If we have timing information for the individual
-  /// phases, this is an array of the on-times for each phase.
-  /// Otherwise, this is NULL.
-  const int* phase_times;
-} EpdWaveformPhases;
-
-typedef struct {
-  uint8_t type;
-  uint8_t temp_ranges;
-  EpdWaveformPhases const **range_data;
-} EpdWaveformMode;
-
-typedef struct {
-  int min;
-  int max;
-} EpdWaveformTempInterval;
-
-typedef struct {
-  uint8_t num_modes;
-  uint8_t num_temp_ranges;
-  EpdWaveformMode const **mode_data;
-  EpdWaveformTempInterval const *temp_intervals;
-} EpdWaveform;
-
-extern const EpdWaveform epdiy_ED060SC4;
-extern const EpdWaveform epdiy_ED097OC4;
-extern const EpdWaveform epdiy_ED047TC1;
-extern const EpdWaveform epdiy_ED097TC2;
-extern const EpdWaveform epdiy_ED133UT2;
-
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED047TC1
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED060SC4
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED097OC4
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED097TC2
-#elif defined (CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED133UT2
-#endif
-
-
 
 /// Possible failures when drawing.
 enum EpdDrawError {
@@ -156,20 +80,38 @@ enum EpdInitOptions {
 
 /// The image drawing mode.
 enum EpdDrawMode {
-  /// "Official" Waveform modes.
+  /// An init waveform.
+  /// This is currently unused, use `epd_clear()` instead.
   MODE_INIT = 0x0,
+  /// Direct Update: Go from any color to black for white only.
   MODE_DU = 0x1,
+  /// Go from any grayscale value to another with a flashing update.
   MODE_GC16 = 0x2,
+  /// Faster version of `MODE_GC16`.
+  /// Not available with default epdiy waveforms.
   MODE_GC16_FAST = 0x3,
+  /// Animation Mode: Fast, monochrom updates.
+  /// Not available with default epdiy waveforms.
   MODE_A2 = 0x4,
+  /// Go from any grayscale value to another with a non-flashing update.
   MODE_GL16 = 0x5,
+  /// Faster version of `MODE_GL16`.
+  /// Not available with default epdiy waveforms.
   MODE_GL16_FAST = 0x6,
+  /// A 4-grayscale version of `MODE_DU`.
+  /// Not available with default epdiy waveforms.
   MODE_DU4 = 0x7,
+  /// Arbitrary transitions for 4 grayscale values.
+  /// Not available with default epdiy waveforms.
   MODE_GL4 = 0xA,
+  /// Not available with default epdiy waveforms.
   MODE_GL16_INV = 0xB,
 
-  /// Extended Waveform modes.
+  /// Go from a white screen to arbitrary grayscale, quickly.
+  /// Exclusively available with epdiy waveforms.
   MODE_EPDIY_WHITE_TO_GL16 = 0x10,
+  /// Go from a black screen to arbitrary grayscale, quickly.
+  /// Exclusively available with epdiy waveforms.
   MODE_EPDIY_BLACK_TO_GL16 = 0x11,
 
   /// Monochrome mode. Only supported with 1bpp buffers.
@@ -177,17 +119,14 @@ enum EpdDrawMode {
 
   MODE_UNKNOWN_WAVEFORM = 0x3F,
 
-  /// Use a vendor waveform
-  //VENDOR_WAVEFORM = 0x10,
-  /// Use EPDIY built-in waveform
-  //EPDIY_WAVEFORM = 0x20,
-
   // Framebuffer packing modes
   /// 1 bit-per-pixel framebuffer with 0 = black, 1 = white.
   /// MSB is left is the leftmost pixel, LSB the rightmost pixel.
   MODE_PACKING_8PPB = 0x40,
   /// 4 bit-per pixel framebuffer with 0x0 = black, 0xF = white.
   /// The upper nibble corresponds to the left pixel.
+  /// A byte cannot wrap over multiple rows, images of uneven width
+  /// must add a padding nibble per line.
   MODE_PACKING_2PPB = 0x80,
   /// A difference image with one pixel per byte.
   /// The upper nibble marks the "from" color,
@@ -195,16 +134,20 @@ enum EpdDrawMode {
   MODE_PACKING_1PPB_DIFFERENCE = 0x100,
   // reserver for 4PPB mode
 
-  /// Draw on monochrome background color
+  /// Assert that the display has a uniform color, e.g. after initialization.
+  /// If `MODE_PACKING_2PPB` is specified, a optimized output calculation can be used.
   /// Draw on a white background
   PREVIOUSLY_WHITE = 0x200,
+  /// See `PREVIOUSLY_WHITE`.
   /// Draw on a black background
   PREVIOUSLY_BLACK = 0x400,
 
   /// Invert colors in the framebuffer (0xF = black, 0x0 = White).
+  /// Currently unused.
   INVERT = 0x800,
 };
 
+/// The default draw mode (non-flashy refresh, whith previously white screen).
 #define EPD_MODE_DEFAULT (MODE_GL16 | PREVIOUSLY_WHITE)
 
 /// Font drawing flags
@@ -265,79 +208,6 @@ void epd_clear_area(EpdRect area);
  * @param cycle_time: Length of a cycle. Default: 50 (us).
  */
 void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time);
-
-/**
- * Darken / lighten an area for a given time.
- *
- * @param area: The area to darken / lighten.
- * @param time: The time in us to apply voltage to each pixel.
- * @param color: 1: lighten, 0: darken.
- */
-void epd_push_pixels(EpdRect area, short time, int color);
-
-/**
- * Draw a picture to a given area. The image area is not cleared and assumed
- * to be white before drawing.
- *
- * @param area: The display area to draw to. `width` and `height` of the area
- *   must correspond to the image dimensions in pixels.
- * @param data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
- * multiple rows, images of uneven width must add a padding nibble per line.
- */
-void IRAM_ATTR epd_draw_grayscale_image(EpdRect area, const uint8_t *data);
-
-/**
- * Draw a picture to a given area, with some draw mode.
- * The image area is not cleared before drawing.
- * For example, this can be used for pixel-aligned clearing.
- *
- * @param area: The display area to draw to. `width` and `height` of the area
- *   must correspond to the image dimensions in pixels.
- * @param data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
- * multiple rows, images of uneven width must add a padding nibble per line.
- * @param mode: Configure image color and assumptions of the display state.
- */
-//void IRAM_ATTR epd_draw_image(EpdRect area, const uint8_t *data,
-//                              enum EpdDrawMode mode);
-
-/**
- * FIXME: update
- * Same as epd_draw_image, but with the option to specify
- * which lines of the image should be drawn.
- *
- * @param drawn_lines: If not NULL, an array of at least the height of the
- * image. Every line where the corresponding value in `lines` is `false` will be
- * skipped.
- * @param data: The image data, as a buffer of 4 bit wide brightness values.
- *   Pixel data is packed (two pixels per byte). A byte cannot wrap over
- * multiple rows, images of uneven width must add a padding nibble per line.
- * @param mode: Configure image color and assumptions of the display state.
- * @param drawn_lines: Optional line mask.
- *   If not NULL, only draw lines which are marked as `true`.
- */
-enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
-                            const uint8_t *data,
-                            EpdRect crop_to,
-                            enum EpdDrawMode mode,
-                            int temperature,
-                            const bool *drawn_lines,
-                            const EpdWaveform *waveform);
-
-enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWaveform *waveform);
-
-EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
-
-EpdRect epd_difference_image_cropped(
-    const uint8_t* to,
-    const uint8_t* from,
-    EpdRect crop_to,
-    uint8_t* interlaced,
-    bool* dirty_lines,
-    bool* previously_white,
-    bool* previously_black
-);
 
 /**
  * @returns Rectancle representing the whole screen area.
@@ -422,10 +292,7 @@ void epd_fill_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
 /**
  * Draw a rectanle with no fill color
  *
- * @param x: Top left corner x coordinate
- * @param y: Top left corner y coordinate
- * @param w: Width in pixels
- * @param h: Height in pixels
+ * @param rect: The rectangle to draw.
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
@@ -434,10 +301,7 @@ void epd_draw_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
 /**
  * Draw a rectanle with fill color
  *
- * @param x: Top left corner x coordinate
- * @param y: Top left corner y coordinate
- * @param w: Width in pixels
- * @param h: Height in pixels
+ * @param rect: The rectangle to fill.
  * @param color: The gray value of the line (0-255);
  * @param framebuffer: The framebuffer to draw to,
  */
@@ -486,39 +350,15 @@ void epd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
 void epd_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
                        uint8_t color, uint8_t *framebuffer);
 /**
- * Get the current ambient temperature in °C.
+ * Get the current ambient temperature in °C, if supported by the board.
+ * Requires the display to be powered on.
  */
 float epd_ambient_temperature();
 
-/// Font data stored PER GLYPH
-typedef struct {
-  uint8_t width;            ///< Bitmap dimensions in pixels
-  uint8_t height;           ///< Bitmap dimensions in pixels
-  uint8_t advance_x;        ///< Distance to advance cursor (x axis)
-  int16_t left;             ///< X dist from cursor pos to UL corner
-  int16_t top;              ///< Y dist from cursor pos to UL corner
-  uint16_t compressed_size; ///< Size of the zlib-compressed font data.
-  uint32_t data_offset;     ///< Pointer into EpdFont->bitmap
-} EpdGlyph;
-
-/// Glyph interval structure
-typedef struct {
-  uint32_t first;  ///< The first unicode code point of the interval
-  uint32_t last;   ///< The last unicode code point of the interval
-  uint32_t offset; ///< Index of the first code point into the glyph array
-} EpdUnicodeInterval;
-
-/// Data stored for FONT AS A WHOLE
-typedef struct {
-  const uint8_t *bitmap;            ///< Glyph bitmaps, concatenated
-  const EpdGlyph *glyph;            ///< Glyph array
-  const EpdUnicodeInterval *intervals; ///< Valid unicode intervals for this font
-  uint32_t interval_count;    ///< Number of unicode intervals.
-  bool compressed;            ///< Does this font use compressed glyph bitmaps?
-  uint8_t advance_y;          ///< Newline distance (y axis)
-  int ascender;               ///< Maximal height of a glyph above the base line
-  int descender;              ///< Maximal height of a glyph below the base line
-} EpdFont;
+/**
+ * The default font properties.
+ */
+EpdFontProperties epd_font_properties_default();
 
 /*!
  * Get the text bounds for string, when drawn at (x, y).
@@ -547,10 +387,85 @@ enum EpdDrawError epd_write_default(const EpdFont *font, const char *string, int
  */
 const EpdGlyph* epd_get_glyph(const EpdFont *font, uint32_t code_point);
 
+
 /**
- * The default font properties.
+ * Darken / lighten an area for a given time.
+ *
+ * @param area: The area to darken / lighten.
+ * @param time: The time in us to apply voltage to each pixel.
+ * @param color: 1: lighten, 0: darken.
  */
-EpdFontProperties epd_font_properties_default();
+void epd_push_pixels(EpdRect area, short time, int color);
+
+/**
+ * Base function for drawing an image on the screen.
+ * If It is very customizable, and the documentation below should be studied carefully.
+ * For simple applications, use the epdiy highlevel api in "epd_higlevel.h".
+ *
+ * @param area: The area of the screen to draw to.
+ *      This can be imagined as shifting the origin of the frame buffer.
+ * @param data: A full framebuffer of display data.
+ *      It's structure depends on the chosen `mode`.
+ * @param crop_to: Only draw a part of the frame buffer.
+ *      Set to `epd_full_screen()` to draw the full buffer.
+ * @param mode: Specifies the Waveform used, the framebuffer format
+ *      and additional information, like if the display is cleared.
+ * @param temperature: The temperature of the display in °C.
+ *      Currently, this is unused by the default waveforms at can be
+ *      set to room temperature, e.g. 20-25°C.
+ * @param drawn_lines: If not NULL, an array of at least the height of the
+ *      image. Every line where the corresponding value in `lines` is `false` will be
+ *      skipped.
+ * @param waveform: The waveform information to use for drawing.
+ *      If you don't have special waveforms, use `EPD_BUILTIN_WAVEFORM`.
+ * @returns DRAW_SUCCESS on sucess, a combination of error flags otherwise.
+ */
+enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
+                            const uint8_t *data,
+                            EpdRect crop_to,
+                            enum EpdDrawMode mode,
+                            int temperature,
+                            const bool *drawn_lines,
+                            const EpdWaveform *waveform);
+/**
+ * Calculate a `MODE_PACKING_1PPB_DIFFERENCE` difference image
+ * from two `MODE_PACKING_2PPB` (4 bit-per-pixel) buffers.
+ * If you're using the epdiy highlevel api, this is handled by the update functions.
+ *
+ * @param to: The goal image as 4-bpp (`MODE_PACKING_2PPB`) framebuffer.
+ * @param from: The previous image as 4-bpp (`MODE_PACKING_2PPB`) framebuffer.
+ * @param crop_to: Only calculate the difference for a crop of the input framebuffers.
+ *      The `interlaced` will not be modified outside the crop area.
+ * @param interlaced: The resulting difference image in `MODE_PACKING_1PPB_DIFFERENCE` format.
+ * @param dirty_lines: An array of at least `EPD_HEIGHT`.
+ *      The positions corresponding to lines where `to` and `from` differ
+ *      are set to `true`, otherwise to `false`.
+ * @param previously_white: If not NULL, it is set to `true`
+ *      if the considered crop of the `from`-image is completely white.
+ * @param previously_black: If not NULL, it is set to `true`
+ *      if the considered crop of the `from`-image is completely black.
+ * @returns The smallest rectangle containing all changed pixels.
+ */
+EpdRect epd_difference_image_cropped(
+    const uint8_t* to,
+    const uint8_t* from,
+    EpdRect crop_to,
+    uint8_t* interlaced,
+    bool* dirty_lines,
+    bool* previously_white,
+    bool* previously_black
+);
+
+/**
+ * Simplified version of `epd_difference_image_cropped()`, which considers the
+ * whole display frame buffer.
+ *
+ * See `epd_difference_image_cropped() for details.`
+ */
+EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
+
+
+
 
 #ifdef __cplusplus
 }
