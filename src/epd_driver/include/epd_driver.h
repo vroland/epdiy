@@ -418,7 +418,7 @@ void epd_push_pixels(EpdRect area, short time, int color);
  *      skipped.
  * @param waveform: The waveform information to use for drawing.
  *      If you don't have special waveforms, use `EPD_BUILTIN_WAVEFORM`.
- * @returns DRAW_SUCCESS on sucess, a combination of error flags otherwise.
+ * @returns `DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
  */
 enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             const uint8_t *data,

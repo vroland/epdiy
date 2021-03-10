@@ -2,28 +2,13 @@
 Tips & Tricks
 =============
 
-Image Ghosting
---------------
-
-After multiple partial refreshes or drawing the same image multiple times,
-a ghosting effect may occur.
-That is, even after clearing the screen, the old image is still visible to a small degree.
-In order to avoid that and increase the lifetime of your display,
-you should first draw the inverse of an image before refreshing.
-
-If the old image is stored in `framebuf` and was drawn with `draw_mode` `BLACK_ON_WHITE`,
-the inverse image can be drawn with:
-::
-    
-    epd_draw_image(epd_full_screen(), framebuf, WHITE_ON_WHITE);
-
 
 Temperature Dependence
 ----------------------
 
 The display refresh speed depends on the environmental temperature.
 Thus, if your room temperature is significantly different from ~22°C, grayscale
-accuracy might be affected.
+accuracy might be affected when using the builtin waveform.
 This can be mitigated by using a different timing curve, but this would require calibrating the display timings at that temperature.
 If you did this for some temperature other than room temperature, please submit a pull request!
 
@@ -44,5 +29,14 @@ With some modules, you have to isolate GPIO 12 before going to deep sleep:
 
     rtc_gpio_isolate(GPIO_NUM_12)
 
+Adding a New Display
+--------------------
 
+This section is work-in-progress.
 
+- Add Menuconfig options
+- Include waveform in :code:`bulitin_waveforms.c`
+- Add external waveform declaration and display resolution in `epd_internal.h`
+- Calibrate timing curve in :code:`scripts/generate_epdiy_waveforms.py`.
+- Add to the list of displays to build waveforms for in :code:`Makefile`
+- Document

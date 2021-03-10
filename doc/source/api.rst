@@ -1,7 +1,7 @@
 .. _pub_api:
 
 Library API
-==========
+===========
 
 Highlevel API
 -------------

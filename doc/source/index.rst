@@ -12,6 +12,7 @@ The EPDiy Driver Board
 
    about.rst
    getting_started.rst
+   filegen.rst
    tips.rst
    api.rst
 
