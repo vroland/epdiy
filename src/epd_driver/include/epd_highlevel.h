@@ -90,7 +90,7 @@ uint8_t* epd_hl_get_framebuffer(EpdiyHighlevelState* state);
  * 		previous display state are determined by the driver and must not be supplied here.
  * 		In most cases, one of `MODE_GC16` and `MODE_GL16` should be used.
  * @param temperature: Environmental temperature of the display in °C.
- * @returns `DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
+ * @returns `EPD_DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
  */
 enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature);
 
@@ -104,7 +104,7 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
  * @param mode: See `epd_hl_update_screen()`.
  * @param temperature: Environmental temperature of the display in °C.
  * @param area: Area of the screen to update.
- * @returns `DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
+ * @returns `EPD_DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
  */
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area);
 

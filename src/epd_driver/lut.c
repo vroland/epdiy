@@ -326,7 +326,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
       bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
       width_divider = 8;
     } else {
-      params->error |= DRAW_INVALID_PACKING_MODE;
+      params->error |= EPD_DRAW_INVALID_PACKING_MODE;
     }
 
     int crop_x = (crop ? params->crop_to.x : 0);
@@ -496,16 +496,16 @@ static enum EpdDrawError calculate_lut(OutputParams* params) {
 	  } else if (mode & PREVIOUSLY_BLACK) {
 		  // FIXME: implement!
 		  //memcpy(params->conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
-		  return DRAW_LOOKUP_NOT_IMPLEMENTED;
+		  return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
 	  } else {
-		  return DRAW_LOOKUP_NOT_IMPLEMENTED;
+		  return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
 	  }
 
 	// unknown format.
 	} else {
-	  return DRAW_LOOKUP_NOT_IMPLEMENTED;
+	  return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
 	}
-    return DRAW_SUCCESS;
+    return EPD_DRAW_SUCCESS;
 }
 
 void IRAM_ATTR feed_display(OutputParams *params) {
@@ -528,19 +528,19 @@ void IRAM_ATTR feed_display(OutputParams *params) {
           } else if (mode & PREVIOUSLY_BLACK) {
             input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
           } else {
-            params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+            params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
           }
       } else if (params->conversion_lut_size == (1 << 16)) {
           input_calc_func = &calc_epd_input_4bpp_lut_64k;
       } else {
-          params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+          params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
       }
     } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
       input_calc_func = &calc_epd_input_1ppB;
     } else if (mode & MODE_PACKING_8PPB) {
       input_calc_func = &calc_epd_input_1bpp;
     } else {
-      params->error |= DRAW_LOOKUP_NOT_IMPLEMENTED;
+      params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
     }
 
     // Adjust min and max row for crop.

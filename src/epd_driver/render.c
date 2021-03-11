@@ -125,7 +125,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 
   int waveform_range = waveform_temp_range_index(waveform, temperature);
   if (waveform_range < 0) {
-    return DRAW_NO_PHASES_AVAILABLE;
+    return EPD_DRAW_NO_PHASES_AVAILABLE;
   }
   int waveform_index = 0;
   uint8_t frame_count = 0;
@@ -133,7 +133,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 
   waveform_index = get_waveform_index(waveform, mode);
   if (waveform_index < 0) {
-	return DRAW_MODE_NOT_FOUND;
+	return EPD_DRAW_MODE_NOT_FOUND;
   }
 
   waveform_phases = waveform->mode_data[waveform_index]
@@ -146,7 +146,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
               || crop_to.height > area.height
               || crop_to.x > area.width
               || crop_to.y > area.height)) {
-      return DRAW_INVALID_CROP;
+      return EPD_DRAW_INVALID_CROP;
   }
 
   for (uint8_t k = 0; k < frame_count; k++) {
@@ -167,7 +167,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     fetch_params.frame_time = frame_time;
     fetch_params.mode = mode;
     fetch_params.waveform = waveform;
-    fetch_params.error = DRAW_SUCCESS;
+    fetch_params.error = EPD_DRAW_SUCCESS;
     fetch_params.drawn_lines = drawn_lines;
     fetch_params.output_queue = &output_queue;
 
@@ -180,7 +180,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     feed_params.waveform_index = waveform_index;
     feed_params.mode = mode;
     feed_params.waveform = waveform;
-    feed_params.error = DRAW_SUCCESS;
+    feed_params.error = EPD_DRAW_SUCCESS;
     feed_params.drawn_lines = drawn_lines;
     feed_params.output_queue = &output_queue;
 
@@ -190,11 +190,11 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
     xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
 
     enum EpdDrawError all_errors = fetch_params.error | feed_params.error;
-    if (all_errors != DRAW_SUCCESS) {
+    if (all_errors != EPD_DRAW_SUCCESS) {
         return all_errors;
     }
   }
-  return DRAW_SUCCESS;
+  return EPD_DRAW_SUCCESS;
 }
 
 void epd_clear_area(EpdRect area) {

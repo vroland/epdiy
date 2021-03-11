@@ -27,36 +27,36 @@ typedef struct {
 
 /// Possible failures when drawing.
 enum EpdDrawError {
-  DRAW_SUCCESS = 0x0,
+  EPD_DRAW_SUCCESS = 0x0,
   /// No valid framebuffer packing mode was specified.
-  DRAW_INVALID_PACKING_MODE = 0x1,
+  EPD_DRAW_INVALID_PACKING_MODE = 0x1,
 
   /// No lookup table implementation for this mode / packing.
-  DRAW_LOOKUP_NOT_IMPLEMENTED = 0x2,
+  EPD_DRAW_LOOKUP_NOT_IMPLEMENTED = 0x2,
 
   /// The string to draw is invalid.
-  DRAW_STRING_INVALID = 0x4,
+  EPD_DRAW_STRING_INVALID = 0x4,
 
   /// The string was not empty, but no characters where drawable.
-  DRAW_NO_DRAWABLE_CHARACTERS = 0x8,
+  EPD_DRAW_NO_DRAWABLE_CHARACTERS = 0x8,
 
   /// Allocation failed
-  DRAW_FAILED_ALLOC = 0x10,
+  EPD_DRAW_FAILED_ALLOC = 0x10,
 
   /// A glyph could not be drawn, and not fallback was present.
-  DRAW_GLYPH_FALLBACK_FAILED = 0x20,
+  EPD_DRAW_GLYPH_FALLBACK_FAILED = 0x20,
 
   /// The specified crop area is invalid.
-  DRAW_INVALID_CROP = 0x40,
+  EPD_DRAW_INVALID_CROP = 0x40,
 
   /// No such mode is available with the current waveform.
-  DRAW_MODE_NOT_FOUND = 0x80,
+  EPD_DRAW_MODE_NOT_FOUND = 0x80,
 
   /// The waveform info file contains no applicable temperature range.
-  DRAW_NO_PHASES_AVAILABLE = 0x100,
+  EPD_DRAW_NO_PHASES_AVAILABLE = 0x100,
 
   /// An invalid combination of font flags was used.
-  DRAW_INVALID_FONT_FLAGS = 0x200,
+  EPD_DRAW_INVALID_FONT_FLAGS = 0x200,
 };
 
 /// Global EPD driver options.
@@ -141,10 +141,6 @@ enum EpdDrawMode {
   /// See `PREVIOUSLY_WHITE`.
   /// Draw on a black background
   PREVIOUSLY_BLACK = 0x400,
-
-  /// Invert colors in the framebuffer (0xF = black, 0x0 = White).
-  /// Currently unused.
-  INVERT = 0x800,
 };
 
 /// The default draw mode (non-flashy refresh, whith previously white screen).
@@ -156,14 +152,14 @@ enum EpdFontFlags {
   ///
   /// Take the background into account
   /// when calculating the size.
-  DRAW_BACKGROUND = 0x1,
+  EPD_DRAW_BACKGROUND = 0x1,
 
   /// Left-Align lines
-  DRAW_ALIGN_LEFT = 0x2,
+  EPD_DRAW_ALIGN_LEFT = 0x2,
   /// Right-align lines
-  DRAW_ALIGN_RIGHT = 0x4,
+  EPD_DRAW_ALIGN_RIGHT = 0x4,
   /// Center-align lines
-  DRAW_ALIGN_CENTER = 0x8,
+  EPD_DRAW_ALIGN_CENTER = 0x8,
 };
 
 /// Font properties.
@@ -418,7 +414,7 @@ void epd_push_pixels(EpdRect area, short time, int color);
  *      skipped.
  * @param waveform: The waveform information to use for drawing.
  *      If you don't have special waveforms, use `EPD_BUILTIN_WAVEFORM`.
- * @returns `DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
+ * @returns `EPD_DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
  */
 enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             const uint8_t *data,

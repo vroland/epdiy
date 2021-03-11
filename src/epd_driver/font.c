@@ -71,7 +71,7 @@ static uint32_t next_cp(const uint8_t **string) {
 
 EpdFontProperties epd_font_properties_default() {
   EpdFontProperties props = {
-      .fg_color = 0, .bg_color = 15, .fallback_glyph = 0, .flags = DRAW_ALIGN_LEFT};
+      .fg_color = 0, .bg_color = 15, .fallback_glyph = 0, .flags = EPD_DRAW_ALIGN_LEFT};
   return props;
 }
 
@@ -119,7 +119,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
   }
 
   if (!glyph) {
-    return DRAW_GLYPH_FALLBACK_FAILED;
+    return EPD_DRAW_GLYPH_FALLBACK_FAILED;
   }
 
   uint32_t offset = glyph->data_offset;
@@ -133,7 +133,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
     uint8_t* tmp_bitmap = (uint8_t *)malloc(bitmap_size);
     if (tmp_bitmap == NULL && bitmap_size) {
       ESP_LOGE("font", "malloc failed.");
-      return DRAW_FAILED_ALLOC;
+      return EPD_DRAW_FAILED_ALLOC;
     }
     uncompress(tmp_bitmap, bitmap_size, &font->bitmap[offset],
                glyph->compressed_size);
@@ -180,7 +180,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
     free((uint8_t*)bitmap);
   }
   *cursor_x += glyph->advance_x;
-  return DRAW_SUCCESS;
+  return EPD_DRAW_SUCCESS;
 }
 
 /*!
@@ -207,7 +207,7 @@ static void get_char_bounds(const EpdFont *font, uint32_t cp, int *x, int *y,
       x2 = x1 + glyph->width, y2 = y1 + glyph->height;
 
   // background needs to be taken into account
-  if (props->flags & DRAW_BACKGROUND) {
+  if (props->flags & EPD_DRAW_BACKGROUND) {
     *minx = min(*x, min(*minx, x1));
     *maxx = max(max(*x + glyph->advance_x, x2), *maxx);
     *miny = min(*y + font->descender, min(*miny, y1));
@@ -264,17 +264,17 @@ static enum EpdDrawError epd_write_line(
   assert(framebuffer != NULL);
 
   if (*string == '\0') {
-    return DRAW_SUCCESS;
+    return EPD_DRAW_SUCCESS;
   }
 
   assert(properties != NULL);
   EpdFontProperties props = *properties;
-  enum EpdFontFlags alignment_mask = DRAW_ALIGN_LEFT | DRAW_ALIGN_RIGHT | DRAW_ALIGN_CENTER;
+  enum EpdFontFlags alignment_mask = EPD_DRAW_ALIGN_LEFT | EPD_DRAW_ALIGN_RIGHT | EPD_DRAW_ALIGN_CENTER;
   enum EpdFontFlags alignment = props.flags & alignment_mask;
 
   // alignments are mutually exclusive!
   if ((alignment & (alignment - 1)) != 0) {
-	return DRAW_INVALID_FONT_FLAGS;
+	return EPD_DRAW_INVALID_FONT_FLAGS;
   }
 
 
@@ -285,7 +285,7 @@ static enum EpdDrawError epd_write_line(
 
   // no printable characters
   if (w < 0 || h < 0) {
-      return DRAW_NO_DRAWABLE_CHARACTERS;
+      return EPD_DRAW_NO_DRAWABLE_CHARACTERS;
   }
 
   int baseline_height = *cursor_y - y1;
@@ -302,14 +302,14 @@ static enum EpdDrawError epd_write_line(
   int cursor_y_init = local_cursor_y;
 
   switch (alignment) {
-	case DRAW_ALIGN_LEFT: {
+	case EPD_DRAW_ALIGN_LEFT: {
 	  break;
 	}
-    case DRAW_ALIGN_CENTER: {
+    case EPD_DRAW_ALIGN_CENTER: {
 	  local_cursor_x -= w / 2;
 	  break;
 	}
-    case DRAW_ALIGN_RIGHT: {
+    case EPD_DRAW_ALIGN_RIGHT: {
 	  local_cursor_x -= w;
 	  break;
 	}
@@ -318,13 +318,13 @@ static enum EpdDrawError epd_write_line(
   }
 
   uint8_t bg = props.bg_color;
-  if (props.flags & DRAW_BACKGROUND) {
+  if (props.flags & EPD_DRAW_BACKGROUND) {
     for (int l = local_cursor_y - font->ascender;
          l < local_cursor_y - font->descender; l++) {
       epd_draw_hline(local_cursor_x, l, w, bg << 4, buffer);
     }
   }
-  enum EpdDrawError err = DRAW_SUCCESS;
+  enum EpdDrawError err = EPD_DRAW_SUCCESS;
   while ((c = next_cp((const uint8_t **)&string))) {
     err |= draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width,
               buf_height, c, &props);
@@ -349,15 +349,15 @@ enum EpdDrawError epd_write_string(
   char *token, *newstring, *tofree;
   if (string == NULL) {
     ESP_LOGE("font.c", "cannot draw a NULL string!");
-    return DRAW_STRING_INVALID;
+    return EPD_DRAW_STRING_INVALID;
   }
   tofree = newstring = strdup(string);
   if (newstring == NULL) {
     ESP_LOGE("font.c", "cannot allocate string copy!");
-    return DRAW_FAILED_ALLOC;
+    return EPD_DRAW_FAILED_ALLOC;
   }
 
-  enum EpdDrawError err = DRAW_SUCCESS;
+  enum EpdDrawError err = EPD_DRAW_SUCCESS;
   // taken from the strsep manpage
   int line_start = *cursor_x;
   while ((token = strsep(&newstring, "\n")) != NULL) {
