@@ -7,8 +7,8 @@
 #include "firasans_bold.h"
 
 typedef struct {
-    const GFXfont* regular;
-    const GFXfont* bold;
+    const EpdFont* regular;
+    const EpdFont* bold;
     const char* name;
 } FontSet;
 

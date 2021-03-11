@@ -63,7 +63,7 @@ void read_task() {
 }
 
 void app_main() {
-  epd_init();
+  epd_init(EPD_OPTIONS_DEFAULT);
   delay(300);
   epd_poweron();
   epd_clear();
@@ -93,5 +93,5 @@ void app_main() {
   tnew(cols, rows);
   selinit();
 
-  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(&read_task, "read", 1 << 14, NULL, 1, NULL, 0));
+  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(&read_task, "read", 1 << 12, NULL, 1, NULL, 0));
 }

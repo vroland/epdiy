@@ -9512,7 +9512,7 @@ const uint8_t FiraSansBitmaps[152156] = {
     0xA8, 0x03, 0x80, 0x00, 0x00, 0x00, 0xB0, 0x93, 0x05, 0x86, 0x35, 0x05, 0x00, 0x00, 0x00, 0xEA,
     0x31, 0x00, 0x61, 0x0B, 0x00, 0x00, 0x00, 0x90, 0x02, 0x00, 0x00, 0x42,
 };
-const GFXglyph FiraSansGlyphs[] = {
+const EpdGlyph FiraSansGlyphs[] = {
     { 0, 0, 4, 0, 0, 0, 0 }, //  
     { 4, 12, 4, 0, 12, 24, 0 }, // !
     { 5, 4, 7, 1, 12, 12, 24 }, // "
@@ -11234,7 +11234,7 @@ const GFXglyph FiraSansGlyphs[] = {
     { 17, 18, 17, 0, 14, 162, 151866 }, // 🙿
     { 16, 16, 16, 0, 13, 128, 152028 }, // 🚀
 };
-const UnicodeInterval FiraSansIntervals[] = {
+const EpdUnicodeInterval FiraSansIntervals[] = {
     { 0x20, 0x7E, 0x0 },
     { 0xA0, 0xFF, 0x5F },
     { 0x2010, 0x205F, 0xBF },
@@ -11249,10 +11249,10 @@ const UnicodeInterval FiraSansIntervals[] = {
     { 0xE0B0, 0xE0B3, 0x633 },
     { 0x1F600, 0x1F680, 0x637 },
 };
-const GFXfont FiraSans = {
-    (uint8_t*)FiraSansBitmaps,
-    (GFXglyph*)FiraSansGlyphs,
-    (UnicodeInterval*)FiraSansIntervals,
+const EpdFont FiraSans = {
+    FiraSansBitmaps,
+    FiraSansGlyphs,
+    FiraSansIntervals,
     13,
     0,
     20,
