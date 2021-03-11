@@ -14,3 +14,4 @@ eink_*.json
 fp-info-cache
 .cache
 __pycache__
+examples/weather/components
