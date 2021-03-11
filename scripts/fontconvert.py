@@ -12,6 +12,7 @@ parser.add_argument("name", action="store", help="name of the font.")
 parser.add_argument("size", type=int, help="font size to use.")
 parser.add_argument("fontstack", action="store", nargs='+', help="list of font files, ordered by descending priority.")
 parser.add_argument("--compress", dest="compress", action="store_true", help="compress glyph bitmaps.")
+parser.add_argument("--additional-intervals", dest="additional_intervals", action="append", help="Additional code point intervals to export as min,max. This argument can be repeated.")
 args = parser.parse_args()
 
 GlyphProps = namedtuple("GlyphProps", ["width", "height", "advance_x", "left", "top", "compressed_size", "data_offset", "code_point"])
@@ -31,22 +32,27 @@ intervals = [
     # arrows
     (0x2190, 0x21FF),
     # math
-    (0x2200, 0x22FF),
+    #(0x2200, 0x22FF),
     # symbols
     (0x2300, 0x23FF),
     # box drawing
-    (0x2500, 0x259F),
+    #(0x2500, 0x259F),
     # geometric shapes
     (0x25A0, 0x25FF),
     # misc symbols
     (0x2600, 0x26F0),
     (0x2700, 0x27BF),
     # powerline symbols
-    (0xE0A0, 0xE0A2),
-    (0xE0B0, 0xE0B3),
-    (0x1F600, 0x1F680),
+    #(0xE0A0, 0xE0A2),
+    #(0xE0B0, 0xE0B3),
+    #(0x1F600, 0x1F680),
 ]
 
+add_ints = []
+if args.additional_intervals:
+    add_ints = [tuple([int(n, base=0) for n in i.split(",")]) for i in args.additional_intervals]
+
+intervals = sorted(intervals + add_ints)
 
 def norm_floor(val):
     return int(math.floor(val / (1 << 6)))

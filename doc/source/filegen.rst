@@ -16,15 +16,27 @@ Fonts can only be used by the driver in  a special header format
 For this purpose, the :code:`scripts/fontconvert.py` utility is provided.
 ::
 
-    fontconvert.py [-h] [--compress] name size fontstack [fontstack ...]
+    fontconvert.py [-h] [--compress] [--additional-intervals ADDITIONAL_INTERVALS] name size fontstack [fontstack ...]
 
 The following example generates a header file for Fira Code at size 10, where glyphs that are not found in Fira Code will be taken from Symbola:
 ::
 
     ./fontconvert.py FiraCode 10 /usr/share/fonts/TTF/FiraCode-Regular.ttf /usr/share/fonts/TTF/Symbola.ttf > ../examples/terminal/main/firacode.h
 
-You can change which unicode character codes are to be exported by modifying :code:`intervals` in :code:`fontconvert.py`.
+You can change which unicode character codes are to be exported by specifying additional
+ranges of unicode code points with :code:`--additional-intervals`.
+Intervals are written as :code:`min,max`. 
+To add multiple intervals, you can specify the :code:`--additional-intervals` option multiple times.
+::
+
+    ./fontconvert.py ... --additional-intervals 0xE0A0,0xE0A2 --additional-intervals 0xE0B0,0xE0B3 ...
+
+The above command would add two addtitional ranges.
+
 You can enable compression with :code:`--compress`, which reduces the size of the generated font but comes at a performance cost.
+
+If the generated font files with the default characters are too large for your application,
+you can modify :code:`intervals` in :code:`fontconvert.py`.
 
 Generating Images
 -----------------
