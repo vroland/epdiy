@@ -18,17 +18,19 @@
 #include "epd_driver.h"
 #include "epd_highlevel.h"
 
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+// select the font based on display width
+#if (EPD_WIDTH < 1000)
 #include "firasans_12pt.h"
+#define FONT FiraSans_12
 #else
-#include "firasans.h"
+#include "firasans_20.h"
+#define FONT FiraSans_20
 #endif
-#include "giraffe.h"
-#include "zebra.h"
-#include "img_window.h"
+
+#include "img_giraffe.h"
+#include "img_zebra.h"
+#include "img_beach.h"
 #include "img_board.h"
-//#include "epdiy_ED097TC2.h"
-//#include "eink_ED047TC2.h"
 
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 
@@ -84,7 +86,7 @@ void loop() {
   int cursor_y = EPD_HEIGHT / 2 - 100;
   EpdFontProperties font_props = epd_font_properties_default();
   font_props.flags = EPD_DRAW_ALIGN_CENTER;
-  epd_write_string(&FiraSans, "Loading demo...", &cursor_x, &cursor_y, fb, &font_props);
+  epd_write_string(&FONT, "Loading demo...", &cursor_x, &cursor_y, fb, &font_props);
 
   int bar_x = EPD_WIDTH / 2 - 200;
   int bar_y = EPD_HEIGHT / 2;
@@ -108,7 +110,7 @@ void loop() {
   cursor_x = EPD_WIDTH / 2;
   cursor_y = EPD_HEIGHT / 2 + 200;
 
-  epd_write_string(&FiraSans, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
+  epd_write_string(&FONT, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
   epd_poweron();
   vTaskDelay(100);
   err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
@@ -135,7 +137,7 @@ void loop() {
 
   epd_fill_rect(clear_area, 0xFF, fb);
 
-  epd_write_string(&FiraSans, "Now let's look at some pictures.", &cursor_x, &cursor_y, fb, &font_props);
+  epd_write_string(&FONT, "Now let's look at some pictures.", &cursor_x, &cursor_y, fb, &font_props);
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
   epd_poweroff();
@@ -145,12 +147,12 @@ void loop() {
   epd_hl_set_all_white(&hl);
 
   EpdRect giraffe_area = {
-      .x = EPD_WIDTH / 2 - giraffe_width / 2,
+      .x = EPD_WIDTH / 2 - img_giraffe_width / 2,
       .y = 25,
-      .width = giraffe_width,
-      .height = giraffe_height,
+      .width = img_giraffe_width,
+      .height = img_giraffe_height,
   };
-  epd_copy_to_framebuffer(giraffe_area, giraffe_data, fb);
+  epd_copy_to_framebuffer(giraffe_area, img_giraffe_data, fb);
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
@@ -158,12 +160,12 @@ void loop() {
   delay(5000);
 
   EpdRect zebra_area = {
-      .x = EPD_WIDTH / 2 - zebra_width / 2,
-      .y = EPD_HEIGHT / 2 - zebra_height / 2,
-      .width = zebra_width,
-      .height = zebra_height,
+      .x = EPD_WIDTH / 2 - img_zebra_width / 2,
+      .y = EPD_HEIGHT / 2 - img_zebra_height / 2,
+      .width = img_zebra_width,
+      .height = img_zebra_height,
   };
-  epd_copy_to_framebuffer(zebra_area, zebra_data, fb);
+  epd_copy_to_framebuffer(zebra_area, img_zebra_data, fb);
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
@@ -180,7 +182,7 @@ void loop() {
   cursor_x = EPD_WIDTH / 2;
   cursor_y = board_area.y;
   font_props.flags |= EPD_DRAW_BACKGROUND;
-  epd_write_string(&FiraSans, "↓ Thats the V2 board. ↓", &cursor_x, &cursor_y, fb, &font_props);
+  epd_write_string(&FONT, "↓ Thats the V2 board. ↓", &cursor_x, &cursor_y, fb, &font_props);
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
@@ -201,7 +203,7 @@ void loop() {
   cursor_x = 50;
   cursor_y = 100;
 
-  epd_write_default(&FiraSans,
+  epd_write_default(&FONT,
         "➸ 16 color grayscale\n"
         "➸ ~250ms - 1700ms for full frame draw 🚀\n"
         "➸ Use with 6\" or 9.7\" EPDs\n"
@@ -210,13 +212,13 @@ void loop() {
         "➸ Arbitrary transitions with vendor waveforms",
   &cursor_x, &cursor_y, fb);
 
-  EpdRect img_window_area = {
+  EpdRect img_beach_area = {
       .x = 0,
-      .y = EPD_HEIGHT - img_window_height,
-      .width = img_window_width,
-      .height = img_window_height,
+      .y = EPD_HEIGHT - img_beach_height,
+      .width = img_beach_width,
+      .height = img_beach_height,
   };
-  epd_copy_to_framebuffer(img_window_area, img_window_data, fb);
+  epd_copy_to_framebuffer(img_beach_area, img_beach_data, fb);
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
