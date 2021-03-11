@@ -1,6 +1,8 @@
 #include "epd_temperature.h"
 #include "display_ops.h"
 #include "epd_driver.h"
+#include "include/epd_driver.h"
+#include "include/epd_internals.h"
 #include "lut.h"
 
 #include "driver/rtc_io.h"
@@ -131,15 +133,20 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
   uint8_t frame_count = 0;
   const EpdWaveformPhases* waveform_phases = NULL;
 
-  waveform_index = get_waveform_index(waveform, mode);
-  if (waveform_index < 0) {
-	return EPD_DRAW_MODE_NOT_FOUND;
-  }
+  // no waveform required for monochrome mode
+  if (!(mode & MODE_EPDIY_MONOCHROME)) {
+      waveform_index = get_waveform_index(waveform, mode);
+      if (waveform_index < 0) {
+        return EPD_DRAW_MODE_NOT_FOUND;
+      }
 
-  waveform_phases = waveform->mode_data[waveform_index]
-							  ->range_data[waveform_range];
-   // FIXME: error if not present
-  frame_count = waveform_phases->phases;
+      waveform_phases = waveform->mode_data[waveform_index]
+                                  ->range_data[waveform_range];
+       // FIXME: error if not present
+      frame_count = waveform_phases->phases;
+  } else {
+      frame_count = 1;
+  }
 
   const bool crop = (crop_to.width > 0 && crop_to.height > 0);
   if (crop && (crop_to.width > area.width
@@ -155,6 +162,10 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 	if (waveform_phases != NULL && waveform_phases->phase_times != NULL) {
 		frame_time = waveform_phases->phase_times[k];
 	}
+
+    if (mode & MODE_EPDIY_MONOCHROME) {
+        frame_time = MONOCHROME_FRAME_TIME;
+    }
 
     fetch_params.area = area;
     // IMPORTANT: This must only ever read from PSRAM,
