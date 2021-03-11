@@ -64,7 +64,7 @@ void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
   epd_fill_rect(bar, black, fb);
 
   enum EpdDrawError err = epd_hl_update_area(&hl, MODE_DU, temperature, border);
-  assert(err == DRAW_SUCCESS);
+  assert(err == EPD_DRAW_SUCCESS);
 }
 
 void loop() {
@@ -83,7 +83,7 @@ void loop() {
   int cursor_x = EPD_WIDTH / 2;
   int cursor_y = EPD_HEIGHT / 2 - 100;
   EpdFontProperties font_props = epd_font_properties_default();
-  font_props.flags = DRAW_ALIGN_CENTER;
+  font_props.flags = EPD_DRAW_ALIGN_CENTER;
   epd_write_string(&FiraSans, "Loading demo...", &cursor_x, &cursor_y, fb, &font_props);
 
   int bar_x = EPD_WIDTH / 2 - 200;
@@ -179,7 +179,7 @@ void loop() {
   epd_copy_to_framebuffer(board_area, img_board_data, fb);
   cursor_x = EPD_WIDTH / 2;
   cursor_y = board_area.y;
-  font_props.flags |= DRAW_BACKGROUND;
+  font_props.flags |= EPD_DRAW_BACKGROUND;
   epd_write_string(&FiraSans, "↓ Thats the V2 board. ↓", &cursor_x, &cursor_y, fb, &font_props);
 
   epd_poweron();
