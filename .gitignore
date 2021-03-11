@@ -12,3 +12,5 @@ examples/mpd_status/main/wifi_config.h
 eink_*.h
 eink_*.json
 fp-info-cache
+.cache
+__pycache__
