@@ -1,20 +1,14 @@
-/* Simple firmware for a ESP32 displaying a static image on an EPaper Screen.
+/*
+ * Test program for displaying a grayscale pattern.
  *
- * Write an image into a header file using a 3...2...1...0 format per pixel,
- * for 4 bits color (16 colors - well, greys.) MSB first.  At 80 MHz, screen
- * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
+ * Use this to calibrate grayscale timings for new displays or test alternative waveforms.
  */
 
 #include "esp_heap_caps.h"
-#include "esp_log.h"
-#include "esp_timer.h"
-#include "esp_types.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
-#include <stdio.h>
 #include <string.h>
-#include "esp32/himem.h"
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
@@ -48,7 +42,7 @@ void loop() {
 
   write_grayscale_pattern(false, fb);
 
-  int temperature = 20; //epd_ambient_temperature();
+  int temperature = 25; //epd_ambient_temperature();
 
   epd_poweron();
   epd_clear();
@@ -69,9 +63,8 @@ void loop() {
 
 void IRAM_ATTR app_main() {
   epd_init(EPD_OPTIONS_DEFAULT);
-  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
   hl = epd_hl_init(WAVEFORM);
+
   while (1) {
     loop();
   };
