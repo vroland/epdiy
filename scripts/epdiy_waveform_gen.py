@@ -55,15 +55,15 @@ def generate_mode_x_to_GL16(display, mode):
     dirfunc = None
     if mode_names[mode] == "MODE_EPDIY_WHITE_TO_GL16":
         frame_times = FRAME_TIMES_WHITE_TO_GL16[display]
-        def lighten_if_greater_than_frame(f, t, frame):
-            return 2 * (f == 0 and t > 2 * frame)
-        dirfunc = lighten_if_greater_than_frame
+        def dirfunc(f, t, frame):
+            return (t < (30 - 2 * frame) and f == 30)
+        dirfunc = dirfunc
 
     elif mode_names[mode] == "MODE_EPDIY_BLACK_TO_GL16":
         frame_times = FRAME_TIMES_BLACK_TO_GL16[display]
-        def darken_if_less_than_frame(f, t, frame):
-            return (f == 30 and t < 30 - 2 * frame)
-        dirfunc = darken_if_less_than_frame
+        def dirfunc(f, t, frame):
+            return 2 * (t > (2 * frame) and f == 0)
+        dirfunc = dirfunc
     else:
         raise ValueError(f"Cannot generate {mode} here.")
 
@@ -92,7 +92,6 @@ def generate_mode_GL16(display):
     """
     Do non-flashing arbitrary transitions by going to full black, then the desired value.
     """
-    mode = generate_mode_GC16(display)
     phases = []
     for frame in range(15):
         phase = generate_frame(lambda t, f: f >= (30 - 2 * frame))
