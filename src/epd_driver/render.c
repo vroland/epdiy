@@ -310,15 +310,15 @@ EpdRect epd_difference_image_base(
     int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
 
-    for (int y=crop_to.y; y < fb_height; y++) {
+    for (int y=crop_to.y; y < y_end; y++) {
         uint8_t dirty = 0;
-        for (int x = crop_to.x; x < fb_width; x++) {
+        for (int x = crop_to.x; x < x_end; x++) {
             uint8_t t = *(to + y*fb_width / 2 + x / 2);
             t = (x % 2) ? (t >> 4) : (t & 0x0f);
             uint8_t f = *(from + y*fb_width / 2+ x / 2);
             *from_or |= f;
             *from_and &= f;
-            f = (x % 2) ? ((f >> 4) & 0x0f) : (f & 0x0f);
+            f = (x % 2) ? (f >> 4) : (f & 0x0f);
             dirty |= (t ^ f);
             dirty_cols[x] |= (t ^ f);
             interlaced[y * fb_width + x] = (t << 4) | f;
