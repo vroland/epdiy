@@ -10,7 +10,7 @@
 
 EpdiyHighlevelState hl;
 
-void loop() {
+void idf_loop() {
 
   EpdRect dragon_area = {
       .x = 0,
@@ -31,11 +31,17 @@ void loop() {
   }
 }
 
-void app_main() {
+void idf_setup() {
   epd_init(EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
+}
+
+#ifndef ARDUINO_ARCH_ESP32
+void app_main() {
+  idf_setup();
 
   while (1) {
-    loop();
+    idf_loop();
   };
 }
+#endif

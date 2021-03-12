@@ -34,9 +34,11 @@
 
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 
+#ifndef ARDUINO_ARCH_ESP32
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
 uint32_t millis() { return esp_timer_get_time() / 1000; }
+#endif
 
 uint32_t t1, t2;
 
@@ -69,7 +71,7 @@ void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
   assert(err == EPD_DRAW_SUCCESS);
 }
 
-void loop() {
+void idf_loop() {
 
   enum EpdDrawError err;
   temperature = epd_ambient_temperature();
@@ -228,16 +230,20 @@ void loop() {
   delay(100000);
 }
 
-void app_main() {
-  ESP_LOGW("main", "Hello World!\n");
-
+void idf_setup() {
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
+}
+
+#ifndef ARDUINO_ARCH_ESP32
+void app_main() {
+  idf_setup();
 
   while (1) {
-    loop();
+    idf_loop();
   };
 }
+#endif

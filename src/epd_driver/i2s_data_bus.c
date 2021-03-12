@@ -1,6 +1,10 @@
 #include "i2s_data_bus.h"
 #include "driver/periph_ctrl.h"
+#if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
+#include "rom/lldesc.h"
+#else
 #include "esp32/rom/lldesc.h"
+#endif
 #include "esp_heap_caps.h"
 #include "soc/i2s_reg.h"
 #include "soc/i2s_struct.h"
