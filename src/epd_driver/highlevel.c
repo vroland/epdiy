@@ -11,7 +11,7 @@
 
 static bool already_initialized = 0;
 
-const int fb_size = EPD_WIDTH / 2 * EPD_WIDTH;
+const static int fb_size = EPD_WIDTH / 2 * EPD_HEIGHT;
 
 EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(!already_initialized);
@@ -62,6 +62,10 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       &previously_black
   );
 
+  if (diff_area.height == 0 || diff_area.width == 0) {
+      return EPD_DRAW_SUCCESS;
+  }
+
   enum EpdDrawError err;
   if (previously_white) {
       err = epd_draw_base(epd_full_screen(), state->front_fb, diff_area, MODE_PACKING_2PPB | PREVIOUSLY_WHITE | mode, temperature, state->dirty_lines, state->waveform);
@@ -86,5 +90,13 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
 void epd_hl_set_all_white(EpdiyHighlevelState* state) {
   assert(state != NULL);
-  memset(state->front_fb, 0xFF, EPD_WIDTH / 2 * EPD_WIDTH);
+  memset(state->front_fb, 0xFF, fb_size);
+}
+
+void epd_fullclear(EpdiyHighlevelState* state, int temperature) {
+  assert(state != NULL);
+  epd_hl_set_all_white(state);
+  enum EpdDrawError err = epd_hl_update_screen(state, MODE_GC16, temperature);
+  assert(err == EPD_DRAW_SUCCESS);
+  epd_clear();
 }

@@ -114,3 +114,9 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
  * @param state: A reference to the `EpdiyHighlevelState` object used.
  */
 void epd_hl_set_all_white(EpdiyHighlevelState* state);
+
+/**
+ * Bring the display to a fully white state and get rid of any
+ * remaining artifacts.
+ */
+void epd_fullclear(EpdiyHighlevelState* state, int temperature);

@@ -354,7 +354,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
 
     // calculate start and end row with crop
     int min_y = area.y + crop_y;
-    int max_y = min_y + (crop ? min(area.height, crop_h) : area.height);
+    int max_y = min(min_y + (crop ? crop_h : area.height), area.height);
     for (int i = 0; i < EPD_HEIGHT; i++) {
       if (i < min_y || i >= max_y) {
         continue;
@@ -566,8 +566,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
     int crop_y = (crop ? params->crop_to.y : 0);
     int min_y = area.y + crop_y;
-    int max_y =
-        min_y + (crop ? min(area.height, params->crop_to.height) : area.height);
+    int max_y = min(min_y + (crop ? params->crop_to.height : area.height), area.height);
 
     // interval of the output line that is needed
     // FIXME: only lookup needed parts
@@ -594,6 +593,7 @@ void IRAM_ATTR feed_display(OutputParams *params) {
         skip_row(frame_time);
         continue;
       }
+
       uint8_t output[EPD_WIDTH];
       xQueueReceive(*params->output_queue, output, portMAX_DELAY);
       if (!params->error) {

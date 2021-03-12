@@ -15,7 +15,8 @@
 #include "xtensa/core-macros.h"
 #include <string.h>
 
-inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
+inline int min(int x, int y) { return x < y ? x : y; }
+inline int max(int x, int y) { return x > y ? x : y; }
 
 const int clear_cycle_time = 12;
 
@@ -146,6 +147,10 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
       frame_count = waveform_phases->phases;
   } else {
       frame_count = 1;
+  }
+
+  if (crop_to.width < 0 || crop_to.height < 0) {
+      return EPD_DRAW_INVALID_CROP;
   }
 
   const bool crop = (crop_to.width > 0 && crop_to.height > 0);
@@ -341,8 +346,8 @@ EpdRect epd_difference_image_base(
     EpdRect crop_rect = {
       .x = min_x,
       .y = min_y,
-      .width = max_x - min_x + 1,
-      .height = max_y - min_y + 1
+      .width = max(max_x - min_x + 1, 0),
+      .height = max(max_y - min_y + 1, 0),
     };
     return crop_rect;
 }
