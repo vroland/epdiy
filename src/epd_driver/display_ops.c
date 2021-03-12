@@ -144,7 +144,7 @@ static inline void latch_row() {
 void IRAM_ATTR epd_skip() {
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-  pulse_ckv_ticks(2, 2, false);
+  pulse_ckv_ticks(5, 5, false);
 #else
   // According to the spec, the OC4 maximum CKV frequency is 200kHz.
   pulse_ckv_ticks(45, 5, false);
