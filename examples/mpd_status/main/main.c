@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "epd_driver.h"
+#include "epd_highlevel.h"
 #include "firasans_16.h"
 #include "firasans_16_bold.h"
 #include "firasans_20.h"
@@ -35,9 +36,7 @@ const int album_cover_y = 100;
 const int queue_x_end = 1500;
 const int queue_y_start = 100;
 
-void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
-
-uint32_t millis() { return esp_timer_get_time() / 1000; }
+EpdiyHighlevelState hl;
 
 static bool got_ip = false;
 
@@ -55,32 +54,31 @@ static void event_handler(void *arg, esp_event_base_t event_base,
   }
 }
 
-void show_status(struct mpd_status *status, struct mpd_song *song,
-                 uint8_t *img_buf, int album_height) {
+void show_status(struct mpd_status *status, struct mpd_song *song, int album_height) {
 
   int cursor_x = album_cover_x;
   int cursor_y = album_height + 100;
   if (mpd_song_get_tag(song, MPD_TAG_TITLE, 0)) {
-    write_string((GFXfont *)&FiraSans24,
-                 (char *)mpd_song_get_tag(song, MPD_TAG_TITLE, 0), &cursor_x,
-                 &cursor_y, img_buf);
+    epd_write_default(&FiraSans24,
+                 mpd_song_get_tag(song, MPD_TAG_TITLE, 0), &cursor_x,
+                 &cursor_y, epd_hl_get_framebuffer(&hl));
   }
 
   if (mpd_song_get_tag(song, MPD_TAG_ALBUM, 0)) {
     cursor_x = album_cover_x;
     cursor_y = album_height + 100 + FiraSans24.advance_y + FiraSans24.advance_y;
-    write_string((GFXfont *)&FiraSans20,
-                 (char *)mpd_song_get_tag(song, MPD_TAG_ALBUM, 0), &cursor_x,
-                 &cursor_y, img_buf);
+    epd_write_default(&FiraSans20,
+                 mpd_song_get_tag(song, MPD_TAG_ALBUM, 0), &cursor_x,
+                 &cursor_y, epd_hl_get_framebuffer(&hl));
   }
 
   if (mpd_song_get_tag(song, MPD_TAG_ARTIST, 0)) {
     cursor_x = album_cover_x;
     cursor_y =
         album_height + 100 + FiraSans24.advance_y + FiraSans20.advance_y * 2;
-    write_string((GFXfont *)&FiraSans20,
-                 (char *)mpd_song_get_tag(song, MPD_TAG_ARTIST, 0), &cursor_x,
-                 &cursor_y, img_buf);
+    epd_write_default(&FiraSans20,
+                 mpd_song_get_tag(song, MPD_TAG_ARTIST, 0), &cursor_x,
+                 &cursor_y, epd_hl_get_framebuffer(&hl));
   }
 }
 
@@ -97,17 +95,8 @@ void handle_error(struct mpd_connection **c) {
   }
 }
 
-static void print_tag(const struct mpd_song *song, enum mpd_tag_type type,
-                      const char *label) {
-  unsigned i = 0;
-  const char *value;
-
-  while ((value = mpd_song_get_tag(song, type, i++)) != NULL)
-    printf("%s: %s\n", label, value);
-}
-
 void epd_task() {
-  epd_init();
+  epd_init(EPD_LUT_1K);
 
   // Initialize NVS
   esp_err_t ret = nvs_flash_init();
@@ -146,20 +135,21 @@ void epd_task() {
   ESP_ERROR_CHECK(esp_wifi_start());
 
   while (!got_ip) {
-    delay(100);
+    vTaskDelay(100);
   }
 
-  uint8_t *img_buf =
-      heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+  hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
+  uint8_t* img_buf = epd_hl_get_framebuffer(&hl);
 
   album_cover_t *album_cover = NULL;
   mpd_playback_info_t *playback_info = NULL;
 
-
-  memset(img_buf, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-
   bool init = true;
   bool already_idling = false;
+
+  epd_poweron();
+  epd_clear();
+  epd_poweroff();
 
   struct mpd_connection *mpd_conn = NULL;
   while (true) {
@@ -206,15 +196,14 @@ void epd_task() {
     if (new_info == NULL && !already_idling) {
       ESP_LOGW("main", "no song playing");
       if (!already_idling) {
-          ESP_LOGW("main", "drawing!");
+          int temperature = 25;
           epd_poweron();
-          epd_draw_image(epd_full_screen(), img_buf, WHITE_ON_WHITE);
-          epd_clear_area_cycles(epd_full_screen(), 2, 20);
-          memset(img_buf, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
+          epd_fullclear(&hl, temperature);
           int x = album_cover_x;
           int y = album_cover_y;
-          write_string((GFXfont*)&FiraSans24, "Warteschlange leer.", &x, &y, img_buf);
-          epd_draw_grayscale_image(epd_full_screen(), img_buf);
+          epd_write_default(&FiraSans24, "Warteschlange leer.", &x, &y, img_buf);
+          enum EpdDrawError err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
+          assert(err == EPD_DRAW_SUCCESS);
           epd_poweroff();
       }
       vTaskDelay(100);
@@ -226,13 +215,10 @@ void epd_task() {
     already_idling = false;
 
     if ((do_update || init) && new_info != NULL) {
-      epd_poweron();
-      epd_draw_image(epd_full_screen(), img_buf, WHITE_ON_WHITE);
-      epd_clear_area_cycles(epd_full_screen(), 2, 20);
-      epd_poweroff();
+      //epd_clear_area_cycles(epd_full_screen(), 2, 20);
 
+      epd_hl_set_all_white(&hl);
 
-      memset(img_buf, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
       mpd_send_list_queue_meta(mpd_conn);
       handle_error(&mpd_conn);
 
@@ -254,30 +240,27 @@ void epd_task() {
           song = mpd_entity_get_song(entity);
           unsigned duration = mpd_song_get_duration(song);
 
-          GFXfont *font = (GFXfont *)&FiraSans16;
+          const EpdFont *font = &FiraSans16;
           if (strcmp(mpd_song_get_uri(song),
                      mpd_song_get_uri(playback_info->current_song)) == 0) {
-            font = (GFXfont *)&FiraSans16_Bold;
+            font = &FiraSans16_Bold;
           }
 
+          EpdFontProperties rightalign = epd_font_properties_default();
+          rightalign.flags = EPD_DRAW_ALIGN_RIGHT;
           int queue_x = queue_x_start + 60;
           char timestr[12] = {0};
           snprintf(timestr, 12, "%02d:%02d", duration / 60, duration % 60);
-          int t_x = 0, t_y = 0, t_x1, t_y1, t_h, w_time = 0;
-          get_text_bounds(font, timestr, &t_x, &t_y, &t_x1, &t_y1, &w_time, &t_h, NULL);
 
-          int w_track = 0;
-          char* track = (char *)mpd_song_get_tag(song, MPD_TAG_TRACK, 0);
-          get_text_bounds(font, track, &t_x, &t_y, &t_x1, &t_y1, &w_track, &t_h, NULL);
-
-          int timestamp_x = queue_x_end - w_time;
+          int timestamp_x = queue_x_end;
           int timestamp_y = queue_y;
           int track_x = queue_x_start;
           int track_y = queue_y;
-          char* title = (char *)mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
-          write_string(font, title, &queue_x, &queue_y, img_buf);
-          write_string(font, track, &track_x, &track_y, img_buf);
-          write_string(font, timestr, &timestamp_x, &timestamp_y, img_buf);
+          const char* title = mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
+          const char* track = mpd_song_get_tag(song, MPD_TAG_TRACK, 0);
+          epd_write_default(font, title, &queue_x, &queue_y, img_buf);
+          epd_write_default(font, track, &track_x, &track_y, img_buf);
+          epd_write_string(font, timestr, &timestamp_x, &timestamp_y, img_buf, &rightalign);
           break;
 
         case MPD_ENTITY_TYPE_DIRECTORY:
@@ -313,7 +296,7 @@ void epd_task() {
 
       int album_height = 700;
       if (album_cover != NULL) {
-        Rect_t area = {
+        EpdRect area = {
             .width = album_cover->width,
             .height = album_cover->height,
             .x = album_cover_x,
@@ -324,7 +307,7 @@ void epd_task() {
         album_height = album_cover->height;
         epd_copy_to_framebuffer(area, album_cover->data, img_buf);
       } else {
-        Rect_t area = {
+        EpdRect area = {
             .width = DefaultAlbum_width,
             .height = DefaultAlbum_height,
             .x = album_cover_x,
@@ -334,11 +317,20 @@ void epd_task() {
         album_height = DefaultAlbum_height;
         epd_copy_to_framebuffer(area, (uint8_t*)DefaultAlbum_data, img_buf);
       }
+      int temperature = 25;
 
-      show_status(playback_info->status, playback_info->current_song, img_buf, album_cover_y + album_height);
+      EpdRect upper_update = epd_full_screen();
+      upper_update.height = album_cover_y + album_height;
+      EpdRect lower_update = epd_full_screen();
+      lower_update.height = EPD_HEIGHT - upper_update.height;
+      lower_update.y = upper_update.height;
+      show_status(playback_info->status, playback_info->current_song, album_cover_y + album_height);
 
       epd_poweron();
-      epd_draw_grayscale_image(epd_full_screen(), img_buf);
+      enum EpdDrawError err = epd_hl_update_area(&hl, MODE_GL16, temperature, upper_update);
+      assert(err == EPD_DRAW_SUCCESS);
+      err = epd_hl_update_area(&hl, MODE_GL16, temperature, lower_update);
+      assert(err == EPD_DRAW_SUCCESS);
       epd_poweroff();
     }
     init = false;
@@ -347,9 +339,8 @@ void epd_task() {
 
 void app_main() {
 
-  // memcpy(img_buf, dragon_data, EPD_WIDTH * EPD_HEIGHT / 2);
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 
-  xTaskCreatePinnedToCore(&epd_task, "epd task", 1 << 12, NULL, 2, NULL, 1);
+  epd_task();
 }

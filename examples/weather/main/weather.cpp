@@ -20,7 +20,7 @@
 
 #include "Arduino.h"
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
-#include <ArduinoJson.h>
+#include "ArduinoJson.h"
 #include <HTTPClient.h>
 
 #include <WiFi.h>
@@ -94,7 +94,7 @@ uint8_t *fb;
 #include "opensans24.h"
 #include "opensans24b.h"
 
-GFXfont currentFont;
+EpdFont currentFont;
 
 
 bool obtainWeatherData(WiFiClient& client, const String& RequestType);
@@ -166,7 +166,7 @@ void fillRect(int16_t x, int16_t y, int16_t w, int16_t h,uint16_t color);
 void fillTriangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                                 int16_t x2, int16_t y2, uint16_t color);
 void drawPixel(int x, int y, uint8_t color) ;
-void setFont(GFXfont const&font);
+void setFont(EpdFont const&font);
 bool getRandomImage(WiFiClient & client);
 void drawImage(WiFiClient & client);
 bool decodeImage(WiFiClient& json);
@@ -187,6 +187,7 @@ void BeginSleep() {
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
+  epd_deinit();
   esp_deep_sleep_start();  // Sleep for e.g. 30 minutes
 }
 
@@ -257,27 +258,30 @@ void setup() {
       }
       if (true || (RxWeather && RxForecast)) { // Only if received both Weather or Forecast proceed
         StopWiFi(); // Reduces power consumption
-        
+
 
         epd_poweron();
         volatile uint32_t t1 = Millis();
         epd_clear();
         volatile uint32_t t2 = Millis();
         printf("EPD clear took %dms.\n", t2 - t1);
-  
+
         //epd_poweroff();
         //epd_poweron();
 
-  
+
         //drawImage(client);
         DisplayWeather();
         //DisplayTime();
 
         t1 = Millis();
-        epd_draw_grayscale_image(epd_full_screen(), fb);
+        int temperature = epd_ambient_temperature();
+        if (temperature <= 0) temperature = 25;
+        enum EpdDrawMode mode = (enum EpdDrawMode)(MODE_GC16 | MODE_PACKING_2PPB | PREVIOUSLY_WHITE);
+        epd_draw_base(epd_full_screen(), fb, epd_full_screen(), mode, temperature, NULL, EPD_BUILTIN_WAVEFORM);
         t2 = Millis();
         epd_poweroff();
-        
+
         //display.display(false); // Full screen update mode
       }
     //}
@@ -286,7 +290,7 @@ void setup() {
 }
 
 void epd_task(void *pvParameters) {
-  epd_init();
+  epd_init(EPD_LUT_1K);
 
   ESP_LOGW("main", "allocating...\n");
 
@@ -299,7 +303,7 @@ void epd_task(void *pvParameters) {
 }
 
  extern "C" {
- void app_main() {  
+ void app_main() {
   ESP_LOGW("main", "Hello World!\n");
 
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
@@ -437,7 +441,7 @@ bool decodeImage(WiFiClient& json) {
   }
   //img_data = root["data"].as<JsonArray>();
 
-  Rect_t area = {
+  EpdRect area = {
       .x = 0,
       .y = 0,
       .width = 1200,
@@ -554,7 +558,7 @@ void DisplayWeather() {                          // 9.7" e-paper display is 1200
 
     DisplayDisplayWindSection(1000, 210, WxConditions[0].Winddir, WxConditions[0].Windspeed, 130);
     DisplayAstronomySection(920, 720);             // Astronomy section Sun rise/set, Moon phase and Moon icon
-    DisplayMainWeatherSection(137, 130);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction    
+    DisplayMainWeatherSection(137, 130);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
     DisplayForecastSection(10, 330);             // 3hr forecast boxes
 }
 
@@ -778,7 +782,7 @@ void DisplayForecastSection(int x, int y) {
     humidity_readings[r]    = WxForecast[r].Humidity;
     r++;
   } while (r <= max_readings);
-  
+
   int gwidth = 230, gheight = 150;
   int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 7;
   int gy = (SCREEN_HEIGHT - gheight - 50);
@@ -813,7 +817,7 @@ void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
     drawString(x + 360, y - 74, String(WxConditions[0].Humidity, 0) + "%", CENTER);
     if (WxConditions[0].Visibility > 0) Visibility(x - 100, y + 130, String(WxConditions[0].Visibility) + "M");
     if (WxConditions[0].Cloudcover > 0) CloudCover(x + 60, y + 130, WxConditions[0].Cloudcover);
-  } 
+  }
 }
 
 void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
@@ -1241,7 +1245,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
       }
       else {
         drawString(x_pos - 18, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
-      }   
+      }
     }
   }
   for (int i = 0; i <= 2; i++) {
@@ -1256,13 +1260,14 @@ void drawString(int x, int y, String text, alignment align) {
   int  x1, y1; //the bounds of x,y and w and h of the variable 'text' in pixels.
   int w, h;
   int xx = x, yy = y;
-  get_text_bounds(&currentFont, data, &xx, &yy, &x1, &y1, &w, &h, NULL);
+  EpdFontProperties fp = epd_font_properties_default();
+  epd_get_text_bounds(&currentFont, data, &xx, &yy, &x1, &y1, &w, &h, &fp);
 
   if (align == RIGHT)  x = x - w;
   if (align == CENTER) x = x - w / 2;
-  
+
   int cursor_y = y + h;
-  write_string(&currentFont, data, &x, &cursor_y, fb);
+  epd_write_default(&currentFont, data, &x, &cursor_y, fb);
 }
 
 void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alignment align) {
@@ -1271,7 +1276,8 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
   int w, h;
   int xx = x, yy = y;
 
-  get_text_bounds(&currentFont, data, &xx, &yy, &x1, &y1, &w, &h, NULL);
+  EpdFontProperties fp = epd_font_properties_default();
+  epd_get_text_bounds(&currentFont, data, &xx, &yy, &x1, &y1, &w, &h, &fp);
   if (align == RIGHT)  x = x - w;
   if (align == CENTER) x = x - w / 2;
 
@@ -1279,28 +1285,28 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
     setFont(OpenSans12/*9*/);
     text_width = 42;
     y = y - 3;
-  }  
-  write_string(&currentFont, data, &x, &y, fb);
+  }
+  epd_write_default(&currentFont, data, &x, &y, fb);
 
   if (text.length() > text_width) {
     y += h + 15;
     String secondLine = text.substring(text_width);
     secondLine.trim(); // Remove any leading spac
-    write_string(&currentFont, data, &x, &y, fb);
+    epd_write_default(&currentFont, data, &x, &y, fb);
   }
 }
 
 
 void ReportEvent(String EventMessage[]) {
   int y = int(SCREEN_HEIGHT - 40 * (EventCnt + 1) - 2 * 40);
-  int wx = int (SCREEN_WIDTH * 0.1); 
+  int wx = int (SCREEN_WIDTH * 0.1);
   int wy = y + int (SCREEN_WIDTH * 0.1);
   int tbw = int (SCREEN_WIDTH * 0.8);
   int tbh = int ((EventCnt + 1) * 40);
   if (EventCnt > EventThreshold) {
     //display.setPartialWindow(wx, wy, tbw, tbh);
 
-    Rect_t to_clear = {
+    EpdRect to_clear = {
       .x = wx,
       .y = wy,
       .width = tbw,
@@ -1308,13 +1314,13 @@ void ReportEvent(String EventMessage[]) {
     };
     epd_poweron();
     epd_clear_area(to_clear);
-  
+
     fillRect(wx, wy, tbw, tbh, GxEPD_WHITE);
     drawRect(wx, wy, tbw, tbh, GxEPD_BLACK);
   }
   setFont(OpenSans12/*18*/);
   for (byte Event = 1; Event <= EventCnt; Event++) {
-    if (EventCnt > EventThreshold) drawString(wx + 3, wy + 20 + (Event - 1) * 30, 
+    if (EventCnt > EventThreshold) drawString(wx + 3, wy + 20 + (Event - 1) * 30,
                                    "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " + EventMessage[Event], LEFT);
     Serial.println("Evnt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " + EventMessage[Event]);
   }
@@ -1355,7 +1361,7 @@ void drawFastHLine(int16_t x0, int16_t y0, int length, uint16_t color) {
 }
 
 void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-  epd_write_line(x0, y0, x1, y1, color, fb);
+  epd_draw_line(x0, y0, x1, y1, color, fb);
 }
 
 void drawCircle(int x0, int y0, int r, uint8_t color) {
@@ -1363,11 +1369,23 @@ void drawCircle(int x0, int y0, int r, uint8_t color) {
 }
 
 void drawRect(int16_t x, int16_t y, int16_t w, int16_t h,uint16_t color) {
-  epd_draw_rect(x, y, w, h, color, fb);
+  EpdRect rect = {
+      .x = x,
+      .y = y,
+      .width = w,
+      .height = h
+  };
+  epd_draw_rect(rect, color, fb);
 }
 
 void fillRect(int16_t x, int16_t y, int16_t w, int16_t h,uint16_t color) {
-  epd_fill_rect(x, y, w, h, color, fb);
+  EpdRect rect = {
+      .x = x,
+      .y = y,
+      .width = w,
+      .height = h
+  };
+  epd_fill_rect(rect, color, fb);
 }
 
 void fillTriangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
@@ -1379,7 +1397,7 @@ void drawPixel(int x, int y, uint8_t color) {
   epd_draw_pixel(x, y, color, fb);
 }
 
-void setFont(GFXfont const &font) {
+void setFont(EpdFont const &font) {
   currentFont = font;
 }
 

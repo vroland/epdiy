@@ -228,7 +228,7 @@ static char *base64dec(const char *);
 static char base64dec_getc(const char **);
 
 //static ssize_t xwrite(int, const char *, size_t);
-static const GFXfont* get_font(Glyph g);
+static const EpdFont* get_font(Glyph g);
 static void full_refresh();
 static void next_fontset(void);
 
@@ -2688,14 +2688,14 @@ tresize(int col, int row)
 
 	/* resize each row to new width, zero-pad if needed */
 	for (i = 0; i < minrow; i++) {
-		term.line[i] = xrealloc(term.line[i], col * sizeof(Glyph));
-		term.alt[i]  = xrealloc(term.alt[i],  col * sizeof(Glyph));
+		term.line[i] = xrealloc_32(term.line[i], col * sizeof(Glyph));
+		term.alt[i]  = xrealloc_32(term.alt[i],  col * sizeof(Glyph));
 	}
 
 	/* allocate any new rows */
 	for (/* i = minrow */; i < row; i++) {
-		term.line[i] = xmalloc(col * sizeof(Glyph));
-		term.alt[i] = xmalloc(col * sizeof(Glyph));
+		term.line[i] = xmalloc_32(col * sizeof(Glyph));
+		term.alt[i] = xmalloc_32(col * sizeof(Glyph));
 	}
 	if (col > term.col) {
 		bp = term.tabs + term.col;
@@ -2749,20 +2749,20 @@ resettitle(void)
 // 	}
 // }
 
-int calculate_horizontal_advance(GFXfont* font, Line line, int col) {
+int calculate_horizontal_advance(const EpdFont* font, Line line, int col) {
   /*
   int total = 0;
   for (int i = 0; i < col; i++) {
     Rune cp = line[i].u;
-    GFXglyph* glyph;
+    const EpdGlyp* glyph;
     // use space width for unfilled columns
     if (cp == 0) {
         cp = 32;
     }
-    get_glyph(font, cp, &glyph);
+    epd_get_glyph(font, cp, &glyph);
 
     if (!glyph) {
-        get_glyph(font, fallback_glyph, &glyph);
+        epd_get_glyph(font, fallback_glyph, &glyph);
     }
 
     if (!glyph) {
@@ -2773,8 +2773,7 @@ int calculate_horizontal_advance(GFXfont* font, Line line, int col) {
   }
   return total;
   */
-  GFXglyph* glyph;
-  get_glyph(font, 32, &glyph);
+  const EpdGlyph* glyph = epd_get_glyph(font, 32);
   return col * glyph->advance_x;
 }
 
@@ -2788,7 +2787,7 @@ enum RenderOperation {
 static int pixel_start_x = 3;
 static int pixel_start_y = 20;
 
-static const GFXfont* get_font(Glyph g) {
+static const EpdFont* get_font(Glyph g) {
     const FontSet* fs = &fontsets[current_fontset];
     if (g.mode & ATTR_BOLD) {
         return fs->bold;
@@ -2839,7 +2838,7 @@ void IRAM_ATTR calculate_dirty_buffer(
       d |= ((c & 0xF) > 0) << 6;
       c = c >> 4;
       d |= ((c & 0xF) > 0) << 7;
-      (*dst++) = d;
+      (*dst++) = ~d;
     }
   }
 }
@@ -2892,7 +2891,7 @@ static const DRAM_ATTR uint32_t mask_lut[256] = {
 
 void IRAM_ATTR mask_buffer(uint8_t* mask, uint32_t* input, uint32_t* output, int lines) {
   for (int i=0; i < EPD_WIDTH / 8 * lines; i++) {
-    output[i] = input[i] & mask_lut[mask[i]];
+    output[i] = input[i] & mask_lut[0xFF ^ mask[i]];
   }
 }
 
@@ -2906,7 +2905,7 @@ static void render_line() {
         int min_y_px = EPD_HEIGHT + 1;
         int max_y_px = -1;
 
-        const GFXfont* font = get_font(glyphs[0]);
+        const EpdFont* font = get_font(glyphs[0]);
         int line_y = pixel_start_y + font->advance_y * line - font->ascender;
         int line_height = font->ascender - font->descender;
 
@@ -2942,18 +2941,17 @@ static void render_line() {
           // null-terminate
           data[data_pos] = 0;
 
-          FontProperties fprops = {
-              .fg_color = displaycolor(c.fg),
-              .bg_color = displaycolor(c.bg),
-              .fallback_glyph = fallback_glyph,
-              .flags = c.bg != defaultbg ? DRAW_BACKGROUND : 0,
-          };
-          const GFXfont* f = get_font(c);
+          EpdFontProperties fprops = epd_font_properties_default();
+          fprops.fg_color = displaycolor(c.fg);
+          fprops.bg_color = displaycolor(c.bg);
+          fprops.fallback_glyph = fallback_glyph;
+          fprops.flags |= (c.bg != defaultbg ? EPD_DRAW_BACKGROUND : 0);
+          const EpdFont* f = get_font(c);
           int px_y = pixel_start_y + f->advance_y * line;
           min_y_px = MIN(min_y_px, px_y - f->ascender);
           max_y_px = MAX(min_y_px, px_y - f->descender);
 
-          write_mode((GFXfont*)f, data, &px_x, &px_y, render_fb_front, WHITE_ON_WHITE, &fprops);
+          epd_write_string(f, data, &px_x, &px_y, render_fb_front, &fprops);
         }
 
         if (term.c.y == line) {
@@ -2986,13 +2984,56 @@ static void render_line() {
     }
 }
 
-static void draw_mask(Rect_t area, uint8_t* mask, bool* dirtyness) {
+static void draw_mask(EpdRect area, uint8_t* mask, bool* dirtyness) {
     uint64_t start = esp_timer_get_time();
-    epd_draw_frame_1bit_lines(area, mask, BLACK_ON_WHITE, 200, dirtyness);
+    int temperature = 25;
+
+    enum EpdDrawError err = epd_draw_base(epd_full_screen(), mask, area, MODE_PACKING_8PPB | MODE_EPDIY_MONOCHROME | PREVIOUSLY_WHITE, temperature, dirtyness, EPD_BUILTIN_WAVEFORM);
     uint64_t time_ms = (esp_timer_get_time() - start) / 1000;
     // The particles must be given ~20ms to follow the applied charge.
-    if (time_ms < 20) {
-      vTaskDelay(20 - time_ms);
+    if (time_ms < MINIMUM_FRAME_TIME) {
+      vTaskDelay(MINIMUM_FRAME_TIME - time_ms);
+    }
+}
+
+const uint8_t nibble_inversion_lut[256] = {
+0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
+0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
+0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8,
+0xe7, 0xe6, 0xe5, 0xe4, 0xe3, 0xe2, 0xe1, 0xe0,
+0xdf, 0xde, 0xdd, 0xdc, 0xdb, 0xda, 0xd9, 0xd8,
+0xd7, 0xd6, 0xd5, 0xd4, 0xd3, 0xd2, 0xd1, 0xd0,
+0xcf, 0xce, 0xcd, 0xcc, 0xcb, 0xca, 0xc9, 0xc8,
+0xc7, 0xc6, 0xc5, 0xc4, 0xc3, 0xc2, 0xc1, 0xc0,
+0xbf, 0xbe, 0xbd, 0xbc, 0xbb, 0xba, 0xb9, 0xb8,
+0xb7, 0xb6, 0xb5, 0xb4, 0xb3, 0xb2, 0xb1, 0xb0,
+0xaf, 0xae, 0xad, 0xac, 0xab, 0xaa, 0xa9, 0xa8,
+0xa7, 0xa6, 0xa5, 0xa4, 0xa3, 0xa2, 0xa1, 0xa0,
+0x9f, 0x9e, 0x9d, 0x9c, 0x9b, 0x9a, 0x99, 0x98,
+0x97, 0x96, 0x95, 0x94, 0x93, 0x92, 0x91, 0x90,
+0x8f, 0x8e, 0x8d, 0x8c, 0x8b, 0x8a, 0x89, 0x88,
+0x87, 0x86, 0x85, 0x84, 0x83, 0x82, 0x81, 0x80,
+0x7f, 0x7e, 0x7d, 0x7c, 0x7b, 0x7a, 0x79, 0x78,
+0x77, 0x76, 0x75, 0x74, 0x73, 0x72, 0x71, 0x70,
+0x6f, 0x6e, 0x6d, 0x6c, 0x6b, 0x6a, 0x69, 0x68,
+0x67, 0x66, 0x65, 0x64, 0x63, 0x62, 0x61, 0x60,
+0x5f, 0x5e, 0x5d, 0x5c, 0x5b, 0x5a, 0x59, 0x58,
+0x57, 0x56, 0x55, 0x54, 0x53, 0x52, 0x51, 0x50,
+0x4f, 0x4e, 0x4d, 0x4c, 0x4b, 0x4a, 0x49, 0x48,
+0x47, 0x46, 0x45, 0x44, 0x43, 0x42, 0x41, 0x40,
+0x3f, 0x3e, 0x3d, 0x3c, 0x3b, 0x3a, 0x39, 0x38,
+0x37, 0x36, 0x35, 0x34, 0x33, 0x32, 0x31, 0x30,
+0x2f, 0x2e, 0x2d, 0x2c, 0x2b, 0x2a, 0x29, 0x28,
+0x27, 0x26, 0x25, 0x24, 0x23, 0x22, 0x21, 0x20,
+0x1f, 0x1e, 0x1d, 0x1c, 0x1b, 0x1a, 0x19, 0x18,
+0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10,
+0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
+0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00
+};
+
+static void invert_framebuffer(uint8_t* fb) {
+    for (int i=0; i < EPD_WIDTH / 2 * EPD_HEIGHT; i++) {
+        fb[i] = nibble_inversion_lut[fb[i]];
     }
 }
 
@@ -3001,9 +3042,11 @@ static void full_refresh() {
 	return;
   }
 
+  int temperature = 25;
   ESP_LOGI("term", "epd clear.");
+  invert_framebuffer(render_fb_front);
   epd_poweron();
-  epd_draw_image(epd_full_screen(), render_fb_front, WHITE_ON_WHITE);
+  epd_draw_base(epd_full_screen(), render_fb_front, epd_full_screen(), MODE_PACKING_2PPB | MODE_EPDIY_BLACK_TO_GL16 | PREVIOUSLY_BLACK, temperature, NULL, EPD_BUILTIN_WAVEFORM);
   epd_clear_area_cycles(epd_full_screen(), clear_cycles, clear_cycle_length);
   epd_poweroff();
   tfulldirt();
@@ -3015,6 +3058,9 @@ static void full_refresh() {
 
 
 void epd_render(void) {
+
+  /// use a fixed temperature of 25°C.
+  int temperature = 25;
 
   memset(line_dirtyness, 0, sizeof(line_dirtyness));
 
@@ -3056,15 +3102,12 @@ void epd_render(void) {
     int max_y = EPD_HEIGHT - 1;
     int height = max_y - min_y;
     if (height > 0) {
-      Rect_t area = {
+      EpdRect area = {
         .x = 0,
         .y = min_y,
         .width = EPD_WIDTH,
         .height = height,
       };
-
-      uint8_t* mask_start = render_mask + min_y * EPD_WIDTH / 8;
-      bool* dirtyness_start = boolean_line_dirtyness + min_y;
 
       uint64_t time_since_poweron_ms = (esp_timer_get_time() - t_poweron) / 1000;
       // poweron takes ~10ms until all capacitors are charged
@@ -3072,13 +3115,17 @@ void epd_render(void) {
         vTaskDelay(10 - time_since_poweron_ms);
       }
 
-      draw_mask(area, mask_start, dirtyness_start);
-      draw_mask(area, mask_start, dirtyness_start);
-      draw_mask(area, mask_start, dirtyness_start);
+      draw_mask(area, render_mask, boolean_line_dirtyness);
+      draw_mask(area, render_mask, boolean_line_dirtyness);
+      draw_mask(area, render_mask, boolean_line_dirtyness);
+      draw_mask(area, render_mask, boolean_line_dirtyness);
+      draw_mask(area, render_mask, boolean_line_dirtyness);
 
-      uint8_t* masked_start = render_masked_buf + min_y * EPD_WIDTH / 2;
-      epd_draw_image_lines(area, masked_start, WHITE_ON_BLACK, dirtyness_start);
+      enum EpdDrawError err = epd_draw_base(epd_full_screen(), render_masked_buf, epd_full_screen(), MODE_PACKING_2PPB | MODE_EPDIY_BLACK_TO_GL16 | PREVIOUSLY_BLACK, temperature, boolean_line_dirtyness, EPD_BUILTIN_WAVEFORM);
       epd_poweroff();
+
+      if (err)
+          ESP_LOGI("term", "draw err: %d", err);
 
       for (int i=0; i < EPD_HEIGHT; i++) {
         if (boolean_line_dirtyness[i]) {

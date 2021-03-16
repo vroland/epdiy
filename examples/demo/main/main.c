@@ -16,137 +16,234 @@
 #include <string.h>
 
 #include "epd_driver.h"
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
+#include "epd_highlevel.h"
+
+// select the font based on display width
+#if (EPD_WIDTH < 1000)
 #include "firasans_12pt.h"
+#define FONT FiraSans_12
 #else
-#include "firasans.h"
+#include "firasans_20.h"
+#define FONT FiraSans_20
 #endif
-#include "giraffe.h"
+
+#include "img_giraffe.h"
+#include "img_zebra.h"
+#include "img_beach.h"
 #include "img_board.h"
 
-uint8_t *img_buf;
+#define WAVEFORM EPD_BUILTIN_WAVEFORM
 
-uint8_t *framebuffer;
-uint8_t *original_image_ram;
-
+#ifndef ARDUINO_ARCH_ESP32
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
 
 uint32_t millis() { return esp_timer_get_time() / 1000; }
+#endif
 
-void loop() {
+uint32_t t1, t2;
 
-  printf("current temperature: %f\n", epd_ambient_temperature());
-  delay(300);
+int temperature;
+EpdiyHighlevelState hl;
 
+void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
+  const uint8_t white = 0xFF;
+  const uint8_t black = 0x0;
+
+  EpdRect border = {
+    .x = x,
+    .y = y,
+    .width = width,
+    .height = 20,
+  };
+  epd_fill_rect(border, white, fb);
+  epd_draw_rect(border, black, fb);
+
+  EpdRect bar = {
+    .x = x + 5,
+    .y = y + 5,
+    .width = (width - 10) * percent / 100,
+    .height = 10,
+  };
+
+  epd_fill_rect(bar, black, fb);
+
+  enum EpdDrawError err = epd_hl_update_area(&hl, MODE_DU, temperature, border);
+  assert(err == EPD_DRAW_SUCCESS);
+}
+
+void idf_loop() {
+
+  enum EpdDrawError err;
+  temperature = epd_ambient_temperature();
+  printf("current temperature: %d\n", temperature);
+
+  uint8_t* fb = epd_hl_get_framebuffer(&hl);
 
   epd_poweron();
-  volatile uint32_t t1 = millis();
   epd_clear();
-  volatile uint32_t t2 = millis();
-  printf("EPD clear took %dms.\n", t2 - t1);
   epd_poweroff();
 
-  epd_draw_hline(20, 20, EPD_WIDTH - 40, 0x00, framebuffer);
-  epd_draw_hline(20, EPD_HEIGHT - 20, EPD_WIDTH - 40, 0x00, framebuffer);
-  epd_draw_vline(20, 20, EPD_HEIGHT - 40 + 1, 0x00, framebuffer);
-  epd_draw_vline(EPD_WIDTH - 20, 20, EPD_HEIGHT - 40 + 1, 0x00, framebuffer);
 
-  Rect_t area = {
-      .x = 25,
-      .y = 25,
-      .width = giraffe_width,
-      .height = giraffe_height,
-  };
-  epd_copy_to_framebuffer(area, (uint8_t *)giraffe_data, framebuffer);
+  int cursor_x = EPD_WIDTH / 2;
+  int cursor_y = EPD_HEIGHT / 2 - 100;
+  EpdFontProperties font_props = epd_font_properties_default();
+  font_props.flags = EPD_DRAW_ALIGN_CENTER;
+  epd_write_string(&FONT, "Loading demo...", &cursor_x, &cursor_y, fb, &font_props);
 
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-  int cursor_x = 20 + giraffe_width + 20;
-#else
-  int cursor_x = 50 + giraffe_width + 20;
-#endif
-  int cursor_y = 100;
-  write_string((GFXfont *)&FiraSans,
-        "➸ 16 color grayscale\n"
-        "➸ ~630ms for full frame draw 🚀\n"
-        "➸ Use with 6\" or 9.7\" EPDs\n"
-        "➸ High-quality font rendering ✎🙋",
-  &cursor_x, &cursor_y, framebuffer);
+  int bar_x = EPD_WIDTH / 2 - 200;
+  int bar_y = EPD_HEIGHT / 2;
 
   epd_poweron();
+  vTaskDelay(100);
   t1 = millis();
-  epd_draw_grayscale_image(epd_full_screen(), framebuffer);
+  err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
   t2 = millis();
   epd_poweroff();
-  printf("EPD draw took %dms.\n", t2 - t1);
+  printf("EPD update %dms. err: %d\n", t2 - t1, err);
 
-  delay(1000);
-  cursor_x = 500;
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-  cursor_y = 450;
-#else
-  cursor_y = 600;
-#endif
-  char *string = "➠ With partial clear...";
+  for (int i=0; i < 6; i++) {
+    epd_poweron();
+    vTaskDelay(100);
+    draw_progress_bar(bar_x, bar_y, 400, i * 10, fb);
+    epd_poweroff();
+    vTaskDelay(1);
+  }
+
+  cursor_x = EPD_WIDTH / 2;
+  cursor_y = EPD_HEIGHT / 2 + 200;
+
+  epd_write_string(&FONT, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
   epd_poweron();
-  writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
+  vTaskDelay(100);
+  err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
   epd_poweroff();
+
+  for (int i=0; i < 6; i++) {
+    epd_poweron();
+    draw_progress_bar(bar_x, bar_y, 400, 50 - i * 10, fb);
+    epd_poweroff();
+    vTaskDelay(1);
+  }
+
+  cursor_y = EPD_HEIGHT / 2 + 200;
+  cursor_x = EPD_WIDTH / 2;
+
   delay(1000);
 
-  Rect_t to_clear = {
-      .x = 50 + giraffe_width + 20,
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-  .y = 300,
-#else
-  .y = 400,
-#endif
-      .width = EPD_WIDTH - 70 - 25 - giraffe_width,
-      .height = 400,
+  EpdRect clear_area = {
+    .x = 0,
+    .y = EPD_HEIGHT / 2 + 100,
+    .width = EPD_WIDTH,
+    .height = 300,
   };
+
+  epd_fill_rect(clear_area, 0xFF, fb);
+
+  epd_write_string(&FONT, "Now let's look at some pictures.", &cursor_x, &cursor_y, fb, &font_props);
   epd_poweron();
-  epd_clear_area(to_clear);
+  err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
   epd_poweroff();
 
-  cursor_x = 500;
-  cursor_y = 390;
-  string = "And partial update!";
-  epd_poweron();
-  writeln((GFXfont *)&FiraSans, string, &cursor_x, &cursor_y, NULL);
+  delay(1000);
 
-  Rect_t board_area = {
-      .x = 50 + giraffe_width + 50,
-#ifdef CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-  .y = 300,
-#else
-  .y = 400,
-#endif
+  epd_hl_set_all_white(&hl);
+
+  EpdRect giraffe_area = {
+      .x = EPD_WIDTH / 2 - img_giraffe_width / 2,
+      .y = 25,
+      .width = img_giraffe_width,
+      .height = img_giraffe_height,
+  };
+  epd_copy_to_framebuffer(giraffe_area, img_giraffe_data, fb);
+  epd_poweron();
+  err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
+  epd_poweroff();
+
+  delay(5000);
+
+  EpdRect zebra_area = {
+      .x = EPD_WIDTH / 2 - img_zebra_width / 2,
+      .y = EPD_HEIGHT / 2 - img_zebra_height / 2,
+      .width = img_zebra_width,
+      .height = img_zebra_height,
+  };
+  epd_copy_to_framebuffer(zebra_area, img_zebra_data, fb);
+  epd_poweron();
+  err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
+  epd_poweroff();
+
+  delay(5000);
+
+  EpdRect board_area = {
+      .x = EPD_WIDTH / 2 - img_board_width / 2,
+      .y = EPD_HEIGHT / 2 - img_board_height / 2,
       .width = img_board_width,
       .height = img_board_height,
   };
+  epd_copy_to_framebuffer(board_area, img_board_data, fb);
+  cursor_x = EPD_WIDTH / 2;
+  cursor_y = board_area.y;
+  font_props.flags |= EPD_DRAW_BACKGROUND;
+  epd_write_string(&FONT, "↓ Thats the V2 board. ↓", &cursor_x, &cursor_y, fb, &font_props);
 
-  epd_draw_grayscale_image(board_area, (uint8_t*)img_board_data);
+  epd_poweron();
+  err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
-  delay(2000);
-}
+  delay(5000);
 
-void epd_task() {
-  epd_init();
+  epd_hl_set_all_white(&hl);
 
-  ESP_LOGW("main", "allocating...\n");
-
-  framebuffer = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
-  memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
-
-  while (1) {
-    loop();
+  EpdRect border_rect = {
+    .x = 20,
+    .y = 20,
+    .width = EPD_WIDTH - 40,
+    .height = EPD_HEIGHT - 40
   };
+  epd_draw_rect(border_rect, 0, fb);
+
+  cursor_x = 50;
+  cursor_y = 100;
+
+  epd_write_default(&FONT,
+        "➸ 16 color grayscale\n"
+        "➸ ~250ms - 1700ms for full frame draw 🚀\n"
+        "➸ Use with 6\" or 9.7\" EPDs\n"
+        "➸ High-quality font rendering ✎🙋\n"
+        "➸ Partial update\n"
+        "➸ Arbitrary transitions with vendor waveforms",
+  &cursor_x, &cursor_y, fb);
+
+  EpdRect img_beach_area = {
+      .x = 0,
+      .y = EPD_HEIGHT - img_beach_height,
+      .width = img_beach_width,
+      .height = img_beach_height,
+  };
+  epd_copy_to_framebuffer(img_beach_area, img_beach_data, fb);
+
+  epd_poweron();
+  err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
+  epd_poweroff();
+
+  epd_hl_set_all_white(&hl);
+  delay(100000);
 }
 
-void app_main() {
-  ESP_LOGW("main", "Hello World!\n");
-
+void idf_setup() {
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 
-  xTaskCreatePinnedToCore(&epd_task, "epd task", 10000, NULL, 2, NULL, 1);
+  epd_init(EPD_LUT_1K);
+  hl = epd_hl_init(WAVEFORM);
 }
+
+#ifndef ARDUINO_ARCH_ESP32
+void app_main() {
+  idf_setup();
+
+  while (1) {
+    idf_loop();
+  };
+}
+#endif

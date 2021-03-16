@@ -12,6 +12,7 @@ parser.add_argument("name", action="store", help="name of the font.")
 parser.add_argument("size", type=int, help="font size to use.")
 parser.add_argument("fontstack", action="store", nargs='+', help="list of font files, ordered by descending priority.")
 parser.add_argument("--compress", dest="compress", action="store_true", help="compress glyph bitmaps.")
+parser.add_argument("--additional-intervals", dest="additional_intervals", action="append", help="Additional code point intervals to export as min,max. This argument can be repeated.")
 args = parser.parse_args()
 
 GlyphProps = namedtuple("GlyphProps", ["width", "height", "advance_x", "left", "top", "compressed_size", "data_offset", "code_point"])
@@ -31,22 +32,27 @@ intervals = [
     # arrows
     (0x2190, 0x21FF),
     # math
-    (0x2200, 0x22FF),
+    #(0x2200, 0x22FF),
     # symbols
     (0x2300, 0x23FF),
     # box drawing
-    (0x2500, 0x259F),
+    #(0x2500, 0x259F),
     # geometric shapes
     (0x25A0, 0x25FF),
     # misc symbols
     (0x2600, 0x26F0),
     (0x2700, 0x27BF),
     # powerline symbols
-    (0xE0A0, 0xE0A2),
-    (0xE0B0, 0xE0B3),
-    (0x1F600, 0x1F680),
+    #(0xE0A0, 0xE0A2),
+    #(0xE0B0, 0xE0B3),
+    #(0x1F600, 0x1F680),
 ]
 
+add_ints = []
+if args.additional_intervals:
+    add_ints = [tuple([int(n, base=0) for n in i.split(",")]) for i in args.additional_intervals]
+
+intervals = sorted(intervals + add_ints)
 
 def norm_floor(val):
     return int(math.floor(val / (1 << 6)))
@@ -139,22 +145,22 @@ for c in chunks(glyph_data, 16):
     print ("    " + " ".join(f"0x{b:02X}," for b in c))
 print ("};");
 
-print(f"const GFXglyph {font_name}Glyphs[] = {{")
+print(f"const EpdGlyph {font_name}Glyphs[] = {{")
 for i, g in enumerate(glyph_props):
     print ("    { " + ", ".join([f"{a}" for a in list(g[:-1])]),"},", f"// {chr(g.code_point) if g.code_point != 92 else '<backslash>'}")
 print ("};");
 
-print(f"const UnicodeInterval {font_name}Intervals[] = {{")
+print(f"const EpdUnicodeInterval {font_name}Intervals[] = {{")
 offset = 0
 for i_start, i_end in intervals:
     print (f"    {{ 0x{i_start:X}, 0x{i_end:X}, 0x{offset:X} }},")
     offset += i_end - i_start + 1
 print ("};");
 
-print(f"const GFXfont {font_name} = {{")
-print(f"    (uint8_t*){font_name}Bitmaps,")
-print(f"    (GFXglyph*){font_name}Glyphs,")
-print(f"    (UnicodeInterval*){font_name}Intervals,")
+print(f"const EpdFont {font_name} = {{")
+print(f"    {font_name}Bitmaps,")
+print(f"    {font_name}Glyphs,")
+print(f"    {font_name}Intervals,")
 print(f"    {len(intervals)},")
 print(f"    {1 if compress else 0},")
 print(f"    {norm_ceil(face.size.height)},")

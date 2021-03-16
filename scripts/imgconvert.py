@@ -5,24 +5,19 @@ from argparse import ArgumentParser
 import sys
 import math
 
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 825
-
-if SCREEN_WIDTH % 2:
-    print("image width must be even!", file=sys.stderr)
-    sys.exit(1)
-
 parser = ArgumentParser()
-parser.add_argument('-i', action="store", dest="inputfile")
-parser.add_argument('-n', action="store", dest="name")
-parser.add_argument('-o', action="store", dest="outputfile")
+parser.add_argument('-i', action="store", dest="inputfile", required=True)
+parser.add_argument('-n', action="store", dest="name", required=True)
+parser.add_argument('-o', action="store", dest="outputfile", required=True)
+parser.add_argument('-maxw', action="store", dest="max_width", default=1200, type=int)
+parser.add_argument('-maxh', action="store", dest="max_height", default=825, type=int)
 
 args = parser.parse_args()
 
 im = Image.open(args.inputfile)
 # convert to grayscale
 im = im.convert(mode='L')
-im.thumbnail((SCREEN_WIDTH, SCREEN_HEIGHT), Image.ANTIALIAS)
+im.thumbnail((args.max_width, args.max_height), Image.ANTIALIAS)
 
 # Write out the output file.
 with open(args.outputfile, 'w') as f:
