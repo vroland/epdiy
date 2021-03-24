@@ -20,7 +20,7 @@ inline int max(int x, int y) { return x > y ? x : y; }
 
 const int clear_cycle_time = 12;
 
-const int DEFAULT_FRAME_TIME = 25;
+const int DEFAULT_FRAME_TIME = 120;
 
 #define RTOS_ERROR_CHECK(x)                                                    \
   do {                                                                         \

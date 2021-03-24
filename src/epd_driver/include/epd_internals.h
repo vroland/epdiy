@@ -19,7 +19,7 @@
 #endif
 
 /// Frame draw time for monochrome mode in 1/10 us.
-#define MONOCHROME_FRAME_TIME 100
+#define MONOCHROME_FRAME_TIME 120
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
