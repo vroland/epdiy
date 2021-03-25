@@ -47,7 +47,8 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
 
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {
   assert(state != NULL);
-
+  // Not right to rotate here since this copies part of buffer directly
+  
   bool previously_white = false;
   bool previously_black = false;
 

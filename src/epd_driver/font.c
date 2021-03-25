@@ -174,11 +174,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
         bm = bm >> 4;
       }
 
-      //if ((xx & 1) == 0) {
-        //color = (old & 0xF0) | color_lut[bm];
-      // } else {
-        color = (old & 0x0F) | (color_lut[bm] << 4);
-      //}
+      color = (old & 0x0F) | (color_lut[bm] << 4);
       epd_draw_pixel(xx, yy, color, buffer);
 
       byte_complete = !byte_complete;
@@ -296,8 +292,6 @@ static enum EpdDrawError epd_write_line(
   if (w < 0 || h < 0) {
       return EPD_DRAW_NO_DRAWABLE_CHARACTERS;
   }
-
-  int baseline_height = *cursor_y - y1;
 
   int buf_width = EPD_WIDTH / 2;
   int buf_height = EPD_HEIGHT;
