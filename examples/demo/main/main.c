@@ -20,7 +20,7 @@
 
 // select the font based on display width
 #if (EPD_WIDTH < 1000)
-#include "firasans_12pt.h"
+#include "firasans_12.h"
 #define FONT FiraSans_12
 #else
 #include "firasans_20.h"
