@@ -74,21 +74,28 @@ void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
 void idf_loop() {
 
   enum EpdDrawError err;
+  
   temperature = epd_ambient_temperature();
   printf("current temperature: %d\n", temperature);
 
   uint8_t* fb = epd_hl_get_framebuffer(&hl);
+  
 
   epd_poweron();
   epd_clear();
   epd_poweroff();
 
-
-  int cursor_x = EPD_WIDTH / 2;
+  epd_fill_circle(30,30,15,0,fb);
+  int cursor_x = EPD_WIDTH / 2 - 200;
   int cursor_y = EPD_HEIGHT / 2 - 100;
   EpdFontProperties font_props = epd_font_properties_default();
   font_props.flags = EPD_DRAW_ALIGN_CENTER;
-  epd_write_string(&FONT, "Loading demo...", &cursor_x, &cursor_y, fb, &font_props);
+  font_props.fg_color = 120;
+
+  char srotation[32];
+  sprintf(srotation, "Loading demo...\nRotation: %d", epd_get_rotation());
+
+  epd_write_string(&FONT, srotation, &cursor_x, &cursor_y, fb, &font_props);
 
   int bar_x = EPD_WIDTH / 2 - 200;
   int bar_y = EPD_HEIGHT / 2;
@@ -109,7 +116,7 @@ void idf_loop() {
     vTaskDelay(1);
   }
 
-  cursor_x = EPD_WIDTH / 2;
+  cursor_x = EPD_WIDTH / 2 - 200;
   cursor_y = EPD_HEIGHT / 2 + 200;
 
   epd_write_string(&FONT, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
@@ -129,6 +136,7 @@ void idf_loop() {
   cursor_x = EPD_WIDTH / 2;
 
   delay(1000);
+  return;
 
   EpdRect clear_area = {
     .x = 0,
@@ -244,8 +252,8 @@ void idf_setup() {
 void app_main() {
   idf_setup();
 
-  while (1) {
+  //while (1) {
     idf_loop();
-  };
+  //};
 }
 #endif
