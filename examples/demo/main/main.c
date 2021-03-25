@@ -236,6 +236,8 @@ void idf_setup() {
 
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
+
+  epd_set_rotation(1);
 }
 
 #ifndef ARDUINO_ARCH_ESP32

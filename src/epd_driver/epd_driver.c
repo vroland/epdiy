@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "esp_types.h"
 
+// Initial rotation: Landscape
+uint8_t display_rotation = 0;
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
@@ -15,7 +17,6 @@
     b = t;                                                                     \
   }
 #endif
-
 
 EpdRect epd_full_screen() {
   EpdRect area = {.x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT};
@@ -40,6 +41,27 @@ void epd_draw_vline(int x, int y, int length, uint8_t color,
   }
 }
 
+Coord_xy _rotate(uint16_t x, uint16_t y) {
+    switch (display_rotation) {
+        case 1:
+            _swap_int(x, y);
+            x = EPD_WIDTH - x - 1;
+        break;
+        case 2:
+            x = EPD_WIDTH - x - 1;
+            y = EPD_HEIGHT - y - 1;
+        break;
+        case 3:
+            _swap_int(x, y);
+            y = EPD_HEIGHT - y - 1;
+        break;
+    }
+    Coord_xy coord = {
+        x, y
+    };
+    return coord;
+}
+
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
   if (x < 0 || x >= EPD_WIDTH) {
     return;
@@ -47,6 +69,11 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
   if (y < 0 || y >= EPD_HEIGHT) {
     return;
   }
+  // Check rotation and move pixel around if necessary
+  Coord_xy coord = _rotate(x, y);
+  x = coord.x;
+  y = coord.y;
+
   uint8_t *buf_ptr = &framebuffer[y * EPD_WIDTH / 2 + x / 2];
   if (x % 2) {
     *buf_ptr = (*buf_ptr & 0x0F) | (color & 0xF0);
@@ -341,4 +368,14 @@ enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWav
         .height = 0,
     };
     return epd_draw_base(area, data, no_crop, EPD_MODE_DEFAULT, temperature, NULL, waveform);
+}
+
+void epd_set_rotation(uint8_t rotation) {
+    if (rotation<4) {
+      display_rotation = rotation;
+    }
+}
+
+uint8_t epd_get_rotation() {
+    return display_rotation;
 }
