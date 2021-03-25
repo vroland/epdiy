@@ -65,7 +65,7 @@ void IRAM_ATTR app_main() {
   epd_init(EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(WAVEFORM);
 
-  while (1) {
+  //while (1) {
     loop();
-  };
+  //};
 }
