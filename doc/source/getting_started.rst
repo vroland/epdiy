@@ -52,7 +52,13 @@ To tune the controller output voltage, use the trimmer marked :code:`RV1`.
 You can measure the VCOM on the VCOM test pad (if your board has one) or directly
 at the amplifier:
 
+.. image:: img/vcom_tp.jpg
 .. image:: img/vcom_opamp.jpg
+
+.. note::
+    
+    Although most boards do not have it yet, image quality for partial updates can be improved by adding a (at least) 4.7uF capacitor between VCOM and GND. 
+    When adding this capacitor, take care with the polarity as VCOM is negative!
 
 Flashing the demo
 -----------------
