@@ -14,6 +14,9 @@ menu "E-Paper Driver"
         config EPD_DISPLAY_TYPE_ED060XC3
             bool "ED060XC3"
 
+		config EPD_DISPLAY_TYPE_ED060SCT
+            bool "ED060SCT"
+
         config EPD_DISPLAY_TYPE_ED097TC2
             bool "ED097TC2"
 

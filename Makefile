@@ -1,6 +1,6 @@
 # Rules for generating waveform and font headers from raw data.
 
-SUPPORTRED_DISPLAYS := ED060SC4 ED097OC4 ED097TC2 ED047TC1 ED133UT2 ED060XC3
+SUPPORTRED_DISPLAYS := ED060SC4 ED097OC4 ED097TC2 ED047TC1 ED133UT2 ED060XC3 ED060SCT
 
 # Generate 16 grascale update waveforms + epdiy special waveforms
 EXPORTED_MODES ?= 1,2,5,16,17

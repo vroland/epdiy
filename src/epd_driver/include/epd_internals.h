@@ -36,6 +36,11 @@
 #define EPD_WIDTH 800
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 600
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SCT)
+/// Width of the display area in pixels.
+#define EPD_WIDTH 800
+/// Height of the display area in pixels.
+#define EPD_HEIGHT 600
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060XC3)
 /// Width of the display area in pixels.
 #define EPD_WIDTH 1024
@@ -87,6 +92,7 @@ extern const EpdWaveform epdiy_ED097OC4;
 extern const EpdWaveform epdiy_ED047TC1;
 extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
+extern const EpdWaveform epdiy_ED060SCT;
 extern const EpdWaveform epdiy_ED133UT2;
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
@@ -95,6 +101,8 @@ extern const EpdWaveform epdiy_ED133UT2;
 #define EPD_BUILTIN_WAVEFORM &epdiy_ED060SC4
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060XC3)
 #define EPD_BUILTIN_WAVEFORM &epdiy_ED060XC3
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SCT)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED060SCT
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
 #define EPD_BUILTIN_WAVEFORM &epdiy_ED097OC4
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
