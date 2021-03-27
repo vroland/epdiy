@@ -127,8 +127,23 @@ to make your code portable.
 Use with Arduino
 ----------------
 
-Support for Arduino is coming soon.
+Epdiy can be used as an Arduino library. Additionally, epdiy comes with board definitions for its supported boards, which must be installed separately. 
+To install epdiy to work with the Arduino IDE (>= 1.8), follow the steps below:
 
-In the meantime, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
+1. Download / Clone the epdiy repository into your arduino libraries folder.
+2. Install the `arduino-esp32 core <https://github.com/espressif/arduino-esp32#installation-instructions>`_. 
+3. Due to a limitation in the arduino-esp32 core, the epdiy board definitions must be installed manually. To do that, copy the :code:`boards.local.txt` file that comes with epdiy to the directory you installed the esp32 core in.
+
+    * On Linux, this will be somewhere in :code:`~/Arduino/hardware/esp32/esp32`.
+    * On Windows, this will look something like :code:`C:/Users/<username>/Documents/Arduino/hardware/espressif/esp32` or a similar path in AppData.
+
+   You can also search the Arduino logs to find the arduino-esp32 install directory.
+
+   If you have the correct directory, there should be a :code:`boards.txt` file in it. Copy the :code:`boards.local.txt` in this directory.
+4. Re-start the Arduino IDE. The Epdiy boards should now show up among the other ESP32 boards.
+5. Select your epdiy-compatible board. You can now select your display from the board menu.
+6. Try out an example sketch! Some of them are not very Arduino-Style yet, but they should help getting you started. 
+
+Alternatively, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
 which allows you to use the Arduino ecosystem (Except for a different build process).
 

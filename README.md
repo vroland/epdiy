@@ -11,9 +11,11 @@ EPDiy is a driver board which talks to affordable E-Paper (or E-Ink) screens, wh
 
 Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support are currently quite expensive. This project uses Kindle replacement screens, which are available for 20$ (small) / 30$ (large) on ebay!
 
-The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB v4 features a 33pin and a 39pin connector, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2. With the upcoming revision v5, even more display types will be supported! For details, refer to the table below.
+The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB v5 features 33pin, 34pin and a 39pin connectors, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2, ED060SC7. For the full list of supported displays, refer to the table below.
 
 Revision 5 of the board is optimized for the use with LiPo batteries, featuring a LiPo charger and ultra-low deep sleep current.
+
+This project supports a driver for the ESP-IDF and Arduino. For installation instructions, please refer to the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
 
 Building It
 -----------
@@ -72,9 +74,9 @@ Displays
 |ED060SCP|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SC7|6"|600 x 800|yes (should work) |AXT434124|34|v5|
 |ED060SCG|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-|ED060SCE|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-|ED060SCM|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-|ED060SCT|6"|600 x 800|yes (should work) |AXT434124|34|v5|
+| ED060SCE | 6" | 600 x 800 | yes (should work)  | AXT434124 | 34 | v5 |
+| ED060SCM | 6" | 600 x 800 | yes (should work)  | AXT434124 | 34 | v5 |
+| ED060SCT | 6" | 600 x 800 | yes, tested        | AXT434124 | 34 | v5 |
 
 **Please note that board revision v5 is still in prototype stage!**
 
