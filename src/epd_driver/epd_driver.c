@@ -49,7 +49,7 @@ EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
     case 1:
       _swap_int(x, y);
       _swap_int(w, h);
-      x = EPD_HEIGHT - x - w;
+      x = EPD_WIDTH - x - w;
       break;
     
     case 2:
@@ -62,7 +62,7 @@ EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
       // 3 270 ° portrait -> Corrected
       _swap_int(x, y);
       _swap_int(w, h);
-      y = EPD_WIDTH - y - h;
+      y = EPD_HEIGHT - y - h;
       break;
   }
   EpdRect rotated =  {
