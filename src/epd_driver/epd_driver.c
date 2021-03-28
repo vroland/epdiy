@@ -41,6 +41,36 @@ void epd_draw_vline(int x, int y, int length, uint8_t color,
   }
 }
 
+EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+  switch (epd_get_rotation())
+  {
+    // 0 landscape
+    // 1 90 ° right portrait
+    case 1:
+      _swap_int(x, y);
+      _swap_int(w, h);
+      x = EPD_HEIGHT - x - w;
+      break;
+    
+    case 2:
+      // 3 180° landscape
+      x = EPD_WIDTH - x - w;
+      y = EPD_HEIGHT - y - h;
+      break;
+
+    case 3:
+      // 3 270 ° portrait -> Corrected
+      _swap_int(x, y);
+      _swap_int(w, h);
+      y = EPD_WIDTH - y - h;
+      break;
+  }
+  EpdRect rotated =  {
+    x, y, w, h
+  };
+  return rotated;
+}
+
 Coord_xy _rotate(uint16_t x, uint16_t y) {
     switch (display_rotation) {
         case 1:

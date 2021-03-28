@@ -90,14 +90,14 @@ void idf_loop() {
   int cursor_y = EPD_HEIGHT / 2 - 100;
   EpdFontProperties font_props = epd_font_properties_default();
   font_props.flags = EPD_DRAW_ALIGN_CENTER;
-  font_props.fg_color = 120;
+  font_props.fg_color = 3;
 
   char srotation[32];
   sprintf(srotation, "Loading demo...\nRotation: %d", epd_get_rotation());
 
   epd_write_string(&FONT, srotation, &cursor_x, &cursor_y, fb, &font_props);
 
-  int bar_x = EPD_WIDTH / 2 - 200;
+  int bar_x = 10;
   int bar_y = EPD_HEIGHT / 2;
 
   epd_poweron();
@@ -245,7 +245,7 @@ void idf_setup() {
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
 
-  epd_set_rotation(1);
+  epd_set_rotation(2);
 }
 
 #ifndef ARDUINO_ARCH_ESP32

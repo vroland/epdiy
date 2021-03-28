@@ -51,7 +51,13 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   
   bool previously_white = false;
   bool previously_black = false;
-
+  // Check rotation FIX
+  EpdRect rotated_area = _rotated_area(area.x, area.y, area.width, area.height);
+  area.x = rotated_area.x;
+  area.y = rotated_area.y;
+  area.width = rotated_area.width;
+  area.height = rotated_area.height;
+  
   //FIXME: use crop information here, if available
   EpdRect diff_area = epd_difference_image_cropped(
 	  state->front_fb,
