@@ -161,7 +161,9 @@ void idf_loop() {
       .width = img_giraffe_width,
       .height = img_giraffe_height,
   };
-  epd_copy_to_framebuffer(giraffe_area, img_giraffe_data, fb);
+  //epd_copy_to_framebuffer(giraffe_area, img_giraffe_data, fb);
+  epd_draw_rotated_image(giraffe_area, img_giraffe_data, fb);
+
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
@@ -174,7 +176,8 @@ void idf_loop() {
       .width = img_zebra_width,
       .height = img_zebra_height,
   };
-  epd_copy_to_framebuffer(zebra_area, img_zebra_data, fb);
+  //epd_copy_to_framebuffer(zebra_area, img_zebra_data, fb);
+  epd_draw_rotated_image(zebra_area, img_zebra_data, fb);
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
@@ -187,7 +190,8 @@ void idf_loop() {
       .width = img_board_width,
       .height = img_board_height,
   };
-  epd_copy_to_framebuffer(board_area, img_board_data, fb);
+  //epd_copy_to_framebuffer(board_area, img_board_data, fb);
+  epd_draw_rotated_image(board_area, img_board_data, fb);
   cursor_x = epd_rotated_display_width() / 2;
   cursor_y = board_area.y;
   font_props.flags |= EPD_DRAW_BACKGROUND;
@@ -227,7 +231,8 @@ void idf_loop() {
       .width = img_beach_width,
       .height = img_beach_height,
   };
-  epd_copy_to_framebuffer(img_beach_area, img_beach_data, fb);
+  //epd_copy_to_framebuffer(img_beach_area, img_beach_data, fb);
+  epd_draw_rotated_image(img_beach_area, img_beach_data, fb);
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
@@ -244,7 +249,7 @@ void idf_setup() {
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
 
-  epd_set_rotation(2);
+  epd_set_rotation(1);
 
   printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
 }

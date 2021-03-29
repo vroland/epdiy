@@ -55,9 +55,11 @@ void loop() {
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
-  epd_poweroff();
+  
+  //epd_hl_update_area
+   epd_poweroff();
 
-
+//MODE_GL4
   vTaskDelay(100000);
 }
 

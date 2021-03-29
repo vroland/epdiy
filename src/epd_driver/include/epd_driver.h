@@ -489,8 +489,15 @@ EpdRect epd_difference_image_cropped(
  */
 EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
+/**
+ * Return the pixel color of a 4 bit image array
+ */
+uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *framebuffer);
 
-
+/**
+ * Draw an image reading pixel per pixel and being rotation aware (via epd_draw_pixel)
+ */ 
+void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer);
 
 #ifdef __cplusplus
 }
