@@ -97,10 +97,10 @@ Coord_xy _rotate(uint16_t x, uint16_t y) {
 }
 
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
-  if (x < 0 || x >= EPD_WIDTH) {
+  if (x < 0 || x >= epd_rotated_display_width()) {
     return;
   }
-  if (y < 0 || y >= EPD_HEIGHT) {
+  if (y < 0 || y >= epd_rotated_display_height()) {
     return;
   }
   // Check rotation and move pixel around if necessary
