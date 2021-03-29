@@ -190,6 +190,12 @@ uint8_t epd_get_rotation();
 /** Rotation setter */
 void epd_set_rotation(uint8_t rotation);
 
+/** Get screen width after rotation */
+uint16_t epd_rotated_display_width();
+
+/** Get screen height after rotation */
+uint16_t epd_rotated_display_height();
+
 /** Deinit the ePaper display */
 void epd_deinit();
 

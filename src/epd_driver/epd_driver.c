@@ -413,3 +413,29 @@ void epd_set_rotation(uint8_t rotation) {
 uint8_t epd_get_rotation() {
     return display_rotation;
 }
+
+uint16_t epd_rotated_display_width() {
+  uint16_t display_width = EPD_WIDTH;
+  switch (display_rotation) {
+          case 1:
+              display_width = EPD_HEIGHT;
+          break;
+          case 3:
+              display_width = EPD_HEIGHT;
+          break;
+      }
+  return display_width;
+}
+
+uint16_t epd_rotated_display_height() {
+  uint16_t display_height = EPD_HEIGHT;
+  switch (display_rotation) {
+          case 1:
+              display_height = EPD_WIDTH;
+          break;
+          case 3:
+              display_height = EPD_WIDTH;
+          break;
+      }
+  return display_height;
+}
