@@ -13,6 +13,13 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+enum EpdRotation {
+    EPD_ROT_LANDSCAPE = 0,
+    EPD_ROT_PORTRAIT = 1,
+    EPD_ROT_INVERTED_LANDSCAPE = 2,
+    EPD_ROT_INVERTED_PORTRAIT = 3,
+};
+
 /// An area on the display.
 typedef struct {
   /// Horizontal position.
@@ -181,7 +188,7 @@ void epd_init(enum EpdInitOptions options);
 uint8_t epd_get_rotation();
 
 /** Rotation setter */
-void epd_set_rotation(uint8_t rotation);
+void epd_set_rotation(enum EpdRotation rotation);
 
 /** Get screen width after rotation */
 uint16_t epd_rotated_display_width();

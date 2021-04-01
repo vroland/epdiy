@@ -184,8 +184,7 @@ void idf_loop() {
   epd_poweroff();
 
   delay(5000);
-  epd_hl_set_all_white(&hl);
-
+  
   EpdRect board_area = {
       .x = epd_rotated_display_width() / 2 - img_board_width / 2,
       .y = epd_rotated_display_height() / 2 - img_board_height / 2,
@@ -249,8 +248,9 @@ void idf_setup() {
 
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
-
-  epd_set_rotation(1);
+  //Optional but can be used directly
+  //enum EpdRotation display_rotation = EPD_ROT_INVERTED_LANDSCAPE;
+  epd_set_rotation(EPD_ROT_LANDSCAPE);
 
   printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
 }
