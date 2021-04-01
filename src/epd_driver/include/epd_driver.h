@@ -13,6 +13,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+/// Display software rotation. Recalculates x, y of draw_pixel, fonts and partial update area
 enum EpdRotation {
     EPD_ROT_LANDSCAPE = 0,
     EPD_ROT_PORTRAIT = 1,

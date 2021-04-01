@@ -12,8 +12,8 @@ typedef struct {
     uint16_t y;
 } Coord_xy;
 
-// Initial rotation: Landscape
-uint8_t display_rotation = 0;
+// Initial rotation: EPD_ROT_LANDSCAPE
+static uint8_t display_rotation = 0;
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
