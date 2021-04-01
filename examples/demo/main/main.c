@@ -116,7 +116,7 @@ void idf_loop() {
   }
 
   cursor_x = epd_rotated_display_width() / 2;
-  cursor_y = epd_rotated_display_height() / 2 + 200;
+  cursor_y = epd_rotated_display_height() / 2 + 100;
 
   epd_write_string(&FONT, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
   epd_poweron();
@@ -169,6 +169,7 @@ void idf_loop() {
   epd_poweroff();
 
   delay(5000);
+  epd_hl_set_all_white(&hl);
 
   EpdRect zebra_area = {
       .x = epd_rotated_display_width() / 2 - img_zebra_width / 2,
@@ -183,6 +184,7 @@ void idf_loop() {
   epd_poweroff();
 
   delay(5000);
+  epd_hl_set_all_white(&hl);
 
   EpdRect board_area = {
       .x = epd_rotated_display_width() / 2 - img_board_width / 2,
@@ -202,7 +204,6 @@ void idf_loop() {
   epd_poweroff();
 
   delay(5000);
-
   epd_hl_set_all_white(&hl);
 
   EpdRect border_rect = {

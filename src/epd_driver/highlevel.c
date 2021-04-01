@@ -9,6 +9,15 @@
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 
+#ifndef _swap_int
+#define _swap_int(a, b)                                                        \
+  {                                                                            \
+    int t = a;                                                                 \
+    a = b;                                                                     \
+    b = t;                                                                     \
+  }
+#endif
+
 static bool already_initialized = 0;
 
 const static int fb_size = EPD_WIDTH / 2 * EPD_HEIGHT;
@@ -43,6 +52,40 @@ uint8_t* epd_hl_get_framebuffer(EpdiyHighlevelState* state) {
 
 enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature) {
   return epd_hl_update_area(state, mode, temperature, epd_full_screen());
+}
+
+EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+  // If partial update uses full screen do not rotate anything
+  if (x != 0 && y != 0 && EPD_WIDTH != w && EPD_HEIGHT != h) {
+    switch (epd_get_rotation())
+    {
+      // 0 landscape: Leave it as is
+      // 1 90 ° right portrait
+      case 1:
+        _swap_int(x, y);
+        _swap_int(w, h);
+        x = EPD_WIDTH - x - w;
+        break;
+
+      case 2:
+        // 3 180° landscape
+        x = EPD_WIDTH - x - w;
+        y = EPD_HEIGHT - y - h;
+        break;
+
+      case 3:
+        // 3 270 ° portrait
+        _swap_int(x, y);
+        _swap_int(w, h);
+        y = EPD_HEIGHT - y - h;
+        break;
+    }
+  }
+
+  EpdRect rotated =  {
+    x, y, w, h
+  };
+  return rotated;
 }
 
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {

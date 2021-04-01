@@ -6,6 +6,12 @@
 #include "esp_log.h"
 #include "esp_types.h"
 
+// Simple x and y coordinate
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+} Coord_xy;
+
 // Initial rotation: Landscape
 uint8_t display_rotation = 0;
 
@@ -39,40 +45,6 @@ void epd_draw_vline(int x, int y, int length, uint8_t color,
     int yy = y + i;
     epd_draw_pixel(x, yy, color, framebuffer);
   }
-}
-
-EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
-  // If partial update uses full screen do not rotate anything
-  if (x != 0 && y != 0 && EPD_WIDTH != w && EPD_HEIGHT != h) {
-    switch (epd_get_rotation())
-    {
-      // 0 landscape: Leave it as is
-      // 1 90 ° right portrait
-      case 1:
-        _swap_int(x, y);
-        _swap_int(w, h);
-        x = EPD_WIDTH - x - w;
-        break;
-      
-      case 2:
-        // 3 180° landscape
-        x = EPD_WIDTH - x - w;
-        y = EPD_HEIGHT - y - h;
-        break;
-
-      case 3:
-        // 3 270 ° portrait
-        _swap_int(x, y);
-        _swap_int(w, h);
-        y = EPD_HEIGHT - y - h;
-        break;
-    }
-  }
-  //printf("AFT x %d y %d w %d h %d\n\n",x,y,w,h); // Debug: Remove after tests
-  EpdRect rotated =  {
-    x, y, w, h
-  };
-  return rotated;
 }
 
 Coord_xy _rotate(uint16_t x, uint16_t y) {

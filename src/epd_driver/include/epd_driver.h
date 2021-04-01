@@ -25,13 +25,6 @@ typedef struct {
   int height;
 } EpdRect;
 
-// Simple x and y coordinate
-typedef struct {
-    uint16_t x;
-    uint16_t y;
-} Coord_xy;
-
-
 /// Possible failures when drawing.
 enum EpdDrawError {
   EPD_DRAW_SUCCESS = 0x0,
@@ -242,16 +235,6 @@ EpdRect epd_full_screen();
  */
 void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
                              uint8_t *framebuffer);
-
-/**
- * Calculate software rotation
- */  
-Coord_xy _rotate(uint16_t x, uint16_t y);
-
-/**
- * Calculate software rotation for an area
- */  
-EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 
 /**
  * Draw a pixel a given framebuffer.
