@@ -154,7 +154,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
 
   for (int y = 0; y < height; y++) {
     int yy = cursor_y - glyph->top + y;
-    if (yy < 0 || yy >= buf_height) {
+    if (yy < 0 || yy >= epd_rotated_display_height()) {
       continue;
     }
     int start_pos = *cursor_x + left;
