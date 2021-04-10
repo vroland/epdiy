@@ -55,11 +55,9 @@ void loop() {
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
-  
-  //epd_hl_update_area
-   epd_poweroff();
+  epd_poweroff();
 
-//MODE_GL4
+
   vTaskDelay(100000);
 }
 
@@ -67,7 +65,7 @@ void IRAM_ATTR app_main() {
   epd_init(EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(WAVEFORM);
 
-  //while (1) {
+  while (1) {
     loop();
-  //};
+  };
 }

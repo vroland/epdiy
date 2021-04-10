@@ -134,9 +134,6 @@ void idf_loop() {
   cursor_y = epd_rotated_display_height() / 2 + 200;
   cursor_x = epd_rotated_display_width() / 2;
 
-  //delay(1000); // Stop here for debugging
-  //return;
-
   EpdRect clear_area = {
     .x = 0,
     .y = epd_rotated_display_height() / 2 + 100,
@@ -161,7 +158,7 @@ void idf_loop() {
       .width = img_giraffe_width,
       .height = img_giraffe_height,
   };
-  //epd_copy_to_framebuffer(giraffe_area, img_giraffe_data, fb);
+
   epd_draw_rotated_image(giraffe_area, img_giraffe_data, fb);
 
   epd_poweron();
@@ -177,7 +174,7 @@ void idf_loop() {
       .width = img_zebra_width,
       .height = img_zebra_height,
   };
-  //epd_copy_to_framebuffer(zebra_area, img_zebra_data, fb);
+
   epd_draw_rotated_image(zebra_area, img_zebra_data, fb);
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
@@ -191,7 +188,7 @@ void idf_loop() {
       .width = img_board_width,
       .height = img_board_height,
   };
-  //epd_copy_to_framebuffer(board_area, img_board_data, fb);
+
   epd_draw_rotated_image(board_area, img_board_data, fb);
   cursor_x = epd_rotated_display_width() / 2;
   cursor_y = board_area.y;
@@ -231,7 +228,7 @@ void idf_loop() {
       .width = img_beach_width,
       .height = img_beach_height,
   };
-  //epd_copy_to_framebuffer(img_beach_area, img_beach_data, fb);
+
   epd_draw_rotated_image(img_beach_area, img_beach_data, fb);
 
   epd_poweron();
@@ -248,8 +245,8 @@ void idf_setup() {
 
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
-  //Optional but can be used directly
-  //enum EpdRotation display_rotation = EPD_ROT_INVERTED_LANDSCAPE;
+
+  // Default orientation is EPD_ROT_LANDSCAPE
   epd_set_rotation(EPD_ROT_LANDSCAPE);
 
   printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
@@ -259,8 +256,8 @@ void idf_setup() {
 void app_main() {
   idf_setup();
 
-  //while (1) {
+  while (1) {
     idf_loop();
-  //};
+  };
 }
 #endif
