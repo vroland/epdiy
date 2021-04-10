@@ -190,16 +190,16 @@ typedef struct {
 void epd_init(enum EpdInitOptions options);
 
 /** Get the display rotation value */
-uint8_t epd_get_rotation();
+enum EpdRotation epd_get_rotation();
 
 /** Set the display rotation: Affects the drawing and font functions */
 void epd_set_rotation(enum EpdRotation rotation);
 
 /** Get screen width after rotation */
-uint16_t epd_rotated_display_width();
+int epd_rotated_display_width();
 
 /** Get screen height after rotation */
-uint16_t epd_rotated_display_height();
+int epd_rotated_display_height();
 
 /** Deinit the ePaper display */
 void epd_deinit();

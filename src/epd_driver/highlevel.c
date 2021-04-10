@@ -60,6 +60,8 @@ EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
     switch (epd_get_rotation())
     {
       // 0 landscape: Leave it as is
+      case EPD_ROT_LANDSCAPE:
+        break;
       // 1 90 ° clockwise
       case EPD_ROT_PORTRAIT:
         _swap_int(x, y);

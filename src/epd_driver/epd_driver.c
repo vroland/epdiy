@@ -382,12 +382,12 @@ void epd_set_rotation(enum EpdRotation rotation) {
       display_rotation = rotation;
 }
 
-uint8_t epd_get_rotation() {
+enum EpdRotation epd_get_rotation() {
     return display_rotation;
 }
 
-uint16_t epd_rotated_display_width() {
-  uint16_t display_width = EPD_WIDTH;
+int epd_rotated_display_width() {
+  int display_width = EPD_WIDTH;
   switch (display_rotation) {
           case EPD_ROT_PORTRAIT:
               display_width = EPD_HEIGHT;
@@ -402,8 +402,8 @@ uint16_t epd_rotated_display_width() {
   return display_width;
 }
 
-uint16_t epd_rotated_display_height() {
-  uint16_t display_height = EPD_HEIGHT;
+int epd_rotated_display_height() {
+  int display_height = EPD_HEIGHT;
   switch (display_rotation) {
           case EPD_ROT_PORTRAIT:
               display_height = EPD_WIDTH;
