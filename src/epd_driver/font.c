@@ -161,22 +161,17 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
     bool byte_complete = start_pos % 2;
     int x = max(0, -start_pos);
     int max_x = min(start_pos + width, buf_width * 2);
-
     uint8_t color;
+    
     for (int xx = start_pos; xx < max_x; xx++) {
-
-      uint32_t buf_pos = yy * buf_width + xx / 2;
-      uint8_t old = buffer[buf_pos];
       uint8_t bm = bitmap[y * byte_width + x / 2];
       if ((x & 1) == 0) {
         bm = bm & 0xF;
       } else {
         bm = bm >> 4;
       }
-
       color = color_lut[bm] << 4;
       epd_draw_pixel(xx, yy, color, buffer);
-
       byte_complete = !byte_complete;
       x++;
     }

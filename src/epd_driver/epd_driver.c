@@ -379,9 +379,7 @@ enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWav
 }
 
 void epd_set_rotation(enum EpdRotation rotation) {
-    if (rotation < EPD_ROT_INVERTED_LANDSCAPE) {
       display_rotation = rotation;
-    }
 }
 
 uint8_t epd_get_rotation() {
