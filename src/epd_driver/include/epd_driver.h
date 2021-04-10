@@ -13,7 +13,11 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-/// Display software rotation. Recalculates x, y of draw_pixel, fonts and partial update area
+/** Display software rotation.
+ *  Sets the rotation for the purposes of the drawing and font functions
+ *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
+ *  Use epd_get_rotation() in case you need to read this value
+ */
 enum EpdRotation {
     EPD_ROT_LANDSCAPE = 0,
     EPD_ROT_PORTRAIT = 1,
@@ -185,10 +189,10 @@ typedef struct {
 /** Initialize the ePaper display */
 void epd_init(enum EpdInitOptions options);
 
-/** Rotation getter */
+/** Get the display rotation value */
 uint8_t epd_get_rotation();
 
-/** Rotation setter */
+/** Set the display rotation: Affects the drawing and font functions */
 void epd_set_rotation(enum EpdRotation rotation);
 
 /** Get screen width after rotation */
@@ -482,6 +486,9 @@ EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* in
 
 /**
  * Return the pixel color of a 4 bit image array
+ * x,y coordinates of the image pixel
+ * fb_width, fb_height dimensions
+ * @returns uint8_t 0-255 representing the color on given coordinates (as in epd_draw_pixel)
  */
 uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *framebuffer);
 
