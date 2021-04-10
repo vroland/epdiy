@@ -12,8 +12,8 @@ typedef struct {
     uint16_t y;
 } Coord_xy;
 
-// Initial rotation: EPD_ROT_LANDSCAPE
-static uint8_t display_rotation = 0;
+// Display rotation. Can be updated using epd_set_rotation(enum EpdRotation)
+static enum EpdRotation display_rotation = EPD_ROT_LANDSCAPE;
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
@@ -49,15 +49,17 @@ void epd_draw_vline(int x, int y, int length, uint8_t color,
 
 Coord_xy _rotate(uint16_t x, uint16_t y) {
     switch (display_rotation) {
-        case 1:
+        case EPD_ROT_LANDSCAPE:
+        break;
+        case EPD_ROT_PORTRAIT:
             _swap_int(x, y);
             x = EPD_WIDTH - x - 1;
         break;
-        case 2:
+        case EPD_ROT_INVERTED_LANDSCAPE:
             x = EPD_WIDTH - x - 1;
             y = EPD_HEIGHT - y - 1;
         break;
-        case 3:
+        case EPD_ROT_INVERTED_PORTRAIT:
             _swap_int(x, y);
             y = EPD_HEIGHT - y - 1;
         break;
@@ -389,11 +391,14 @@ uint8_t epd_get_rotation() {
 uint16_t epd_rotated_display_width() {
   uint16_t display_width = EPD_WIDTH;
   switch (display_rotation) {
-          case 1:
+          case EPD_ROT_PORTRAIT:
               display_width = EPD_HEIGHT;
           break;
-          case 3:
+          case EPD_ROT_INVERTED_PORTRAIT:
               display_width = EPD_HEIGHT;
+          break;
+          case EPD_ROT_INVERTED_LANDSCAPE:
+          case EPD_ROT_LANDSCAPE:
           break;
       }
   return display_width;
@@ -402,11 +407,14 @@ uint16_t epd_rotated_display_width() {
 uint16_t epd_rotated_display_height() {
   uint16_t display_height = EPD_HEIGHT;
   switch (display_rotation) {
-          case 1:
+          case EPD_ROT_PORTRAIT:
               display_height = EPD_WIDTH;
           break;
-          case 3:
+          case EPD_ROT_INVERTED_PORTRAIT:
               display_height = EPD_WIDTH;
+          break;
+          case EPD_ROT_INVERTED_LANDSCAPE:
+          case EPD_ROT_LANDSCAPE:
           break;
       }
   return display_height;
