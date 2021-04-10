@@ -379,7 +379,7 @@ enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWav
 }
 
 void epd_set_rotation(enum EpdRotation rotation) {
-    if (rotation<4) {
+    if (rotation < EPD_ROT_INVERTED_LANDSCAPE) {
       display_rotation = rotation;
     }
 }
@@ -440,7 +440,7 @@ uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *
 }
 
 void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer) {
-  if (epd_get_rotation()!=0) {
+  if (epd_get_rotation() != EPD_ROT_LANDSCAPE) {
     uint16_t x_offset = 0;
     uint16_t y_offset = 0;
     for (uint16_t y = 0; y < image_area.height; y++) {
