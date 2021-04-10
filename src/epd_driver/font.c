@@ -174,7 +174,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
         bm = bm >> 4;
       }
 
-      color = (old & 0x0F) | (color_lut[bm] << 4);
+      color = color_lut[bm] << 4;
       epd_draw_pixel(xx, yy, color, buffer);
 
       byte_complete = !byte_complete;
