@@ -3033,7 +3033,7 @@ const uint8_t nibble_inversion_lut[256] = {
 
 static void invert_framebuffer(uint8_t* fb) {
     for (int i=0; i < EPD_WIDTH / 2 * EPD_HEIGHT; i++) {
-        fb[i] = nibble_inversion_lut[fb[i]];
+        fb[i] ^= 0xFF;
     }
 }
 
