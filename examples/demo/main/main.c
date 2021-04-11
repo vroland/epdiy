@@ -74,24 +74,30 @@ void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
 void idf_loop() {
 
   enum EpdDrawError err;
+  
   temperature = epd_ambient_temperature();
   printf("current temperature: %d\n", temperature);
 
   uint8_t* fb = epd_hl_get_framebuffer(&hl);
+  
 
   epd_poweron();
   epd_clear();
   epd_poweroff();
 
-
-  int cursor_x = EPD_WIDTH / 2;
-  int cursor_y = EPD_HEIGHT / 2 - 100;
+  epd_fill_circle(30,30,15,0,fb);
+  int cursor_x = epd_rotated_display_width() / 2;
+  int cursor_y = epd_rotated_display_height() / 2 - 100;
   EpdFontProperties font_props = epd_font_properties_default();
   font_props.flags = EPD_DRAW_ALIGN_CENTER;
-  epd_write_string(&FONT, "Loading demo...", &cursor_x, &cursor_y, fb, &font_props);
 
-  int bar_x = EPD_WIDTH / 2 - 200;
-  int bar_y = EPD_HEIGHT / 2;
+  char srotation[32];
+  sprintf(srotation, "Loading demo...\nRotation: %d", epd_get_rotation());
+
+  epd_write_string(&FONT, srotation, &cursor_x, &cursor_y, fb, &font_props);
+
+  int bar_x = epd_rotated_display_width() / 2 - 200;
+  int bar_y = epd_rotated_display_height() / 2;
 
   epd_poweron();
   vTaskDelay(100);
@@ -109,8 +115,8 @@ void idf_loop() {
     vTaskDelay(1);
   }
 
-  cursor_x = EPD_WIDTH / 2;
-  cursor_y = EPD_HEIGHT / 2 + 200;
+  cursor_x = epd_rotated_display_width() / 2;
+  cursor_y = epd_rotated_display_height() / 2 + 100;
 
   epd_write_string(&FONT, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
   epd_poweron();
@@ -125,15 +131,13 @@ void idf_loop() {
     vTaskDelay(1);
   }
 
-  cursor_y = EPD_HEIGHT / 2 + 200;
-  cursor_x = EPD_WIDTH / 2;
-
-  delay(1000);
+  cursor_y = epd_rotated_display_height() / 2 + 200;
+  cursor_x = epd_rotated_display_width() / 2;
 
   EpdRect clear_area = {
     .x = 0,
-    .y = EPD_HEIGHT / 2 + 100,
-    .width = EPD_WIDTH,
+    .y = epd_rotated_display_height() / 2 + 100,
+    .width = epd_rotated_display_width(),
     .height = 300,
   };
 
@@ -149,39 +153,44 @@ void idf_loop() {
   epd_hl_set_all_white(&hl);
 
   EpdRect giraffe_area = {
-      .x = EPD_WIDTH / 2 - img_giraffe_width / 2,
+      .x = epd_rotated_display_width() / 2 - img_giraffe_width / 2,
       .y = 25,
       .width = img_giraffe_width,
       .height = img_giraffe_height,
   };
-  epd_copy_to_framebuffer(giraffe_area, img_giraffe_data, fb);
+
+  epd_draw_rotated_image(giraffe_area, img_giraffe_data, fb);
+
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
   delay(5000);
+  epd_hl_set_all_white(&hl);
 
   EpdRect zebra_area = {
-      .x = EPD_WIDTH / 2 - img_zebra_width / 2,
-      .y = EPD_HEIGHT / 2 - img_zebra_height / 2,
+      .x = epd_rotated_display_width() / 2 - img_zebra_width / 2,
+      .y = epd_rotated_display_height() / 2 - img_zebra_height / 2,
       .width = img_zebra_width,
       .height = img_zebra_height,
   };
-  epd_copy_to_framebuffer(zebra_area, img_zebra_data, fb);
+
+  epd_draw_rotated_image(zebra_area, img_zebra_data, fb);
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
   delay(5000);
-
+  
   EpdRect board_area = {
-      .x = EPD_WIDTH / 2 - img_board_width / 2,
-      .y = EPD_HEIGHT / 2 - img_board_height / 2,
+      .x = epd_rotated_display_width() / 2 - img_board_width / 2,
+      .y = epd_rotated_display_height() / 2 - img_board_height / 2,
       .width = img_board_width,
       .height = img_board_height,
   };
-  epd_copy_to_framebuffer(board_area, img_board_data, fb);
-  cursor_x = EPD_WIDTH / 2;
+
+  epd_draw_rotated_image(board_area, img_board_data, fb);
+  cursor_x = epd_rotated_display_width() / 2;
   cursor_y = board_area.y;
   font_props.flags |= EPD_DRAW_BACKGROUND;
   epd_write_string(&FONT, "↓ Thats the V2 board. ↓", &cursor_x, &cursor_y, fb, &font_props);
@@ -191,14 +200,13 @@ void idf_loop() {
   epd_poweroff();
 
   delay(5000);
-
   epd_hl_set_all_white(&hl);
 
   EpdRect border_rect = {
     .x = 20,
     .y = 20,
-    .width = EPD_WIDTH - 40,
-    .height = EPD_HEIGHT - 40
+    .width = epd_rotated_display_width() - 40,
+    .height = epd_rotated_display_height() - 40
   };
   epd_draw_rect(border_rect, 0, fb);
 
@@ -220,7 +228,8 @@ void idf_loop() {
       .width = img_beach_width,
       .height = img_beach_height,
   };
-  epd_copy_to_framebuffer(img_beach_area, img_beach_data, fb);
+
+  epd_draw_rotated_image(img_beach_area, img_beach_data, fb);
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
@@ -236,6 +245,11 @@ void idf_setup() {
 
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
+
+  // Default orientation is EPD_ROT_LANDSCAPE
+  epd_set_rotation(EPD_ROT_LANDSCAPE);
+
+  printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
 }
 
 #ifndef ARDUINO_ARCH_ESP32

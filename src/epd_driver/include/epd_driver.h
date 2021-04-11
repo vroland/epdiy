@@ -13,6 +13,18 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+/** Display software rotation.
+ *  Sets the rotation for the purposes of the drawing and font functions
+ *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
+ *  Use epd_get_rotation() in case you need to read this value
+ */
+enum EpdRotation {
+    EPD_ROT_LANDSCAPE = 0,
+    EPD_ROT_PORTRAIT = 1,
+    EPD_ROT_INVERTED_LANDSCAPE = 2,
+    EPD_ROT_INVERTED_PORTRAIT = 3,
+};
+
 /// An area on the display.
 typedef struct {
   /// Horizontal position.
@@ -176,6 +188,18 @@ typedef struct {
 
 /** Initialize the ePaper display */
 void epd_init(enum EpdInitOptions options);
+
+/** Get the display rotation value */
+enum EpdRotation epd_get_rotation();
+
+/** Set the display rotation: Affects the drawing and font functions */
+void epd_set_rotation(enum EpdRotation rotation);
+
+/** Get screen width after rotation */
+int epd_rotated_display_width();
+
+/** Get screen height after rotation */
+int epd_rotated_display_height();
 
 /** Deinit the ePaper display */
 void epd_deinit();
@@ -460,8 +484,18 @@ EpdRect epd_difference_image_cropped(
  */
 EpdRect epd_difference_image(const uint8_t* to, const uint8_t* from, uint8_t* interlaced, bool* dirty_lines);
 
+/**
+ * Return the pixel color of a 4 bit image array
+ * x,y coordinates of the image pixel
+ * fb_width, fb_height dimensions
+ * @returns uint8_t 0-255 representing the color on given coordinates (as in epd_draw_pixel)
+ */
+uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *framebuffer);
 
-
+/**
+ * Draw an image reading pixel per pixel and being rotation aware (via epd_draw_pixel)
+ */ 
+void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer);
 
 #ifdef __cplusplus
 }

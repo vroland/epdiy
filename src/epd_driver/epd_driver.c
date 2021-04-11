@@ -6,6 +6,14 @@
 #include "esp_log.h"
 #include "esp_types.h"
 
+// Simple x and y coordinate
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+} Coord_xy;
+
+// Display rotation. Can be updated using epd_set_rotation(enum EpdRotation)
+static enum EpdRotation display_rotation = EPD_ROT_LANDSCAPE;
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
@@ -15,7 +23,6 @@
     b = t;                                                                     \
   }
 #endif
-
 
 EpdRect epd_full_screen() {
   EpdRect area = {.x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT};
@@ -40,13 +47,41 @@ void epd_draw_vline(int x, int y, int length, uint8_t color,
   }
 }
 
+Coord_xy _rotate(uint16_t x, uint16_t y) {
+    switch (display_rotation) {
+        case EPD_ROT_LANDSCAPE:
+        break;
+        case EPD_ROT_PORTRAIT:
+            _swap_int(x, y);
+            x = EPD_WIDTH - x - 1;
+        break;
+        case EPD_ROT_INVERTED_LANDSCAPE:
+            x = EPD_WIDTH - x - 1;
+            y = EPD_HEIGHT - y - 1;
+        break;
+        case EPD_ROT_INVERTED_PORTRAIT:
+            _swap_int(x, y);
+            y = EPD_HEIGHT - y - 1;
+        break;
+    }
+    Coord_xy coord = {
+        x, y
+    };
+    return coord;
+}
+
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
-  if (x < 0 || x >= EPD_WIDTH) {
+  if (x < 0 || x >= epd_rotated_display_width()) {
     return;
   }
-  if (y < 0 || y >= EPD_HEIGHT) {
+  if (y < 0 || y >= epd_rotated_display_height()) {
     return;
   }
+  // Check rotation and move pixel around if necessary
+  Coord_xy coord = _rotate(x, y);
+  x = coord.x;
+  y = coord.y;
+
   uint8_t *buf_ptr = &framebuffer[y * EPD_WIDTH / 2 + x / 2];
   if (x % 2) {
     *buf_ptr = (*buf_ptr & 0x0F) | (color & 0xF0);
@@ -341,4 +376,85 @@ enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWav
         .height = 0,
     };
     return epd_draw_base(area, data, no_crop, EPD_MODE_DEFAULT, temperature, NULL, waveform);
+}
+
+void epd_set_rotation(enum EpdRotation rotation) {
+      display_rotation = rotation;
+}
+
+enum EpdRotation epd_get_rotation() {
+    return display_rotation;
+}
+
+int epd_rotated_display_width() {
+  int display_width = EPD_WIDTH;
+  switch (display_rotation) {
+          case EPD_ROT_PORTRAIT:
+              display_width = EPD_HEIGHT;
+          break;
+          case EPD_ROT_INVERTED_PORTRAIT:
+              display_width = EPD_HEIGHT;
+          break;
+          case EPD_ROT_INVERTED_LANDSCAPE:
+          case EPD_ROT_LANDSCAPE:
+          break;
+      }
+  return display_width;
+}
+
+int epd_rotated_display_height() {
+  int display_height = EPD_HEIGHT;
+  switch (display_rotation) {
+          case EPD_ROT_PORTRAIT:
+              display_height = EPD_WIDTH;
+          break;
+          case EPD_ROT_INVERTED_PORTRAIT:
+              display_height = EPD_WIDTH;
+          break;
+          case EPD_ROT_INVERTED_LANDSCAPE:
+          case EPD_ROT_LANDSCAPE:
+          break;
+      }
+  return display_height;
+}
+
+uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *framebuffer) {  
+  if (x < 0 || x >= fb_width) {
+   return 0;
+ }
+ if (y < 0 || y >= fb_height) {
+   return 0;
+ }
+ int fb_width_bytes = fb_width / 2 + fb_width % 2;
+ uint8_t buf_val = framebuffer[y * fb_width_bytes + x / 2];
+ if (x % 2) {
+   buf_val = (buf_val & 0xF0) >> 4;
+ } else {
+   buf_val = (buf_val & 0x0F);
+ }
+
+ // epd_draw_pixel needs a 0 -> 255 value
+ return buf_val<<4;
+}
+
+void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer) {
+  if (epd_get_rotation() != EPD_ROT_LANDSCAPE) {
+    uint16_t x_offset = 0;
+    uint16_t y_offset = 0;
+    for (uint16_t y = 0; y < image_area.height; y++) {
+        for (uint16_t x = 0; x < image_area.width; x++) {
+          x_offset = image_area.x + x;
+          y_offset = image_area.y + y;
+          if (x_offset >= epd_rotated_display_width()) continue;
+          if (y_offset >= epd_rotated_display_height()) continue;
+          epd_draw_pixel(
+            x_offset,
+            y_offset,
+            epd_get_pixel(x, y, image_area.width, image_area.height, image_buffer),
+            framebuffer);
+        }
+      }
+    } else {
+      epd_copy_to_framebuffer(image_area, image_buffer, framebuffer);
+    }
 }

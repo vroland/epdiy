@@ -48,6 +48,9 @@
 
 #include "epd_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /// Holds the internal state of the high-level API.
 typedef struct {
   /// The "front" framebuffer object.
@@ -120,3 +123,7 @@ void epd_hl_set_all_white(EpdiyHighlevelState* state);
  * remaining artifacts.
  */
 void epd_fullclear(EpdiyHighlevelState* state, int temperature);
+
+#ifdef __cplusplus
+}
+#endif

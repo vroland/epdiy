@@ -9,6 +9,15 @@
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 
+#ifndef _swap_int
+#define _swap_int(a, b)                                                        \
+  {                                                                            \
+    int t = a;                                                                 \
+    a = b;                                                                     \
+    b = t;                                                                     \
+  }
+#endif
+
 static bool already_initialized = 0;
 
 const static int fb_size = EPD_WIDTH / 2 * EPD_HEIGHT;
@@ -45,12 +54,55 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
   return epd_hl_update_area(state, mode, temperature, epd_full_screen());
 }
 
+EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+  // If partial update uses full screen do not rotate anything
+  if (x != 0 && y != 0 && EPD_WIDTH != w && EPD_HEIGHT != h) {
+    switch (epd_get_rotation())
+    {
+      // 0 landscape: Leave it as is
+      case EPD_ROT_LANDSCAPE:
+        break;
+      // 1 90 ° clockwise
+      case EPD_ROT_PORTRAIT:
+        _swap_int(x, y);
+        _swap_int(w, h);
+        x = EPD_WIDTH - x - w;
+        break;
+
+      case EPD_ROT_INVERTED_LANDSCAPE:
+        // 3 180°
+        x = EPD_WIDTH - x - w;
+        y = EPD_HEIGHT - y - h;
+        break;
+
+      case EPD_ROT_INVERTED_PORTRAIT:
+        // 3 270 °
+        _swap_int(x, y);
+        _swap_int(w, h);
+        y = EPD_HEIGHT - y - h;
+        break;
+    }
+  }
+
+  EpdRect rotated =  {
+    x, y, w, h
+  };
+  return rotated;
+}
+
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {
   assert(state != NULL);
-
+  // Not right to rotate here since this copies part of buffer directly
+  
   bool previously_white = false;
   bool previously_black = false;
-
+  // Check rotation FIX
+  EpdRect rotated_area = _rotated_area(area.x, area.y, area.width, area.height);
+  area.x = rotated_area.x;
+  area.y = rotated_area.y;
+  area.width = rotated_area.width;
+  area.height = rotated_area.height;
+  
   //FIXME: use crop information here, if available
   EpdRect diff_area = epd_difference_image_cropped(
 	  state->front_fb,

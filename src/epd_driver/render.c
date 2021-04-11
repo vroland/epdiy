@@ -372,6 +372,7 @@ EpdRect epd_difference_image_cropped(
     bool* previously_white,
     bool* previously_black
 ) {
+
   uint8_t from_or, from_and;
 
   EpdRect result = epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
