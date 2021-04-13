@@ -2694,8 +2694,8 @@ tresize(int col, int row)
 
 	/* allocate any new rows */
 	for (/* i = minrow */; i < row; i++) {
-		term.line[i] = xmalloc_32(col * sizeof(Glyph));
-		term.alt[i] = xmalloc_32(col * sizeof(Glyph));
+		term.line[i] = xmalloc(col * sizeof(Glyph));
+		term.alt[i] = xmalloc(col * sizeof(Glyph));
 	}
 	if (col > term.col) {
 		bp = term.tabs + term.col;
