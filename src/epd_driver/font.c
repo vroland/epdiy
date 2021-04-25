@@ -151,6 +151,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
     int color_difference = (int)props->fg_color - (int)props->bg_color;
     color_lut[c] = max(0, min(15, props->bg_color + c * color_difference / 15));
   }
+  bool background_needed = props->flags & EPD_DRAW_BACKGROUND;
 
   for (int y = 0; y < height; y++) {
     int yy = cursor_y - glyph->top + y;
@@ -170,8 +171,10 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
       } else {
         bm = bm >> 4;
       }
-      color = color_lut[bm] << 4;
-      epd_draw_pixel(xx, yy, color, buffer);
+      if (background_needed || bm) {
+          color = color_lut[bm] << 4;
+          epd_draw_pixel(xx, yy, color, buffer);
+      }
       byte_complete = !byte_complete;
       x++;
     }
