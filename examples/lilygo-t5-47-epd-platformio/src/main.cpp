@@ -29,9 +29,7 @@
 gpio_num_t FIRST_BTN_PIN = GPIO_NUM_39;
 
 EpdiyHighlevelState hl;
-// epd_ambient_temperature() exists
-// but did not work for this device in my testing
-// so hardcode to about your room temp
+// ambient temperature around device
 int temperature = 20;
 uint8_t *fb;
 enum EpdDrawError err;
@@ -88,12 +86,8 @@ double_t get_battery_percentage()
 }
 
 void display_center_message(const char* text) {
-    // first clear screen
-    epd_poweron();
-    epd_clear();
-    err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
-    epd_poweroff();
-    delay(100);
+    // first set full screen to white
+    epd_hl_set_all_white(&hl);
 
     int cursor_x = EPD_WIDTH / 2;
     int cursor_y = EPD_HEIGHT / 2;
@@ -117,12 +111,8 @@ void display_full_screen_left_aligned_text(const char* text) {
     EpdFontProperties font_props = epd_font_properties_default();
     font_props.flags = EPD_DRAW_ALIGN_LEFT;
 
-    // first clear screen
-    epd_poweron();
-    epd_clear();
-    err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
-    epd_poweroff();
-    delay(100);
+    // first set full screen to white
+    epd_hl_set_all_white(&hl);
 
     /************* Display the text itself ******************/
     // hardcoded to start at upper left corner
@@ -208,6 +198,7 @@ void setup() {
     hl = epd_hl_init(WAVEFORM);
     epd_set_rotation(orientation);
     fb = epd_hl_get_framebuffer(&hl);
+    epd_clear();
 
     print_wakeup_reason();
     
