@@ -437,23 +437,34 @@ uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *
  return buf_val<<4;
 }
 
-void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer) {
-  if (epd_get_rotation() != EPD_ROT_LANDSCAPE) {
+static void draw_rotated_transparent_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer, uint8_t *transparent_color) {
     uint16_t x_offset = 0;
     uint16_t y_offset = 0;
+    uint8_t pixel_color;
     for (uint16_t y = 0; y < image_area.height; y++) {
         for (uint16_t x = 0; x < image_area.width; x++) {
           x_offset = image_area.x + x;
           y_offset = image_area.y + y;
           if (x_offset >= epd_rotated_display_width()) continue;
           if (y_offset >= epd_rotated_display_height()) continue;
-          epd_draw_pixel(
-            x_offset,
-            y_offset,
-            epd_get_pixel(x, y, image_area.width, image_area.height, image_buffer),
-            framebuffer);
+          pixel_color = epd_get_pixel(x, y, image_area.width, image_area.height, image_buffer);
+          if(transparent_color == NULL || pixel_color != (*transparent_color))
+              epd_draw_pixel(
+                x_offset,
+                y_offset,
+                pixel_color,
+                framebuffer);
         }
-      }
+    }
+}
+
+void epd_draw_rotated_transparent_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer, uint8_t transparent_color) {
+    draw_rotated_transparent_image(image_area, image_buffer, framebuffer, &transparent_color);
+}
+
+void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer) {
+  if (epd_get_rotation() != EPD_ROT_LANDSCAPE) {
+      draw_rotated_transparent_image(image_area, image_buffer, framebuffer, NULL);
     } else {
       epd_copy_to_framebuffer(image_area, image_buffer, framebuffer);
     }
