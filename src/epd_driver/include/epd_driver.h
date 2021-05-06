@@ -497,6 +497,12 @@ uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *
  */ 
 void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer);
 
+/**
+ * Draw an image reading pixel per pixel and being rotation aware (via epd_draw_pixel)
+ * With an optional transparent color (color key transparency)
+ */
+void epd_draw_rotated_transparent_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer, uint8_t transparent_color) ;
+
 #ifdef __cplusplus
 }
 #endif
