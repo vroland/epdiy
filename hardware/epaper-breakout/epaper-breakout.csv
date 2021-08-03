@@ -15,7 +15,7 @@ LED GREEN Light emitting diode,D8,LED_0805_2012Metric,C2297
 LED RED Light emitting diode,D9,LED_0805_2012Metric, C84256
 "1N5817 20V 1A Schottky Barrier Rectifier Diode, DO-41",D10,D_SOD-123, C8598
 MountingHole Mounting Hole without connection,"H1,H2,H3",MountingHole_2.2mm_M2,
-"XF2M-3315-1A ED097OC4 9.7"" epaper display",J1,CONN_ED097OC4,C231420
+"XF2M-3315-1A ED097OC4 9.7"" epaper display",J1,CONN_ED097OC4,C231420/C597986
 C10418 USB Micro Type B connector,J2,USB_Micro-B_A01SB141B1-067,C10418
 "Conn_02x05_Counter_Clockwise Generic connector, double row, 02x05, counter clockwise pin numbering scheme (similar to DIP packge numbering), script generated (kicad-library-utils/schlib/autogen/connector/)",J3,PinHeader_2x05_P2.54mm_Vertical,
 ED060SC4 ,J4,HRS_FH26W-39S-0.3SHW(60),C92280/ C262546

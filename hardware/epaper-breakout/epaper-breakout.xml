@@ -2,7 +2,7 @@
 <export version="D">
   <design>
     <source>/home/vroland/dev/misc/epdiy/hardware/epaper-breakout/epaper-breakout.sch</source>
-    <date>Mi 12 Mai 2021 23:24:55 CEST</date>
+    <date>Do 13 Mai 2021 20:52:02 CEST</date>
     <tool>Eeschema 5.1.10</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
@@ -24,7 +24,7 @@
       <footprint>epaper-breakout:CONN_ED097OC4</footprint>
       <datasheet>https://datasheet.lcsc.com/szlcsc/Omron-Electronics-XF2M-3315-1A_C231420.pdf</datasheet>
       <fields>
-        <field name="LCSC">C231420</field>
+        <field name="LCSC">C231420/C597986</field>
       </fields>
       <libsource lib="epd_breakout" part="XF2M-3315-1A" description="ED097OC4 9.7&quot; epaper display"/>
       <sheetpath names="/" tstamps="/"/>
