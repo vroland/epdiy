@@ -2,6 +2,8 @@
 set(app_sources "epd_driver.c"
                 "render.c"
                 "display_ops.c"
+                "tps65185.c"
+                "pca9555.c"
                 "font.c"
                 "lut.c"
 				"builtin_waveforms.c"
