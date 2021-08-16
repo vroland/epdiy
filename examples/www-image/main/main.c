@@ -435,11 +435,10 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                     totalDrawPixels++;
                     // Color conversion
                     // Method 1: This works the best for me so far, best variation found
-                    color = 0.3 * in_red + 0.4 * in_green + 0.3 * in_blue;
+                    //color = 0.3 * in_red + 0.4 * in_green + 0.3 * in_blue;
 
                     // Method 2: Sent by @vroland https://www.programmersought.com/article/19593930102
-                    // The issue with the formula there is that when it's white then turns to make black areas:
-                    //color = (38 * in_red + 75 * in_green + 15 * in_blue) >> 7;
+                    color = (38 * in_red + 75 * in_green + 15 * in_blue) >> 7;
 
                     // DEBUG: Turn to true
                     if (false && totalDrawPixels<200) {
