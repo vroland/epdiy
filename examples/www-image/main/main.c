@@ -84,39 +84,12 @@ uint16_t in_red = 0;   // for depth 24
 uint16_t in_green = 0; // for depth 24
 uint16_t in_blue = 0;  // for depth 24
 
-/** COLOR Boundaries for gray 
- *  0x00:Black 0x55:DGray  0xAA:LGray  0xFF White  -> only 4 grayscales
- * 
- *  For 8 gray-levels:
- *  0: Black 32: DGray  64: Gray  96: LGRAY C8: SLGRAY DF: Whitish FF: White 
- **/
-
-uint8_t wgray_hb = 0xF0; // 240 Near to white
-uint8_t wgray_lb = 0xC9; // 201 Near to super light gray
-
-uint8_t slgray_hb = 0xC9;// 201 Near to whitish
-uint8_t slgray_lb = 0x96;// 150 
-
-uint8_t lgray_hb = 0x96; // 150 Near to light gray
-uint8_t lgray_lb = 0x64; // 100 Near to gray
-
-uint8_t gray_hb = 0x64;  // 101 Near to light gray
-uint8_t gray_lb = 0x32;  // 50 Near to dark gray
-
-uint8_t dgray_hb = 0x32; // 50 Near to light gray
-uint8_t dgray_lb = 0x19; // Near to super dark
-
-uint8_t sdgray_hb = 0x19; // 50 Near to dark gray
-uint8_t sdgray_lb = 0x0A; // Near to black
-
 uint32_t rowSize;
 uint32_t rowByteCounter;
 uint16_t w;
 uint16_t h;
 uint8_t bitmask = 0xFF;
-uint8_t bitshift;
-uint16_t red, green, blue;
-bool whitish, color_slgray, color_lgray, color_gray, color_dgray, color_sdgray;
+uint8_t bitshift, whitish, red, green, blue;
 uint16_t drawX = 0;
 uint16_t drawY = 0;
 uint8_t index24 = 0; // Index for 24 bit
@@ -132,12 +105,6 @@ bool isPaddingAware = false;
 uint16_t forCount = 0;
 
 uint8_t mono_palette_buffer[32];        // palette buffer for depth <= 8 b/w
-uint8_t whitish_palette_buffer[32];     // EPD_WHITISH almost white
-uint8_t lgray_palette_buffer[32];       // EPD_LGRAY light
-uint8_t dgray_palette_buffer[32];       // EPD_DGRAY dark
-uint8_t slgray_palette_buffer[32];      // EPD_SLGRAY super light
-uint8_t gray_palette_buffer[32];        // EPD_GRAY
-uint8_t sdgray_palette_buffer[32];      // EPD_SDGRAY super dark
 
 uint16_t totalDrawPixels = 0;
 int color = 0xff;
@@ -202,31 +169,16 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                 isSupportedBitmap = false;
                 ESP_LOGE(TAG, "BMP NOT SUPPORTED: Compressed formats not handled.\nBMP NOT SUPPORTED: Only planes==1, format 0 or 3\n");
             }
-            if (bmp.depth > 24 || bmp.depth == 16)
+            if (bmp.depth == 4 || bmp.depth == 8 || bmp.depth == 16 || bmp.depth > 24)
             {
                 isSupportedBitmap = false;
-                ESP_LOGE(TAG, "BMP DEPTH %d: Only 1, 4, 8 and 24 bits depth are supported.\n", bmp.depth);
+                ESP_LOGE(TAG, "BMP DEPTH %d: Only 1 and 24 bits depth are supported.\n", bmp.depth);
             }
 
             rowSize = (bmp.width * bmp.depth / 8 + 3) & ~3;
-            if (bmp.depth < 8)
+            if (bmp.depth < 8) {
                 rowSize = ((bmp.width * bmp.depth + 8 - bmp.depth) / 8 + 3) & ~3;
-
-            if (bmpDebug)
-                printf("ROW Size %d\n", rowSize);
-            w = bmp.width;
-            h = bmp.height;
-            if ((w - 1) >= EPD_WIDTH)
-                w = EPD_WIDTH;
-            if ((h - 1) >= EPD_HEIGHT)
-                h = EPD_HEIGHT;
-
-            bitshift = 8 - bmp.depth;
-
-            if (bmp.depth <= 8)
-            {
-                if (bmp.depth < 8)
-                    bitmask >>= bmp.depth;
+                bitmask >>= bmp.depth;
                 // Color-palette location:
                 bPointer = bmp.imageOffset - (4 << bmp.depth);
                 if (bmpDebug)
@@ -240,43 +192,26 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                     bPointer++;
 
                     whitish = ((red > 0xF0) && (green > 0xF0) && (blue > 0xF0));
-                    color_slgray = (red > slgray_lb && red < slgray_hb) || (green> slgray_lb && green < slgray_hb) || (blue > slgray_lb && blue < slgray_hb);  // EPD_SLGRAY
-                    color_lgray  = (red > lgray_lb && red < lgray_hb) || (green> lgray_lb && green < lgray_hb) || (blue > lgray_lb && blue < lgray_hb);        // EPD_LGRAY
-                    color_gray   = (red > gray_lb && red < gray_hb) || (green> gray_lb && green < gray_hb) || (blue > gray_lb && blue < gray_hb);              // EPD_GRAY
-                    color_dgray  = (red > dgray_lb && red < dgray_hb) || (green > dgray_lb && green < dgray_hb) || (blue > dgray_lb && blue < dgray_hb);       // EPD_DGRAY
-                    color_sdgray = (red > sdgray_lb && red < sdgray_hb) || (green > sdgray_lb && green < sdgray_hb) || (blue > sdgray_lb && blue < sdgray_hb);   // EPD_SDGRAY   
 
                     if (0 == pn % 8) {
-                        mono_palette_buffer[pn / 8] = 0;
-                        lgray_palette_buffer[pn / 8] = 0;
-                        dgray_palette_buffer[pn / 8] = 0;
-                        #ifdef HAS_16_LEVELS_GRAY
-                        gray_palette_buffer[pn / 8] = 0;
-                        slgray_palette_buffer[pn / 8] = 0;
-                        sdgray_palette_buffer[pn / 8] = 0;
-                        #endif
-                        }
+                       mono_palette_buffer[pn / 8] = 0;
+                     }
                     
-                    mono_palette_buffer[pn / 8] |= whitish << pn % 8;                        
-                    lgray_palette_buffer[pn / 8] |= color_lgray << pn % 8;
-                    dgray_palette_buffer[pn / 8] |= color_dgray << pn % 8;
-                    #ifdef HAS_16_LEVELS_GRAY
-                      gray_palette_buffer[pn / 8] |= color_gray << pn % 8;                        
-                      slgray_palette_buffer[pn / 8] |= color_lgray << pn % 8;
-                      sdgray_palette_buffer[pn / 8] |= color_sdgray << pn % 8;
-                    #endif
-
-                    if (color_lgray) {
-                        printf("pn: %d LGRAY: %x\n",pn,color_lgray);
-                    }
-                    if (color_dgray) {
-                        printf("pn: %d DGRAY: %x\n",pn,color_dgray);
-                    }
-                    // DEBUG Colors
-                    if (bmpDebug)
-                        printf("0x00%x%x%x : %x, %x\n", red, green, blue, whitish, color_lgray);
-                    }
+                    mono_palette_buffer[pn / 8] |= whitish << pn % 8;
+                }
             }
+
+            if (bmpDebug)
+                printf("ROW Size %d\n", rowSize);
+            w = bmp.width;
+            h = bmp.height;
+            if ((w - 1) >= EPD_WIDTH)
+                w = EPD_WIDTH;
+            if ((h - 1) >= EPD_HEIGHT)
+                h = EPD_HEIGHT;
+
+            bitshift = 8 - bmp.depth;
+
             imageBytesRead += evt->data_len;
         }
         if (!isSupportedBitmap)
@@ -331,52 +266,18 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             switch (bmp.depth)
             {
             case 1:
-            case 4:
-            case 8:
             {
                 while (in_bits != 0)
                 {
 
-                    uint16_t pn = (in_byte >> bitshift) & bitmask;
-                    
-                    whitish = mono_palette_buffer[pn / 8] & (0x1 << pn % 8);
-                    color_lgray = lgray_palette_buffer[pn / 8] & (0x1 << pn % 8);
-                    color_dgray = dgray_palette_buffer[pn / 8] & (0x1 << pn % 8);
-
+                    uint16_t pn = (in_byte >> bitshift) & bitmask;       
+                    uint8_t white = mono_palette_buffer[pn / 8] & (0x1 << pn % 8);
                     in_byte <<= bmp.depth;
                     in_bits -= bmp.depth;
-
-                    // Withouth this is coming white first and skips light gray (Research why)
-                    if (whitish && !color_lgray)
-                    {
-                        color = 0xff;
-                    }
-                    else if (color_lgray)
-                    {
-                        color = 220;
-                    }
-                    else if (color_dgray)
-                    {
-                        color = 180;
-                    }
-                    #ifdef HAS_16_LEVELS_GRAY
-                        else if (color_slgray)
-                        {
-                            color = 240;
-                        }
-                        else if (color_gray)
-                        {
-                            color = 200;
-                        }
-                        else if (color_sdgray)
-                        {
-                            color = 160;
-                        }
-                    #endif
-                    
-                    else
-                    {
-                        color = 0;
+                    if (white) {
+                        color = 0xFF;
+                    } else {
+                        color = 0x00;
                     }
 
                     // bmp.width reached? Then go one line up (Is readed from bottom to top)
@@ -450,6 +351,10 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                     index24 = 0;
                 }
                 
+            break;
+
+            default:
+                ESP_LOGI(TAG, "Unsupported bit-depth mode: %d", bmp.depth); 
             break;
             }
 
@@ -661,18 +566,14 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // WiFi log level
+    // WiFi log level set only to Error otherwise outputs too much
     esp_log_level_set("wifi", ESP_LOG_ERROR);
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
     
     // Handle rotation
-    epd_set_rotation(0);
+    epd_set_rotation(EPD_ROT_LANDSCAPE);
     // Show available Dynamic Random Access Memory available after initialization
-    printf("Free heap: %d (After epaper instantiation)\nDRAM     : %d\n", 
-    xPortGetFreeHeapSize(),heap_caps_get_free_size(MALLOC_CAP_8BIT));
-
+    printf("Free heap: %d (After epaper instantiation)\n\n", xPortGetFreeHeapSize());
     http_post();
-
-    // Just test if Epd works: Compile the demo-epaper.cpp example modifying main/CMakeLists
 }
