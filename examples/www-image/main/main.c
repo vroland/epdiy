@@ -24,8 +24,8 @@
 EpdiyHighlevelState hl;
 uint8_t* fb;
 
-// www URL of the bitmap image (Should be BMP format 1,4,8 or 24 bits-depth)
-// Note: Only HTTP protocol supported (SSL secure URLs not supported yet   )
+// www URL of the bitmap image (Should be BMP format in 1 or 24 bits-depth)
+// Note: Only HTTP protocol supported (SSL secure URLs not supported yet  )
 #define IMG_URL "http://img.cale.es/bmp/fasani/5e636b0f39aac"
 // WiFi configuration
 #define ESP_WIFI_SSID     "WLAN-724300"
@@ -42,7 +42,7 @@ char bearerToken[74] = "";
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1024
 
-static const char *TAG = "CALE";
+static const char *TAG = "EPDiy";
 
 uint16_t countDataEventCalls = 0;
 uint32_t countDataBytes = 0;
