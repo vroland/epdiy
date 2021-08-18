@@ -9,6 +9,7 @@
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include <math.h> // round
 
 // - - - - HTTP Client
 #include "esp_netif.h"
@@ -31,21 +32,49 @@ uint8_t* fb;
 #define ESP_WIFI_SSID     "WLAN-724300"
 #define ESP_WIFI_PASSWORD "50238634630558382093"
 // Minutes that goes to deepsleep after rendering
+// If you build a gallery URL that returns a new image on each request (like cale.es)
+// this parameter can be interesting to make an automatic photo-slider
 #define DEEPSLEEP_MINUTES_AFTER_RENDER 10
 
+// Draws a progress bar when downloading (Just a demo: is faster without it)
+// And also writes in the same framebuffer as the image
+#define DOWNLOAD_PROGRESS_BAR true
 // BMP debug Mode: Turn false for production since it will make things slower and dump Serial debug
 bool bmpDebug = false;
 
-// IP is sent per post for logging purpouses.
-char espIpAddress[16];
-char bearerToken[74] = "";
+static const char *TAG = "EPDiy";
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1024
 
-static const char *TAG = "EPDiy";
-
 uint16_t countDataEventCalls = 0;
 uint32_t countDataBytes = 0;
+uint16_t in_red = 0;   // for depth 24
+uint16_t in_green = 0; // for depth 24
+uint16_t in_blue = 0;  // for depth 24
+char espIpAddress[16];
+uint32_t rowSize;
+uint32_t rowByteCounter;
+uint16_t w;
+uint16_t h;
+uint8_t bitmask = 0xFF;
+uint8_t bitshift, whitish, red, green, blue;
+uint16_t drawX = 0;
+uint16_t drawY = 0;
+uint8_t index24 = 0; // Index for 24 bit
+uint16_t bPointer = 34; // Byte pointer - Attention drawPixel has uint16_t
+uint16_t imageBytesRead = 0;
+uint32_t dataLenTotal = 0;
+uint32_t in_bytes = 0;
+uint8_t in_byte = 0; // for depth <= 8
+uint8_t in_bits = 0; // for depth <= 8
+bool isReadingImage = false;
+bool isSupportedBitmap = true;
+bool isPaddingAware = false;
+uint16_t forCount = 0;
+uint8_t mono_palette_buffer[32];        // palette buffer for depth <= 8 b/w
+uint16_t totalDrawPixels = 0;
+int color = 0xff;
+uint64_t startTime = 0;
 
 struct BmpHeader
 {
@@ -80,35 +109,30 @@ uint32_t read32(uint8_t output_buffer[512], uint8_t startPointer)
     return result;
 }
 
-uint16_t in_red = 0;   // for depth 24
-uint16_t in_green = 0; // for depth 24
-uint16_t in_blue = 0;  // for depth 24
+// Draw light gray rectangle area 
+void progressBarPlacement() { 
+        EpdRect p_area = {
+            .x = 0,
+            .y = 0,
+            .width = EPD_WIDTH,
+            .height = 10
+        };
+        epd_fill_rect(p_area, 200, fb);
+        epd_hl_update_area(&hl, MODE_GC16, 25, p_area);
+}
 
-uint32_t rowSize;
-uint32_t rowByteCounter;
-uint16_t w;
-uint16_t h;
-uint8_t bitmask = 0xFF;
-uint8_t bitshift, whitish, red, green, blue;
-uint16_t drawX = 0;
-uint16_t drawY = 0;
-uint8_t index24 = 0; // Index for 24 bit
-uint16_t bPointer = 34; // Byte pointer - Attention drawPixel has uint16_t
-uint16_t imageBytesRead = 0;
-uint32_t dataLenTotal = 0;
-uint32_t in_bytes = 0;
-uint8_t in_byte = 0; // for depth <= 8
-uint8_t in_bits = 0; // for depth <= 8
-bool isReadingImage = false;
-bool isSupportedBitmap = true;
-bool isPaddingAware = false;
-uint16_t forCount = 0;
-
-uint8_t mono_palette_buffer[32];        // palette buffer for depth <= 8 b/w
-
-uint16_t totalDrawPixels = 0;
-int color = 0xff;
-uint64_t startTime = 0;
+void progressBar(long processed, long total)
+{
+  int percentage = round(processed * EPD_WIDTH / total);
+  EpdRect p_area = {
+      .x = 0,
+      .y = 0,
+      .width = percentage,
+      .height = 10
+  };
+  epd_fill_rect(p_area, 0, fb);
+  epd_hl_update_area(&hl, MODE_DU, 25, p_area);
+}
 
 void deepsleep(){
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
@@ -362,6 +386,11 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             imageBytesRead++;
             forCount++;
         }
+        #if DOWNLOAD_PROGRESS_BAR
+            if (imageBytesRead % (HTTP_RECEIVE_BUFFER_SIZE*bmp.depth/4) == 0) {
+                progressBar(rowByteCounter, bmp.fileSize);
+            }
+        #endif
 
         if (bmpDebug)
             printf("Total drawPixel calls: %d\noutX: %d outY: %d\n", totalDrawPixels, drawX, drawY);
@@ -375,8 +404,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         epd_hl_update_screen(&hl, MODE_GC16, 25);
         if (bmpDebug) 
             printf("Free heap after display render: %d\n", xPortGetFreeHeapSize());
-        // Go to deepsleep after rendering
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
         deepsleep();
         break;
 
@@ -390,21 +417,9 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 static void http_post(void)
 {
     /**
-     * NOTE: All the configuration parameters for http_client must be spefied either in URL or as host and path parameters.
-     * If host and path parameters are not set, query parameter will be ignored. In such cases,
-     * query parameter should be specified in URL.
-     *
-     * If URL as well as host and path parameters are specified, values of host and path will be considered. TESTs:
-       http://img.cale.es/bmp/fasani/5e8cc4cf03d81  -> 4 bit 2.7 tests
-       http://cale.es/img/test/1.bmp                -> vertical line
-       http://cale.es/img/test/circle.bmp           -> Circle test
+     * NOTE: All the configuration parameters for http_client must be spefied
+     * either in URL or as host and path parameters.
      */
-    // POST Send the IP for logging purpouses
-    char post_data[22];
-    uint8_t postsize = sizeof(post_data);
-    strlcpy(post_data, "ip=", postsize);
-    strlcat(post_data, espIpAddress, postsize);
-
     esp_http_client_config_t config = {
         .url = IMG_URL,
         .method = HTTP_METHOD_POST,
@@ -412,10 +427,6 @@ static void http_post(void)
         .buffer_size = HTTP_RECEIVE_BUFFER_SIZE
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    
-    printf("POST data: %s\n", post_data);
-
-    esp_http_client_set_post_field(client, post_data, strlen(post_data));
     
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
@@ -429,7 +440,6 @@ static void http_post(void)
     {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
-    //ESP_LOG_BUFFER_HEX(TAG, local_response_buffer, strlen(local_response_buffer));
 }
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -471,6 +481,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip: %s\n", espIpAddress);
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        progressBarPlacement();
     }
 }
 
