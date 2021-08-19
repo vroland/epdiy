@@ -39,6 +39,7 @@ uint8_t* fb;
 // Draws a progress bar when downloading (Just a demo: is faster without it)
 // And also writes in the same framebuffer as the image
 #define DOWNLOAD_PROGRESS_BAR true
+uint8_t progressBarHeight = 12;
 // BMP debug Mode: Turn false for production since it will make things slower and dump Serial debug
 bool bmpDebug = false;
 
@@ -115,7 +116,7 @@ void progressBarPlacement() {
             .x = 0,
             .y = 0,
             .width = EPD_WIDTH,
-            .height = 10
+            .height = progressBarHeight
         };
         epd_fill_rect(p_area, 200, fb);
         epd_hl_update_area(&hl, MODE_GC16, 25, p_area);
@@ -128,7 +129,7 @@ void progressBar(long processed, long total)
       .x = 0,
       .y = 0,
       .width = percentage,
-      .height = 10
+      .height = progressBarHeight
   };
   epd_fill_rect(p_area, 0, fb);
   epd_hl_update_area(&hl, MODE_DU, 25, p_area);
@@ -481,7 +482,9 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip: %s\n", espIpAddress);
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-        progressBarPlacement();
+        #if DOWNLOAD_PROGRESS_BAR
+          progressBarPlacement();
+        #endif
     }
 }
 
@@ -524,7 +527,6 @@ void wifi_init_sta(void)
         },
     },
     };
-    //memset(&wifi_config, 0, sizeof(wifi_config));
 
     wifi_config.sta.pmf_cfg.capable = true;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
