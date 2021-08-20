@@ -40,6 +40,9 @@ EpdiyHighlevelState hl;
 // www URL of the JPG image
 // Note: Only HTTP protocol supported (SSL secure URLs not supported yet  )
 #define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
+
+// Adds dithering to render image (minimally changes)
+#define JPG_DITHERING true
 // WiFi configuration
 #define ESP_WIFI_SSID     "WLAN-724300"
 #define ESP_WIFI_PASSWORD "50238634630558382093"
@@ -117,32 +120,32 @@ uint8_t find_closest_palette_color(uint8_t oldpixel)
 //   Decode and paint onto the TFT screen
 //====================================================================================
 void jpegRender(int xpos, int ypos, ImageDecodeContext_t* context) {
-// Dithering
- 
+ #if JPG_DITHERING 
  unsigned long pixel=0;
  for (uint16_t by=0; by<ep_height;by++)
   {
     for (uint16_t bx=0; bx<ep_width;bx++)
     {
-        int oldpixel = source_buf[pixel];
+        int oldpixel = decoded_image[pixel];
         int newpixel = find_closest_palette_color(oldpixel);
         int quant_error = oldpixel - newpixel;
-        source_buf[pixel]=newpixel;
+        decoded_image[pixel]=newpixel;
         if (bx<(ep_width-1))
-          source_buf[pixel+1] = minimum(255,source_buf[pixel+1] + quant_error * 7 / 16);
+          decoded_image[pixel+1] = minimum(255,decoded_image[pixel+1] + quant_error * 7 / 16);
 
         if (by<(ep_height-1))
         {
           if (bx>0)
-            source_buf[pixel+ep_width-1] =  minimum(255,source_buf[pixel+ep_width-1] + quant_error * 3 / 16);
+            decoded_image[pixel+ep_width-1] =  minimum(255,decoded_image[pixel+ep_width-1] + quant_error * 3 / 16);
 
-          source_buf[pixel+ep_width] =  minimum(255,source_buf[pixel+ep_width] + quant_error * 5 / 16);
+          decoded_image[pixel+ep_width] =  minimum(255,decoded_image[pixel+ep_width] + quant_error * 5 / 16);
           if (bx<(ep_width-1))
-            source_buf[pixel+ep_width+1] = minimum(255,source_buf[pixel+ep_width+1] + quant_error * 1 / 16);
+            decoded_image[pixel+ep_width+1] = minimum(255,decoded_image[pixel+ep_width+1] + quant_error * 1 / 16);
         }
         pixel++;
     }
-  } 
+  }
+  #endif
 
   // Write to display
   uint64_t drawTime = esp_timer_get_time();
@@ -208,8 +211,8 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
     uint8_t b = *(bitmap_ptr++);
 
     // Calculate weighted grayscale
-    //uint32_t val = ((r * 30 + g * 59 + b * 11) / 100); //old formula
-    uint32_t val = (r*38 + g*75 + b*15) >> 7; // @vroland recommended formula
+    uint32_t val = ((r * 30 + g * 59 + b * 11) / 100); //old formula
+    //uint32_t val = (r*38 + g*75 + b*15) >> 7; // @vroland recommended formula
 
     int xx = rect->left + i % w;
     if (xx < 0 || xx >= image_width) {
