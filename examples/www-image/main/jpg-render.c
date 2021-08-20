@@ -6,8 +6,6 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_sleep.h"
-#include "string.h"
-
 // WiFi related
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -17,7 +15,6 @@
 #include "lwip/sys.h"
 // HTTP Client
 #include "esp_netif.h"
-#include "esp_err.h"
 #include "esp_tls.h"
 #include "esp_http_client.h"
 
@@ -37,19 +34,22 @@
 #include "epd_highlevel.h"
 EpdiyHighlevelState hl;
 
-// www URL of the JPG image
-// Note: Only HTTP protocol supported (SSL secure URLs not supported yet  )
-#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
-
-// Adds dithering to render image (minimally changes)
-#define JPG_DITHERING true
 // WiFi configuration
 #define ESP_WIFI_SSID     "WLAN-724300"
 #define ESP_WIFI_PASSWORD "50238634630558382093"
+// www URL of the JPG image
+// Note: Only HTTP protocol supported (SSL secure URLs not supported yet)
+#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
+
+// Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
+#define JPG_DITHERING true
+// As default is 512 without setting buffer_size property in esp_http_client_config_t
+#define HTTP_RECEIVE_BUFFER_SIZE 1536
+
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 4
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 5
 #define DEBUG_VERBOSE false
 
 // JPEG decoder buffers
@@ -77,15 +77,11 @@ static const char * jd_errors[] = {
 
 const uint16_t ep_width=EPD_WIDTH;
 const uint16_t ep_height=EPD_HEIGHT;
-
 uint16_t this_pic=0;
-
 double gamma_value = 1.5;
 uint8_t gamme_curve[256];
 
 static const char *TAG = "EPDiy";
-// As default is 512 without setting buffer_size property in esp_http_client_config_t
-#define HTTP_RECEIVE_BUFFER_SIZE 1536
 
 char espIpAddress[16];
 uint16_t countDataEventCalls = 0;
@@ -116,11 +112,12 @@ uint8_t find_closest_palette_color(uint8_t oldpixel)
 {
   return (round((oldpixel / 16)*16));
 }
+
 //====================================================================================
-//   Decode and paint onto the TFT screen
+//   Decode and paint onto the Epaper screen
 //====================================================================================
 void jpegRender(int xpos, int ypos, ImageDecodeContext_t* context) {
- #if JPG_DITHERING 
+ #if JPG_DITHERING
  unsigned long pixel=0;
  for (uint16_t by=0; by<ep_height;by++)
   {
@@ -176,15 +173,14 @@ static uint32_t feed_buffer(JDEC *jd,
     uint32_t count = 0;
 
     while (count < nd) {
-
       if (buff != NULL) {
-            uint8_t b = source_buf[buffer_pos]; 
-            //printf("%x ", b);
+            uint8_t b = source_buf[buffer_pos];
             *buff++ = b;
         }
         count ++;
         buffer_pos++;
     }
+
   return count;
 }
 
@@ -211,8 +207,8 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
     uint8_t b = *(bitmap_ptr++);
 
     // Calculate weighted grayscale
-    uint32_t val = ((r * 30 + g * 59 + b * 11) / 100); //old formula
-    //uint32_t val = (r*38 + g*75 + b*15) >> 7; // @vroland recommended formula
+    //uint32_t val = ((r * 30 + g * 59 + b * 11) / 100); // original formula
+    uint32_t val = (r*38 + g*75 + b*15) >> 7; // @vroland recommended formula
 
     int xx = rect->left + i % w;
     if (xx < 0 || xx >= image_width) {
@@ -273,6 +269,7 @@ int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
   return 0;
 }
 
+// Handles Htpp events and is in charge of buffering source_buf (jpg compressed image)
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
     uint8_t output_buffer[HTTP_RECEIVE_BUFFER_SIZE]; // Buffer to store HTTP response
@@ -339,6 +336,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
+// Handles http request
 static void http_post(void)
 {
     /**
@@ -409,6 +407,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
 }
 
+// Initializes WiFi the ESP-IDF way
 void wifi_init_sta(void)
 {
     s_wifi_event_group = xEventGroupCreate();
@@ -491,17 +490,17 @@ void app_main() {
   // For 4.7" resolution: 960*540*3   (Aprox. 1.6 MB)
   decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT * 3, MALLOC_CAP_SPIRAM);
   if (decoded_image == NULL) {
-      ESP_LOGE("main", "initial alloc back_buf failed!");
+      ESP_LOGE("main", "Initial alloc back_buf failed!");
   }
   memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT * 3);
 
   // Should be big enough to handle the JPEG file size
   source_buf = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   if (source_buf == NULL) {
-      ESP_LOGE("main", "initial alloc source_buf failed!");
+      ESP_LOGE("main", "Initial alloc source_buf failed!");
   }
 
-  printf("heap allocated\n");
+  printf("Heap allocated\n");
 
   double gammaCorrection = 1.0 / gamma_value;
   for (int gray_value =0; gray_value<256;gray_value++)
@@ -518,7 +517,8 @@ void app_main() {
 
   // WiFi log level set only to Error otherwise outputs too much
   esp_log_level_set("wifi", ESP_LOG_ERROR);
-  ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+  
+  // Initialization: WiFi + clean screen while downloading (optional)
   wifi_init_sta();
   epd_poweron();
 
