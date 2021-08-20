@@ -34,7 +34,7 @@ uint8_t* fb;
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 10
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 40
 
 // Draws a progress bar when downloading (Just a demo: is faster without it)
 // And also writes in the same framebuffer as the image
