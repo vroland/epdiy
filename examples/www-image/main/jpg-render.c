@@ -82,7 +82,7 @@ uint8_t gamme_curve[256];
 
 static const char *TAG = "EPDiy";
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
-#define HTTP_RECEIVE_BUFFER_SIZE 1024
+#define HTTP_RECEIVE_BUFFER_SIZE 1536
 
 char espIpAddress[16];
 uint16_t countDataEventCalls = 0;
@@ -208,7 +208,8 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
     uint8_t b = *(bitmap_ptr++);
 
     // Calculate weighted grayscale
-    uint32_t val = ((r * 30 + g * 59 + b * 11) / 100);
+    //uint32_t val = ((r * 30 + g * 59 + b * 11) / 100); //old formula
+    uint32_t val = (r*38 + g*75 + b*15) >> 7; // @vroland recommended formula
 
     int xx = rect->left + i % w;
     if (xx < 0 || xx >= image_width) {
@@ -261,7 +262,7 @@ int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
   }
   uint32_t decode_end = esp_timer_get_time();
   time_decomp = (decode_end - decode_start)/1000;
-  ESP_LOGI("decode", "%d ms . image uncompression", time_decomp);
+  ESP_LOGI("decode", "%d ms . image decompression", time_decomp);
 
   // Render the image onto the screen at given coordinates
   jpegRender(xpos, ypos, &dc);
@@ -317,12 +318,13 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         
         drawBufJpeg(source_buf, 0, 0);
         time_download = (esp_timer_get_time()-startTime)/1000;
-        ESP_LOGI("www-dwn", "%d ms - download took\nRefresh and go to sleep %d minutes\n", 
-        time_download, DEEPSLEEP_MINUTES_AFTER_RENDER);
+        ESP_LOGI("www-dw", "%d ms - download", time_download);
         // Refresh display
         epd_hl_update_screen(&hl, MODE_GC16, 25);
 
-        printf("%d ms - total time spent\n", time_download+time_decomp+time_render);
+        ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
+
+        printf("Refresh and go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
         vTaskDelay(10);
         deepsleep();
         break;
