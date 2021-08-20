@@ -42,14 +42,14 @@ EpdiyHighlevelState hl;
 #define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
-#define JPG_DITHERING true
+#define JPG_DITHERING false
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1536
 
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 5
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 59
 #define DEBUG_VERBOSE false
 
 // JPEG decoder buffers
