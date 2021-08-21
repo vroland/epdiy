@@ -43,21 +43,27 @@ EpdiyHighlevelState hl;
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
 #define JPG_DITHERING true
+// Affects the gamma to calculate gray (lower is darker/higher contrast)
+// Nice test values: 0.9 1.2 1.4 higher and is too bright
+double gamma_value = 0.9;
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1536
-
+// EPD Waveform
+#define WAVEFORM EPD_BUILTIN_WAVEFORM
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 4
-#define DEBUG_VERBOSE false
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 10
+#define DEBUG_VERBOSE true
 
 // JPEG decoder buffers
 JDEC jd; 
 JRESULT rc;
-uint8_t *img_buf;
-uint8_t *source_buf;
-uint8_t *decoded_image;
+
+uint8_t *fb;            // EPD 2bpp buffer
+uint8_t *source_buf;    // JPG download buffer
+uint8_t *decoded_image; // RAW decoded image
+
 static uint8_t tjpgd_work[4096];
 uint32_t buffer_pos = 0;
 uint32_t time_download = 0;
@@ -75,14 +81,11 @@ static const char * jd_errors[] = {
     "Not supported JPEG standard"
 };
 
-const uint16_t ep_width=EPD_WIDTH;
-const uint16_t ep_height=EPD_HEIGHT;
-uint16_t this_pic=0;
-double gamma_value = 1.5;
+const uint16_t ep_width = EPD_WIDTH;
+const uint16_t ep_height = EPD_HEIGHT;
 uint8_t gamme_curve[256];
 
 static const char *TAG = "EPDiy";
-
 char espIpAddress[16];
 uint16_t countDataEventCalls = 0;
 uint32_t countDataBytes = 0;
@@ -99,15 +102,6 @@ uint64_t startTime = 0;
 // Return the minimum of two values a and b
 #define minimum(a,b)     (((a) < (b)) ? (a) : (b))
 
-typedef struct {
-    int scale;
-    uint8_t* decoded_image;
-    uint8_t* source_img;
-    uint32_t source_width;
-    uint32_t source_height;
-} ImageDecodeContext_t;
-
-
 uint8_t find_closest_palette_color(uint8_t oldpixel)
 {
   return (round((oldpixel / 16)*16));
@@ -116,7 +110,7 @@ uint8_t find_closest_palette_color(uint8_t oldpixel)
 //====================================================================================
 //   Decode and paint onto the Epaper screen
 //====================================================================================
-void jpegRender(int xpos, int ypos, ImageDecodeContext_t* context) {
+void jpegRender(int xpos, int ypos, int width, int height) {
  #if JPG_DITHERING
  unsigned long pixel=0;
  for (uint16_t by=0; by<ep_height;by++)
@@ -146,13 +140,12 @@ void jpegRender(int xpos, int ypos, ImageDecodeContext_t* context) {
 
   // Write to display
   uint64_t drawTime = esp_timer_get_time();
-  memset(img_buf, 255, EPD_WIDTH/2 * EPD_HEIGHT);
-  uint32_t padding_x = (EPD_WIDTH - context->source_width) / 2;
-  uint32_t padding_y = (EPD_HEIGHT - context->source_height) / 2;
+  uint32_t padding_x = (EPD_WIDTH - width) / 2;
+  uint32_t padding_y = (EPD_HEIGHT - height) / 2;
 
-  for (uint32_t by=0; by<context->source_height;by++) {
-    for (uint32_t bx=0; bx<context->source_width;bx++) {
-        epd_draw_pixel(bx + padding_x, by + padding_y, decoded_image[by * context->source_width + bx], img_buf);
+  for (uint32_t by=0; by<height;by++) {
+    for (uint32_t bx=0; bx<width;bx++) {
+        epd_draw_pixel(bx + padding_x, by + padding_y, decoded_image[by * width + bx], fb);
     }
   }
   // calculate how long it took to draw the image
@@ -184,7 +177,7 @@ static uint32_t feed_buffer(JDEC *jd,
   return count;
 }
 
-/* User defined call-back function to output RGB bitmap */
+/* User defined call-back function to output decoded RGB bitmap in decoded_image buffer */
 static uint32_t
 tjd_output(JDEC *jd,     /* Decompressor object of current session */
            void *bitmap, /* Bitmap data to be output */
@@ -194,12 +187,9 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
 
   uint32_t w = rect->right - rect->left + 1;
   uint32_t h = rect->bottom - rect->top + 1;
-  uint32_t image_width = jd->width; // >> context->scale
-
+  uint32_t image_width = jd->width;
   uint8_t *bitmap_ptr = (uint8_t*)bitmap;
   
-  //printf("w %d h %d iw %d ", w,h,image_width); // image_width should not be 0 as happened with >>context->scale
-
   for (uint32_t i = 0; i < w * h; i++) {
 
     uint8_t r = *(bitmap_ptr++);
@@ -219,9 +209,9 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
       continue;
     }
     
+    /* Optimization note: If we manage to apply here the epd_draw_pixel directly
+       then it will be no need to keep a huge raw buffer (But will loose dither) */
     decoded_image[yy * image_width + xx] = gamme_curve[val];
-    // Check if image pixels are in fact being drawed with right grayscale
-    //printf("di[%d]=%d ", yy * image_width + xx,  gamme_curve[val]);
   }
 
   return 1;
@@ -231,42 +221,30 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
 //   This function opens source_buf Jpeg image file and primes the decoder
 //====================================================================================
 int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
-  ImageDecodeContext_t dc;
-  dc.scale = 1;
-
   rc = jd_prepare(&jd, feed_buffer, tjpgd_work, sizeof(tjpgd_work), &source_buf);
   if (rc != JDR_OK) {    
     ESP_LOGE(TAG, "JPG jd_prepare error: %s", jd_errors[rc]);
     return ESP_FAIL;
   }
 
-  for (dc.scale = 0; dc.scale < 3; dc.scale++) {
-    if ((jd.width >> dc.scale) <= EPD_WIDTH && (jd.height >> dc.scale) <= EPD_HEIGHT)
-      break;
-  }
-
-  uint32_t width = jd.width >> dc.scale;
-  uint32_t height = jd.height >> dc.scale;
-  dc.source_width = width;
-  dc.source_height = height;
-  #if DEBUG_VERBOSE
-    printf("orig width: %d orig height: %d\n", jd.width, jd.height);
-    printf("scaled width: %d scaled height: %d\n", width, height);
-  #endif
   uint32_t decode_start = esp_timer_get_time();
-  rc = jd_decomp(&jd, tjd_output, dc.scale);
+
+  // Last parameter scales        v 1 will reduce the image
+  rc = jd_decomp(&jd, tjd_output, 0);
   if (rc != JDR_OK) {
     ESP_LOGE(TAG, "JPG jd_decomp error: %s", jd_errors[rc]);
     return ESP_FAIL;
   }
-  uint32_t decode_end = esp_timer_get_time();
-  time_decomp = (decode_end - decode_start)/1000;
+
+  time_decomp = (esp_timer_get_time() - decode_start)/1000;
+
+  ESP_LOGI("JPG", "width: %d height: %d\n", jd.width, jd.height);
   ESP_LOGI("decode", "%d ms . image decompression", time_decomp);
 
   // Render the image onto the screen at given coordinates
-  jpegRender(xpos, ypos, &dc);
+  jpegRender(xpos, ypos, jd.width, jd.height);
 
-  return 0;
+  return 1;
 }
 
 // Handles Htpp events and is in charge of buffering source_buf (jpg compressed image)
@@ -286,12 +264,17 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
         break;
     case HTTP_EVENT_ON_HEADER:
-        ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+        #if DEBUG_VERBOSE
+          ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+        #endif
         break;
     case HTTP_EVENT_ON_DATA:
         ++countDataEventCalls;
-        if (countDataEventCalls%10==0) {
-        ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len); }
+        #if DEBUG_VERBOSE
+          if (countDataEventCalls%10==0) {
+            ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len); 
+          }
+        #endif
         dataLenTotal += evt->data_len;
         
         // Copy the response into the buffer
@@ -323,7 +306,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         epd_hl_update_screen(&hl, MODE_GC16, 25);
 
         ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
-
+        epd_poweroff();
         printf("Refresh and go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
         vTaskDelay(10);
         deepsleep();
@@ -484,8 +467,8 @@ void wifi_init_sta(void)
 
 void app_main() {
   epd_init(EPD_OPTIONS_DEFAULT);
-  hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
-  img_buf = epd_hl_get_framebuffer(&hl);
+  hl = epd_hl_init(WAVEFORM);
+  fb = epd_hl_get_framebuffer(&hl);
 
   // For 4.7" resolution: 960*540*3   (Aprox. 1.6 MB)
   decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT * 3, MALLOC_CAP_SPIRAM);
