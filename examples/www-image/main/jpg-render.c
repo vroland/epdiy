@@ -17,6 +17,7 @@
 #include "esp_netif.h"
 #include "esp_tls.h"
 #include "esp_http_client.h"
+#include "esp_crt_bundle.h"
 
 // JPG decoder
 #if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
@@ -41,8 +42,8 @@ EpdiyHighlevelState hl;
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
 // Note: Only HTTP protocol supported (Check README to use SSL secure URLs)
-//#define IMG_URL "https://loremflickr.com/960/540"
-#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
+#define IMG_URL "https://loremflickr.com/960/540"
+//#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
 #define JPG_DITHERING true
@@ -327,8 +328,8 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 // Handles http request
 static void http_post(void)
 {
-    
     printf("Free heap before HTTP: %d\n", xPortGetFreeHeapSize());
+    printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
@@ -511,7 +512,7 @@ void app_main() {
   // Initialization: WiFi + clean screen while downloading (optional)
   wifi_init_sta();
   epd_poweron();
-  epd_clear();
+  //epd_clear();
 
   http_post();
 }
