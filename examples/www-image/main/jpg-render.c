@@ -37,8 +37,11 @@ EpdiyHighlevelState hl;
 // WiFi configuration
 #define ESP_WIFI_SSID     "WLAN-724300"
 #define ESP_WIFI_PASSWORD "50238634630558382093"
-// www URL of the JPG image
+
+
+// Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
 // Note: Only HTTP protocol supported (SSL secure URLs not supported yet)
+//#define IMG_URL "http://loremflickr.com/1200/825"
 #define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
@@ -46,6 +49,7 @@ EpdiyHighlevelState hl;
 // Affects the gamma to calculate gray (lower is darker/higher contrast)
 // Nice test values: 0.9 1.2 1.4 higher and is too bright
 double gamma_value = 0.9;
+
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1536
 // EPD Waveform
@@ -53,18 +57,19 @@ double gamma_value = 0.9;
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 10
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 59
+
 #define DEBUG_VERBOSE true
 
-// JPEG decoder buffers
+// JPEG decoder
 JDEC jd; 
 JRESULT rc;
-
+// Buffers
 uint8_t *fb;            // EPD 2bpp buffer
 uint8_t *source_buf;    // JPG download buffer
 uint8_t *decoded_image; // RAW decoded image
+static uint8_t tjpgd_work[4096]; // tjpgd 4Kb buffer
 
-static uint8_t tjpgd_work[4096];
 uint32_t buffer_pos = 0;
 uint32_t time_download = 0;
 uint32_t time_decomp = 0;
@@ -86,7 +91,6 @@ const uint16_t ep_height = EPD_HEIGHT;
 uint8_t gamme_curve[256];
 
 static const char *TAG = "EPDiy";
-char espIpAddress[16];
 uint16_t countDataEventCalls = 0;
 uint32_t countDataBytes = 0;
 uint32_t img_buf_pos = 0;
@@ -297,19 +301,18 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         break;
 
     case HTTP_EVENT_ON_FINISH:
-        printf("%d bytes read from %s\n\n", img_buf_pos, IMG_URL);
-        
-        drawBufJpeg(source_buf, 0, 0);
-        time_download = (esp_timer_get_time()-startTime)/1000;
-        ESP_LOGI("www-dw", "%d ms - download", time_download);
-        // Refresh display
-        epd_hl_update_screen(&hl, MODE_GC16, 25);
+        // Do not draw if it's a redirect (302)
+        if (esp_http_client_get_status_code(evt->client) == 200) {
+          printf("%d bytes read from %s\n\n", img_buf_pos, IMG_URL);
+          drawBufJpeg(source_buf, 0, 0);
+          time_download = (esp_timer_get_time()-startTime)/1000;
+          ESP_LOGI("www-dw", "%d ms - download", time_download);
+          // Refresh display
+          epd_hl_update_screen(&hl, MODE_GC16, 25);
 
-        ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
-        epd_poweroff();
-        printf("Refresh and go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
-        vTaskDelay(10);
-        deepsleep();
+          ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
+          epd_poweroff();
+        }
         break;
 
     case HTTP_EVENT_DISCONNECTED:
@@ -328,9 +331,9 @@ static void http_post(void)
      */
     esp_http_client_config_t config = {
         .url = IMG_URL,
-        .method = HTTP_METHOD_POST,
         .event_handler = _http_event_handler,
-        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE
+        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
+        .disable_auto_redirect = false,
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
     
@@ -346,6 +349,11 @@ static void http_post(void)
     {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
+
+    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
+    esp_http_client_cleanup(client);
+    vTaskDelay(10);
+    deepsleep();
 }
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -382,9 +390,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        sprintf(espIpAddress,  IPSTR, IP2STR(&event->ip_info.ip));
-        ESP_LOGI(TAG, "got ip: %s\n", espIpAddress);
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -431,7 +436,6 @@ void wifi_init_sta(void)
     },
     };
 
-    wifi_config.sta.pmf_cfg.capable = true;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -448,7 +452,7 @@ void wifi_init_sta(void)
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually happened. */
     if (bits & WIFI_CONNECTED_BIT)
     {
-        ESP_LOGI(TAG, "connected to ap SSID:%s", ESP_WIFI_SSID);
+        ESP_LOGI(TAG, "Connected to ap SSID:%s", ESP_WIFI_SSID);
     }
     else if (bits & WIFI_FAIL_BIT)
     {
@@ -470,14 +474,13 @@ void app_main() {
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
 
-  // For 4.7" resolution: 960*540*3   (Aprox. 1.6 MB)
   decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT * 3, MALLOC_CAP_SPIRAM);
   if (decoded_image == NULL) {
       ESP_LOGE("main", "Initial alloc back_buf failed!");
   }
-  memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT * 3);
+  memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT);
 
-  // Should be big enough to handle the JPEG file size
+  // Should be big enough to allocate the JPEG file size
   source_buf = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   if (source_buf == NULL) {
       ESP_LOGE("main", "Initial alloc source_buf failed!");
@@ -505,7 +508,7 @@ void app_main() {
   wifi_init_sta();
   epd_poweron();
 
-  epd_clear();
+  //epd_clear();
 
   http_post();
 }
