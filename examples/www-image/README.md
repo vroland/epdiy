@@ -51,6 +51,17 @@ Note that as default an image gallery in Cale is used. You can use any URL that 
 
 If your epaper resolution is not listed, just send me an email, you can find it on my [profile page on Github](https://github.com/martinberlin).
 
+Using HTTPS
+===========
+
+Using SSL requires a bit more effort if you need to verify the certificate. For example, getting the SSL cert from loremflickr.com needs to be extracted using this command:
+
+    openssl s_client -showcerts -connect www.loremflickr.com:443 </dev/null
+
+The CA root cert is the last cert given in the chain of certs.
+To embed it in the app binary, the PEM file is named in the component.mk COMPONENT_EMBED_TXTFILES variable. This is already done for this random picture as an example.
+
+
 Happy to collaborate once again with this amazing project,
 
 Martin Fasani, Berlin 20 Aug. 2021

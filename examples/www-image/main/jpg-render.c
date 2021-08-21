@@ -40,8 +40,8 @@ EpdiyHighlevelState hl;
 
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
-// Note: Only HTTP protocol supported (SSL secure URLs not supported yet)
-//#define IMG_URL "http://loremflickr.com/1200/825"
+// Note: Only HTTP protocol supported (Check README to use SSL secure URLs)
+//#define IMG_URL "https://loremflickr.com/960/540"
 #define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
@@ -52,6 +52,8 @@ double gamma_value = 0.9;
 
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1536
+extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
+extern const uint8_t server_cert_pem_end[] asm("_binary_server_cert_pem_end");
 // EPD Waveform
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 // Minutes that goes to deepsleep after rendering
@@ -325,8 +327,10 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 // Handles http request
 static void http_post(void)
 {
+    
+    printf("Free heap before HTTP: %d\n", xPortGetFreeHeapSize());
     /**
-     * NOTE: All the configuration parameters for http_client must be spefied
+     * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
      */
     esp_http_client_config_t config = {
@@ -334,6 +338,7 @@ static void http_post(void)
         .event_handler = _http_event_handler,
         .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
         .disable_auto_redirect = false,
+        .cert_pem = (char *)server_cert_pem_start
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
     
@@ -474,7 +479,7 @@ void app_main() {
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
 
-  decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT * 3, MALLOC_CAP_SPIRAM);
+  decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   if (decoded_image == NULL) {
       ESP_LOGE("main", "Initial alloc back_buf failed!");
   }
@@ -485,14 +490,13 @@ void app_main() {
   if (source_buf == NULL) {
       ESP_LOGE("main", "Initial alloc source_buf failed!");
   }
-
-  printf("Heap allocated\n");
+  printf("Free heap after buffers allocation: %d\n", xPortGetFreeHeapSize());
 
   double gammaCorrection = 1.0 / gamma_value;
   for (int gray_value =0; gray_value<256;gray_value++)
     gamme_curve[gray_value]= round (255*pow(gray_value/255.0, gammaCorrection));
 
-  //Initialize NVS
+  // Initialize NVS
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
   {
@@ -507,8 +511,7 @@ void app_main() {
   // Initialization: WiFi + clean screen while downloading (optional)
   wifi_init_sta();
   epd_poweron();
-
-  //epd_clear();
+  epd_clear();
 
   http_post();
 }
