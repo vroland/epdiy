@@ -29,8 +29,9 @@ uint8_t* fb;
 // Note: Only HTTP protocol supported (SSL secure URLs not supported yet  )
 #define IMG_URL "http://img.cale.es/bmp/fasani/5e636b0f39aac"
 // WiFi configuration
-#define ESP_WIFI_SSID     "WLAN-724300"
-#define ESP_WIFI_PASSWORD "50238634630558382093"
+#define ESP_WIFI_SSID     ""
+#define ESP_WIFI_PASSWORD ""
+
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
@@ -136,6 +137,7 @@ void progressBar(long processed, long total)
 }
 
 void deepsleep(){
+    epd_deinit();
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 

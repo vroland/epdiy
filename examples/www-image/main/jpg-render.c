@@ -15,7 +15,6 @@
 #include "lwip/sys.h"
 // HTTP Client
 #include "esp_netif.h"
-#include "esp_tls.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 
@@ -36,13 +35,16 @@
 EpdiyHighlevelState hl;
 
 // WiFi configuration
-#define ESP_WIFI_SSID     "WLAN-724300"
-#define ESP_WIFI_PASSWORD "50238634630558382093"
-
+#define ESP_WIFI_SSID     ""
+#define ESP_WIFI_PASSWORD ""
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
-// Note: Only HTTP protocol supported (Check README to use SSL secure URLs)
-#define IMG_URL "https://loremflickr.com/960/540"
+// Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
+
+// Alternative non-https URL:
 //#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
@@ -53,6 +55,9 @@ double gamma_value = 0.9;
 
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1536
+
+// Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
+// Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#embedding-binary-data
 extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_server_cert_pem_end");
 // EPD Waveform
@@ -100,18 +105,19 @@ uint32_t img_buf_pos = 0;
 uint32_t dataLenTotal = 0;
 uint64_t startTime = 0;
 
-/*====================================================================================
-  This sketch contains support functions to render the Jpeg images.
-
-  Created by Bodmer 15th Jan 2017
-  ==================================================================================*/
+//====================================================================================
+// This sketch contains support functions to render the Jpeg images
+//
+// Created by Bodmer 15th Jan 2017
+// Refactored by @martinberlin for EPDiy as a Jpeg download and render example
+//====================================================================================
 
 // Return the minimum of two values a and b
 #define minimum(a,b)     (((a) < (b)) ? (a) : (b))
 
 uint8_t find_closest_palette_color(uint8_t oldpixel)
 {
-  return (round((oldpixel / 16)*16));
+  return oldpixel & 0xF0;
 }
 
 //====================================================================================
@@ -161,6 +167,7 @@ void jpegRender(int xpos, int ypos, int width, int height) {
 }
 
 void deepsleep(){
+    epd_deinit();
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
@@ -283,7 +290,11 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
           }
         #endif
         dataLenTotal += evt->data_len;
-        
+
+        if (sizeof(evt->data_len) > HTTP_RECEIVE_BUFFER_SIZE) {
+          ESP_LOGE(TAG, "Incoming bytes:%d overflow the defined %d output_buffer", evt->data_len, HTTP_RECEIVE_BUFFER_SIZE);
+          break;
+        }
         // Copy the response into the buffer
         memcpy(output_buffer, evt->data, evt->data_len);
 
@@ -328,8 +339,12 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 // Handles http request
 static void http_post(void)
 {
-    printf("Free heap before HTTP: %d\n", xPortGetFreeHeapSize());
-    printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
+    #if DEBUG_VERBOSE
+      printf("Free heap before HTTP download: %d IMG_URL: %s\n", xPortGetFreeHeapSize(), IMG_URL);
+      // To use with target site Certificate (See README)
+      printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
+    #endif
+    
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
@@ -339,7 +354,8 @@ static void http_post(void)
         .event_handler = _http_event_handler,
         .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
         .disable_auto_redirect = false,
-        .cert_pem = (char *)server_cert_pem_start
+        //.cert_pem = (char *)server_cert_pem_start,
+        .crt_bundle_attach = esp_crt_bundle_attach
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
     
@@ -476,7 +492,7 @@ void wifi_init_sta(void)
 }
 
 void app_main() {
-  epd_init(EPD_OPTIONS_DEFAULT);
+  epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
 
@@ -509,10 +525,9 @@ void app_main() {
   // WiFi log level set only to Error otherwise outputs too much
   esp_log_level_set("wifi", ESP_LOG_ERROR);
   
-  // Initialization: WiFi + clean screen while downloading (optional)
+  // Initialization: WiFi + clean screen while downloading image
   wifi_init_sta();
   epd_poweron();
-  //epd_clear();
-
+  epd_fullclear(&hl, 25);
   http_post();
 }
