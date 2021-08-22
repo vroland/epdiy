@@ -61,6 +61,10 @@ Using SSL requires a bit more effort if you need to verify the certificate. For 
 The CA root cert is the last cert given in the chain of certs.
 To embed it in the app binary, the PEM file is named in the component.mk COMPONENT_EMBED_TXTFILES variable. This is already done for this random picture as an example.
 
+**Important note about secure http**
+Https is proved to work on stable ESP-IDF v4.2 branch. Using latest master I've always had resets and panic restarts, only working randomly. Maybe it's an issue will be fixed.
+It also works skipping the .cert_pem in the esp_http_client_config_t struct. Leaving it added, even if it's filled with the right certificate for the demo download in loremflickr, it resets.
+If you know why it is and you are able to fix it, please make a pull request.
 
 Happy to collaborate once again with this amazing project,
 

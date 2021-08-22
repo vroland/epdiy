@@ -16,7 +16,6 @@
 // HTTP Client
 #include "esp_netif.h"
 #include "esp_http_client.h"
-#include "esp_crt_bundle.h"
 
 // JPG decoder
 #if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
@@ -34,7 +33,7 @@
 #include "epd_highlevel.h"
 EpdiyHighlevelState hl;
 
-// WiFi configuration
+// WiFi configuration. Please fill with your WiFi credentials
 #define ESP_WIFI_SSID     ""
 #define ESP_WIFI_PASSWORD ""
 
@@ -340,22 +339,22 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 static void http_post(void)
 {
     #if DEBUG_VERBOSE
-      printf("Free heap before HTTP download: %d IMG_URL: %s\n", xPortGetFreeHeapSize(), IMG_URL);
+      printf("Free heap before HTTP download: %d\n", xPortGetFreeHeapSize());
       // To use with target site Certificate (See README)
-      printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
+      //printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
     #endif
     
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
+     * FIX: Uncommenting cert_pem restarts even if providing the right certificate
      */
     esp_http_client_config_t config = {
         .url = IMG_URL,
         .event_handler = _http_event_handler,
         .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
         .disable_auto_redirect = false,
-        //.cert_pem = (char *)server_cert_pem_start,
-        .crt_bundle_attach = esp_crt_bundle_attach
+        //.cert_pem = (char *)server_cert_pem_start
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
     
