@@ -64,7 +64,7 @@ extern const uint8_t server_cert_pem_end[] asm("_binary_server_cert_pem_end");
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 59
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 30
 
 #define DEBUG_VERBOSE true
 
@@ -174,14 +174,11 @@ static uint32_t feed_buffer(JDEC *jd,
                uint8_t *buff, // Pointer to the read buffer (NULL:skip) 
                uint32_t nd 
 ) {
-    vTaskDelay(1);
-    esp_task_wdt_reset();
     uint32_t count = 0;
 
     while (count < nd) {
       if (buff != NULL) {
-            uint8_t b = source_buf[buffer_pos];
-            *buff++ = b;
+            *buff++ = source_buf[buffer_pos];
         }
         count ++;
         buffer_pos++;
@@ -263,8 +260,6 @@ int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
 // Handles Htpp events and is in charge of buffering source_buf (jpg compressed image)
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
-    uint8_t output_buffer[HTTP_RECEIVE_BUFFER_SIZE]; // Buffer to store HTTP response
-
     switch (evt->event_id)
     {
     case HTTP_EVENT_ERROR:
@@ -290,26 +285,12 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         #endif
         dataLenTotal += evt->data_len;
 
-        if (sizeof(evt->data_len) > HTTP_RECEIVE_BUFFER_SIZE) {
-          ESP_LOGE(TAG, "Incoming bytes:%d overflow the defined %d output_buffer", evt->data_len, HTTP_RECEIVE_BUFFER_SIZE);
-          break;
-        }
-        // Copy the response into the buffer
-        memcpy(output_buffer, evt->data, evt->data_len);
+        if (countDataEventCalls == 1) startTime = esp_timer_get_time();
+        // Append received data into source_buf
+        memcpy(&source_buf[img_buf_pos], evt->data, evt->data_len);
+        img_buf_pos += evt->data_len;
 
-        if (countDataEventCalls == 1)
-        {
-            startTime = esp_timer_get_time();
-        }
-        
-        // LOOP all the received Buffer but start on ImageOffset if first call
-        for (uint32_t byteIndex = 0; byteIndex < evt->data_len; ++byteIndex)
-        {
-            source_buf[img_buf_pos] = output_buffer[byteIndex];
-            img_buf_pos++;
-        }
-
-        // Hexa dump:
+        // Optional hexa dump
         //ESP_LOG_BUFFER_HEX(TAG, output_buffer, evt->data_len);
         break;
 
@@ -337,13 +318,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 // Handles http request
 static void http_post(void)
-{
-    #if DEBUG_VERBOSE
-      printf("Free heap before HTTP download: %d\n", xPortGetFreeHeapSize());
-      // To use with target site Certificate (See README)
-      //printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
-    #endif
-    
+{    
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
@@ -357,6 +332,13 @@ static void http_post(void)
         //.cert_pem = (char *)server_cert_pem_start
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    #if DEBUG_VERBOSE
+      printf("Free heap before HTTP download: %d\n", xPortGetFreeHeapSize());
+      /* if (esp_http_client_get_transport_type(client) == HTTP_TRANSPORT_OVER_SSL) {
+        printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
+      } */
+    #endif
     
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
