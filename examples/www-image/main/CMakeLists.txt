@@ -1,5 +1,3 @@
-# Select only one app_sources
-#set(app_sources "bmp-render.c")
 set(app_sources "jpg-render.c")
 
 idf_component_register(SRCS ${app_sources} 
