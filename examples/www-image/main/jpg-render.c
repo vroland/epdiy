@@ -13,9 +13,10 @@
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-// HTTP Client
+// HTTP Client + time
 #include "esp_netif.h"
 #include "esp_http_client.h"
+#include "esp_sntp.h"
 
 // JPG decoder
 #if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
@@ -41,8 +42,12 @@ EpdiyHighlevelState hl;
 // Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
+
 #define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
 
+// Please check the README to understand how to use an SSL Certificate
+// Note: This makes a sntp time sync query for cert validation  (It's slower)
+#define VALIDATE_SSL_CERTIFICATE false
 // Alternative non-https URL:
 //#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
@@ -104,6 +109,42 @@ uint32_t img_buf_pos = 0;
 uint32_t dataLenTotal = 0;
 uint64_t startTime = 0;
 
+#if VALIDATE_SSL_CERTIFICATE == true
+  /* Time aware for ESP32: Important to check SSL certs validity */
+  void time_sync_notification_cb(struct timeval *tv)
+  {
+      ESP_LOGI(TAG, "Notification of a time synchronization event");
+  }
+
+  static void initialize_sntp(void)
+  {
+      ESP_LOGI(TAG, "Initializing SNTP");
+      sntp_setoperatingmode(SNTP_OPMODE_POLL);
+      sntp_setservername(0, "pool.ntp.org");
+      sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+  #ifdef CONFIG_SNTP_TIME_SYNC_METHOD_SMOOTH
+      sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
+  #endif
+      sntp_init();
+  }
+
+  static void obtain_time(void)
+  {
+      initialize_sntp();
+
+      // wait for time to be set
+      time_t now = 0;
+      struct tm timeinfo = { 0 };
+      int retry = 0;
+      const int retry_count = 10;
+      while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
+          ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+          vTaskDelay(2000 / portTICK_PERIOD_MS);
+      }
+      time(&now);
+      localtime_r(&now, &timeinfo);
+  }
+#endif
 //====================================================================================
 // This sketch contains support functions to render the Jpeg images
 //
@@ -329,15 +370,17 @@ static void http_post(void)
         .event_handler = _http_event_handler,
         .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
         .disable_auto_redirect = false,
-        //.cert_pem = (char *)server_cert_pem_start
+        #if VALIDATE_SSL_CERTIFICATE == true
+        .cert_pem = (char *)server_cert_pem_start
+        #endif
         };
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
     #if DEBUG_VERBOSE
       printf("Free heap before HTTP download: %d\n", xPortGetFreeHeapSize());
-      /* if (esp_http_client_get_transport_type(client) == HTTP_TRANSPORT_OVER_SSL) {
+      if (esp_http_client_get_transport_type(client) == HTTP_TRANSPORT_OVER_SSL && config.cert_pem) {
         printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
-      } */
+      }
     #endif
     
     esp_err_t err = esp_http_client_perform(client);
@@ -508,6 +551,9 @@ void app_main() {
   
   // Initialization: WiFi + clean screen while downloading image
   wifi_init_sta();
+  #if VALIDATE_SSL_CERTIFICATE == true
+    obtain_time();
+  #endif
   epd_poweron();
   epd_fullclear(&hl, 25);
   http_post();
