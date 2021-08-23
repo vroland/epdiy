@@ -1,8 +1,10 @@
 
 #include "tps65185.h"
 #include "esp_err.h"
+#include "esp_log.h"
 
 #include <driver/i2c.h>
+#include <stdint.h>
 
 static const int EPDIY_TPS_ADDR = 0x68;
 
@@ -72,7 +74,23 @@ void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV) {
     ESP_ERROR_CHECK(tps_write_register(i2c_num, 3, val & 0xFF));
 }
 
+int v6_wait_for_interrupt(int timeout);
 
 int8_t tps_read_thermistor(i2c_port_t i2c_num) {
+    tps_write_register(i2c_num, TPS_REG_TMST1, 0x80);
+    int tries = 0;
+    while (true) {
+        uint8_t val = tps_read_register(i2c_num, TPS_REG_TMST1);
+        // temperature conversion done
+        if (val & 0x20) {
+            break;
+        }
+        tries++;
+
+        if (tries >= 1000) {
+            ESP_LOGE("epdiy", "thermistor read timeout!");
+            break;
+        }
+    }
     return (int8_t)tps_read_register(i2c_num, TPS_REG_TMST_VALUE);
 }

@@ -30,6 +30,7 @@
 #if defined(CONFIG_EPD_BOARD_REVISION_V6)
 #define CFG_SCL GPIO_NUM_33
 #define CFG_SDA GPIO_NUM_32
+#define CFG_INTR GPIO_NUM_35
 #endif
 
 #else
