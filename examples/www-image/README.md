@@ -9,6 +9,17 @@ we decided to also add a JPG decoding example suggested by @vroland.
 
 Additionally another second to decompress and render the image using EPDiy epd_draw_pixel()
 
+Detailed statistics:
+
+```
+48772 bytes read from https://loremflickr.com/960/540
+
+I (10676) decode: 757 ms . image decompression
+I (11401) render: 297 ms - jpeg draw
+I (11402) www-dw: 1728 ms - download
+I (12621) total: 2782 ms - total time spent
+```
+
 **Note:** Statistics where taken with the 4.7" Lilygo display 960x540 pixels and may be significantly higher using bigger displays.
 
 Building it
@@ -24,7 +35,9 @@ Do not forget to update your WiFi credentials and point it to a proper URL that 
 #define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
 ```
 
-Note that as default an random image taken from loremflickr.com is used. You can use any URL that points to a valid Image, take care to use the right renderer (jpg or bmp), or you can also use the image-service [cale.es](https://cale.es) to create your own gallery.
+Progressive JPG images are not supported.
+
+Note that as default an random image taken from loremflickr.com is used. You can use any URL that points to a valid Image, take care to use the right JPG format, or you can also use the image-service [cale.es](https://cale.es) to create your own gallery.
 
 If your epaper resolution is not listed, just send me an email, you can find it on my [profile page on Github](https://github.com/martinberlin).
 
