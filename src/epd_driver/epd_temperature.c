@@ -1,6 +1,7 @@
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 #include "esp_log.h"
+#include "display_ops.h"
 
 #ifndef CONFIG_EPD_BOARD_REVISION_V6
 /// Use GPIO 35 for boards v4 - v5
@@ -40,7 +41,7 @@ float epd_ambient_temperature() {
 void epd_temperature_init() {}
 
 float epd_ambient_temperature() {
-    return tps_read_thermistor(I2C_NUM_0);
+    return tps_read_thermistor(EPDIY_I2C_PORT);
 }
 
 

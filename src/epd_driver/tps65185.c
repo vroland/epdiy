@@ -87,7 +87,7 @@ int8_t tps_read_thermistor(i2c_port_t i2c_num) {
         }
         tries++;
 
-        if (tries >= 1000) {
+        if (tries >= 100) {
             ESP_LOGE("epdiy", "thermistor read timeout!");
             break;
         }

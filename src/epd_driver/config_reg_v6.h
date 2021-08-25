@@ -7,14 +7,14 @@
 #include <driver/gpio.h>
 #include <sys/time.h>
 
-#define CFG_PIN_OE PCA_PIN_PC10
-#define CFG_PIN_MODE PCA_PIN_PC11
-#define CFG_PIN_STV PCA_PIN_PC12
-#define CFG_PIN_PWRUP PCA_PIN_PC13
-#define CFG_PIN_VCOM_CTRL PCA_PIN_PC14
-#define CFG_PIN_WAKEUP PCA_PIN_PC15
-#define CFG_PIN_PWRGOOD PCA_PIN_PC16
-#define CFG_PIN_INT PCA_PIN_PC17
+#define CFG_PIN_OE          (PCA_PIN_PC10 >> 8)
+#define CFG_PIN_MODE        (PCA_PIN_PC11 >> 8)
+#define CFG_PIN_STV         (PCA_PIN_PC12 >> 8)
+#define CFG_PIN_PWRUP       (PCA_PIN_PC13 >> 8)
+#define CFG_PIN_VCOM_CTRL   (PCA_PIN_PC14 >> 8)
+#define CFG_PIN_WAKEUP      (PCA_PIN_PC15 >> 8)
+#define CFG_PIN_PWRGOOD     (PCA_PIN_PC16 >> 8)
+#define CFG_PIN_INT         (PCA_PIN_PC17 >> 8)
 
 typedef struct {
     i2c_port_t port;
@@ -47,9 +47,9 @@ int v6_wait_for_interrupt(int timeout) {
     }
     int ival = 0;
     interrupt_done = false;
-    pca9555_read_input(I2C_NUM_0);
-	ival = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
-	ival |= tps_read_register(I2C_NUM_0, TPS_REG_INT2) << 8;
+    pca9555_read_input(EPDIY_I2C_PORT, 1);
+	ival = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT1);
+	ival |= tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2) << 8;
     while (!gpio_get_level(CFG_INTR)) {vTaskDelay(1); }
     return ival;
 }
@@ -73,34 +73,34 @@ void config_reg_init(epd_config_register_t* reg) {
     ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void *) CFG_INTR));
 
     // set all epdiy lines to output except TPS interrupt + PWR good
-    ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT | PCA_PIN_P_ALL));
+    ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 }
 
 static void push_cfg(epd_config_register_t* reg) {
-    uint16_t value = 0x00;
+    uint8_t value = 0x00;
     if (reg->ep_output_enable) value |= CFG_PIN_OE;
     if (reg->ep_mode) value |= CFG_PIN_MODE;
     if (reg->ep_stv) value |= CFG_PIN_STV;
     if (reg->pwrup) value |= CFG_PIN_PWRUP;
     if (reg->vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
     if (reg->wakeup) value |= CFG_PIN_WAKEUP;
-    for (int i=0; i<8; i++) {
-        if (reg->others[i]) {
-            value |= (PCA_PIN_P00 << i);
-        }
-    }
 
-    ESP_ERROR_CHECK(pca9555_set_value(reg->port, value));
+    ESP_ERROR_CHECK(pca9555_set_value(reg->port, value, 1));
 }
 
 static void cfg_poweron(epd_config_register_t* reg) {
     reg->ep_stv = true;
     reg->wakeup = true;
+    push_cfg(reg);
     reg->pwrup = true;
     push_cfg(reg);
     reg->vcom_ctrl = true;
     push_cfg(reg);
-    while (!(pca9555_read_input(reg->port) & CFG_PIN_PWRGOOD)) {
+
+    // give the IC time to powerup and set lines
+    vTaskDelay(1);
+
+    while (!(pca9555_read_input(reg->port, 1) & CFG_PIN_PWRGOOD)) {
         vTaskDelay(1);
     }
 
@@ -111,9 +111,9 @@ static void cfg_poweron(epd_config_register_t* reg) {
     gpio_set_level(STH, 1);
 
     int tries = 0;
-    while (!((tps_read_register(I2C_NUM_0, TPS_REG_PG) & 0xFA) == 0xFA)) {
-        if (tries >= 1000) {
-            ESP_LOGE("epdiy", "Power enable failed! PG status: %X", tps_read_register(I2C_NUM_0, TPS_REG_PG));
+    while (!((tps_read_register(reg->port, TPS_REG_PG) & 0xFA) == 0xFA)) {
+        if (tries >= 100) {
+            ESP_LOGE("epdiy", "Power enable failed! PG status: %X", tps_read_register(reg->port, TPS_REG_PG));
             return;
         }
         tries++;
@@ -124,9 +124,10 @@ static void cfg_poweron(epd_config_register_t* reg) {
 
 static void cfg_poweroff(epd_config_register_t* reg) {
     reg->vcom_ctrl = false;
-    push_cfg(reg);
-    reg->wakeup = false;
     reg->pwrup = false;
     reg->ep_stv = false;
+    push_cfg(reg);
+    vTaskDelay(1);
+    reg->wakeup = false;
     push_cfg(reg);
 }

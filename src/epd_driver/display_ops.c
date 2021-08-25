@@ -66,11 +66,11 @@ void epd_base_init(uint32_t epd_row_width) {
   conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
   conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
   conf.master.clk_speed = 400000;
-  ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
+  ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
 
-  ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
+  ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
 
-  config_reg.port = I2C_NUM_0;
+  config_reg.port = EPDIY_I2C_PORT;
 #else
   /* Power Control Output/Off */
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);

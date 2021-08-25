@@ -28,9 +28,9 @@
 static const int EPDIY_PCA9555_ADDR = 0x20;
 
 
-uint16_t pca9555_read_input(i2c_port_t port);
-esp_err_t pca9555_set_value(i2c_port_t port, uint16_t config_value);
-esp_err_t pca9555_set_inversion(i2c_port_t port, uint16_t config_value);
-esp_err_t pca9555_set_config(i2c_port_t port, uint16_t config_value);
+uint8_t pca9555_read_input(i2c_port_t port, int high_port);
+esp_err_t pca9555_set_value(i2c_port_t port, uint8_t config_value, int high_port);
+esp_err_t pca9555_set_inversion(i2c_port_t port, uint8_t config_value, int high_port);
+esp_err_t pca9555_set_config(i2c_port_t port, uint8_t config_value, int high_port);
 
 #endif // PCA9555_H

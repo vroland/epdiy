@@ -31,6 +31,8 @@
 #define CFG_SCL GPIO_NUM_33
 #define CFG_SDA GPIO_NUM_32
 #define CFG_INTR GPIO_NUM_35
+
+#define EPDIY_I2C_PORT I2C_NUM_0
 #endif
 
 #else
