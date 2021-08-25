@@ -74,20 +74,20 @@ void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
 void idf_loop() {
 
   enum EpdDrawError err;
-  
-  temperature = epd_ambient_temperature();
-  printf("current temperature: %d\n", temperature);
 
   uint8_t* fb = epd_hl_get_framebuffer(&hl);
-  
 
   epd_poweron();
   epd_clear();
+  temperature = epd_ambient_temperature();
   epd_poweroff();
+
+  printf("current temperature: %d\n", temperature);
 
   epd_fill_circle(30,30,15,0,fb);
   int cursor_x = epd_rotated_display_width() / 2;
   int cursor_y = epd_rotated_display_height() / 2 - 100;
+
   EpdFontProperties font_props = epd_font_properties_default();
   font_props.flags = EPD_DRAW_ALIGN_CENTER;
 
@@ -181,7 +181,7 @@ void idf_loop() {
   epd_poweroff();
 
   delay(5000);
-  
+
   EpdRect board_area = {
       .x = epd_rotated_display_width() / 2 - img_board_width / 2,
       .y = epd_rotated_display_height() / 2 - img_board_height / 2,
@@ -235,8 +235,8 @@ void idf_loop() {
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
-  epd_hl_set_all_white(&hl);
-  delay(100000);
+  epd_fullclear(&hl, temperature);
+  delay(10000);
 }
 
 void idf_setup() {
