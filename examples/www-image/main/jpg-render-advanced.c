@@ -37,14 +37,18 @@ EpdiyHighlevelState hl;
 // WiFi configuration. Please fill with your WiFi credentials
 #define ESP_WIFI_SSID     ""
 #define ESP_WIFI_PASSWORD ""
+#define ESP_WIFI_SSID     "WLAN-724300"
+#define ESP_WIFI_PASSWORD "50238634630558382093"
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
 // Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
-#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
+#define IMG_URL ("https://loremflickr.com/"STR(EPD_HEIGHT)"/"STR(EPD_WIDTH))
 
+// As default Landscape larger width
+#define EPD_ORIENTATION EPD_ROT_PORTRAIT
 // Please check the README to understand how to use an SSL Certificate
 // Note: This makes a sntp time sync query for cert validation  (It's slower)
 #define VALIDATE_SSL_CERTIFICATE false
@@ -52,7 +56,7 @@ EpdiyHighlevelState hl;
 //#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
-#define JPG_DITHERING true
+#define JPG_DITHERING false
 // Affects the gamma to calculate gray (lower is darker/higher contrast)
 // Nice test values: 0.9 1.2 1.4 higher and is too bright
 double gamma_value = 0.9;
@@ -164,6 +168,7 @@ uint8_t find_closest_palette_color(uint8_t oldpixel)
 //   Decode and paint onto the Epaper screen
 //====================================================================================
 void jpegRender(int xpos, int ypos, int width, int height) {
+  //printf("jpegRender x:%d y:%d w:%d h:%d\n", xpos, ypos, width, height);
  #if JPG_DITHERING
  unsigned long pixel=0;
  for (uint16_t by=0; by<ep_height;by++)
@@ -193,14 +198,19 @@ void jpegRender(int xpos, int ypos, int width, int height) {
 
   // Write to display
   uint64_t drawTime = esp_timer_get_time();
+  
+  // Optional image centering
   uint32_t padding_x = (epd_rotated_display_width() - width) / 2;
   uint32_t padding_y = (epd_rotated_display_height() - height) / 2;
-
+  
   for (uint32_t by=0; by<height;by++) {
     for (uint32_t bx=0; bx<width;bx++) {
+      //if (bx%10 ==0) printf("x:%d y:%d ",bx,by);
         epd_draw_pixel(bx + padding_x, by + padding_y, decoded_image[by * width + bx], fb);
     }
+    //printf("\n");vTaskDelay(2);
   }
+
   // calculate how long it took to draw the image
   time_render = (esp_timer_get_time() - drawTime)/1000;
   ESP_LOGI("render", "%d ms - jpeg draw", time_render);
@@ -517,6 +527,7 @@ void wifi_init_sta(void)
 
 void app_main() {
   epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
+  epd_set_rotation(EPD_ORIENTATION);
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
 
