@@ -35,7 +35,7 @@
 EpdiyHighlevelState hl;
 
 // WiFi configuration. Please fill with your WiFi credentials
-#define ESP_WIFI_SSID     ""
+#define ESP_WIFI_SSID     "WLAN-724300"
 #define ESP_WIFI_PASSWORD ""
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
@@ -58,12 +58,12 @@ EpdiyHighlevelState hl;
 double gamma_value = 0.9;
 
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
-#define HTTP_RECEIVE_BUFFER_SIZE 1536
+#define HTTP_RECEIVE_BUFFER_SIZE 1986
 
 // Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
 // Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#embedding-binary-data
 extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
-extern const uint8_t server_cert_pem_end[] asm("_binary_server_cert_pem_end");
+
 // EPD Waveform
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 // Minutes that goes to deepsleep after rendering
@@ -80,7 +80,7 @@ JRESULT rc;
 uint8_t *fb;            // EPD 2bpp buffer
 uint8_t *source_buf;    // JPG download buffer
 uint8_t *decoded_image; // RAW decoded image
-static uint8_t tjpgd_work[4096]; // tjpgd 4Kb buffer
+static uint8_t tjpgd_work[3096]; // tjpgd 3096 is the minimum size
 
 uint32_t buffer_pos = 0;
 uint32_t time_download = 0;
