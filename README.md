@@ -69,11 +69,11 @@ Displays
 |ED060SCF|6"|600 x 800|yes, tested|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SCN|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SCP|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
-| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT434124 | 34 | v5 |connector dropped in v6
-| ED060SCG | 6" | 600 x 800 | yes (should work) | AXT434124 | 34 | v5 |connector dropped in v6
-| ED060SCE | 6" | 600 x 800 | yes (should work) | AXT434124 | 34 | v5 |connector dropped in v6
-| ED060SCM | 6" | 600 x 800 | yes (should work) | AXT434124 | 34 | v5 |connector dropped in v6
-| ED060SCT | 6" | 600 x 800 | yes, tested       | AXT434124 | 34 | v5 |connector dropped in v6
+| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCG | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCE | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCM | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCT | 6" | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 |connector dropped in v6
 
 
 Troubleshooting
