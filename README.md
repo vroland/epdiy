@@ -23,9 +23,8 @@ Building It
 If you want to build a board right now, there are two possible routes:
 
  - Use the new v6 PCB (`hardware/epaper-breakout/gerbers_v6.zip`). 
-   **There are currently known issues with this revision. Do not place new orders, this will be fixed soon!**
-   <s>**So far, I only tested a prototype of it. The gerbers only contain cosmetic changes, but have not yet been ordered with.**
-   **If you have tested them, please let me know!**</s>
+   **So far, I only tested a prototype of it. The gerbers only contain fixes for powering from battery, but have not yet been ordered with.**
+   **If you have tested them, please let me know!**
    The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
    Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
    Please double check the part positioning and Rotation with your assembly service!
