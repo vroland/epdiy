@@ -18,17 +18,18 @@ void idf_loop() {
       .width = dragon_width,
       .height = dragon_height
   };
-  epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
+
+  int temperature = 25;
 
   epd_poweron();
-  epd_clear();
-  int temperature = 25;
+  epd_fullclear(&hl, temperature);
+
+  epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
+
   enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
-  while (1) {
-      vTaskDelay(1000);
-  }
+  vTaskDelay(1000);
 }
 
 void idf_setup() {
