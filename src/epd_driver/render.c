@@ -289,8 +289,10 @@ void epd_deinit() {
 
   gpio_reset_pin(CKH);
   rtc_gpio_isolate(CKH);
+  //gpio_reset_pin(CFG_INTR);
+  //rtc_gpio_isolate(CFG_INTR);
 #endif
-  epd_base_deinit();
+  //epd_base_deinit();
 }
 
 
@@ -310,7 +312,7 @@ EpdRect epd_difference_image_base(
     // OR over all pixels of the "from"-image
     *from_or = 0x00;
     // AND over all pixels of the "from"-image
-    *from_and = 0xFF;
+    *from_and = 0x0F;
 
     uint8_t dirty_cols[EPD_WIDTH] = {0};
     int x_end = min(fb_width, crop_to.x + crop_to.width);
@@ -322,9 +324,9 @@ EpdRect epd_difference_image_base(
             uint8_t t = *(to + y*fb_width / 2 + x / 2);
             t = (x % 2) ? (t >> 4) : (t & 0x0f);
             uint8_t f = *(from + y*fb_width / 2+ x / 2);
+            f = (x % 2) ? (f >> 4) : (f & 0x0f);
             *from_or |= f;
             *from_and &= f;
-            f = (x % 2) ? (f >> 4) : (f & 0x0f);
             dirty |= (t ^ f);
             dirty_cols[x] |= (t ^ f);
             interlaced[y * fb_width + x] = (t << 4) | f;
@@ -378,7 +380,7 @@ EpdRect epd_difference_image_cropped(
 
   EpdRect result = epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
 
-  if (previously_white != NULL) *previously_white = (from_and == 0xFF);
+  if (previously_white != NULL) *previously_white = (from_and == 0x0F);
   if (previously_black != NULL) *previously_black = (from_or == 0x00);
   return result;
 }

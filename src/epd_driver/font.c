@@ -111,8 +111,7 @@ static int uncompress(uint8_t *dest, uint32_t uncompressed_size, const uint8_t *
    @brief   Draw a single character to a pre-allocated buffer.
 */
 static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffer,
-                                int *cursor_x, int cursor_y, uint16_t buf_width,
-                                uint16_t buf_height, uint32_t cp,
+                                int *cursor_x, int cursor_y, uint32_t cp,
                                 const EpdFontProperties *props) {
 
   assert(props != NULL);
@@ -155,15 +154,12 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
 
   for (int y = 0; y < height; y++) {
     int yy = cursor_y - glyph->top + y;
-    if (yy < 0 || yy >= epd_rotated_display_height()) {
-      continue;
-    }
     int start_pos = *cursor_x + left;
     bool byte_complete = start_pos % 2;
     int x = max(0, -start_pos);
-    int max_x = min(start_pos + width, buf_width * 2);
+    int max_x = start_pos + width;
     uint8_t color;
-    
+
     for (int xx = start_pos; xx < max_x; xx++) {
       uint8_t bm = bitmap[y * byte_width + x / 2];
       if ((x & 1) == 0) {
@@ -291,8 +287,6 @@ static enum EpdDrawError epd_write_line(
       return EPD_DRAW_NO_DRAWABLE_CHARACTERS;
   }
 
-  int buf_width = EPD_WIDTH / 2;
-  int buf_height = EPD_HEIGHT;
 
   uint8_t* buffer = framebuffer;
   int local_cursor_x = *cursor_x;
@@ -327,8 +321,7 @@ static enum EpdDrawError epd_write_line(
   }
   enum EpdDrawError err = EPD_DRAW_SUCCESS;
   while ((c = next_cp((const uint8_t **)&string))) {
-    err |= draw_char(font, buffer, &local_cursor_x, local_cursor_y, buf_width,
-              buf_height, c, &props);
+    err |= draw_char(font, buffer, &local_cursor_x, local_cursor_y, c, &props);
   }
 
   *cursor_x += local_cursor_x - cursor_x_init;
