@@ -133,6 +133,13 @@ And navigate to :code:`Component config -> E-Paper driver -> Display Type`, sele
 
 to make your code portable.
 
+Enable SPI RAM
+~~~~~~~~~~~~~~~~~~~~~~~~
+The ESP32-WROVER-B comes with an additional 8MB external PSRAM, where the :code:`epd_driver` is going to store ~2MB for its internal frame buffers. 
+Since it is dynamically allocated from the heap, and the built-in SRAM of ~160KB is insufficient, we need to enable external SPI RAM first.
+
+Open the :code:`menuconfig` again (see above) and navigate to :code:`Component config -> ESP32-Specific -> Support for external, SPI-connected RAM` and enable it.
+
 Use with Arduino
 ----------------
 
