@@ -112,22 +112,41 @@ static void cfg_poweron(epd_config_register_t* reg) {
 
     int tries = 0;
     while (!((tps_read_register(reg->port, TPS_REG_PG) & 0xFA) == 0xFA)) {
-        if (tries >= 100) {
+        if (tries >= 500) {
             ESP_LOGE("epdiy", "Power enable failed! PG status: %X", tps_read_register(reg->port, TPS_REG_PG));
             return;
         }
         tries++;
         vTaskDelay(1);
     }
-    vTaskDelay(10);
 }
 
 static void cfg_poweroff(epd_config_register_t* reg) {
     reg->vcom_ctrl = false;
     reg->pwrup = false;
     reg->ep_stv = false;
+    reg->ep_output_enable = false;
+    reg->ep_mode = false;
     push_cfg(reg);
     vTaskDelay(1);
     reg->wakeup = false;
     push_cfg(reg);
+}
+
+static void cfg_deinit(epd_config_register_t* reg) {
+    ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
+
+    int tries = 0;
+    while (!((pca9555_read_input(reg->port, 1) & 0xC0) == 0x80)) {
+        if (tries >= 500) {
+            ESP_LOGE("epdiy", "failed to shut down TPS65185!");
+            break;
+        }
+        vTaskDelay(1);
+        printf("%X\n", pca9555_read_input(reg->port, 1));
+    }
+    vTaskDelay(500);
+    pca9555_read_input(reg->port, 0);
+    pca9555_read_input(reg->port, 1);
+    ESP_LOGI("epdiy", "going to sleep.");
 }

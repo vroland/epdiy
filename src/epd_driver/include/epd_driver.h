@@ -8,10 +8,9 @@ extern "C" {
 
 #pragma once
 #include "esp_attr.h"
-#include "epd_internals.h"
-
 #include <stdbool.h>
 #include <stdint.h>
+#include "epd_internals.h"
 
 /** Display software rotation.
  *  Sets the rotation for the purposes of the drawing and font functions
@@ -494,7 +493,7 @@ uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *
 
 /**
  * Draw an image reading pixel per pixel and being rotation aware (via epd_draw_pixel)
- */ 
+ */
 void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer);
 
 /**

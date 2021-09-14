@@ -120,6 +120,16 @@ void epd_poweroff() { cfg_poweroff(&config_reg); }
 void epd_base_deinit(){
   epd_poweroff();
   i2s_deinit();
+
+#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+  cfg_deinit(&config_reg);
+  i2c_driver_delete(EPDIY_I2C_PORT);
+#else
+  config_reg.ep_stv = false;
+  config_reg.ep_mode = false;
+  config_reg.ep_output_enable = false;
+  push_cfg(&config_reg);
+#endif
 }
 
 void epd_start_frame() {

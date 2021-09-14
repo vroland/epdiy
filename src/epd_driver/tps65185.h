@@ -1,7 +1,6 @@
 #ifndef TPS65185_H
 #define TPS65185_H
 
-#include "hal/i2c_types.h"
 #include <driver/i2c.h>
 
 #define TPS_REG_TMST_VALUE 0x00
