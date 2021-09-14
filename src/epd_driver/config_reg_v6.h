@@ -150,6 +150,7 @@ static void cfg_deinit(epd_config_register_t* reg) {
         vTaskDelay(1);
         printf("%X\n", pca9555_read_input(reg->port, 1));
     }
+    // Not sure why we need this delay, but the TPS65185 seems to generate an interrupt after some time that needs to be cleared.
     vTaskDelay(500);
     pca9555_read_input(reg->port, 0);
     pca9555_read_input(reg->port, 1);

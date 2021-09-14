@@ -292,7 +292,7 @@ void epd_deinit() {
   //gpio_reset_pin(CFG_INTR);
   //rtc_gpio_isolate(CFG_INTR);
 #endif
-  //epd_base_deinit();
+  epd_base_deinit();
 }
 
 
