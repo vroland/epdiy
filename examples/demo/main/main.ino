@@ -8,8 +8,15 @@
  * If you are looking for an example with Arduino look-and-feel,
  * please check the other examples.
  */
+
+// Important: These are C functions, so they must be declared with C linkage!
 extern "C"
 {
+    // Since Arduino does not allow selection
+    // of numeric values in its menu, this
+    // constant must be defined to set VCOM for v6 boards.
+    int epd_driver_v6_vcom = 1560;
+
     void idf_setup();
     void idf_loop();
 }

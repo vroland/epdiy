@@ -34,15 +34,13 @@ static void IRAM_ATTR interrupt_handler(void* arg) {
 }
 
 int v6_wait_for_interrupt(int timeout) {
-    struct timeval start;
-    struct timeval now;
-    gettimeofday(&start, DST_NONE);
+
+    int tries = 0;
     while (!interrupt_done && gpio_get_level(CFG_INTR) == 1) {
-        gettimeofday(&now, DST_NONE);
-        if ((((now.tv_sec - start.tv_sec) * 1000000L
-            + now.tv_usec) - start.tv_sec) / 1000 > timeout) {
+        if (tries >= 500) {
             return -1;
         }
+        tries++;
         vTaskDelay(1);
     }
     int ival = 0;
@@ -106,7 +104,13 @@ static void cfg_poweron(epd_config_register_t* reg) {
 
     ESP_ERROR_CHECK(tps_write_register(reg->port, TPS_REG_ENABLE, 0x3F));
 
+#ifdef CONFIG_EPD_DRIVER_V6_VCOM
     tps_set_vcom(reg->port, CONFIG_EPD_DRIVER_V6_VCOM);
+// Arduino IDE...
+#else
+    extern int epd_driver_v6_vcom;
+    tps_set_vcom(reg->port, epd_driver_v6_vcom);
+#endif
 
     gpio_set_level(STH, 1);
 
@@ -142,6 +146,7 @@ static void cfg_deinit(epd_config_register_t* reg) {
             ESP_LOGE("epdiy", "failed to shut down TPS65185!");
             break;
         }
+        tries++;
         vTaskDelay(1);
         printf("%X\n", pca9555_read_input(reg->port, 1));
     }
