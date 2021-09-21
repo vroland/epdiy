@@ -3,6 +3,12 @@
 #include "esp_log.h"
 #include "display_ops.h"
 
+#ifdef CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
+void epd_temperature_init() {}
+float epd_ambient_temperature() {
+  return 21.0;
+}
+#else
 #ifndef CONFIG_EPD_BOARD_REVISION_V6
 /// Use GPIO 35 for boards v4 - v5
 static const adc1_channel_t channel = ADC1_CHANNEL_7;
@@ -41,9 +47,8 @@ float epd_ambient_temperature() {
 void epd_temperature_init() {}
 
 float epd_ambient_temperature() {
-    return tps_read_thermistor(EPDIY_I2C_PORT);
+  return tps_read_thermistor(EPDIY_I2C_PORT);
 }
 
-
-
+#endif
 #endif
