@@ -61,13 +61,13 @@ static inline bool is_valid_area(EpdRect area)
 {
     return area.x >= 0
         && area.y >= 0
-        && area.width <= epd_rotated_display_width()
-        && area.height <= epd_rotated_display_height();
+        && area.width <= EPD_WIDTH
+        && area.height <= EPD_HEIGHT;
 }
 
 static inline EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
   // If partial update uses full screen do not rotate anything
-  if (!(x == 0 && y == 0 && epd_rotated_display_width() == w && epd_rotated_display_height() == h)) {
+  if (!(x == 0 && y == 0 && EPD_WIDTH == w && EPD_HEIGHT == h)) {
     // invert the current display rotation
     switch (epd_get_rotation())
     {
