@@ -65,9 +65,9 @@ static inline bool is_valid_area(EpdRect area)
         && area.height <= EPD_HEIGHT;
 }
 
-static inline EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+static inline EpdRect _inverse_rotated_area(EpdRect area) {
   // If partial update uses full screen do not rotate anything
-  if (!(x == 0 && y == 0 && EPD_WIDTH == w && EPD_HEIGHT == h)) {
+  if (!(area.x == 0 && area.y == 0 && EPD_WIDTH == area.width && EPD_HEIGHT == area.height)) {
     // invert the current display rotation
     switch (epd_get_rotation())
     {
@@ -76,30 +76,27 @@ static inline EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, 
         break;
       // 1 90 ° clockwise
       case EPD_ROT_PORTRAIT:
-        _swap_int(x, y);
-        _swap_int(w, h);
-        x = EPD_WIDTH - x - w;
+        _swap_int(area.x, area.y);
+        _swap_int(area.width, area.height);
+        area.x = EPD_WIDTH - area.x - area.width;
         break;
 
       case EPD_ROT_INVERTED_LANDSCAPE:
         // 3 180°
-        x = EPD_WIDTH - x - w;
-        y = EPD_HEIGHT - y - h;
+        area.x = EPD_WIDTH - area.x - area.width;
+        area.y = EPD_HEIGHT - area.y - area.height;
         break;
 
       case EPD_ROT_INVERTED_PORTRAIT:
         // 3 270 °
-        _swap_int(x, y);
-        _swap_int(w, h);
-        y = EPD_HEIGHT - y - h;
+        _swap_int(area.x, area.y);
+        _swap_int(area.width, area.height);
+        area.y = EPD_HEIGHT - area.y - area.height;
         break;
     }
   }
 
-  EpdRect rotated =  {
-    x, y, w, h
-  };
-  return rotated;
+  return area;
 }
 
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {
@@ -115,11 +112,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   bool previously_white = false;
   bool previously_black = false;
   // Check rotation FIX
-  EpdRect rotated_area = _inverse_rotated_area(area.x, area.y, area.width, area.height);
-  area.x = rotated_area.x;
-  area.y = rotated_area.y;
-  area.width = rotated_area.width;
-  area.height = rotated_area.height;
+  area = _inverse_rotated_area(area);
 
   //FIXME: use crop information here, if available
   EpdRect diff_area = epd_difference_image_cropped(
