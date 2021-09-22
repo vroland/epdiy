@@ -57,6 +57,14 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
   return epd_hl_update_area(state, mode, temperature, epd_full_screen());
 }
 
+static inline bool is_valid_area(EpdRect area)
+{
+    return area.x >= 0
+        && area.y >= 0
+        && area.width <= epd_rotated_display_width()
+        && area.height <= epd_rotated_display_height();
+}
+
 static inline EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
   // If partial update uses full screen do not rotate anything
   if (!(x == 0 && y == 0 && epd_rotated_display_width() == w && epd_rotated_display_height() == h)) {
@@ -97,6 +105,12 @@ static inline EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, 
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {
   assert(state != NULL);
   // Not right to rotate here since this copies part of buffer directly
+
+  if (!is_valid_area(area)) {
+      ESP_LOGE("epdiy", "Invalid area given to epd_hl_update_area: (x=%d, y=%d, width=%d, height=%d)",
+          area.x, area.y, area.width, area.height);
+      return EPD_DRAW_INVALID_CROP;
+  }
 
   bool previously_white = false;
   bool previously_black = false;
