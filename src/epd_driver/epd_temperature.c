@@ -1,8 +1,10 @@
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 #include "esp_log.h"
+#include "display_ops.h"
 
-/// Use GPIO 35
+#ifndef CONFIG_EPD_BOARD_REVISION_V6
+/// Use GPIO 35 for boards v4 - v5
 static const adc1_channel_t channel = ADC1_CHANNEL_7;
 static esp_adc_cal_characteristics_t adc_chars;
 
@@ -32,3 +34,16 @@ float epd_ambient_temperature() {
   float voltage = esp_adc_cal_raw_to_voltage(value, &adc_chars);
   return (voltage - 500.0) / 10.0;
 }
+#elif defined(CONFIG_EPD_BOARD_REVISION_V6)
+
+#include "tps65185.h"
+
+void epd_temperature_init() {}
+
+float epd_ambient_temperature() {
+    return tps_read_thermistor(EPDIY_I2C_PORT);
+}
+
+
+
+#endif

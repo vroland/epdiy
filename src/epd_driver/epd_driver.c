@@ -71,16 +71,17 @@ Coord_xy _rotate(uint16_t x, uint16_t y) {
 }
 
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
-  if (x < 0 || x >= epd_rotated_display_width()) {
-    return;
-  }
-  if (y < 0 || y >= epd_rotated_display_height()) {
-    return;
-  }
   // Check rotation and move pixel around if necessary
   Coord_xy coord = _rotate(x, y);
   x = coord.x;
   y = coord.y;
+
+  if (x < 0 || x >= EPD_WIDTH) {
+    return;
+  }
+  if (y < 0 || y >= EPD_HEIGHT) {
+    return;
+  }
 
   uint8_t *buf_ptr = &framebuffer[y * EPD_WIDTH / 2 + x / 2];
   if (x % 2) {
@@ -418,7 +419,7 @@ int epd_rotated_display_height() {
   return display_height;
 }
 
-uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *framebuffer) {  
+uint8_t epd_get_pixel(int x, int y, int fb_width, int fb_height, const uint8_t *framebuffer) {
   if (x < 0 || x >= fb_width) {
    return 0;
  }

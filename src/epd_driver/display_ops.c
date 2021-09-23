@@ -14,7 +14,11 @@
 #if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
 #include "config_reg_v4.h"
 #else
+#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+#include "config_reg_v6.h"
+#else
 #error "unknown revision"
+#endif
 #endif
 #endif
 
@@ -38,6 +42,8 @@ void IRAM_ATTR busy_delay(uint32_t cycles) {
   };
 }
 
+
+#if !defined(CONFIG_EPD_BOARD_REVISION_V6)
 inline static void IRAM_ATTR push_cfg_bit(bool bit) {
   gpio_set_level(CFG_CLK, 0);
   if (bit) {
@@ -47,11 +53,26 @@ inline static void IRAM_ATTR push_cfg_bit(bool bit) {
   }
   gpio_set_level(CFG_CLK, 1);
 }
+#endif
 
 void epd_base_init(uint32_t epd_row_width) {
 
-  config_reg_init(&config_reg);
 
+#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+  i2c_config_t conf;
+  conf.mode = I2C_MODE_MASTER;
+  conf.sda_io_num = CFG_SDA;
+  conf.scl_io_num = CFG_SCL;
+  conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.master.clk_speed = 400000;
+  conf.clk_flags = I2C_SCLK_SRC_FLAG_FOR_NOMAL;
+  ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
+
+  ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+
+  config_reg.port = EPDIY_I2C_PORT;
+#else
   /* Power Control Output/Off */
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
@@ -59,14 +80,17 @@ void epd_base_init(uint32_t epd_row_width) {
   gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
+  fast_gpio_set_lo(CFG_STR);
+#endif
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
+  config_reg_init(&config_reg);
+
+#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5) || defined(CONFIG_EPD_BOARD_REVISION_V6)
   // use latch pin as GPIO
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
   ESP_ERROR_CHECK(gpio_set_direction(V4_LATCH_ENABLE, GPIO_MODE_OUTPUT));
   gpio_set_level(V4_LATCH_ENABLE, 0);
 #endif
-  fast_gpio_set_lo(CFG_STR);
 
   push_cfg(&config_reg);
 
@@ -97,6 +121,16 @@ void epd_poweroff() { cfg_poweroff(&config_reg); }
 void epd_base_deinit(){
   epd_poweroff();
   i2s_deinit();
+
+#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+  cfg_deinit(&config_reg);
+  i2c_driver_delete(EPDIY_I2C_PORT);
+#else
+  config_reg.ep_stv = false;
+  config_reg.ep_mode = false;
+  config_reg.ep_output_enable = false;
+  push_cfg(&config_reg);
+#endif
 }
 
 void epd_start_frame() {
@@ -111,7 +145,7 @@ void epd_start_frame() {
   config_reg.ep_stv = false;
   push_cfg(&config_reg);
   //busy_delay(240);
-  pulse_ckv_us(100, 100, false);
+  pulse_ckv_us(1000, 100, false);
   config_reg.ep_stv = true;
   push_cfg(&config_reg);
   //pulse_ckv_us(0, 10, true);
@@ -132,7 +166,7 @@ static inline void latch_row() {
   config_reg.ep_latch_enable = false;
   push_cfg(&config_reg);
 #else
-#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5) || defined(CONFIG_EPD_BOARD_REVISION_V6)
   fast_gpio_set_hi(V4_LATCH_ENABLE);
   fast_gpio_set_lo(V4_LATCH_ENABLE);
 #else

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "display_ops.h"
 
 typedef struct {

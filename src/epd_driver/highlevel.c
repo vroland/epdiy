@@ -30,10 +30,10 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
     ESP_LOGW("EPDiy", "Please enable PSRAM for the ESP32 (menuconfig→ Component config→ ESP32-specific)");
   #endif
   EpdiyHighlevelState state;
-  state.front_fb = heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
-  assert(state.front_fb != NULL);
   state.back_fb = heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
   assert(state.back_fb != NULL);
+  state.front_fb = heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
+  assert(state.front_fb != NULL);
   state.difference_fb = heap_caps_malloc(2 * fb_size, MALLOC_CAP_SPIRAM);
   assert(state.difference_fb != NULL);
   state.dirty_lines = malloc(EPD_HEIGHT * sizeof(bool));
@@ -57,9 +57,10 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
   return epd_hl_update_area(state, mode, temperature, epd_full_screen());
 }
 
-EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
   // If partial update uses full screen do not rotate anything
   if (x != 0 && y != 0 && EPD_WIDTH != w && EPD_HEIGHT != h) {
+    // invert the current display rotation
     switch (epd_get_rotation())
     {
       // 0 landscape: Leave it as is
@@ -96,16 +97,16 @@ EpdRect _rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {
   assert(state != NULL);
   // Not right to rotate here since this copies part of buffer directly
-  
+
   bool previously_white = false;
   bool previously_black = false;
   // Check rotation FIX
-  EpdRect rotated_area = _rotated_area(area.x, area.y, area.width, area.height);
+  EpdRect rotated_area = _inverse_rotated_area(area.x, area.y, area.width, area.height);
   area.x = rotated_area.x;
   area.y = rotated_area.y;
   area.width = rotated_area.width;
   area.height = rotated_area.height;
-  
+
   //FIXME: use crop information here, if available
   EpdRect diff_area = epd_difference_image_cropped(
 	  state->front_fb,
@@ -131,12 +132,17 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   }
 
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
-	if (state->dirty_lines[l]) {
-	  memcpy(
-		state->back_fb + EPD_WIDTH / 2 * l,
-		state->front_fb + EPD_WIDTH / 2 * l,
-		EPD_WIDTH / 2
-	  );
+	if (state->dirty_lines[l] > 0) {
+      uint8_t* lfb = state->front_fb + EPD_WIDTH / 2 * l;
+      uint8_t* lbb = state->back_fb + EPD_WIDTH / 2 * l;
+
+      for (int x=diff_area.x; x < diff_area.x + diff_area.width; x++) {
+          if (x % 2) {
+            *(lbb + x / 2) = (*(lfb + x / 2) & 0xF0) | (*(lbb + x / 2) & 0x0F);
+          } else {
+            *(lbb + x / 2) = (*(lfb + x / 2) & 0x0F) | (*(lbb + x / 2) & 0xF0);
+          }
+      }
 	}
   }
   return err;

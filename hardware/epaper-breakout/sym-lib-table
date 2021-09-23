@@ -7,4 +7,5 @@
   (lib (name tp4056)(type Legacy)(uri ${KIPRJMOD}/tp4056/lib/tp4056.lib)(options "")(descr ""))
   (lib (name fs8205a)(type Legacy)(uri ${KIPRJMOD}/tp4056/lib/fs8205a.lib)(options "")(descr ""))
   (lib (name dw01)(type Legacy)(uri ${KIPRJMOD}/tp4056/lib/dw01.lib)(options "")(descr ""))
+  (lib (name TPS651851RSLR)(type Legacy)(uri ${KIPRJMOD}/TPS651851RSLR.lib)(options "")(descr ""))
 )

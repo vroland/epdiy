@@ -14,3 +14,7 @@ Complete API
 Internals
 ----------
 .. doxygenfile:: epd_internals.h
+
+Board-Specific Extensions
+-------------------------
+.. doxygenfile:: epd_board_specific.h

@@ -74,7 +74,7 @@ extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start"
 #define DEBUG_VERBOSE true
 
 // JPEG decoder
-JDEC jd; 
+JDEC jd;
 JRESULT rc;
 // Buffers
 uint8_t *fb;            // EPD 2bpp buffer
@@ -211,9 +211,9 @@ void deepsleep(){
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
-static uint32_t feed_buffer(JDEC *jd,      
-               uint8_t *buff, // Pointer to the read buffer (NULL:skip) 
-               uint32_t nd 
+static uint32_t feed_buffer(JDEC *jd,
+               uint8_t *buff, // Pointer to the read buffer (NULL:skip)
+               uint32_t nd
 ) {
     uint32_t count = 0;
 
@@ -240,7 +240,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
   uint32_t h = rect->bottom - rect->top + 1;
   uint32_t image_width = jd->width;
   uint8_t *bitmap_ptr = (uint8_t*)bitmap;
-  
+
   for (uint32_t i = 0; i < w * h; i++) {
 
     uint8_t r = *(bitmap_ptr++);
@@ -259,7 +259,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
     if (yy < 0 || yy >= jd->height) {
       continue;
     }
-    
+
     /* Optimization note: If we manage to apply here the epd_draw_pixel directly
        then it will be no need to keep a huge raw buffer (But will loose dither) */
     decoded_image[yy * image_width + xx] = gamme_curve[val];
@@ -273,7 +273,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
 //====================================================================================
 int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
   rc = jd_prepare(&jd, feed_buffer, tjpgd_work, sizeof(tjpgd_work), &source_buf);
-  if (rc != JDR_OK) {    
+  if (rc != JDR_OK) {
     ESP_LOGE(TAG, "JPG jd_prepare error: %s", jd_errors[rc]);
     return ESP_FAIL;
   }
@@ -321,7 +321,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         ++countDataEventCalls;
         #if DEBUG_VERBOSE
           if (countDataEventCalls%10==0) {
-            ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len); 
+            ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len);
           }
         #endif
         dataLenTotal += evt->data_len;
@@ -359,7 +359,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 // Handles http request
 static void http_post(void)
-{    
+{
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
@@ -382,7 +382,7 @@ static void http_post(void)
         printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
       }
     #endif
-    
+
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
     {
@@ -548,7 +548,7 @@ void app_main() {
 
   // WiFi log level set only to Error otherwise outputs too much
   esp_log_level_set("wifi", ESP_LOG_ERROR);
-  
+
   // Initialization: WiFi + clean screen while downloading image
   wifi_init_sta();
   #if VALIDATE_SSL_CERTIFICATE == true

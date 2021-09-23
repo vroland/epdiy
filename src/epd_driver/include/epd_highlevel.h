@@ -46,11 +46,15 @@
  * 	closer look at the `epd_driver.h` header.
  */
 
-#include "epd_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
+
 #endif
+
+#include "epd_driver.h"
+#include <stdint.h>
+
 /// Holds the internal state of the high-level API.
 typedef struct {
   /// The "front" framebuffer object.

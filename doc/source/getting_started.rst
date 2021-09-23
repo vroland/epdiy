@@ -48,7 +48,10 @@ Fortunately, the VCOM voltage is usually printed on the display, similar to this
 
 The VCOM value is usually between -1V and -3V. 
 
-To tune the controller output voltage, use the trimmer marked :code:`RV1`.
+For the v6 board, you can enter the desired VCOM value in :code:`make menuconfig`.
+No interaction is required.
+
+For the older models, use the trimmer marked :code:`RV1`.
 You can measure the VCOM on the VCOM test pad (if your board has one) or directly
 at the amplifier:
 
