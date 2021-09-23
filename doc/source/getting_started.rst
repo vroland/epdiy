@@ -93,7 +93,7 @@ The ESP module is now in boot mode.
 Upload the demo program to the board with
 ::
 
-    idf.py build && idf.py flash -b 921600 && idf.py monitor
+    idf.py flash -b 921600 && idf.py monitor
 
 Pressing :code:`RESET` a second time should start the demo program, which will
 output some information on the serial monitor.
