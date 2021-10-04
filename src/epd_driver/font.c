@@ -43,7 +43,7 @@ static inline int max(int x, int y) { return x > y ? x : y; }
 
 static int utf8_len(const uint8_t ch) {
   int len = 0;
-  for (utf_t **u = utf; *u; ++u) {
+  for (utf_t **u = utf; (*u)->mask; ++u) {
     if ((ch & ~(*u)->mask) == (*u)->lead) {
       break;
     }
