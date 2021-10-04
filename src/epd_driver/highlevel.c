@@ -59,7 +59,7 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
 
 EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
   // If partial update uses full screen do not rotate anything
-  if (x != 0 && y != 0 && EPD_WIDTH != w && EPD_HEIGHT != h) {
+  if (!(x == 0 && y == 0 && EPD_WIDTH == w && EPD_HEIGHT == h)) {
     // invert the current display rotation
     switch (epd_get_rotation())
     {
