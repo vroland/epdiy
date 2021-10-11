@@ -25,6 +25,8 @@ if errorlevel 9009 (
 	exit /b 1
 )
 
+doxygen.exe
+
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 
