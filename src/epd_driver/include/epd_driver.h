@@ -252,7 +252,7 @@ void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
  *
  * @param x: Horizontal position in pixels.
  * @param y: Vertical position in pixels.
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
@@ -263,7 +263,7 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
  * @param x: Horizontal start position in pixels.
  * @param y: Vertical start position in pixels.
  * @param length: Length of the line in pixels.
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  *  which must be `EPD_WIDTH / 2 * EPD_HEIGHT` bytes large.
  */
@@ -276,7 +276,7 @@ void epd_draw_hline(int x, int y, int length, uint8_t color,
  * @param x: Horizontal start position in pixels.
  * @param y: Vertical start position in pixels.
  * @param length: Length of the line in pixels.
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  *  which must be `EPD_WIDTH / 2 * EPD_HEIGHT` bytes large.
  */
@@ -292,7 +292,7 @@ void epd_fill_circle_helper(int x0, int y0, int r, int corners, int delta,
  * @param x: Center-point x coordinate
  * @param y: Center-point y coordinate
  * @param r: Radius of the circle in pixels
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
@@ -303,7 +303,7 @@ void epd_draw_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
  * @param x: Center-point x coordinate
  * @param y: Center-point y coordinate
  * @param r: Radius of the circle in pixels
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_fill_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
@@ -312,7 +312,7 @@ void epd_fill_circle(int x, int y, int r, uint8_t color, uint8_t *framebuffer);
  * Draw a rectanle with no fill color
  *
  * @param rect: The rectangle to draw.
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
@@ -321,7 +321,7 @@ void epd_draw_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
  * Draw a rectanle with fill color
  *
  * @param rect: The rectangle to fill.
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_fill_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
@@ -333,7 +333,7 @@ void epd_fill_rect(EpdRect rect, uint8_t color, uint8_t *framebuffer);
  * @param    y0  Start point y coordinate
  * @param    x1  End point x coordinate
  * @param    y1  End point y coordinate
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_line(int x0, int y0, int x1, int y1, uint8_t color,
@@ -348,7 +348,7 @@ void epd_draw_line(int x0, int y0, int x1, int y1, uint8_t color,
  * @param    y1  Vertex #1 y coordinate
  * @param    x2  Vertex #2 x coordinate
  * @param    y2  Vertex #2 y coordinate
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
@@ -363,7 +363,7 @@ void epd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2,
  * @param    y1  Vertex #1 y coordinate
  * @param    x2  Vertex #2 x coordinate
  * @param    y2  Vertex #2 y coordinate
- * @param color: The gray value of the line (0-255);
+ * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2,

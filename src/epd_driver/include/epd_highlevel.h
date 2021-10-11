@@ -44,6 +44,17 @@
  * 	That's it! For many application, this will be enough.
  * 	For special applications and requirements, have a
  * 	closer look at the `epd_driver.h` header.
+ *
+ *  Colors
+ *  ======
+ *
+ *  Since most displays only support 16 colors, we're only using the upper 4 bits (nibble) of a byte to detect the color.
+ *
+ * 		char pixel_color = color & 0xF0;
+ *
+ *  So keep in mind, when passing a color to any function, to always set the upper 4 bits, otherwise the color would be black.
+ *
+ *  Possible colors are `0xF0` (white) through `0x80` (median gray) til `0x00` (black).
  */
 
 
