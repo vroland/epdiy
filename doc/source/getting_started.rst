@@ -93,7 +93,7 @@ The ESP module is now in boot mode.
 Upload the demo program to the board with
 ::
 
-    idf.py build && idf.py flash -b 921600 && idf.py monitor
+    idf.py flash -b 921600 && idf.py monitor
 
 Pressing :code:`RESET` a second time should start the demo program, which will
 output some information on the serial monitor.
@@ -132,6 +132,13 @@ And navigate to :code:`Component config -> E-Paper driver -> Display Type`, sele
     CONFIG_EPD_DISPLAY_TYPE_...
 
 to make your code portable.
+
+Enable SPI RAM
+~~~~~~~~~~~~~~~~~~~~~~~~
+The ESP32-WROVER-B comes with an additional 8MB external PSRAM, where the :code:`epd_driver` is going to store ~2MB for its internal frame buffers. 
+Since it is dynamically allocated from the heap, and the built-in SRAM of ~160KB is insufficient, we need to enable external SPI RAM first.
+
+Open the :code:`menuconfig` again (see above) and navigate to :code:`Component config -> ESP32-Specific -> Support for external, SPI-connected RAM` and enable it.
 
 Use with Arduino
 ----------------
