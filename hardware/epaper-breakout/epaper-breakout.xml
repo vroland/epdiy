@@ -2,7 +2,7 @@
 <export version="D">
   <design>
     <source>/home/vroland/dev/misc/epdiy/hardware/epaper-breakout/epaper-breakout.sch</source>
-    <date>So 29 Aug 2021 14:46:33 CEST</date>
+    <date>So 28 Nov 2021 16:40:43 CET</date>
     <tool>Eeschema 5.1.10</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
@@ -96,7 +96,7 @@
       <tstamp>5F4C55F1</tstamp>
     </comp>
     <comp ref="C15">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -174,7 +174,7 @@
       <tstamp>5FC0FFE1</tstamp>
     </comp>
     <comp ref="C16">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -294,7 +294,7 @@
       <tstamp>62FE7BAB</tstamp>
     </comp>
     <comp ref="C22">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -390,7 +390,7 @@
       <tstamp>66586D13</tstamp>
     </comp>
     <comp ref="C23">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -499,7 +499,7 @@
       <tstamp>618DB7DA</tstamp>
     </comp>
     <comp ref="TH1">
-      <value>10k</value>
+      <value>10k/3380K</value>
       <footprint>Resistor_SMD:R_0603_1608Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -863,7 +863,7 @@
       <tstamp>608B2C32</tstamp>
     </comp>
     <comp ref="C39">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -874,7 +874,7 @@
       <tstamp>60C63BAA</tstamp>
     </comp>
     <comp ref="C21">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
@@ -999,7 +999,7 @@
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
-        <field name="LCSC">C19702</field>
+        <field name="LCSC">C1779</field>
       </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
@@ -1054,7 +1054,7 @@
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
-        <field name="LCSC">C19702</field>
+        <field name="LCSC">C1779</field>
       </fields>
       <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
       <sheetpath names="/" tstamps="/"/>
@@ -1112,7 +1112,7 @@
       <tstamp>619EFBB8</tstamp>
     </comp>
     <comp ref="C40">
-      <value>0.1uF</value>
+      <value>100nF</value>
       <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
       <datasheet>~</datasheet>
       <fields>
