@@ -1,5 +1,5 @@
-// Note: Run menuconfig to set the WiFi Credentials -> CALE Configuration
-// Requirements: Needs to have an EPD Class defined. Needs PSRAM.
+// Note: Run menuconfig to and set the right EPD display and board for your epaper.
+
 // This example does not use a decoded buffer hence leaves more external RAM free
 // and it uses a different JPEG decoder: https://github.com/bitbank2/JPEGDEC
 // This decoder is not included and should be placed in the components directory
@@ -65,6 +65,7 @@ uint8_t * dither_space;
 double gamma_value = 0.7;
 // Internal array for gamma grayscale
 uint8_t gamme_curve[256];
+
 // - - - - Display configuration - - - - - - - - -
 // EPD Waveform
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
@@ -269,9 +270,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         // Append received data into source_buf
         memcpy(&source_buf[img_buf_pos], evt->data, evt->data_len);
         img_buf_pos += evt->data_len;
-
-        // Optional hexa dump
-        //ESP_LOG_BUFFER_HEX(TAG, source_buf, 100);
         break;
 
     case HTTP_EVENT_ON_FINISH:
