@@ -35,7 +35,7 @@
 EpdiyHighlevelState hl;
 
 // WiFi configuration. Please fill with your WiFi credentials
-#define ESP_WIFI_SSID     "WLAN-724300"
+#define ESP_WIFI_SSID     ""
 #define ESP_WIFI_PASSWORD ""
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
@@ -69,7 +69,7 @@ extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start"
 // Minutes that goes to deepsleep after rendering
 // If you build a gallery URL that returns a new image on each request (like cale.es)
 // this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 30
+#define DEEPSLEEP_MINUTES_AFTER_RENDER 120
 
 #define DEBUG_VERBOSE true
 
@@ -196,7 +196,9 @@ void jpegRender(int xpos, int ypos, int width, int height) {
   uint32_t padding_x = (epd_rotated_display_width() - width) / 2;
   uint32_t padding_y = (epd_rotated_display_height() - height) / 2;
 
-  for (uint32_t by=0; by<height;by++) {
+  ESP_LOGI("Padding", "x:%d y:%d", padding_x, padding_y);
+
+  for (uint32_t by=0; by<height-1;by++) {
     for (uint32_t bx=0; bx<width;bx++) {
         epd_draw_pixel(bx + padding_x, by + padding_y, decoded_image[by * width + bx], fb);
     }
@@ -346,7 +348,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
           epd_hl_update_screen(&hl, MODE_GC16, 25);
 
           ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
-          epd_poweroff();
         }
         break;
 
@@ -395,10 +396,12 @@ static void http_post(void)
     {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
+    
 
+    vTaskDelay(20000 / portTICK_PERIOD_MS);
     printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
     esp_http_client_cleanup(client);
-    vTaskDelay(10);
+    //epd_poweroff();
     deepsleep();
 }
 
@@ -556,5 +559,19 @@ void app_main() {
   #endif
   epd_poweron();
   epd_fullclear(&hl, 25);
+
+
+  /* printf("EPD w: %d h: %d\n\n", EPD_WIDTH, EPD_HEIGHT);
+  for (uint32_t x = 0; x < EPD_WIDTH; x++) {
+      epd_draw_pixel(x, 0, 0, fb);
+
+      epd_draw_pixel(x, EPD_HEIGHT-10, 80, fb);
+      epd_draw_pixel(x, EPD_HEIGHT-3, 60, fb);
+      // This 2 lines are not written
+      epd_draw_pixel(x, EPD_HEIGHT-2, 0, fb);
+      epd_draw_pixel(x, EPD_HEIGHT-1, 0, fb);
+  }
+  epd_hl_update_screen(&hl, MODE_GC16, 25); */
+  
   http_post();
 }
