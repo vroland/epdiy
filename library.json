@@ -1,0 +1,7 @@
+{
+  "name": "epdiy",
+  "build": {
+    "includeDir": "src/epd_driver/include",
+    "srcDir": "src/epd_driver"
+  }
+}
