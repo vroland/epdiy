@@ -88,7 +88,7 @@ extern "C"
 // SSL example only implemented and tested in jpeg-render.c
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
+#define IMG_URL ("https://loremflickr.com/" STR(EPD_WIDTH) "/" STR(EPD_HEIGHT))
 // Additional test URL for Lilygo EPD47:
 //#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
@@ -175,10 +175,11 @@ int JPEGDraw4Bits(JPEGDRAW *pDraw)
   uint32_t render_start = esp_timer_get_time();
 
   #if JPEG_CPY_FRAMEBUFFER
-  // Highly experimental: Does not support rotation and gamma correction (Can be washed out compared to JPEG_CPY_FRAMEBUFFER false)
+  // Highly experimental: Does not support rotation and gamma correction
+  // Can be washed out compared to JPEG_CPY_FRAMEBUFFER false
   for (uint16_t yy = 0; yy < pDraw->iHeight; yy++) {
     // Copy directly horizontal MCU pixels in EPD fb
-    memcpy(&fb[y * EPD_WIDTH / 2 + x / 2], src, n);
+    memcpy(&fb[(pDraw->y+yy) * EPD_WIDTH / 2 + pDraw->x / 2], &pDraw->pPixels[(yy * pDraw->iWidth)>>2], pDraw->iWidth);
   }
 
   #else 
