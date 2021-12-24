@@ -4,3 +4,6 @@
 [submodule "hardware/epaper-breakout/tp4056"]
 	path = hardware/epaper-breakout/tp4056
 	url = https://github.com/alltheworld/tp4056/
+[submodule "examples/www-image/components/jpegdec"]
+	path = examples/www-image/components/jpegdec
+	url = https://github.com/bitbank2/JPEGDEC.git
