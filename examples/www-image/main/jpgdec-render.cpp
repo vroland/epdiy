@@ -50,12 +50,11 @@ EpdiyHighlevelState hl;
 // JPG decoder from @bitbank2
 #include "JPEGDEC.h"
 
-
 JPEGDEC jpeg;
 // EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
 // On true it looses rotation. Experimental, does not work alright yet. Hint:
 // Check if an uint16_t buffer can be copied in a uint8_t buffer directly
-#define JPEG_CPY_FRAMEBUFFER false
+#define JPEG_CPY_FRAMEBUFFER true
 
 // Dither space allocation
 uint8_t * dither_space;
@@ -79,22 +78,15 @@ extern "C"
 }
 
 // Image URL and jpg settings. Make sure to update EPD_WIDTH/HEIGHT if using loremflickr
-// Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-//#define IMG_URL ("https://loremflickr.com/" STR(EPD_WIDTH) "/" STR(EPD_HEIGHT))
-
-// Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
-// SSL example only implemented and tested in jpeg-render.c
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 #define IMG_URL ("https://loremflickr.com/" STR(EPD_WIDTH) "/" STR(EPD_HEIGHT))
 // Additional test URL for Lilygo EPD47:
-//#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
+//#define IMG_URL "http://img.cale.es/jpg/fasani/603fcbb59bff8"
 
 // Please check the README to understand how to use an SSL Certificate
 // Note: This makes a sntp time sync query for cert validation  (It's slower)
-#define VALIDATE_SSL_CERTIFICATE false
+#define VALIDATE_SSL_CERTIFICATE true
 
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1938
@@ -282,7 +274,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
           decodeJpeg(source_buf, 0, 0);
           
           ESP_LOGI("www-dw", "%d ms - download", time_download);
-          ESP_LOGI("render", "%d ms - render", time_render);
+          ESP_LOGI("render", "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render, JPEG_CPY_FRAMEBUFFER);
           // Refresh display
          epd_hl_update_screen(&hl, MODE_GC16, 25);
 
@@ -308,12 +300,12 @@ static void http_post(void)
      */
     esp_http_client_config_t config = {
         .url = IMG_URL,
+        #if VALIDATE_SSL_CERTIFICATE == true
+        .cert_pem = (char *)server_cert_pem_start,
+        #endif
         .disable_auto_redirect = false,
         .event_handler = _http_event_handler,
-        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
-        #if VALIDATE_SSL_CERTIFICATE == true
-        .cert_pem = (char *)server_cert_pem_start
-        #endif
+        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE
         };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
