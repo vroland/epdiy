@@ -1,3 +1,19 @@
+// Note: Run menuconfig to and set the right EPD display and board for your epaper.
+
+// This example does not use a decoded buffer hence leaves more external RAM free
+// and it uses a different JPEG decoder: https://github.com/bitbank2/JPEGDEC
+// This decoder is not included and should be placed in the components directory
+// Check this for a reference on how to do it : https://github.com/martinberlin/cale-idf/tree/master/main/www-jpg-render
+// Adding this CMakeLists.txt file is required:
+/*
+set(srcs 
+    "JPEGDEC.cpp"
+    "jpeg.c"
+)
+idf_component_register(SRCS ${srcs}      
+                    REQUIRES "jpegdec"
+                    INCLUDE_DIRS "include")
+*/
 // Open settings to set WiFi and other configurations for both examples:
 #include "settings.h"
 #include "esp_heap_caps.h"
@@ -7,6 +23,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "esp_task_wdt.h"
 #include "esp_sleep.h"
 // WiFi related
 #include "esp_wifi.h"
@@ -19,63 +36,57 @@
 #include "esp_netif.h"
 #include "esp_http_client.h"
 #include "esp_sntp.h"
-
-// JPG decoder is on ESP32 rom for this version
-#if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
-  #include "esp32/rom/tjpgd.h"
-#else // ESP32 Before IDF 4.0
-  #include "rom/tjpgd.h"
-#endif
-
-#include "esp_task_wdt.h"
+// C
 #include <stdio.h>
 #include <string.h>
 #include <math.h> // round + pow
-
-#include "epd_driver.h"
-#include "epd_highlevel.h"
+extern "C" {
+  #include "epd_driver.h"
+  #include "epd_highlevel.h"
+}
 EpdiyHighlevelState hl;
+// JPG decoder from @bitbank2
+#include "JPEGDEC.h"
+
+JPEGDEC jpeg;
+// EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
+// On true it looses rotation. Experimental, does not work alright yet. Hint:
+// Check if an uint16_t buffer can be copied in a uint8_t buffer directly
+#define JPEG_CPY_FRAMEBUFFER true
+
+// Dither space allocation
+uint8_t * dither_space;
+
+// Internal array for gamma grayscale
+uint8_t gamme_curve[256];
+
+extern "C"
+{
+    void app_main();
+}
 
 // Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
 // Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#embedding-binary-data
 extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
 
-// JPEG decoder
-JDEC jd;
-JRESULT rc;
 
 // Buffers
 uint8_t *fb;            // EPD 2bpp buffer
 uint8_t *source_buf;    // JPG download buffer
-uint8_t *decoded_image; // RAW decoded image
-static uint8_t tjpgd_work[3096]; // tjpgd 3096 is the minimum size
 
 uint32_t buffer_pos = 0;
 uint32_t time_download = 0;
 uint32_t time_decomp = 0;
 uint32_t time_render = 0;
-static const char * jd_errors[] = {
-    "Succeeded",
-    "Interrupted by output function",
-    "Device error or wrong termination of input stream",
-    "Insufficient memory pool for the image",
-    "Insufficient stream input buffer",
-    "Parameter error",
-    "Data format error",
-    "Right format but not supported",
-    "Not supported JPEG standard"
-};
+uint16_t ep_width = 0;
+uint16_t ep_height = 0;
 
-const uint16_t ep_width = EPD_WIDTH;
-const uint16_t ep_height = EPD_HEIGHT;
-uint8_t gamme_curve[256];
-
-static const char *TAG = "EPDiy";
+static const char *TAG = "Jpgdec";
 uint16_t countDataEventCalls = 0;
 uint32_t countDataBytes = 0;
 uint32_t img_buf_pos = 0;
-uint32_t dataLenTotal = 0;
 uint64_t startTime = 0;
+
 
 #if VALIDATE_SSL_CERTIFICATE == true
   /* Time aware for ESP32: Important to check SSL certs validity */
@@ -116,155 +127,80 @@ uint64_t startTime = 0;
 //====================================================================================
 // This sketch contains support functions to render the Jpeg images
 //
-// Created by Bodmer 15th Jan 2017
+// Created by Bitbank
 // Refactored by @martinberlin for EPDiy as a Jpeg download and render example
 //====================================================================================
 
-// Return the minimum of two values a and b
-#define minimum(a,b)     (((a) < (b)) ? (a) : (b))
-
-uint8_t find_closest_palette_color(uint8_t oldpixel)
+/*
+ * Used with jpeg.setPixelType(FOUR_BIT_DITHERED)
+ */
+uint16_t mcu_count = 0;
+int JPEGDraw4Bits(JPEGDRAW *pDraw)
 {
-  return oldpixel & 0xF0;
-}
+  uint32_t render_start = esp_timer_get_time();
 
-//====================================================================================
-//   Decode and paint onto the Epaper screen
-//====================================================================================
-void jpegRender(int xpos, int ypos, int width, int height) {
- #if JPG_DITHERING
- unsigned long pixel=0;
- for (uint16_t by=0; by<ep_height;by++)
-  {
-    for (uint16_t bx=0; bx<ep_width;bx++)
-    {
-        int oldpixel = decoded_image[pixel];
-        int newpixel = find_closest_palette_color(oldpixel);
-        int quant_error = oldpixel - newpixel;
-        decoded_image[pixel]=newpixel;
-        if (bx<(ep_width-1))
-          decoded_image[pixel+1] = minimum(255,decoded_image[pixel+1] + quant_error * 7 / 16);
-
-        if (by<(ep_height-1))
-        {
-          if (bx>0)
-            decoded_image[pixel+ep_width-1] =  minimum(255,decoded_image[pixel+ep_width-1] + quant_error * 3 / 16);
-
-          decoded_image[pixel+ep_width] =  minimum(255,decoded_image[pixel+ep_width] + quant_error * 5 / 16);
-          if (bx<(ep_width-1))
-            decoded_image[pixel+ep_width+1] = minimum(255,decoded_image[pixel+ep_width+1] + quant_error * 1 / 16);
-        }
-        pixel++;
-    }
+  #if JPEG_CPY_FRAMEBUFFER
+  // Highly experimental: Does not support rotation and gamma correction
+  // Can be washed out compared to JPEG_CPY_FRAMEBUFFER false
+  for (uint16_t yy = 0; yy < pDraw->iHeight; yy++) {
+    // Copy directly horizontal MCU pixels in EPD fb
+    memcpy(&fb[(pDraw->y+yy) * EPD_WIDTH / 2 + pDraw->x / 2], &pDraw->pPixels[(yy * pDraw->iWidth)>>2], pDraw->iWidth);
   }
+
+  #else 
+    // Rotation aware
+    for (int16_t xx = 0; xx < pDraw->iWidth; xx+=4) {
+      for (int16_t yy = 0; yy < pDraw->iHeight; yy++) {
+        uint16_t col = pDraw->pPixels[ (xx + (yy * pDraw->iWidth)) >>2 ];
+      
+        uint8_t col1 = col & 0xf;
+        uint8_t col2 = (col >> 4) & 0xf;
+        uint8_t col3 = (col >> 8) & 0xf;
+        uint8_t col4 = (col >> 12) & 0xf;
+        epd_draw_pixel(pDraw->x + xx, pDraw->y + yy, gamme_curve[col1 *16], fb);
+        epd_draw_pixel(pDraw->x + xx + 1, pDraw->y + yy, gamme_curve[col2 *16], fb);
+        epd_draw_pixel(pDraw->x + xx + 2, pDraw->y + yy, gamme_curve[col3 *16], fb);
+        epd_draw_pixel(pDraw->x + xx + 3, pDraw->y + yy, gamme_curve[col4 *16], fb);
+
+        /* if (yy==0 && mcu_count==0) {
+          printf("1.%d %d %d %d ",col1,col2,col3,col4);
+        } */
+      }
+    }
   #endif
 
-  // Write to display
-  uint64_t drawTime = esp_timer_get_time();
-  uint32_t padding_x = (epd_rotated_display_width() - width) / 2;
-  uint32_t padding_y = (epd_rotated_display_height() - height) / 2;
-
-  ESP_LOGI("Padding", "x:%d y:%d", padding_x, padding_y);
-
-  for (uint32_t by=0; by<height-1;by++) {
-    for (uint32_t bx=0; bx<width;bx++) {
-        epd_draw_pixel(bx + padding_x, by + padding_y, decoded_image[by * width + bx], fb);
-    }
-  }
-  // calculate how long it took to draw the image
-  time_render = (esp_timer_get_time() - drawTime)/1000;
-  ESP_LOGI("render", "%d ms - jpeg draw", time_render);
+  mcu_count++;
+  time_render += (esp_timer_get_time() - render_start) / 1000;
+  return 1;
 }
 
 void deepsleep(){
-    epd_deinit();
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
-}
-
-static uint32_t feed_buffer(JDEC *jd,
-               uint8_t *buff, // Pointer to the read buffer (NULL:skip)
-               uint32_t nd
-) {
-    uint32_t count = 0;
-
-    while (count < nd) {
-      if (buff != NULL) {
-            *buff++ = source_buf[buffer_pos];
-        }
-        count ++;
-        buffer_pos++;
-    }
-
-  return count;
-}
-
-/* User defined call-back function to output decoded RGB bitmap in decoded_image buffer */
-static uint32_t
-tjd_output(JDEC *jd,     /* Decompressor object of current session */
-           void *bitmap, /* Bitmap data to be output */
-           JRECT *rect   /* Rectangular region to output */
-) {
-  esp_task_wdt_reset();
-
-  uint32_t w = rect->right - rect->left + 1;
-  uint32_t h = rect->bottom - rect->top + 1;
-  uint32_t image_width = jd->width;
-  uint8_t *bitmap_ptr = (uint8_t*)bitmap;
-
-  for (uint32_t i = 0; i < w * h; i++) {
-
-    uint8_t r = *(bitmap_ptr++);
-    uint8_t g = *(bitmap_ptr++);
-    uint8_t b = *(bitmap_ptr++);
-
-    // Calculate weighted grayscale
-    //uint32_t val = ((r * 30 + g * 59 + b * 11) / 100); // original formula
-    uint32_t val = (r*38 + g*75 + b*15) >> 7; // @vroland recommended formula
-
-    int xx = rect->left + i % w;
-    if (xx < 0 || xx >= image_width) {
-      continue;
-    }
-    int yy = rect->top + i / w;
-    if (yy < 0 || yy >= jd->height) {
-      continue;
-    }
-
-    /* Optimization note: If we manage to apply here the epd_draw_pixel directly
-       then it will be no need to keep a huge raw buffer (But will loose dither) */
-    decoded_image[yy * image_width + xx] = gamme_curve[val];
-  }
-
-  return 1;
 }
 
 //====================================================================================
 //   This function opens source_buf Jpeg image file and primes the decoder
 //====================================================================================
-int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
-  rc = jd_prepare(&jd, feed_buffer, tjpgd_work, sizeof(tjpgd_work), &source_buf);
-  if (rc != JDR_OK) {
-    ESP_LOGE(TAG, "JPG jd_prepare error: %s", jd_errors[rc]);
-    return ESP_FAIL;
-  }
-
+int decodeJpeg(uint8_t *source_buf, int xpos, int ypos) {
   uint32_t decode_start = esp_timer_get_time();
 
-  // Last parameter scales        v 1 will reduce the image
-  rc = jd_decomp(&jd, tjd_output, 0);
-  if (rc != JDR_OK) {
-    ESP_LOGE(TAG, "JPG jd_decomp error: %s", jd_errors[rc]);
-    return ESP_FAIL;
+  if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDraw4Bits)) {
+
+    jpeg.setPixelType(FOUR_BIT_DITHERED);
+    
+    if (jpeg.decodeDither(dither_space, 0))
+      {
+        time_decomp = (esp_timer_get_time() - decode_start)/1000 - time_render;
+        ESP_LOGI("decode", "%d ms - %dx%d image MCUs:%d", time_decomp, jpeg.getWidth(), jpeg.getHeight(), mcu_count);
+      } else {
+        ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
+      }
+
+  } else {
+    ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
   }
-
-  time_decomp = (esp_timer_get_time() - decode_start)/1000;
-
-  ESP_LOGI("JPG", "width: %d height: %d\n", jd.width, jd.height);
-  ESP_LOGI("decode", "%d ms . image decompression", time_decomp);
-
-  // Render the image onto the screen at given coordinates
-  jpegRender(xpos, ypos, jd.width, jd.height);
-
+  jpeg.close();
+  
   return 1;
 }
 
@@ -294,28 +230,30 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len);
           }
         #endif
-        dataLenTotal += evt->data_len;
+        
 
         if (countDataEventCalls == 1) startTime = esp_timer_get_time();
         // Append received data into source_buf
         memcpy(&source_buf[img_buf_pos], evt->data, evt->data_len);
         img_buf_pos += evt->data_len;
-
-        // Optional hexa dump
-        //ESP_LOG_BUFFER_HEX(TAG, output_buffer, evt->data_len);
         break;
 
     case HTTP_EVENT_ON_FINISH:
         // Do not draw if it's a redirect (302)
         if (esp_http_client_get_status_code(evt->client) == 200) {
-          printf("%d bytes read from %s\n\n", img_buf_pos, IMG_URL);
-          drawBufJpeg(source_buf, 0, 0);
+          printf("%d bytes read from %s\n", img_buf_pos, IMG_URL);
           time_download = (esp_timer_get_time()-startTime)/1000;
+
+          decodeJpeg(source_buf, 0, 0);
+          
           ESP_LOGI("www-dw", "%d ms - download", time_download);
+          ESP_LOGI("render", "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render, JPEG_CPY_FRAMEBUFFER);
           // Refresh display
-          epd_hl_update_screen(&hl, MODE_GC16, 25);
+         epd_hl_update_screen(&hl, MODE_GC16, 25);
 
           ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
+        } else {
+          printf("HTTP on finish got status code: %d\n", esp_http_client_get_status_code(evt->client));
         }
         break;
 
@@ -328,21 +266,21 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 // Handles http request
 static void http_post(void)
-{
+{    
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
-     * FIX: Uncommenting cert_pem restarts even if providing the right certificate
      */
     esp_http_client_config_t config = {
         .url = IMG_URL,
-        .event_handler = _http_event_handler,
-        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
-        .disable_auto_redirect = false,
         #if VALIDATE_SSL_CERTIFICATE == true
-        .cert_pem = (char *)server_cert_pem_start
+        .cert_pem = (char *)server_cert_pem_start,
         #endif
+        .disable_auto_redirect = false,
+        .event_handler = _http_event_handler,
+        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE
         };
+
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
     #if DEBUG_VERBOSE
@@ -351,7 +289,7 @@ static void http_post(void)
         printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
       }
     #endif
-
+    
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
     {
@@ -364,10 +302,9 @@ static void http_post(void)
     {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
-    
-    
-    esp_http_client_cleanup(client);
 
+    esp_http_client_cleanup(client);
+    
     #if MILLIS_DELAY_BEFORE_SLEEP>0
       vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_RATE_MS);
     #endif
@@ -440,21 +377,13 @@ void wifi_init_sta(void)
                                                         &event_handler,
                                                         NULL,
                                                         &instance_got_ip));
-
-    wifi_config_t wifi_config = {
-    .sta = {
-        .ssid = ESP_WIFI_SSID,
-        .password = ESP_WIFI_PASSWORD,
-        /* Setting a password implies station will connect to all security modes including WEP/WPA.
-            * However these modes are deprecated and not advisable to be used. Incase your Access point
-            * doesn't support WPA2, these mode can be enabled by commenting below line */
-        .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-        .pmf_cfg = {
-            .capable = true,
-            .required = false
-        },
-    },
-    };
+    // C++ wifi config
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    sprintf(reinterpret_cast<char *>(wifi_config.sta.ssid), ESP_WIFI_SSID);
+    sprintf(reinterpret_cast<char *>(wifi_config.sta.password), ESP_WIFI_PASSWORD);
+    wifi_config.sta.pmf_cfg.capable = true;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_STA, &wifi_config));
@@ -490,17 +419,17 @@ void wifi_init_sta(void)
 }
 
 void app_main() {
-  epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
+  epd_init(EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
-  epd_set_rotation(DISPLAY_ROTATION);
-  decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
-  if (decoded_image == NULL) {
-      ESP_LOGE("main", "Initial alloc back_buf failed!");
-  }
-  memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT);
 
-  // Should be big enough to allocate the JPEG file size
+  printf("JPGDEC version @bitbank2\n");
+  dither_space = (uint8_t *)heap_caps_malloc(EPD_WIDTH *16, MALLOC_CAP_SPIRAM);
+  if (dither_space == NULL) {
+      ESP_LOGE("main", "Initial alloc ditherSpace failed!");
+  }
+
+  // Should be big enough to allocate the JPEG file size, width * height should suffice
   source_buf = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   if (source_buf == NULL) {
       ESP_LOGE("main", "Initial alloc source_buf failed!");
@@ -510,6 +439,10 @@ void app_main() {
   double gammaCorrection = 1.0 / gamma_value;
   for (int gray_value =0; gray_value<256;gray_value++)
     gamme_curve[gray_value]= round (255*pow(gray_value/255.0, gammaCorrection));
+  
+  #if JPEG_CPY_FRAMEBUFFER == false
+    epd_set_rotation(DISPLAY_ROTATION);
+  #endif
 
   // Initialize NVS
   esp_err_t ret = nvs_flash_init();
@@ -522,27 +455,15 @@ void app_main() {
 
   // WiFi log level set only to Error otherwise outputs too much
   esp_log_level_set("wifi", ESP_LOG_ERROR);
+  epd_poweron();
+  epd_fullclear(&hl, 25);
 
   // Initialization: WiFi + clean screen while downloading image
+  printf("Free heap before wifi_init_sta: %d\n", xPortGetFreeHeapSize());
   wifi_init_sta();
   #if VALIDATE_SSL_CERTIFICATE == true
     obtain_time();
   #endif
-  epd_poweron();
-  epd_fullclear(&hl, 25);
-
-
-  /* printf("EPD w: %d h: %d\n\n", EPD_WIDTH, EPD_HEIGHT);
-  for (uint32_t x = 0; x < EPD_WIDTH; x++) {
-      epd_draw_pixel(x, 0, 0, fb);
-
-      epd_draw_pixel(x, EPD_HEIGHT-10, 80, fb);
-      epd_draw_pixel(x, EPD_HEIGHT-3, 60, fb);
-      // This 2 lines are not written
-      epd_draw_pixel(x, EPD_HEIGHT-2, 0, fb);
-      epd_draw_pixel(x, EPD_HEIGHT-1, 0, fb);
-  }
-  epd_hl_update_screen(&hl, MODE_GC16, 25); */
   
   http_post();
 }
