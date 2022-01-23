@@ -1,3 +1,5 @@
+// Open settings to set WiFi and other configurations for both examples:
+#include "settings.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -18,7 +20,7 @@
 #include "esp_http_client.h"
 #include "esp_sntp.h"
 
-// JPG decoder
+// JPG decoder is on ESP32 rom for this version
 #if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
   #include "esp32/rom/tjpgd.h"
 #else // ESP32 Before IDF 4.0
@@ -34,48 +36,14 @@
 #include "epd_highlevel.h"
 EpdiyHighlevelState hl;
 
-// WiFi configuration. Please fill with your WiFi credentials
-#define ESP_WIFI_SSID     ""
-#define ESP_WIFI_PASSWORD ""
-
-// Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
-// Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-
-#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
-
-// Please check the README to understand how to use an SSL Certificate
-// Note: This makes a sntp time sync query for cert validation  (It's slower)
-#define VALIDATE_SSL_CERTIFICATE false
-// Alternative non-https URL:
-//#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
-
-// Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
-#define JPG_DITHERING true
-// Affects the gamma to calculate gray (lower is darker/higher contrast)
-// Nice test values: 0.9 1.2 1.4 higher and is too bright
-double gamma_value = 0.9;
-
-// As default is 512 without setting buffer_size property in esp_http_client_config_t
-#define HTTP_RECEIVE_BUFFER_SIZE 1986
-
 // Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
 // Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#embedding-binary-data
 extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
 
-// EPD Waveform
-#define WAVEFORM EPD_BUILTIN_WAVEFORM
-// Minutes that goes to deepsleep after rendering
-// If you build a gallery URL that returns a new image on each request (like cale.es)
-// this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 120
-
-#define DEBUG_VERBOSE true
-
 // JPEG decoder
 JDEC jd;
 JRESULT rc;
+
 // Buffers
 uint8_t *fb;            // EPD 2bpp buffer
 uint8_t *source_buf;    // JPG download buffer
@@ -397,11 +365,14 @@ static void http_post(void)
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
     
-
-    vTaskDelay(20000 / portTICK_PERIOD_MS);
-    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
+    
     esp_http_client_cleanup(client);
-    //epd_poweroff();
+
+    #if MILLIS_DELAY_BEFORE_SLEEP>0
+      vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_RATE_MS);
+    #endif
+    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
+    epd_poweroff();
     deepsleep();
 }
 
@@ -522,7 +493,7 @@ void app_main() {
   epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
-
+  epd_set_rotation(DISPLAY_ROTATION);
   decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   if (decoded_image == NULL) {
       ESP_LOGE("main", "Initial alloc back_buf failed!");

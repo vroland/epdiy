@@ -14,10 +14,8 @@ idf_component_register(SRCS ${srcs}
                     REQUIRES "jpegdec"
                     INCLUDE_DIRS "include")
 */
-// WiFi configuration. Please fill with your WiFi credentials
-#define ESP_WIFI_SSID     ""
-#define ESP_WIFI_PASSWORD ""
-
+// Open settings to set WiFi and other configurations for both examples:
+#include "settings.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -59,43 +57,18 @@ JPEGDEC jpeg;
 // Dither space allocation
 uint8_t * dither_space;
 
-// Affects the gamma to calculate gray (lower is darker/higher contrast)
-// Nice test values: 0.9 1.2 1.4 higher and is too bright
-double gamma_value = 0.7;
 // Internal array for gamma grayscale
 uint8_t gamme_curve[256];
-
-// - - - - Display configuration - - - - - - - - -
-// EPD Waveform
-#define WAVEFORM EPD_BUILTIN_WAVEFORM
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 60
-#define DISPLAY_ROTATION EPD_ROT_LANDSCAPE
-// - - - - end of Display configuration  - - - - -
 
 extern "C"
 {
     void app_main();
 }
 
-// Image URL and jpg settings. Make sure to update EPD_WIDTH/HEIGHT if using loremflickr
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-#define IMG_URL ("https://loremflickr.com/" STR(EPD_WIDTH) "/" STR(EPD_HEIGHT))
-// Additional test URL for Lilygo EPD47:
-//#define IMG_URL "http://img.cale.es/jpg/fasani/603fcbb59bff8"
-
-// Please check the README to understand how to use an SSL Certificate
-// Note: This makes a sntp time sync query for cert validation  (It's slower)
-#define VALIDATE_SSL_CERTIFICATE true
-
-// As default is 512 without setting buffer_size property in esp_http_client_config_t
-#define HTTP_RECEIVE_BUFFER_SIZE 1938
-
 // Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
 // Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#embedding-binary-data
 extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
 
-#define DEBUG_VERBOSE true
 
 // Buffers
 uint8_t *fb;            // EPD 2bpp buffer
@@ -330,9 +303,13 @@ static void http_post(void)
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
 
-    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
     esp_http_client_cleanup(client);
-    vTaskDelay(10);
+    
+    #if MILLIS_DELAY_BEFORE_SLEEP>0
+      vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_RATE_MS);
+    #endif
+    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
+    epd_poweroff();
     deepsleep();
 }
 

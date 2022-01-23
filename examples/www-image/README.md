@@ -66,7 +66,10 @@ The CA root cert is the last cert given in the chain of certs.
 To embed it in the app binary, the PEM file is named in the component.mk COMPONENT_EMBED_TXTFILES variable. This is already done for this random picture as an example.
 
 **Important note about secure https**
-Https is proved to work on stable ESP-IDF v4.2 branch. Using latest master I've always had resets and panic restarts, only working randomly. Maybe it's an issue will be fixed.
+Https is proved to work on stable ESP-IDF v4.2 branch. Please Note that for IDF versions >= 4.3 it needs to have VALIDATE_SSL_CERTIFICATE set to true. 
+In case you want to allow insecure requests please follow this:
+
+ In menu choose Component config->ESP LTS-> (enable these options) "Allow potentially insecure options" and then "Skip server verification by default"
 
 Also needs the main Stack to be bigger otherwise the embedTLS validation fails:
 Just 1Kb makes it work: 

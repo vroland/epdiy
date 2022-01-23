@@ -1,7 +1,7 @@
-set(
-        #app_sources "jpg-render.c"
-        app_sources "jpgdec-render.cpp"
-        )
+set(        
+    app_sources "jpg-render.c"
+    #app_sources "jpgdec-render.cpp"
+    )
 
 idf_component_register(SRCS ${app_sources} 
         REQUIRES epd_driver 
