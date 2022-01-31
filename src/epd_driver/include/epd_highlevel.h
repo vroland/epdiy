@@ -62,7 +62,7 @@
 extern "C" {
 
 #endif
-
+#pragma once
 #include "epd_driver.h"
 #include <stdint.h>
 
