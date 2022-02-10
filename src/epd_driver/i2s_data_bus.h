@@ -12,32 +12,42 @@
 /**
  * I2S bus configuration parameters.
  */
-typedef struct {
-  /// GPIO numbers of the parallel bus pins.
-  gpio_num_t data_0;
-  gpio_num_t data_1;
-  gpio_num_t data_2;
-  gpio_num_t data_3;
-  gpio_num_t data_4;
-  gpio_num_t data_5;
-  gpio_num_t data_6;
-  gpio_num_t data_7;
+// typedef struct {
+//   /// GPIO numbers of the parallel bus pins.
+//   gpio_num_t data_0;
+//   gpio_num_t data_1;
+//   gpio_num_t data_2;
+//   gpio_num_t data_3;
+//   gpio_num_t data_4;
+//   gpio_num_t data_5;
+//   gpio_num_t data_6;
+//   gpio_num_t data_7;
 
-  /// Data clock pin.
-  gpio_num_t clock;
+//   /// Data clock pin.
+//   gpio_num_t clock;
 
-  /// "Start Pulse", enabling data input on the slave device (active low)
-  gpio_num_t start_pulse;
+//   /// "Start Pulse", enabling data input on the slave device (active low)
+//   gpio_num_t start_pulse;
 
-  // Width of a display row in pixels.
-  uint32_t epd_row_width;
-} i2s_bus_config;
+//   // Width of a display row in pixels.
+//   uint32_t epd_row_width;
+// } i2s_bus_config;
 
 /**
  * Initialize the I2S data bus for communication
  * with a 8bit parallel display interface.
  */
-void i2s_bus_init(i2s_bus_config *cfg);
+void i2s_bus_init(uint32_t epd_row_width);
+
+/**
+ * Attach I2S to gpio's
+ */
+void i2s_gpio_attach();
+
+/**
+ * Detach I2S from gpio's
+ */
+void i2s_gpio_detach();
 
 /**
  * Get the currently writable line buffer.

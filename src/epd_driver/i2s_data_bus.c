@@ -1,4 +1,5 @@
 #include "i2s_data_bus.h"
+#include "display_ops.h"
 #include "driver/periph_ctrl.h"
 #if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
 #include "rom/lldesc.h"
@@ -38,9 +39,9 @@ static gpio_num_t start_pulse_pin;
 
 /// Initializes a DMA descriptor.
 static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf,
-                          i2s_bus_config *cfg) {
-  dmadesc->size = cfg->epd_row_width / 4;
-  dmadesc->length = cfg->epd_row_width / 4;
+                          uint32_t epd_row_width) {
+  dmadesc->size = epd_row_width / 4;
+  dmadesc->length = epd_row_width / 4;
   dmadesc->buf = buf;
   dmadesc->eof = 1;
   dmadesc->sosf = 1;
@@ -115,17 +116,13 @@ void IRAM_ATTR i2s_start_line_output() {
   dev->conf.tx_start = 1;
 }
 
-void i2s_bus_init(i2s_bus_config *cfg) {
-  // TODO: Why?
-  gpio_num_t I2S_GPIO_BUS[] = {cfg->data_6, cfg->data_7, cfg->data_4,
-                               cfg->data_5, cfg->data_2, cfg->data_3,
-                               cfg->data_0, cfg->data_1};
+void i2s_gpio_attach() {
+  gpio_num_t I2S_GPIO_BUS[] = {D6, D7, D4,
+                               D5, D2, D3,
+                               D0, D1};
 
-  gpio_set_direction(cfg->start_pulse, GPIO_MODE_OUTPUT);
-  gpio_set_level(cfg->start_pulse, 1);
-  // store pin in global variable for use in interrupt.
-  start_pulse_pin = cfg->start_pulse;
-
+  gpio_set_direction(STH, GPIO_MODE_OUTPUT);
+  gpio_set_level(STH, 1);
   // Use I2S1 with no signal offset (for some reason the offset seems to be
   // needed in 16-bit mode, but not in 8 bit mode.
   int signal_base = I2S1O_DATA_OUT0_IDX;
@@ -135,7 +132,28 @@ void i2s_bus_init(i2s_bus_config *cfg) {
     gpio_setup_out(I2S_GPIO_BUS[x], signal_base + x, false);
   }
   // Invert word select signal
-  gpio_setup_out(cfg->clock, I2S1O_WS_OUT_IDX, true);
+  gpio_setup_out(CKH, I2S1O_WS_OUT_IDX, true);
+
+}
+
+void i2s_gpio_detach() {
+  gpio_set_direction(D0, GPIO_MODE_INPUT);
+  gpio_set_direction(D1, GPIO_MODE_INPUT);
+  gpio_set_direction(D2, GPIO_MODE_INPUT);
+  gpio_set_direction(D3, GPIO_MODE_INPUT);
+  gpio_set_direction(D4, GPIO_MODE_INPUT);
+  gpio_set_direction(D5, GPIO_MODE_INPUT);
+  gpio_set_direction(D6, GPIO_MODE_INPUT);
+  gpio_set_direction(D7, GPIO_MODE_INPUT);
+  gpio_set_direction(STH, GPIO_MODE_INPUT);
+  gpio_set_direction(CKH, GPIO_MODE_INPUT);
+}
+
+void i2s_bus_init(uint32_t epd_row_width) {
+  i2s_gpio_attach();
+
+  // store pin in global variable for use in interrupt.
+  start_pulse_pin = STH;
 
   periph_module_enable(PERIPH_I2S1_MODULE);
 
@@ -204,14 +222,14 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   dev->timing.val = 0;
 
   // Allocate DMA descriptors
-  i2s_state.buf_a = heap_caps_malloc(cfg->epd_row_width / 4, MALLOC_CAP_DMA);
-  i2s_state.buf_b = heap_caps_malloc(cfg->epd_row_width / 4, MALLOC_CAP_DMA);
+  i2s_state.buf_a = heap_caps_malloc(epd_row_width / 4, MALLOC_CAP_DMA);
+  i2s_state.buf_b = heap_caps_malloc(epd_row_width / 4, MALLOC_CAP_DMA);
   i2s_state.dma_desc_a = heap_caps_malloc(sizeof(lldesc_t), MALLOC_CAP_DMA);
   i2s_state.dma_desc_b = heap_caps_malloc(sizeof(lldesc_t), MALLOC_CAP_DMA);
 
   // and fill them
-  fill_dma_desc(i2s_state.dma_desc_a, i2s_state.buf_a, cfg);
-  fill_dma_desc(i2s_state.dma_desc_b, i2s_state.buf_b, cfg);
+  fill_dma_desc(i2s_state.dma_desc_a, i2s_state.buf_a, epd_row_width);
+  fill_dma_desc(i2s_state.dma_desc_b, i2s_state.buf_b, epd_row_width);
 
   // enable "done" interrupt
   SET_PERI_REG_BITS(I2S_INT_ENA_REG(1), I2S_OUT_DONE_INT_ENA_V, 1,
