@@ -136,7 +136,7 @@ typedef struct {
   const EpdUnicodeInterval *intervals; ///< Valid unicode intervals for this font
   uint32_t interval_count;    ///< Number of unicode intervals.
   bool compressed;            ///< Does this font use compressed glyph bitmaps?
-  uint8_t advance_y;          ///< Newline distance (y axis)
+  uint16_t advance_y;         ///< Newline distance (y axis)
   int ascender;               ///< Maximal height of a glyph above the base line
   int descender;              ///< Maximal height of a glyph below the base line
 } EpdFont;
