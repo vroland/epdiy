@@ -493,9 +493,9 @@ lilygo_t5_47.build.variant=esp32
 lilygo_t5_47.build.board=ESP32_EPDIY
 
 lilygo_t5_47.build.f_cpu=240000000L
-lilygo_t5_47.build.flash_size=4MB
-lilygo_t5_47.build.flash_freq=40m
-lilygo_t5_47.build.flash_mode=dio
+lilygo_t5_47.build.flash_size=16MB
+lilygo_t5_47.build.flash_freq=80m
+lilygo_t5_47.build.flash_mode=qio
 lilygo_t5_47.build.boot=dio
 lilygo_t5_47.build.partitions=default
 lilygo_t5_47.build.defines=-DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
