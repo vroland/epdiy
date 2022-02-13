@@ -101,18 +101,14 @@ void epd_base_init(uint32_t epd_row_width) {
   rmt_pulse_init(CKV);
 }
 
-void epd_poweron() { 
-  #if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+void epd_poweron() {
   i2s_gpio_attach();
-  #endif
   cfg_poweron(&config_reg);
 }
 
 void epd_poweroff() {
   cfg_poweroff(&config_reg);
-  #if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
   i2s_gpio_detach();
-  #endif
 }
 
 void epd_base_deinit(){
