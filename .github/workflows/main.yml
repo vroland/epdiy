@@ -7,13 +7,32 @@ on:
     branches: [ master ]
 
 jobs:
-  examples-demo:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - release-v4.3
+          - release-v4.4
+          - latest
+        example:
+          - calibration_helper
+          - demo
+          - dragon
+          - grayscale_test
+          - mpd_status
+          - terminal
+          - weather
+          - www-image
+          
+    continue-on-error: ${{ matrix.version == 'latest' }}
 
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
-      - uses: 'espressif/esp-idf-ci-action@release-v4.4'
+      - uses: 'espressif/esp-idf-ci-action@main'
         with:
-          path: 'examples/demo'
+          esp_idf_version: ${{ matrix.version }}
+          path: 'examples/${{ matrix.example }}'
