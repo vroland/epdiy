@@ -1,0 +1,19 @@
+name: ESP-IDF
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  examples-demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: 'espressif/esp-idf-ci-action@release-v4.4'
+        with:
+          path: 'examples/demo'
