@@ -95,28 +95,21 @@ void epd_base_init(uint32_t epd_row_width) {
   push_cfg(&config_reg);
 
   // Setup I2S
-  i2s_bus_config i2s_config;
   // add an offset off dummy bytes to allow for enough timing headroom
-  i2s_config.epd_row_width = epd_row_width + 32;
-  i2s_config.clock = CKH;
-  i2s_config.start_pulse = STH;
-  i2s_config.data_0 = D0;
-  i2s_config.data_1 = D1;
-  i2s_config.data_2 = D2;
-  i2s_config.data_3 = D3;
-  i2s_config.data_4 = D4;
-  i2s_config.data_5 = D5;
-  i2s_config.data_6 = D6;
-  i2s_config.data_7 = D7;
-
-  i2s_bus_init(&i2s_config);
+  i2s_bus_init( epd_row_width + 32 );
 
   rmt_pulse_init(CKV);
 }
 
-void epd_poweron() { cfg_poweron(&config_reg);  }
+void epd_poweron() {
+  i2s_gpio_attach();
+  cfg_poweron(&config_reg);
+}
 
-void epd_poweroff() { cfg_poweroff(&config_reg); }
+void epd_poweroff() {
+  cfg_poweroff(&config_reg);
+  i2s_gpio_detach();
+}
 
 void epd_base_deinit(){
   epd_poweroff();
