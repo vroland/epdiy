@@ -126,7 +126,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
   }
 
   uint32_t offset = glyph->data_offset;
-  uint8_t width = glyph->width, height = glyph->height;
+  uint16_t width = glyph->width, height = glyph->height;
   int left = glyph->left;
 
   int byte_width = (width / 2 + width % 2);
