@@ -75,9 +75,15 @@ static void cfg_poweroff(epd_config_register_t *cfg) {
   cfg->pos_power_enable = false;
   push_cfg(cfg);
   busy_delay(10 * 240);
+
   cfg->neg_power_enable = false;
+  cfg->pos_power_enable = false;
   push_cfg(cfg);
   busy_delay(100 * 240);
+
+  cfg->ep_stv = false;
+  cfg->ep_output_enable = false;
+  cfg->ep_mode = false;
   cfg->power_disable = true;
   push_cfg(cfg);
   // END POWEROFF
