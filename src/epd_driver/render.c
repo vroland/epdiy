@@ -233,7 +233,8 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
 
 
 
-void epd_init(enum EpdInitOptions options) {
+void epd_init(enum EpdInitOptions options, EpdDisplay epd_display) {
+  // Do something with epd_display properties here...
 
   gpio_hold_dis(CKH); // freeing CKH after wakeup
 

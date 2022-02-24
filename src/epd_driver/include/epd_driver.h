@@ -185,8 +185,22 @@ typedef struct {
   enum EpdFontFlags flags;
 } EpdFontProperties;
 
+/// Display properties
+typedef struct {
+  /// Default waveform
+  EpdWaveform waveform;
+  /// Aditionally would like to have an array with the working MODES
+  /// Ex. MODE_DU, MODE_GC16, MODE_GL16
+
+  /// Resolution width
+  uint16_t width;
+  /// Resolution height
+  uint16_t height;
+} EpdDisplay;
+
+
 /** Initialize the ePaper display */
-void epd_init(enum EpdInitOptions options);
+void epd_init(enum EpdInitOptions options, EpdDisplay epd_display);
 
 /** Get the display rotation value */
 enum EpdRotation epd_get_rotation();

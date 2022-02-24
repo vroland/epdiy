@@ -9,6 +9,7 @@
 #include "dragon.h"
 
 EpdiyHighlevelState hl;
+EpdDisplay epd_display;
 
 void idf_loop() {
 
@@ -33,16 +34,20 @@ void idf_loop() {
 }
 
 void idf_setup() {
-  epd_init(EPD_OPTIONS_DEFAULT);
-  hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
+  epd_display.waveform = epdiy_ED047TC1;
+  epd_display.width = 960;
+  epd_display.height = 540;
+
+  epd_init(EPD_OPTIONS_DEFAULT, epd_display);
+  hl = epd_hl_init(&epd_display.waveform);
 }
 
 #ifndef ARDUINO_ARCH_ESP32
 void app_main() {
   idf_setup();
 
-  while (1) {
+  //while (1) {
     idf_loop();
-  };
+  //};
 }
 #endif
