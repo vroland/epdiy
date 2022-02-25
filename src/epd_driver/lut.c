@@ -70,7 +70,7 @@ void IRAM_ATTR write_row(uint32_t output_time_dus) {
 void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
   // output previously loaded row, fill buffer with no-ops.
   if (skipping < 2) {
-    memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
+    memset(epd_get_current_buffer(), 0x00, epdiy_display.width/4);
     epd_output_row(pipeline_finish_time);
   } else {
     epd_skip();
@@ -79,7 +79,7 @@ void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
 }
 
 void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
-  for (uint32_t i = 0; i < EPD_LINE_BYTES / 4; i++) {
+  for (uint32_t i = 0; i < (epdiy_display.width/4) / 4; i++) {
     uint32_t val = *line_data;
     *(line_data++) = val >> 16 | ((val & 0x0000FFFF) << 16);
   }
@@ -116,7 +116,7 @@ static void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
   uint32_t *lut_32 = (uint32_t *)lut;
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 16; j++) {
+  for (uint32_t j = 0; j < epdiy_display.width / 16; j++) {
     uint8_t v1 = *(data_ptr++);
     uint8_t v2 = *(data_ptr++);
     wide_epd_input[j] = (lut_32[v1] << 16) | lut_32[v2];
@@ -132,7 +132,7 @@ calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input,
 
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 16; j++) {
+  for (uint32_t j = 0; j < epdiy_display.width / 16; j++) {
 
     uint16_t v1 = *(line_data_16++);
     uint16_t v2 = *(line_data_16++);
@@ -168,7 +168,7 @@ static void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
 
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+  for (uint32_t j = 0; j < epdiy_display.width / 4; j += 4) {
     epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
@@ -208,7 +208,7 @@ static void IRAM_ATTR calc_epd_input_4bpp_1k_lut(const uint32_t *ld,
   uint16_t *ptr = (uint16_t *)ld;
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+  for (uint32_t j = 0; j < epdiy_display.width / 4; j += 4) {
     epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
     epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
     epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
@@ -309,8 +309,8 @@ static void IRAM_ATTR waveform_lut_static_from(const EpdWaveform *waveform,
 void IRAM_ATTR provide_out(OutputParams *params) {
   while (true) {
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
-    uint8_t line[EPD_WIDTH];
-    memset(line, 255, EPD_WIDTH);
+    uint8_t line[epdiy_display.width];
+    memset(line, 255, epdiy_display.width);
 
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
     EpdRect area = params->area;
@@ -355,7 +355,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
     // calculate start and end row with crop
     int min_y = area.y + crop_y;
     int max_y = min(min_y + (crop ? crop_h : area.height), area.height);
-    for (int i = 0; i < EPD_HEIGHT; i++) {
+    for (int i = 0; i < epdiy_display.height; i++) {
       if (i < min_y || i >= max_y) {
         continue;
       }
@@ -366,7 +366,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
 
       uint32_t *lp = (uint32_t *)line;
       bool shifted = false;
-      if (area.width == EPD_WIDTH && area.x == 0 && !crop && !params->error) {
+      if (area.width == epdiy_display.width && area.x == 0 && !crop && !params->error) {
         lp = (uint32_t *)ptr;
         ptr += bytes_per_line;
       } else if (!params->error) {
@@ -381,7 +381,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
           // ptr was already adjusted above
           line_bytes += min_x / width_divider;
         }
-        line_bytes = min(line_bytes, EPD_WIDTH / width_divider -
+        line_bytes = min(line_bytes, epdiy_display.width / width_divider -
                                          (uint32_t)(buf_start - line));
         memcpy(buf_start, ptr, line_bytes);
         ptr += bytes_per_line;
@@ -391,13 +391,13 @@ void IRAM_ATTR provide_out(OutputParams *params) {
         if (ppB == 2) {
           // mask last nibble for uneven width
           if (cropped_width % 2 == 1 &&
-              min_x / 2 + cropped_width / 2 + 1 < EPD_WIDTH) {
+              min_x / 2 + cropped_width / 2 + 1 < epdiy_display.width) {
             *(buf_start + line_bytes - 1) |= 0xF0;
           }
-          if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < EPD_WIDTH) {
+          if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < epdiy_display.width) {
             shifted = true;
             uint32_t remaining =
-                (uint32_t)line + EPD_WIDTH / 2 - (uint32_t)buf_start;
+                (uint32_t)line + epdiy_display.width / 2 - (uint32_t)buf_start;
             uint32_t to_shift = min(line_bytes + 1, remaining);
             // shift one nibble to right
             nibble_shift_buffer_right(buf_start, to_shift);
@@ -405,7 +405,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
           // consider bit shifts in bit buffers
         } else if (ppB == 8) {
           // mask last n bits if width is not divisible by 8
-          if (cropped_width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
+          if (cropped_width % 8 != 0 && bytes_per_line + 1 < epdiy_display.width) {
             uint8_t mask = 0;
             for (int s = 0; s < cropped_width % 8; s++) {
               mask = (mask << 1) | 1;
@@ -413,11 +413,11 @@ void IRAM_ATTR provide_out(OutputParams *params) {
             *(buf_start + line_bytes - 1) |= ~mask;
           }
 
-          if (min_x % 8 != 0 && min_x < EPD_WIDTH) {
+          if (min_x % 8 != 0 && min_x < epdiy_display.width) {
             // shift to right
             shifted = true;
             uint32_t remaining =
-                (uint32_t)line + EPD_WIDTH / 8 - (uint32_t)buf_start;
+                (uint32_t)line + epdiy_display.width / 8 - (uint32_t)buf_start;
             uint32_t to_shift = min(line_bytes + 1, remaining);
             bit_shift_buffer_right(buf_start, to_shift, min_x % 8);
           }
@@ -426,7 +426,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
       }
       xQueueSendToBack(*params->output_queue, lp, portMAX_DELAY);
       if (shifted) {
-        memset(line, 255, EPD_WIDTH / width_divider);
+        memset(line, 255, epdiy_display.width / width_divider);
       }
     }
 
@@ -440,12 +440,12 @@ void IRAM_ATTR provide_out(OutputParams *params) {
 static void IRAM_ATTR mask_line_buffer(int xmin, int xmax) {
   // lower bound to where byte order is not an issue.
   int memset_start = (xmin / 16) * 4;
-  int memset_end = min(((xmax + 15) / 16) * 4, EPD_LINE_BYTES);
+  int memset_end = min(((xmax + 15) / 16) * 4, epdiy_display.width/4);
   uint8_t *lb = epd_get_current_buffer();
 
   // memset the areas where order is not an issue
   memset(lb, 0, memset_start);
-  memset(lb + memset_end, 0, EPD_LINE_BYTES - memset_end);
+  memset(lb + memset_end, 0, epdiy_display.width/4 - memset_end);
 
   const int offset_table[4] = {2, 3, 0, 1};
 
@@ -572,8 +572,8 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     // FIXME: only lookup needed parts
     int line_start_x = area.x + (crop ? params->crop_to.x : 0);
     int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
-    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+    line_start_x = min(max(line_start_x, 0), epdiy_display.width);
+    line_end_x = min(max(line_end_x, 0), epdiy_display.width);
 
     uint64_t now = esp_timer_get_time();
     uint64_t diff = (now - last_frame_start) / 1000;
@@ -594,12 +594,12 @@ void IRAM_ATTR feed_display(OutputParams *params) {
         continue;
       }
 
-      uint8_t output[EPD_WIDTH];
+      uint8_t output[epdiy_display.width];
       xQueueReceive(*params->output_queue, output, portMAX_DELAY);
       if (!params->error) {
         (*input_calc_func)((uint32_t *)output, epd_get_current_buffer(),
                            params->conversion_lut);
-        if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
+        if (line_start_x > 0 || line_end_x < epdiy_display.width) {
           mask_line_buffer(line_start_x, line_end_x);
         }
       }

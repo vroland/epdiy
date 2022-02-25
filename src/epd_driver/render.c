@@ -45,7 +45,8 @@ static uint8_t* conversion_lut;
 
 void epd_push_pixels(EpdRect area, short time, int color) {
 
-  uint8_t row[EPD_LINE_BYTES] = {0};
+  uint8_t row[epdiy_display.width];
+  memset(row, 0, epdiy_display.width);
 
   const uint8_t color_choice[4] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
   for (uint32_t i = 0; i < area.width; i++) {
@@ -64,9 +65,9 @@ void epd_push_pixels(EpdRect area, short time, int color) {
       // start area of interest: set row data
     } else if (i == area.y) {
       epd_switch_buffer();
-      memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
+      memcpy(epd_get_current_buffer(), row, epdiy_display.width/4);
       epd_switch_buffer();
-      memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
+      memcpy(epd_get_current_buffer(), row, epdiy_display.width/4);
 
       write_row(time * 10);
       // load nop row if done with area
@@ -123,8 +124,8 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             int temperature,
                             const bool *drawn_lines,
                             const EpdWaveform *waveform) {
-  uint8_t line[EPD_WIDTH / 2];
-  memset(line, 255, EPD_WIDTH / 2);
+  uint8_t line[epdiy_display.width / 2];
+  memset(line, 255, epdiy_display.width / 2);
 
   int waveform_range = waveform_temp_range_index(waveform, temperature);
   if (waveform_range < 0) {
@@ -234,11 +235,11 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
 
 
 void epd_init(enum EpdInitOptions options, EpdDisplay epd_display) {
-  // Do something with epd_display properties here...
-
+  // Get populated global selected_display 
+  epdiy_display = epd_display;
   gpio_hold_dis(CKH); // freeing CKH after wakeup
 
-  epd_base_init(EPD_WIDTH);
+  epd_base_init(epdiy_display.width);
   epd_temperature_init();
 
   size_t lut_size = 0;
@@ -284,7 +285,7 @@ void epd_init(enum EpdInitOptions options, EpdDisplay epd_display) {
   } else if (options & EPD_FEED_QUEUE_8) {
     queue_len = 8;
   }
-  output_queue = xQueueCreate(queue_len, EPD_WIDTH);
+  output_queue = xQueueCreate(queue_len, epdiy_display.width);
 }
 
 void epd_deinit() {
@@ -318,6 +319,7 @@ EpdRect epd_difference_image_base(
     // AND over all pixels of the "from"-image
     *from_and = 0x0F;
 
+    // Here we cannot use epdiy_display.width since compiler drops object might be not initialized
     uint8_t dirty_cols[EPD_WIDTH] = {0};
     int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
@@ -367,7 +369,7 @@ EpdRect epd_difference_image(
 ) {
   uint8_t from_or = 0;
   uint8_t from_and = 0;
-  return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
+  return epd_difference_image_base(to, from, epd_full_screen(), epdiy_display.width, epdiy_display.height, interlaced, dirty_lines, &from_or, &from_and);
 }
 
 EpdRect epd_difference_image_cropped(
@@ -382,7 +384,7 @@ EpdRect epd_difference_image_cropped(
 
   uint8_t from_or, from_and;
 
-  EpdRect result = epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
+  EpdRect result = epd_difference_image_base(to, from, crop_to, epdiy_display.width, epdiy_display.height, interlaced, dirty_lines, &from_or, &from_and);
 
   if (previously_white != NULL) *previously_white = (from_and == 0x0F);
   if (previously_black != NULL) *previously_black = (from_or == 0x00);

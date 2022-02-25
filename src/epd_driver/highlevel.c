@@ -19,7 +19,7 @@
 #endif
 
 static bool already_initialized = 0;
-
+// The thing here is that epdiy_display.width does not play well with the const fact
 const static int fb_size = EPD_WIDTH / 2 * EPD_HEIGHT;
 
 EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
@@ -59,7 +59,7 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
 
 EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
   // If partial update uses full screen do not rotate anything
-  if (!(x == 0 && y == 0 && EPD_WIDTH == w && EPD_HEIGHT == h)) {
+  if (!(x == 0 && y == 0 && epdiy_display.width == w && epdiy_display.height == h)) {
     // invert the current display rotation
     switch (epd_get_rotation())
     {
@@ -70,20 +70,20 @@ EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
       case EPD_ROT_PORTRAIT:
         _swap_int(x, y);
         _swap_int(w, h);
-        x = EPD_WIDTH - x - w;
+        x = epdiy_display.width - x - w;
         break;
 
       case EPD_ROT_INVERTED_LANDSCAPE:
         // 3 180°
-        x = EPD_WIDTH - x - w;
-        y = EPD_HEIGHT - y - h;
+        x = epdiy_display.width - x - w;
+        y = epdiy_display.height - y - h;
         break;
 
       case EPD_ROT_INVERTED_PORTRAIT:
         // 3 270 °
         _swap_int(x, y);
         _swap_int(w, h);
-        y = EPD_HEIGHT - y - h;
+        y = epdiy_display.height - y - h;
         break;
     }
   }
@@ -133,8 +133,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
 	if (state->dirty_lines[l] > 0) {
-      uint8_t* lfb = state->front_fb + EPD_WIDTH / 2 * l;
-      uint8_t* lbb = state->back_fb + EPD_WIDTH / 2 * l;
+      uint8_t* lfb = state->front_fb + epdiy_display.width / 2 * l;
+      uint8_t* lbb = state->back_fb + epdiy_display.width / 2 * l;
 
       for (int x=diff_area.x; x < diff_area.x + diff_area.width; x++) {
           if (x % 2) {

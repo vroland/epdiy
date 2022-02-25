@@ -7,8 +7,8 @@
 #include "freertos/queue.h"
 #include "epd_driver.h"
 
-// number of bytes needed for one line of EPD pixel data.
-#define EPD_LINE_BYTES EPD_WIDTH / 4
+// ex EPD_LINE_BYTES number of bytes needed for one line of EPD pixel data.
+// Replaced dinamically by epdiy_display.width/4
 
 ///////////////////////////// Utils /////////////////////////////////////
 

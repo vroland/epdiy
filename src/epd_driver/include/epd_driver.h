@@ -197,7 +197,8 @@ typedef struct {
   /// Resolution height
   uint16_t height;
 } EpdDisplay;
-
+// Global selected display
+EpdDisplay epdiy_display;
 
 /** Initialize the ePaper display */
 void epd_init(enum EpdInitOptions options, EpdDisplay epd_display);
