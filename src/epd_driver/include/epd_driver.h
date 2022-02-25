@@ -11,6 +11,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "epd_internals.h"
+#include "epd_board.h"
 
 /** Display software rotation.
  *  Sets the rotation for the purposes of the drawing and font functions
@@ -187,6 +188,9 @@ typedef struct {
 
 /** Initialize the ePaper display */
 void epd_init(enum EpdInitOptions options);
+
+/** Set the board hardware definition. This must be called before epd_init() */
+void epd_set_board(const EpdBoardDefinition *board);
 
 /** Get the display rotation value */
 enum EpdRotation epd_get_rotation();

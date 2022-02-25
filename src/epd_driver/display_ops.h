@@ -23,16 +23,9 @@
 
 #if defined(CONFIG_EPD_BOARD_REVISION_V5)
 /* Config Reggister Control */
-#define CFG_DATA GPIO_NUM_33
-#define CFG_CLK GPIO_NUM_32
-#define CFG_STR GPIO_NUM_0
 #endif
 #if defined(CONFIG_EPD_BOARD_REVISION_V6)
-#define CFG_SCL GPIO_NUM_33
-#define CFG_SDA GPIO_NUM_32
-#define CFG_INTR GPIO_NUM_35
 
-#define EPDIY_I2C_PORT I2C_NUM_0
 #endif
 
 #else
@@ -49,12 +42,8 @@
 #define D1 GPIO_NUM_32
 #define D0 GPIO_NUM_33
 
-#define CFG_DATA GPIO_NUM_23
-#define CFG_CLK GPIO_NUM_18
 #if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
-#define CFG_STR GPIO_NUM_0
 #else
-#define CFG_STR GPIO_NUM_19
 #endif
 
 /* Control Lines */
@@ -68,7 +57,20 @@
 
 #endif
 
-void epd_base_init(uint32_t epd_row_width);
+/*
+ * Write bits directly using the registers.
+ * Won't work for some pins (>= 32).
+ */
+inline void fast_gpio_set_hi(gpio_num_t gpio_num) {
+  GPIO.out_w1ts = (1 << gpio_num);
+}
+
+inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
+  GPIO.out_w1tc = (1 << gpio_num);
+}
+
+void IRAM_ATTR busy_delay(uint32_t cycles);
+
 void epd_base_deinit();
 void epd_poweron();
 void epd_poweroff();
