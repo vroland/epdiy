@@ -9,14 +9,40 @@
 #define CFG_CLK GPIO_NUM_32
 #define CFG_STR GPIO_NUM_0
 
-#include "config_reg_v4.h"
-
+typedef struct {
+  bool power_enable : 1;
+  bool power_enable_vpos : 1;
+  bool power_enable_vneg : 1;
+  bool power_enable_gl : 1;
+  bool ep_stv : 1;
+  bool power_enable_gh : 1;
+  bool ep_mode : 1;
+  bool ep_output_enable : 1;
+} epd_config_register_t;
 static epd_config_register_t config_reg;
 
 static void IRAM_ATTR push_cfg_bit(bool bit) {
   gpio_set_level(CFG_CLK, 0);
   gpio_set_level(CFG_DATA, bit);
   gpio_set_level(CFG_CLK, 1);
+}
+
+static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
+  fast_gpio_set_lo(CFG_STR);
+
+  // push config bits in reverse order
+  push_cfg_bit(cfg->ep_output_enable);
+  push_cfg_bit(cfg->ep_mode);
+  push_cfg_bit(cfg->power_enable_gh);
+  push_cfg_bit(cfg->ep_stv);
+
+  push_cfg_bit(cfg->power_enable_gl);
+  push_cfg_bit(cfg->power_enable_vneg);
+  push_cfg_bit(cfg->power_enable_vpos);
+  push_cfg_bit(cfg->power_enable);
+
+  fast_gpio_set_hi(CFG_STR);
+  fast_gpio_set_lo(CFG_STR);
 }
 
 static void epd_board_init(uint32_t epd_row_width) {
@@ -29,7 +55,14 @@ static void epd_board_init(uint32_t epd_row_width) {
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
   fast_gpio_set_lo(CFG_STR);
 
-  config_reg_init(&config_reg);
+  config_reg.power_enable = false;
+  config_reg.power_enable_vpos = false;
+  config_reg.power_enable_vneg = false;
+  config_reg.power_enable_gl = false;
+  config_reg.ep_stv = true;
+  config_reg.power_enable_gh = false;
+  config_reg.ep_mode = false;
+  config_reg.ep_output_enable = false;
 
   // use latch pin as GPIO
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
@@ -58,11 +91,45 @@ static void epd_board_deinit() {
 }
 
 static void epd_board_poweron() {
-  cfg_poweron(&config_reg);
+  // POWERON
+  config_reg.power_enable = true;
+  push_cfg(&config_reg);
+  busy_delay(100 * 240);
+  config_reg.power_enable_gl = true;
+  push_cfg(&config_reg);
+  busy_delay(500 * 240);
+  config_reg.power_enable_vneg = true;
+  push_cfg(&config_reg);
+  busy_delay(500 * 240);
+  config_reg.power_enable_gh = true;
+  push_cfg(&config_reg);
+  busy_delay(500 * 240);
+  config_reg.power_enable_vpos = true;
+  push_cfg(&config_reg);
+  busy_delay(100 * 240);
+  config_reg.ep_stv = true;
+  push_cfg(&config_reg);
+  fast_gpio_set_hi(STH);
+  // END POWERON
 }
 
 static void epd_board_poweroff() {
-  cfg_poweroff(&config_reg);
+  // POWEROFF
+  config_reg.power_enable_gh = false;
+  config_reg.power_enable_vpos = false;
+  push_cfg(&config_reg);
+  busy_delay(10 * 240);
+  config_reg.power_enable_gl = false;
+  config_reg.power_enable_vneg = false;
+  push_cfg(&config_reg);
+  busy_delay(100 * 240);
+
+  config_reg.ep_stv = false;
+  config_reg.ep_output_enable = false;
+  config_reg.ep_mode = false;
+  config_reg.power_enable = false;
+  push_cfg(&config_reg);
+  // END POWEROFF
 }
 
 static void epd_board_start_frame() {
