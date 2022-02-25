@@ -319,8 +319,8 @@ EpdRect epd_difference_image_base(
     // AND over all pixels of the "from"-image
     *from_and = 0x0F;
 
-    // Here we cannot use epdiy_display.width since compiler drops object might be not initialized
-    uint8_t dirty_cols[EPD_WIDTH] = {0};
+    uint8_t dirty_cols[epdiy_display.width];
+    memset(dirty_cols, 0, epdiy_display.width);
     int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
 

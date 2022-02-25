@@ -257,7 +257,7 @@ EpdRect epd_full_screen();
  * values. Pixel data is packed (two pixels per byte). A byte cannot wrap over
  * multiple rows, images of uneven width must add a padding nibble per line.
  * @param framebuffer: The framebuffer object,
- *   which must be `EPD_WIDTH / 2 * EPD_HEIGHT` large.
+ *   which must be `epdiy_display.width / 2 * epdiy_display.height` large.
  */
 void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
                              uint8_t *framebuffer);
@@ -280,7 +280,7 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
  * @param length: Length of the line in pixels.
  * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
- *  which must be `EPD_WIDTH / 2 * EPD_HEIGHT` bytes large.
+ *  which must be `epdiy_display.width / 2 * epdiy_display.height` bytes large.
  */
 void epd_draw_hline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);
@@ -293,7 +293,7 @@ void epd_draw_hline(int x, int y, int length, uint8_t color,
  * @param length: Length of the line in pixels.
  * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
- *  which must be `EPD_WIDTH / 2 * EPD_HEIGHT` bytes large.
+ *  which must be `epdiy_display.width / 2 * epdiy_display.height` bytes large.
  */
 void epd_draw_vline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);

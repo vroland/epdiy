@@ -19,8 +19,6 @@
 #endif
 
 static bool already_initialized = 0;
-// The thing here is that epdiy_display.width does not play well with the const fact
-const static int fb_size = EPD_WIDTH / 2 * EPD_HEIGHT;
 
 EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(!already_initialized);
@@ -29,6 +27,8 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   #ifndef CONFIG_ESP32_SPIRAM_SUPPORT
     ESP_LOGW("EPDiy", "Please enable PSRAM for the ESP32 (menuconfig→ Component config→ ESP32-specific)");
   #endif
+  int fb_size = epdiy_display.width / 2 * epdiy_display.height;
+
   EpdiyHighlevelState state;
   state.back_fb = heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
   assert(state.back_fb != NULL);
@@ -151,6 +151,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
 void epd_hl_set_all_white(EpdiyHighlevelState* state) {
   assert(state != NULL);
+  int fb_size = epdiy_display.width / 2 * epdiy_display.height;
   memset(state->front_fb, 0xFF, fb_size);
 }
 

@@ -8,7 +8,7 @@
 #include "epd_driver.h"
 
 // ex EPD_LINE_BYTES number of bytes needed for one line of EPD pixel data.
-// Replaced dinamically by epdiy_display.width/4
+// Replaced dynamically by epdiy_display.width/4
 
 ///////////////////////////// Utils /////////////////////////////////////
 
