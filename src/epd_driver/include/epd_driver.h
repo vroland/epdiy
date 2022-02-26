@@ -191,7 +191,7 @@ typedef struct {
   EpdWaveform waveform;
   /// Aditionally would like to have an array with the working MODES
   /// Ex. MODE_DU, MODE_GC16, MODE_GL16
-
+  char * name;
   /// Resolution width
   uint16_t width;
   /// Resolution height

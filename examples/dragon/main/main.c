@@ -6,6 +6,8 @@
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
+// Display default configurations
+#include "epd_displays.h"
 #include "dragon.h"
 
 EpdiyHighlevelState hl;
@@ -34,12 +36,25 @@ void idf_loop() {
 }
 
 void idf_setup() {
+  
+  // A - Withouth using epd_displays.h and just setting display manually
+  /* 
+  epd_display.name = "Lilygo EPD47"; // optional
   epd_display.waveform = epdiy_ED047TC1;
   epd_display.width = 960;
-  epd_display.height = 540;
+  epd_display.height = 540; */
+
+  // B - Alternatively use predefined default configuration (#include "epd_displays.h")
+  // This will use a bit of extra instruction RAM since all struct are defined
+  // We could do this in epd_init but then we cannot pass display settings there
+  epdiy_display_default_configs();
+  // Check definitions in epd_driver.c
+  epd_display = ED047TC1;
+  printf("Using display %s w:%d h:%d\n\n", epd_display.name, epd_display.width, epd_display.height);
 
   epd_init(EPD_OPTIONS_DEFAULT, epd_display);
   hl = epd_hl_init(&epd_display.waveform);
+  epd_fullclear(&hl, 25);
 }
 
 #ifndef ARDUINO_ARCH_ESP32
