@@ -5,13 +5,70 @@
 #include "../display_ops.h"
 #include "../i2s_data_bus.h"
 #include "../rmt_pulse.h"
+#include "../tps65185.h"
+#include "../pca9555.h"
+
+#include <driver/i2c.h>
 
 #define CFG_SCL             GPIO_NUM_33
 #define CFG_SDA             GPIO_NUM_32
 #define CFG_INTR            GPIO_NUM_35
 #define EPDIY_I2C_PORT      I2C_NUM_0
+#define CFG_PIN_OE          (PCA_PIN_PC10 >> 8)
+#define CFG_PIN_MODE        (PCA_PIN_PC11 >> 8)
+#define CFG_PIN_STV         (PCA_PIN_PC12 >> 8)
+#define CFG_PIN_PWRUP       (PCA_PIN_PC13 >> 8)
+#define CFG_PIN_VCOM_CTRL   (PCA_PIN_PC14 >> 8)
+#define CFG_PIN_WAKEUP      (PCA_PIN_PC15 >> 8)
+#define CFG_PIN_PWRGOOD     (PCA_PIN_PC16 >> 8)
+#define CFG_PIN_INT         (PCA_PIN_PC17 >> 8)
 
-#include "../config_reg_v6.h"
+typedef struct {
+    i2c_port_t port;
+    bool ep_output_enable;
+    bool ep_mode;
+    bool ep_stv;
+    bool pwrup;
+    bool vcom_ctrl;
+    bool wakeup;
+    bool others[8];
+} epd_config_register_t;
+
+static bool interrupt_done = false;
+
+static void IRAM_ATTR interrupt_handler(void* arg) {
+    interrupt_done = true;
+}
+
+static int v6_wait_for_interrupt(int timeout) {
+  int tries = 0;
+  while (!interrupt_done && gpio_get_level(CFG_INTR) == 1) {
+    if (tries >= 500) {
+        return -1;
+    }
+    tries++;
+    vTaskDelay(1);
+  }
+  int ival = 0;
+  interrupt_done = false;
+  pca9555_read_input(EPDIY_I2C_PORT, 1);
+  ival = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT1);
+  ival |= tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2) << 8;
+  while (!gpio_get_level(CFG_INTR)) { vTaskDelay(1); }
+  return ival;
+}
+
+static void push_cfg(epd_config_register_t* reg) {
+  uint8_t value = 0x00;
+  if (reg->ep_output_enable) value |= CFG_PIN_OE;
+  if (reg->ep_mode) value |= CFG_PIN_MODE;
+  if (reg->ep_stv) value |= CFG_PIN_STV;
+  if (reg->pwrup) value |= CFG_PIN_PWRUP;
+  if (reg->vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
+  if (reg->wakeup) value |= CFG_PIN_WAKEUP;
+
+  ESP_ERROR_CHECK(pca9555_set_value(reg->port, value, 1));
+}
 
 static epd_config_register_t config_reg;
 
@@ -29,8 +86,25 @@ static void epd_board_init(uint32_t epd_row_width) {
   ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
 
   config_reg.port = EPDIY_I2C_PORT;
+  config_reg.ep_output_enable = false;
+  config_reg.ep_mode = false;
+  config_reg.ep_stv = false;
+  config_reg.pwrup = false;
+  config_reg.vcom_ctrl = false;
+  config_reg.wakeup = false;
+  for (int i=0; i<8; i++) {
+      config_reg.others[i] = false;
+  }
 
-  config_reg_init(&config_reg);
+  gpio_set_direction(CFG_INTR, GPIO_MODE_INPUT);
+  gpio_set_intr_type(CFG_INTR, GPIO_INTR_NEGEDGE);
+
+  ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_EDGE));
+
+  ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void *) CFG_INTR));
+
+  // set all epdiy lines to output except TPS interrupt + PWR good
+  ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 
   // use latch pin as GPIO
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
@@ -52,16 +126,75 @@ static void epd_board_deinit() {
   //gpio_reset_pin(CFG_INTR);
   //rtc_gpio_isolate(CFG_INTR);
 
-  cfg_deinit(&config_reg);
+  ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
+
+  int tries = 0;
+  while (!((pca9555_read_input(config_reg.port, 1) & 0xC0) == 0x80)) {
+    if (tries >= 500) {
+      ESP_LOGE("epdiy", "failed to shut down TPS65185!");
+      break;
+    }
+    tries++;
+    vTaskDelay(1);
+    printf("%X\n", pca9555_read_input(config_reg.port, 1));
+  }
+  // Not sure why we need this delay, but the TPS65185 seems to generate an interrupt after some time that needs to be cleared.
+  vTaskDelay(500);
+  pca9555_read_input(config_reg.port, 0);
+  pca9555_read_input(config_reg.port, 1);
+  ESP_LOGI("epdiy", "going to sleep.");
   i2c_driver_delete(EPDIY_I2C_PORT);
 }
 
 static void epd_board_poweron() {
-  cfg_poweron(&config_reg);
+  config_reg.ep_stv = true;
+  config_reg.wakeup = true;
+  push_cfg(&config_reg);
+  config_reg.pwrup = true;
+  push_cfg(&config_reg);
+  config_reg.vcom_ctrl = true;
+  push_cfg(&config_reg);
+
+  // give the IC time to powerup and set lines
+  vTaskDelay(1);
+
+  while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
+    vTaskDelay(1);
+  }
+
+  ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
+
+#ifdef CONFIG_EPD_DRIVER_V6_VCOM
+  tps_set_vcom(config_reg.port, CONFIG_EPD_DRIVER_V6_VCOM);
+// Arduino IDE...
+#else
+  extern int epd_driver_v6_vcom;
+  tps_set_vcom(config_reg.port, epd_driver_v6_vcom);
+#endif
+
+  gpio_set_level(STH, 1);
+
+  int tries = 0;
+  while (!((tps_read_register(config_reg.port, TPS_REG_PG) & 0xFA) == 0xFA)) {
+    if (tries >= 500) {
+      ESP_LOGE("epdiy", "Power enable failed! PG status: %X", tps_read_register(config_reg.port, TPS_REG_PG));
+      return;
+    }
+    tries++;
+    vTaskDelay(1);
+  }
 }
 
 static void epd_board_poweroff() {
-  cfg_poweroff(&config_reg);
+  config_reg.vcom_ctrl = false;
+  config_reg.pwrup = false;
+  config_reg.ep_stv = false;
+  config_reg.ep_output_enable = false;
+  config_reg.ep_mode = false;
+  push_cfg(&config_reg);
+  vTaskDelay(1);
+  config_reg.wakeup = false;
+  push_cfg(&config_reg);
 }
 
 static void epd_board_start_frame() {
