@@ -1,7 +1,6 @@
 #include "epd_board.h"
 
 #include "esp_log.h"
-#include "driver/rtc_io.h"
 #include "../display_ops.h"
 #include "../i2s_data_bus.h"
 #include "../rmt_pulse.h"
@@ -153,8 +152,6 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_deinit() {
-  gpio_reset_pin(CKH);
-  rtc_gpio_isolate(CKH);
   //gpio_reset_pin(CFG_INTR);
   //rtc_gpio_isolate(CFG_INTR);
 

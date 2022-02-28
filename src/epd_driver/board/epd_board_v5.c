@@ -76,8 +76,6 @@ static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
 }
 
 static void epd_board_init(uint32_t epd_row_width) {
-  gpio_hold_dis(CKH); // free CKH after wakeup
-
   /* Power Control Output/Off */
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
@@ -111,8 +109,6 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_deinit() {
-  gpio_reset_pin(CKH);
-  rtc_gpio_isolate(CKH);
   //gpio_reset_pin(CFG_INTR);
   //rtc_gpio_isolate(CFG_INTR);
 

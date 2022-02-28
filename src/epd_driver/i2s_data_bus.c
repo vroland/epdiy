@@ -1,5 +1,6 @@
 #include "i2s_data_bus.h"
 #include "driver/periph_ctrl.h"
+#include "driver/rtc_io.h"
 #if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
 #include "rom/lldesc.h"
 #else
@@ -116,7 +117,6 @@ void IRAM_ATTR i2s_start_line_output() {
 }
 
 void i2s_gpio_attach(i2s_bus_config *cfg) {
-
   gpio_num_t I2S_GPIO_BUS[] = {cfg->data_6, cfg->data_7, cfg->data_4,
                                cfg->data_5, cfg->data_2, cfg->data_3,
                                cfg->data_0, cfg->data_1};
@@ -131,6 +131,9 @@ void i2s_gpio_attach(i2s_bus_config *cfg) {
   for (int x = 0; x < 8; x++) {
     gpio_setup_out(I2S_GPIO_BUS[x], signal_base + x, false);
   }
+
+  // Free CKH after wakeup
+  gpio_hold_dis(cfg->clock);
   // Invert word select signal
   gpio_setup_out(cfg->clock, I2S1O_WS_OUT_IDX, true);
 }
@@ -146,6 +149,9 @@ void i2s_gpio_detach(i2s_bus_config *cfg) {
   gpio_set_direction(cfg->data_7, GPIO_MODE_INPUT);
   gpio_set_direction(cfg->start_pulse, GPIO_MODE_INPUT);
   gpio_set_direction(cfg->clock, GPIO_MODE_INPUT);
+
+  gpio_reset_pin(cfg->clock);
+  rtc_gpio_isolate(cfg->clock);
 }
 
 void i2s_bus_init(i2s_bus_config *cfg, uint32_t epd_row_width) {
