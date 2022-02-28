@@ -249,8 +249,6 @@ void epd_init(enum EpdInitOptions options) {
   assert(epd_board != NULL);
 #endif
 
-  gpio_hold_dis(CKH); // freeing CKH after wakeup
-
   epd_board->init(EPD_WIDTH);
   epd_temperature_init();
 

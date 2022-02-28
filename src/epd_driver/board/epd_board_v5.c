@@ -8,6 +8,23 @@
 #define CFG_DATA GPIO_NUM_33
 #define CFG_CLK GPIO_NUM_32
 #define CFG_STR GPIO_NUM_0
+#define D7 GPIO_NUM_23
+#define D6 GPIO_NUM_22
+#define D5 GPIO_NUM_21
+#define D4 GPIO_NUM_19
+#define D3 GPIO_NUM_18
+#define D2 GPIO_NUM_5
+#define D1 GPIO_NUM_4
+#define D0 GPIO_NUM_25
+
+/* Control Lines */
+#define CKV GPIO_NUM_26
+#define STH GPIO_NUM_27
+
+#define V4_LATCH_ENABLE GPIO_NUM_2
+
+/* Edges */
+#define CKH GPIO_NUM_15
 
 typedef struct {
   bool power_enable : 1;
@@ -20,6 +37,19 @@ typedef struct {
   bool ep_output_enable : 1;
 } epd_config_register_t;
 static epd_config_register_t config_reg;
+
+static i2s_bus_config i2s_config = {
+  .clock = CKH,
+  .start_pulse = STH,
+  .data_0 = D0,
+  .data_1 = D1,
+  .data_2 = D2,
+  .data_3 = D3,
+  .data_4 = D4,
+  .data_5 = D5,
+  .data_6 = D6,
+  .data_7 = D7,
+};
 
 static void IRAM_ATTR push_cfg_bit(bool bit) {
   gpio_set_level(CFG_CLK, 0);
@@ -46,6 +76,8 @@ static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
 }
 
 static void epd_board_init(uint32_t epd_row_width) {
+  gpio_hold_dis(CKH); // free CKH after wakeup
+
   /* Power Control Output/Off */
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
@@ -73,7 +105,7 @@ static void epd_board_init(uint32_t epd_row_width) {
 
   // Setup I2S
   // add an offset off dummy bytes to allow for enough timing headroom
-  i2s_bus_init( epd_row_width + 32 );
+  i2s_bus_init( &i2s_config, epd_row_width + 32 );
 
   rmt_pulse_init(CKV);
 }
@@ -92,6 +124,8 @@ static void epd_board_deinit() {
 
 static void epd_board_poweron() {
   // POWERON
+  i2s_gpio_attach(&i2s_config);
+
   config_reg.power_enable = true;
   push_cfg(&config_reg);
   busy_delay(100 * 240);
@@ -129,6 +163,8 @@ static void epd_board_poweroff() {
   config_reg.ep_mode = false;
   config_reg.power_enable = false;
   push_cfg(&config_reg);
+
+  i2s_gpio_detach(&i2s_config);
   // END POWEROFF
 }
 
@@ -156,6 +192,7 @@ static void epd_board_start_frame() {
 }
 
 static void epd_board_latch_row() {
+  fast_gpio_set_hi(STH);
   fast_gpio_set_hi(V4_LATCH_ENABLE);
   fast_gpio_set_lo(V4_LATCH_ENABLE);
 }

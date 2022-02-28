@@ -22,6 +22,23 @@
 #define CFG_PIN_WAKEUP      (PCA_PIN_PC15 >> 8)
 #define CFG_PIN_PWRGOOD     (PCA_PIN_PC16 >> 8)
 #define CFG_PIN_INT         (PCA_PIN_PC17 >> 8)
+#define D7 GPIO_NUM_23
+#define D6 GPIO_NUM_22
+#define D5 GPIO_NUM_21
+#define D4 GPIO_NUM_19
+#define D3 GPIO_NUM_18
+#define D2 GPIO_NUM_5
+#define D1 GPIO_NUM_4
+#define D0 GPIO_NUM_25
+
+/* Control Lines */
+#define CKV GPIO_NUM_26
+#define STH GPIO_NUM_27
+
+#define V4_LATCH_ENABLE GPIO_NUM_2
+
+/* Edges */
+#define CKH GPIO_NUM_15
 
 typedef struct {
     i2c_port_t port;
@@ -33,6 +50,19 @@ typedef struct {
     bool wakeup;
     bool others[8];
 } epd_config_register_t;
+
+static i2s_bus_config i2s_config = {
+  .clock = CKH,
+  .start_pulse = STH,
+  .data_0 = D0,
+  .data_1 = D1,
+  .data_2 = D2,
+  .data_3 = D3,
+  .data_4 = D4,
+  .data_5 = D5,
+  .data_6 = D6,
+  .data_7 = D7,
+};
 
 static bool interrupt_done = false;
 
@@ -73,6 +103,8 @@ static void push_cfg(epd_config_register_t* reg) {
 static epd_config_register_t config_reg;
 
 static void epd_board_init(uint32_t epd_row_width) {
+  gpio_hold_dis(CKH); // free CKH after wakeup
+
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = CFG_SDA;
@@ -115,7 +147,7 @@ static void epd_board_init(uint32_t epd_row_width) {
 
   // Setup I2S
   // add an offset off dummy bytes to allow for enough timing headroom
-  i2s_bus_init( epd_row_width + 32 );
+  i2s_bus_init( &i2s_config, epd_row_width + 32 );
 
   rmt_pulse_init(CKV);
 }
@@ -147,6 +179,8 @@ static void epd_board_deinit() {
 }
 
 static void epd_board_poweron() {
+  i2s_gpio_attach(&i2s_config);
+
   config_reg.ep_stv = true;
   config_reg.wakeup = true;
   push_cfg(&config_reg);
@@ -195,6 +229,8 @@ static void epd_board_poweroff() {
   vTaskDelay(1);
   config_reg.wakeup = false;
   push_cfg(&config_reg);
+
+  i2s_gpio_detach(&i2s_config);
 }
 
 static void epd_board_start_frame() {
@@ -221,6 +257,7 @@ static void epd_board_start_frame() {
 }
 
 static void epd_board_latch_row() {
+  fast_gpio_set_hi(STH);
   fast_gpio_set_hi(V4_LATCH_ENABLE);
   fast_gpio_set_lo(V4_LATCH_ENABLE);
 }
