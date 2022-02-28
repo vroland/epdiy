@@ -277,6 +277,29 @@ static void epd_board_end_frame() {
   pulse_ckv_us(1, 1, true);
 }
 
+/**
+ * Set GPIO direction of the broken-out GPIO extender port.
+ * Each pin corresponds to a bit in `direction`.
+ * `1` corresponds to input, `0` corresponds to output.
+ */
+esp_err_t epd_gpio_set_direction_v6(uint8_t direction) {
+    return pca9555_set_config(EPDIY_I2C_PORT, direction, 0);
+}
+
+/**
+ * Get the input level of the broken-out GPIO extender port.
+ */
+uint8_t epd_gpio_get_level_v6() {
+    return pca9555_read_input(EPDIY_I2C_PORT, 0);
+}
+
+/**
+ * Get the input level of the broken-out GPIO extender port.
+ */
+esp_err_t epd_gpio_set_value_v6(uint8_t value) {
+    return pca9555_set_value(EPDIY_I2C_PORT, value, 0);
+}
+
 const EpdBoardDefinition epd_board_v6 = {
   .init = epd_board_init,
   .deinit = epd_board_deinit,
