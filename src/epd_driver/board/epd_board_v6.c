@@ -277,6 +277,10 @@ static void epd_board_end_frame() {
   pulse_ckv_us(1, 1, true);
 }
 
+static float epd_board_ambient_temperature() {
+  return tps_read_thermistor(EPDIY_I2C_PORT);
+}
+
 /**
  * Set GPIO direction of the broken-out GPIO extender port.
  * Each pin corresponds to a bit in `direction`.
@@ -308,4 +312,7 @@ const EpdBoardDefinition epd_board_v6 = {
   .start_frame = epd_board_start_frame,
   .latch_row = epd_board_latch_row,
   .end_frame = epd_board_end_frame,
+
+  .temperature_init = NULL,
+  .ambient_temperature = epd_board_ambient_temperature,
 };

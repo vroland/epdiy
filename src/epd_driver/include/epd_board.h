@@ -15,6 +15,9 @@ typedef struct {
   void (*start_frame)(void);
   void (*latch_row)(void);
   void (*end_frame)(void);
+
+  void (*temperature_init)(void);
+  float (*ambient_temperature)(void);
 } EpdBoardDefinition;
 
 extern const EpdBoardDefinition *epd_board;

@@ -235,4 +235,7 @@ const EpdBoardDefinition epd_board_lilygo_t5_47 = {
   .start_frame = epd_board_start_frame,
   .latch_row = epd_board_latch_row,
   .end_frame = epd_board_end_frame,
+
+  .temperature_init = NULL,
+  .ambient_temperature = NULL,
 };
