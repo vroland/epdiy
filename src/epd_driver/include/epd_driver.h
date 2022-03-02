@@ -209,6 +209,11 @@ void epd_poweron();
 /** Disable display power supply. */
 void epd_poweroff();
 
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+/** Disable display power supply completely touch as well */
+void epd_poweroff_all();
+#endif
+
 /** Clear the whole screen by flashing it. */
 void epd_clear();
 
@@ -387,6 +392,18 @@ void epd_get_text_bounds(const EpdFont *font, const char *string,
                      const int *x, const int *y,
                      int *x1, int *y1, int *w, int *h,
                      const EpdFontProperties *props);
+/*!
+ * Returns a rect with the bounds of the text
+ * @param font : the font used to get the character sizes
+ * @param string: pointer to c string
+ * @param x : left most position of rectangle
+ * @param y : top most point of the rectangle
+ * @param margin : to be pllied to the width and height
+ * @returns EpdRect with x and y as per the original and height and width
+ *       adjusted to fit the text with the margin added as well.
+ */ 
+EpdRect epd_get_string_rect (const EpdFont *font, const char *string,
+                     int x, int y, int margin, const EpdFontProperties *properties );
 
 /**
  * Write text to the EPD.
