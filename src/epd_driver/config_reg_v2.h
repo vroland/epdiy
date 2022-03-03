@@ -68,7 +68,6 @@ static void cfg_poweron(epd_config_register_t *cfg) {
 
 static void cfg_poweroff(epd_config_register_t *cfg) {
 #if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
-if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
   // This was re-purposed as power enable.
   cfg->ep_scan_direction = true;
   // POWEROFF
