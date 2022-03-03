@@ -45,8 +45,8 @@ static uint8_t* conversion_lut;
 
 void epd_push_pixels(EpdRect area, short time, int color) {
 
-  uint8_t row[epdiy_display.width];
-  memset(row, 0, epdiy_display.width);
+  uint8_t row[epdiy_display.width/4];
+  memset(row, 0, epdiy_display.width/4);
 
   const uint8_t color_choice[4] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
   for (uint32_t i = 0; i < area.width; i++) {
