@@ -224,6 +224,36 @@ static void get_char_bounds(const EpdFont *font, uint32_t cp, int *x, int *y,
   *x += glyph->advance_x;
 }
 
+EpdRect epd_get_string_rect (const EpdFont *font, const char *string,
+                     int x, int y, int margin, const EpdFontProperties *properties )
+{
+  assert(properties != NULL);
+  EpdFontProperties props = *properties;
+  props.flags |= EPD_DRAW_BACKGROUND;
+  EpdRect temp  = {.x = x, .y = y, .width = 0, .height = 0};
+  if (*string == '\0') 
+    return temp;
+  int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
+  int temp_x = x;
+  int temp_y = y + font->ascender;
+  
+  // Go through each line and get it's co-ordinates
+  uint32_t c;
+  while ((c = next_cp((const uint8_t **)&string)))
+  {
+    if(c==0x000A) // newline
+    {
+      temp_x = x;
+      temp_y += font->advance_y;
+    }
+    else 
+      get_char_bounds(font, c, &temp_x, &temp_y, &minx, &miny, &maxx, &maxy, &props);
+  }
+  temp.width = maxx - x + ( margin * 2 );
+  temp.height = maxy - miny + ( margin * 2 );
+  return temp;
+}
+
 void epd_get_text_bounds(const EpdFont *font, const char *string,
                      const int *x, const int *y,
                      int *x1, int *y1, int *w, int *h,
