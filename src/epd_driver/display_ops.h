@@ -16,7 +16,7 @@ inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
 
 void IRAM_ATTR busy_delay(uint32_t cycles);
 
-void epd_base_deinit();
+void epd_hw_init(uint32_t epd_row_width);
 void epd_poweron();
 void epd_poweroff();
 

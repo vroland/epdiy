@@ -249,7 +249,7 @@ void epd_init(enum EpdInitOptions options) {
   assert(epd_board != NULL);
 #endif
 
-  epd_board->init(EPD_WIDTH);
+  epd_hw_init(EPD_WIDTH);
   epd_temperature_init();
 
   size_t lut_size = 0;

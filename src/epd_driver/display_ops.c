@@ -9,14 +9,25 @@
 
 #include "xtensa/core-macros.h"
 
+static epd_ctrl_state_t ctrl_state;
+
 void IRAM_ATTR busy_delay(uint32_t cycles) {
   volatile unsigned long counts = XTHAL_GET_CCOUNT() + cycles;
   while (XTHAL_GET_CCOUNT() < counts) {
   };
 }
 
+void epd_hw_init(uint32_t epd_row_width) {
+  ctrl_state.ep_output_enable = false;
+  ctrl_state.ep_mode = false;
+  ctrl_state.ep_stv = true;
+
+  epd_board->init(epd_row_width);
+  epd_board->set_ctrl(&ctrl_state);
+}
+
 void epd_poweron() {
-  epd_board->poweron();
+  epd_board->poweron(&ctrl_state);
 }
 
 #if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
@@ -27,13 +38,21 @@ void epd_powerdown() {
 #endif
 
 void epd_poweroff() {
-  epd_board->poweroff();
+  epd_board->poweroff(&ctrl_state);
 }
 
 void epd_deinit() {
   epd_poweroff();
   i2s_deinit();
-  epd_board->deinit();
+
+  ctrl_state.ep_stv = false;
+  ctrl_state.ep_mode = false;
+  ctrl_state.ep_output_enable = false;
+  epd_board->set_ctrl(&ctrl_state);
+
+  if (epd_board->deinit) {
+    epd_board->deinit();
+  }
 
   // FIXME: deinit processes
 }
@@ -41,12 +60,31 @@ void epd_deinit() {
 void epd_start_frame() {
   while (i2s_is_busy() || rmt_busy()) {
   };
-  // TODO: Remove the start_frame function and use a ctrl interface and put the logic here instead.
-  epd_board->start_frame();
+
+  ctrl_state.ep_mode = true;
+  epd_board->set_ctrl(&ctrl_state);
+
+  pulse_ckv_us(1, 1, true);
+
+  // This is very timing-sensitive!
+  ctrl_state.ep_stv = false;
+  epd_board->set_ctrl(&ctrl_state);
+  //busy_delay(240);
+  pulse_ckv_us(1000, 100, false);
+  ctrl_state.ep_stv = true;
+  epd_board->set_ctrl(&ctrl_state);
+  //pulse_ckv_us(0, 10, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+
+  ctrl_state.ep_output_enable = true;
+  epd_board->set_ctrl(&ctrl_state);
 }
 
 static inline void latch_row() {
-  epd_board->latch_row();
+  epd_board->latch_row(&ctrl_state);
 }
 
 void IRAM_ATTR epd_skip() {
@@ -78,7 +116,7 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
 void epd_end_frame() {
   // TODO: Use ctrl interface instead and move logic here.
-  epd_board->end_frame();
+  epd_board->end_frame(&ctrl_state);
 }
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }

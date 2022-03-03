@@ -30,10 +30,7 @@ typedef struct {
   bool power_disable : 1;
   bool pos_power_enable : 1;
   bool neg_power_enable : 1;
-  bool ep_stv : 1;
   bool ep_scan_direction : 1;
-  bool ep_mode : 1;
-  bool ep_output_enable : 1;
 } epd_config_register_t;
 
 static i2s_bus_config i2s_config = {
@@ -55,23 +52,6 @@ static void IRAM_ATTR push_cfg_bit(bool bit) {
   gpio_set_level(CFG_CLK, 1);
 }
 
-static void IRAM_ATTR push_cfg(const epd_config_register_t *cfg) {
-  fast_gpio_set_lo(CFG_STR);
-
-  // push config bits in reverse order
-  push_cfg_bit(cfg->ep_output_enable);
-  push_cfg_bit(cfg->ep_mode);
-  push_cfg_bit(cfg->ep_scan_direction);
-  push_cfg_bit(cfg->ep_stv);
-
-  push_cfg_bit(cfg->neg_power_enable);
-  push_cfg_bit(cfg->pos_power_enable);
-  push_cfg_bit(cfg->power_disable);
-  push_cfg_bit(cfg->ep_latch_enable);
-
-  fast_gpio_set_hi(CFG_STR);
-}
-
 static epd_config_register_t config_reg;
 
 static void epd_board_init(uint32_t epd_row_width) {
@@ -88,12 +68,7 @@ static void epd_board_init(uint32_t epd_row_width) {
   config_reg.power_disable = true;
   config_reg.pos_power_enable = false;
   config_reg.neg_power_enable = false;
-  config_reg.ep_stv = true;
   config_reg.ep_scan_direction = true;
-  config_reg.ep_mode = false;
-  config_reg.ep_output_enable = false;
-
-  push_cfg(&config_reg);
 
   // Setup I2S
   // add an offset off dummy bytes to allow for enough timing headroom
@@ -102,14 +77,24 @@ static void epd_board_init(uint32_t epd_row_width) {
   rmt_pulse_init(CKV);
 }
 
-static void epd_board_deinit() {
-  config_reg.ep_stv = false;
-  config_reg.ep_mode = false;
-  config_reg.ep_output_enable = false;
-  push_cfg(&config_reg);
+static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
+  fast_gpio_set_lo(CFG_STR);
+
+  // push config bits in reverse order
+  push_cfg_bit(state->ep_output_enable);
+  push_cfg_bit(state->ep_mode);
+  push_cfg_bit(config_reg.ep_scan_direction);
+  push_cfg_bit(state->ep_stv);
+
+  push_cfg_bit(config_reg.neg_power_enable);
+  push_cfg_bit(config_reg.pos_power_enable);
+  push_cfg_bit(config_reg.power_disable);
+  push_cfg_bit(config_reg.ep_latch_enable);
+
+  fast_gpio_set_hi(CFG_STR);
 }
 
-static void epd_board_poweron() {
+static void epd_board_poweron(epd_ctrl_state_t *state) {
   i2s_gpio_attach(&i2s_config);
 
   // This was re-purposed as power enable.
@@ -117,111 +102,88 @@ static void epd_board_poweron() {
 
   // POWERON
   config_reg.power_disable = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(100 * 240);
   config_reg.neg_power_enable = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(500 * 240);
   config_reg.pos_power_enable = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(100 * 240);
-  config_reg.ep_stv = true;
-  push_cfg(&config_reg);
+  state->ep_stv = true;
+  epd_board_set_ctrl(state);
   fast_gpio_set_hi(STH);
   // END POWERON
 }
 
-static void epd_board_powerdown() {
+static void epd_board_powerdown(epd_ctrl_state_t *state) {
   // This was re-purposed as power enable however it also disables the touch.
   // this workaround may still leave power on to epd and as such may cause other
   // problems such as grey screen.
   config_reg.pos_power_enable = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(10 * 240);
 
   config_reg.neg_power_enable = false;
   config_reg.pos_power_enable = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(100 * 240);
 
-  config_reg.ep_stv = false;
-  config_reg.ep_output_enable = false;
-  config_reg.ep_mode = false;
+  state->ep_stv = false;
+  state->ep_output_enable = false;
+  state->ep_mode = false;
   config_reg.power_disable = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
 
   i2s_gpio_detach(&i2s_config);
 }
 
-static void epd_board_poweroff() {
+static void epd_board_poweroff(epd_ctrl_state_t *state) {
   // This was re-purposed as power enable.
   config_reg.ep_scan_direction = false;
 
   // POWEROFF
   config_reg.pos_power_enable = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(10 * 240);
 
   config_reg.neg_power_enable = false;
   config_reg.pos_power_enable = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   busy_delay(100 * 240);
 
-  config_reg.ep_stv = false;
-  config_reg.ep_output_enable = false;
-  config_reg.ep_mode = false;
+  state->ep_stv = false;
+  state->ep_output_enable = false;
+  state->ep_mode = false;
   config_reg.power_disable = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
 
   i2s_gpio_detach(&i2s_config);
   // END POWEROFF
 }
 
-static void epd_board_start_frame() {
-  config_reg.ep_mode = true;
-  push_cfg(&config_reg);
-
-  pulse_ckv_us(1, 1, true);
-
-  // This is very timing-sensitive!
-  config_reg.ep_stv = false;
-  push_cfg(&config_reg);
-  //busy_delay(240);
-  pulse_ckv_us(1000, 100, false);
-  config_reg.ep_stv = true;
-  push_cfg(&config_reg);
-  //pulse_ckv_us(0, 10, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-
-  config_reg.ep_output_enable = true;
-  push_cfg(&config_reg);
-}
-
-static void epd_board_latch_row() {
+static void epd_board_latch_row(epd_ctrl_state_t *state) {
   fast_gpio_set_hi(STH);
   config_reg.ep_latch_enable = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
 
   config_reg.ep_latch_enable = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
 }
 
-static void epd_board_end_frame() {
-  config_reg.ep_stv = false;
-  push_cfg(&config_reg);
+static void epd_board_end_frame(epd_ctrl_state_t *state) {
+  state->ep_stv = false;
+  epd_board_set_ctrl(state);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
-  config_reg.ep_mode = false;
-  push_cfg(&config_reg);
+  state->ep_mode = false;
+  epd_board_set_ctrl(state);
   pulse_ckv_us(0, 10, true);
-  config_reg.ep_output_enable = false;
-  push_cfg(&config_reg);
+  state->ep_output_enable = false;
+  epd_board_set_ctrl(state);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
@@ -229,10 +191,10 @@ static void epd_board_end_frame() {
 
 const EpdBoardDefinition epd_board_lilygo_t5_47 = {
   .init = epd_board_init,
-  .deinit = epd_board_deinit,
+  .deinit = NULL,
+  .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-  .start_frame = epd_board_start_frame,
   .latch_row = epd_board_latch_row,
   .end_frame = epd_board_end_frame,
 

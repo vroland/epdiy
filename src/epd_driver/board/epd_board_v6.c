@@ -41,9 +41,6 @@
 
 typedef struct {
     i2c_port_t port;
-    bool ep_output_enable;
-    bool ep_mode;
-    bool ep_stv;
     bool pwrup;
     bool vcom_ctrl;
     bool wakeup;
@@ -87,18 +84,6 @@ static int v6_wait_for_interrupt(int timeout) {
   return ival;
 }
 
-static void push_cfg(epd_config_register_t* reg) {
-  uint8_t value = 0x00;
-  if (reg->ep_output_enable) value |= CFG_PIN_OE;
-  if (reg->ep_mode) value |= CFG_PIN_MODE;
-  if (reg->ep_stv) value |= CFG_PIN_STV;
-  if (reg->pwrup) value |= CFG_PIN_PWRUP;
-  if (reg->vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
-  if (reg->wakeup) value |= CFG_PIN_WAKEUP;
-
-  ESP_ERROR_CHECK(pca9555_set_value(reg->port, value, 1));
-}
-
 static epd_config_register_t config_reg;
 
 static void epd_board_init(uint32_t epd_row_width) {
@@ -117,9 +102,6 @@ static void epd_board_init(uint32_t epd_row_width) {
   ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
 
   config_reg.port = EPDIY_I2C_PORT;
-  config_reg.ep_output_enable = false;
-  config_reg.ep_mode = false;
-  config_reg.ep_stv = false;
   config_reg.pwrup = false;
   config_reg.vcom_ctrl = false;
   config_reg.wakeup = false;
@@ -141,8 +123,6 @@ static void epd_board_init(uint32_t epd_row_width) {
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
   ESP_ERROR_CHECK(gpio_set_direction(V4_LATCH_ENABLE, GPIO_MODE_OUTPUT));
   gpio_set_level(V4_LATCH_ENABLE, 0);
-
-  push_cfg(&config_reg);
 
   // Setup I2S
   // add an offset off dummy bytes to allow for enough timing headroom
@@ -175,16 +155,28 @@ static void epd_board_deinit() {
   i2c_driver_delete(EPDIY_I2C_PORT);
 }
 
-static void epd_board_poweron() {
+static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
+  uint8_t value = 0x00;
+  if (state->ep_output_enable) value |= CFG_PIN_OE;
+  if (state->ep_mode) value |= CFG_PIN_MODE;
+  if (state->ep_stv) value |= CFG_PIN_STV;
+  if (config_reg.pwrup) value |= CFG_PIN_PWRUP;
+  if (config_reg.vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
+  if (config_reg.wakeup) value |= CFG_PIN_WAKEUP;
+
+  ESP_ERROR_CHECK(pca9555_set_value(config_reg.port, value, 1));
+}
+
+static void epd_board_poweron(epd_ctrl_state_t *state) {
   i2s_gpio_attach(&i2s_config);
 
-  config_reg.ep_stv = true;
+  state->ep_stv = true;
   config_reg.wakeup = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   config_reg.pwrup = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
   config_reg.vcom_ctrl = true;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
 
   // give the IC time to powerup and set lines
   vTaskDelay(1);
@@ -216,62 +208,39 @@ static void epd_board_poweron() {
   }
 }
 
-static void epd_board_poweroff() {
+static void epd_board_poweroff(epd_ctrl_state_t *state) {
   config_reg.vcom_ctrl = false;
   config_reg.pwrup = false;
-  config_reg.ep_stv = false;
-  config_reg.ep_output_enable = false;
-  config_reg.ep_mode = false;
-  push_cfg(&config_reg);
+  state->ep_stv = false;
+  state->ep_output_enable = false;
+  state->ep_mode = false;
+  epd_board_set_ctrl(state);
   vTaskDelay(1);
   config_reg.wakeup = false;
-  push_cfg(&config_reg);
+  epd_board_set_ctrl(state);
 
   i2s_gpio_detach(&i2s_config);
 }
 
-static void epd_board_start_frame() {
-  config_reg.ep_mode = true;
-  push_cfg(&config_reg);
-
-  pulse_ckv_us(1, 1, true);
-
-  // This is very timing-sensitive!
-  config_reg.ep_stv = false;
-  push_cfg(&config_reg);
-  //busy_delay(240);
-  pulse_ckv_us(1000, 100, false);
-  config_reg.ep_stv = true;
-  push_cfg(&config_reg);
-  //pulse_ckv_us(0, 10, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-
-  config_reg.ep_output_enable = true;
-  push_cfg(&config_reg);
-}
-
-static void epd_board_latch_row() {
+static void epd_board_latch_row(epd_ctrl_state_t *state) {
   fast_gpio_set_hi(STH);
   fast_gpio_set_hi(V4_LATCH_ENABLE);
   fast_gpio_set_lo(V4_LATCH_ENABLE);
 }
 
-static void epd_board_end_frame() {
-  config_reg.ep_stv = false;
-  push_cfg(&config_reg);
+static void epd_board_end_frame(epd_ctrl_state_t *state) {
+  state->ep_stv = false;
+  epd_board_set_ctrl(state);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
-  config_reg.ep_mode = false;
-  push_cfg(&config_reg);
+  state->ep_mode = false;
+  epd_board_set_ctrl(state);
   pulse_ckv_us(0, 10, true);
-  config_reg.ep_output_enable = false;
-  push_cfg(&config_reg);
+  state->ep_output_enable = false;
+  epd_board_set_ctrl(state);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
@@ -307,9 +276,9 @@ esp_err_t epd_gpio_set_value_v6(uint8_t value) {
 const EpdBoardDefinition epd_board_v6 = {
   .init = epd_board_init,
   .deinit = epd_board_deinit,
+  .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-  .start_frame = epd_board_start_frame,
   .latch_row = epd_board_latch_row,
   .end_frame = epd_board_end_frame,
 
