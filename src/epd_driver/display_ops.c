@@ -18,7 +18,9 @@ void IRAM_ATTR busy_delay(uint32_t cycles) {
 }
 
 void epd_hw_init(uint32_t epd_row_width) {
+  ctrl_state.ep_latch_enable = false;
   ctrl_state.ep_output_enable = false;
+  ctrl_state.ep_sth = true;
   ctrl_state.ep_mode = false;
   ctrl_state.ep_stv = true;
 
@@ -97,7 +99,12 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
   while (i2s_is_busy() || rmt_busy()) {
   };
 
-  epd_board->latch_row(&ctrl_state);
+  ctrl_state.ep_sth = true;
+  ctrl_state.ep_latch_enable = true;
+  epd_board->set_ctrl(&ctrl_state);
+
+  ctrl_state.ep_latch_enable = false;
+  epd_board->set_ctrl(&ctrl_state);
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)

@@ -91,6 +91,11 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
+  if (state->ep_sth) {
+    fast_gpio_set_hi(STH);
+  } else {
+    fast_gpio_set_lo(STH);
+  }
   fast_gpio_set_lo(CFG_STR);
 
   // push config bits in reverse order
@@ -106,6 +111,12 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
 
   fast_gpio_set_hi(CFG_STR);
   fast_gpio_set_lo(CFG_STR);
+
+  if (state->ep_latch_enable) {
+    fast_gpio_set_hi(V4_LATCH_ENABLE);
+  } else {
+    fast_gpio_set_lo(V4_LATCH_ENABLE);
+  }
 }
 
 static void epd_board_poweron(epd_ctrl_state_t *state) {
@@ -129,8 +140,8 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   busy_delay(100 * 240);
 
   state->ep_stv = true;
+  state->ep_sth = true;
   epd_board_set_ctrl(state);
-  fast_gpio_set_hi(STH);
   // END POWERON
 }
 
@@ -153,12 +164,6 @@ static void epd_board_poweroff(epd_ctrl_state_t *state) {
 
   i2s_gpio_detach(&i2s_config);
   // END POWEROFF
-}
-
-static void epd_board_latch_row(epd_ctrl_state_t *state) {
-  fast_gpio_set_hi(STH);
-  fast_gpio_set_hi(V4_LATCH_ENABLE);
-  fast_gpio_set_lo(V4_LATCH_ENABLE);
 }
 
 static void epd_board_temperature_init() {
@@ -193,7 +198,6 @@ const EpdBoardDefinition epd_board_v5 = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-  .latch_row = epd_board_latch_row,
 
   .temperature_init = epd_board_temperature_init,
   .ambient_temperature = epd_board_ambient_temperature,

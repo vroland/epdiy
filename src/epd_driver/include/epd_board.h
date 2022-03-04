@@ -9,7 +9,9 @@
 #include <stdint.h>
 
 typedef struct {
+  bool ep_latch_enable : 1;
   bool ep_output_enable : 1;
+  bool ep_sth : 1;
   bool ep_mode : 1;
   bool ep_stv : 1;
 } epd_ctrl_state_t;
@@ -20,7 +22,6 @@ typedef struct {
   void (*set_ctrl)(epd_ctrl_state_t *);
   void (*poweron)(epd_ctrl_state_t *);
   void (*poweroff)(epd_ctrl_state_t *);
-  void (*latch_row)(epd_ctrl_state_t *);
 
   void (*temperature_init)(void);
   float (*ambient_temperature)(void);

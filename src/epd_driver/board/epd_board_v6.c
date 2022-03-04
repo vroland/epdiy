@@ -164,7 +164,18 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
   if (config_reg.vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
   if (config_reg.wakeup) value |= CFG_PIN_WAKEUP;
 
+  if (state->ep_sth) {
+    fast_gpio_set_hi(STH);
+  } else {
+    fast_gpio_set_lo(STH);
+  }
+
   ESP_ERROR_CHECK(pca9555_set_value(config_reg.port, value, 1));
+  if (state->ep_latch_enable) {
+    fast_gpio_set_hi(V4_LATCH_ENABLE);
+  } else {
+    fast_gpio_set_lo(V4_LATCH_ENABLE);
+  }
 }
 
 static void epd_board_poweron(epd_ctrl_state_t *state) {
@@ -195,7 +206,8 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   tps_set_vcom(config_reg.port, epd_driver_v6_vcom);
 #endif
 
-  gpio_set_level(STH, 1);
+  state->ep_sth = true;
+  epd_board_set_ctrl(state);
 
   int tries = 0;
   while (!((tps_read_register(config_reg.port, TPS_REG_PG) & 0xFA) == 0xFA)) {
@@ -220,12 +232,6 @@ static void epd_board_poweroff(epd_ctrl_state_t *state) {
   epd_board_set_ctrl(state);
 
   i2s_gpio_detach(&i2s_config);
-}
-
-static void epd_board_latch_row(epd_ctrl_state_t *state) {
-  fast_gpio_set_hi(STH);
-  fast_gpio_set_hi(V4_LATCH_ENABLE);
-  fast_gpio_set_lo(V4_LATCH_ENABLE);
 }
 
 static float epd_board_ambient_temperature() {
@@ -261,7 +267,6 @@ const EpdBoardDefinition epd_board_v6 = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-  .latch_row = epd_board_latch_row,
 
   .temperature_init = NULL,
   .ambient_temperature = epd_board_ambient_temperature,

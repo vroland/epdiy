@@ -23,8 +23,6 @@
 #define CKV GPIO_NUM_25
 #define STH GPIO_NUM_26
 
-#define V4_LATCH_ENABLE GPIO_NUM_15
-
 /* Edges */
 #define CKH GPIO_NUM_5
 
@@ -34,7 +32,6 @@ static esp_adc_cal_characteristics_t adc_chars;
 #define NUMBER_OF_SAMPLES 100
 
 typedef struct {
-  bool ep_latch_enable : 1;
   bool power_disable : 1;
   bool pos_power_enable : 1;
   bool neg_power_enable : 1;
@@ -72,7 +69,6 @@ static void epd_board_init(uint32_t epd_row_width) {
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
   fast_gpio_set_lo(CFG_STR);
 
-  config_reg.ep_latch_enable = false;
   config_reg.power_disable = true;
   config_reg.pos_power_enable = false;
   config_reg.neg_power_enable = false;
@@ -86,6 +82,11 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
+  if (state->ep_sth) {
+    fast_gpio_set_hi(STH);
+  } else {
+    fast_gpio_set_lo(STH);
+  }
   fast_gpio_set_lo(CFG_STR);
 
   // push config bits in reverse order
@@ -97,7 +98,7 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
   push_cfg_bit(config_reg.neg_power_enable);
   push_cfg_bit(config_reg.pos_power_enable);
   push_cfg_bit(config_reg.power_disable);
-  push_cfg_bit(config_reg.ep_latch_enable);
+  push_cfg_bit(state->ep_latch_enable);
 
   fast_gpio_set_hi(CFG_STR);
 }
@@ -116,8 +117,8 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   epd_board_set_ctrl(state);
   busy_delay(100 * 240);
   state->ep_stv = true;
+  state->ep_sth = true;
   epd_board_set_ctrl(state);
-  fast_gpio_set_hi(STH);
   // END POWERON
 }
 
@@ -140,16 +141,6 @@ static void epd_board_poweroff(epd_ctrl_state_t *state) {
 
   i2s_gpio_detach(&i2s_config);
   // END POWEROFF
-}
-
-static void epd_board_latch_row(epd_ctrl_state_t *state) {
-  fast_gpio_set_hi(STH);
-
-  config_reg.ep_latch_enable = true;
-  epd_board_set_ctrl(state);
-
-  config_reg.ep_latch_enable = false;
-  epd_board_set_ctrl(state);
 }
 
 static void epd_board_temperature_init() {
@@ -184,7 +175,6 @@ const EpdBoardDefinition epd_board_v2_v3 = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-  .latch_row = epd_board_latch_row,
 
   .temperature_init = epd_board_temperature_init,
   .ambient_temperature = epd_board_ambient_temperature,
