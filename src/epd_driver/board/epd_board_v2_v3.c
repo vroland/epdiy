@@ -152,24 +152,6 @@ static void epd_board_latch_row(epd_ctrl_state_t *state) {
   epd_board_set_ctrl(state);
 }
 
-static void epd_board_end_frame(epd_ctrl_state_t *state) {
-  state->ep_stv = false;
-  epd_board_set_ctrl(state);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  state->ep_mode = false;
-  epd_board_set_ctrl(state);
-  pulse_ckv_us(0, 10, true);
-  state->ep_output_enable = false;
-  epd_board_set_ctrl(state);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-}
-
 static void epd_board_temperature_init() {
   esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
     ADC_UNIT_1, ADC_ATTEN_DB_6, ADC_WIDTH_BIT_12, 1100, &adc_chars
@@ -203,7 +185,6 @@ const EpdBoardDefinition epd_board_v2_v3 = {
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
   .latch_row = epd_board_latch_row,
-  .end_frame = epd_board_end_frame,
 
   .temperature_init = epd_board_temperature_init,
   .ambient_temperature = epd_board_ambient_temperature,

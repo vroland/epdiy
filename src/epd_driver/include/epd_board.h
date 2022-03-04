@@ -21,7 +21,6 @@ typedef struct {
   void (*poweron)(epd_ctrl_state_t *);
   void (*poweroff)(epd_ctrl_state_t *);
   void (*latch_row)(epd_ctrl_state_t *);
-  void (*end_frame)(epd_ctrl_state_t *);
 
   void (*temperature_init)(void);
   float (*ambient_temperature)(void);

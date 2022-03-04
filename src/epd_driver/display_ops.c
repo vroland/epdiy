@@ -115,8 +115,21 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 }
 
 void epd_end_frame() {
-  // TODO: Use ctrl interface instead and move logic here.
-  epd_board->end_frame(&ctrl_state);
+  ctrl_state.ep_stv = false;
+  epd_board->set_ctrl(&ctrl_state);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  ctrl_state.ep_mode = false;
+  epd_board->set_ctrl(&ctrl_state);
+  pulse_ckv_us(0, 10, true);
+  ctrl_state.ep_output_enable = false;
+  epd_board->set_ctrl(&ctrl_state);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
+  pulse_ckv_us(1, 1, true);
 }
 
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }

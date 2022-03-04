@@ -228,24 +228,6 @@ static void epd_board_latch_row(epd_ctrl_state_t *state) {
   fast_gpio_set_lo(V4_LATCH_ENABLE);
 }
 
-static void epd_board_end_frame(epd_ctrl_state_t *state) {
-  state->ep_stv = false;
-  epd_board_set_ctrl(state);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  state->ep_mode = false;
-  epd_board_set_ctrl(state);
-  pulse_ckv_us(0, 10, true);
-  state->ep_output_enable = false;
-  epd_board_set_ctrl(state);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-  pulse_ckv_us(1, 1, true);
-}
-
 static float epd_board_ambient_temperature() {
   return tps_read_thermistor(EPDIY_I2C_PORT);
 }
@@ -280,7 +262,6 @@ const EpdBoardDefinition epd_board_v6 = {
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
   .latch_row = epd_board_latch_row,
-  .end_frame = epd_board_end_frame,
 
   .temperature_init = NULL,
   .ambient_temperature = epd_board_ambient_temperature,
