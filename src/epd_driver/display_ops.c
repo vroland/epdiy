@@ -83,10 +83,6 @@ void epd_start_frame() {
   epd_board->set_ctrl(&ctrl_state);
 }
 
-static inline void latch_row() {
-  epd_board->latch_row(&ctrl_state);
-}
-
 void IRAM_ATTR epd_skip() {
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
@@ -101,7 +97,7 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
   while (i2s_is_busy() || rmt_busy()) {
   };
 
-  latch_row();
+  epd_board->latch_row(&ctrl_state);
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
