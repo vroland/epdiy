@@ -10,6 +10,7 @@
 #include "xtensa/core-macros.h"
 
 static epd_ctrl_state_t ctrl_state;
+static const epd_ctrl_state_t NoChangeState = {0};
 
 void IRAM_ATTR busy_delay(uint32_t cycles) {
   volatile unsigned long counts = XTHAL_GET_CCOUNT() + cycles;
@@ -23,9 +24,16 @@ void epd_hw_init(uint32_t epd_row_width) {
   ctrl_state.ep_sth = true;
   ctrl_state.ep_mode = false;
   ctrl_state.ep_stv = true;
+  epd_ctrl_state_t mask = {
+    .ep_latch_enable = true,
+    .ep_output_enable = true,
+    .ep_sth = true,
+    .ep_mode = true,
+    .ep_stv = true,
+  };
 
   epd_board->init(epd_row_width);
-  epd_board->set_ctrl(&ctrl_state);
+  epd_board->set_ctrl(&ctrl_state, &mask);
 }
 
 void epd_poweron() {
@@ -47,10 +55,15 @@ void epd_deinit() {
   epd_poweroff();
   i2s_deinit();
 
-  ctrl_state.ep_stv = false;
-  ctrl_state.ep_mode = false;
   ctrl_state.ep_output_enable = false;
-  epd_board->set_ctrl(&ctrl_state);
+  ctrl_state.ep_mode = false;
+  ctrl_state.ep_stv = false;
+  epd_ctrl_state_t mask = {
+    .ep_output_enable = true,
+    .ep_mode = true,
+    .ep_stv = true,
+  };
+  epd_board->set_ctrl(&ctrl_state, &mask);
 
   if (epd_board->deinit) {
     epd_board->deinit();
@@ -63,26 +76,35 @@ void epd_start_frame() {
   while (i2s_is_busy() || rmt_busy()) {
   };
 
+  epd_ctrl_state_t mask = NoChangeState;
+
   ctrl_state.ep_mode = true;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_mode = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
 
   pulse_ckv_us(1, 1, true);
 
   // This is very timing-sensitive!
+  mask = NoChangeState;
   ctrl_state.ep_stv = false;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_stv = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
   //busy_delay(240);
   pulse_ckv_us(1000, 100, false);
+  mask = NoChangeState;
   ctrl_state.ep_stv = true;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_stv = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
   //pulse_ckv_us(0, 10, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
 
+  mask = NoChangeState;
   ctrl_state.ep_output_enable = true;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_output_enable = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
 }
 
 void IRAM_ATTR epd_skip() {
@@ -99,12 +121,17 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
   while (i2s_is_busy() || rmt_busy()) {
   };
 
+  epd_ctrl_state_t mask = NoChangeState;
   ctrl_state.ep_sth = true;
   ctrl_state.ep_latch_enable = true;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_sth = true;
+  mask.ep_latch_enable = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
 
+  mask = NoChangeState;
   ctrl_state.ep_latch_enable = false;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_latch_enable = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
     defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
@@ -118,18 +145,24 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 }
 
 void epd_end_frame() {
+  epd_ctrl_state_t mask = NoChangeState;
   ctrl_state.ep_stv = false;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_stv = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
+  mask = NoChangeState;
   ctrl_state.ep_mode = false;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_mode = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
   pulse_ckv_us(0, 10, true);
+  mask = NoChangeState;
   ctrl_state.ep_output_enable = false;
-  epd_board->set_ctrl(&ctrl_state);
+  mask.ep_output_enable = true;
+  epd_board->set_ctrl(&ctrl_state, &mask);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);

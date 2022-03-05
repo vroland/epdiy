@@ -81,63 +81,75 @@ static void epd_board_init(uint32_t epd_row_width) {
   rmt_pulse_init(CKV);
 }
 
-static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
+static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t * const mask) {
   if (state->ep_sth) {
     fast_gpio_set_hi(STH);
   } else {
     fast_gpio_set_lo(STH);
   }
-  fast_gpio_set_lo(CFG_STR);
 
-  // push config bits in reverse order
-  push_cfg_bit(state->ep_output_enable);
-  push_cfg_bit(state->ep_mode);
-  push_cfg_bit(config_reg.ep_scan_direction);
-  push_cfg_bit(state->ep_stv);
+  if (mask->ep_output_enable || mask->ep_mode || mask->ep_stv || mask->ep_latch_enable) {
+    fast_gpio_set_lo(CFG_STR);
 
-  push_cfg_bit(config_reg.neg_power_enable);
-  push_cfg_bit(config_reg.pos_power_enable);
-  push_cfg_bit(config_reg.power_disable);
-  push_cfg_bit(state->ep_latch_enable);
+    // push config bits in reverse order
+    push_cfg_bit(state->ep_output_enable);
+    push_cfg_bit(state->ep_mode);
+    push_cfg_bit(config_reg.ep_scan_direction);
+    push_cfg_bit(state->ep_stv);
 
-  fast_gpio_set_hi(CFG_STR);
+    push_cfg_bit(config_reg.neg_power_enable);
+    push_cfg_bit(config_reg.pos_power_enable);
+    push_cfg_bit(config_reg.power_disable);
+    push_cfg_bit(state->ep_latch_enable);
+
+    fast_gpio_set_hi(CFG_STR);
+  }
 }
 
 static void epd_board_poweron(epd_ctrl_state_t *state) {
   // POWERON
   i2s_gpio_attach(&i2s_config);
 
+  epd_ctrl_state_t mask = {  // Trigger output to shift register
+    .ep_stv = true,
+  };
   config_reg.power_disable = false;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   busy_delay(100 * 240);
   config_reg.neg_power_enable = true;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   busy_delay(500 * 240);
   config_reg.pos_power_enable = true;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   busy_delay(100 * 240);
   state->ep_stv = true;
   state->ep_sth = true;
-  epd_board_set_ctrl(state);
+  mask.ep_sth = true;
+  epd_board_set_ctrl(state, &mask);
   // END POWERON
 }
 
 static void epd_board_poweroff(epd_ctrl_state_t *state) {
   // POWEROFF
+  epd_ctrl_state_t mask = {  // Trigger output to shift register
+    .ep_stv = true,
+  };
   config_reg.pos_power_enable = false;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   busy_delay(10 * 240);
 
   config_reg.neg_power_enable = false;
   config_reg.pos_power_enable = false;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   busy_delay(100 * 240);
 
   state->ep_stv = false;
   state->ep_output_enable = false;
+  mask.ep_output_enable = true;
   state->ep_mode = false;
+  mask.ep_mode = true;
   config_reg.power_disable = true;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
 
   i2s_gpio_detach(&i2s_config);
   // END POWEROFF

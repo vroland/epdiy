@@ -19,7 +19,7 @@ typedef struct {
 typedef struct {
   void (*init)(uint32_t epd_row_width);
   void (*deinit)(void);
-  void (*set_ctrl)(epd_ctrl_state_t *);
+  void (*set_ctrl)(epd_ctrl_state_t *, const epd_ctrl_state_t * const);
   void (*poweron)(epd_ctrl_state_t *);
   void (*poweroff)(epd_ctrl_state_t *);
 

@@ -157,22 +157,25 @@ static void epd_board_deinit() {
   i2c_driver_delete(EPDIY_I2C_PORT);
 }
 
-static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
+static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t * const mask) {
   uint8_t value = 0x00;
-  if (state->ep_output_enable) value |= CFG_PIN_OE;
-  if (state->ep_mode) value |= CFG_PIN_MODE;
-  if (state->ep_stv) value |= CFG_PIN_STV;
-  if (config_reg.pwrup) value |= CFG_PIN_PWRUP;
-  if (config_reg.vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
-  if (config_reg.wakeup) value |= CFG_PIN_WAKEUP;
-
   if (state->ep_sth) {
     fast_gpio_set_hi(STH);
   } else {
     fast_gpio_set_lo(STH);
   }
 
-  ESP_ERROR_CHECK(pca9555_set_value(config_reg.port, value, 1));
+  if (mask->ep_output_enable || mask->ep_mode || mask->ep_stv) {
+    if (state->ep_output_enable) value |= CFG_PIN_OE;
+    if (state->ep_mode) value |= CFG_PIN_MODE;
+    if (state->ep_stv) value |= CFG_PIN_STV;
+    if (config_reg.pwrup) value |= CFG_PIN_PWRUP;
+    if (config_reg.vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
+    if (config_reg.wakeup) value |= CFG_PIN_WAKEUP;
+
+    ESP_ERROR_CHECK(pca9555_set_value(config_reg.port, value, 1));
+  }
+
   if (state->ep_latch_enable) {
     fast_gpio_set_hi(V4_LATCH_ENABLE);
   } else {
@@ -183,13 +186,16 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state) {
 static void epd_board_poweron(epd_ctrl_state_t *state) {
   i2s_gpio_attach(&i2s_config);
 
+  epd_ctrl_state_t mask = {
+    .ep_stv = true,
+  };
   state->ep_stv = true;
   config_reg.wakeup = true;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   config_reg.pwrup = true;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   config_reg.vcom_ctrl = true;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
 
   // give the IC time to powerup and set lines
   vTaskDelay(1);
@@ -209,7 +215,10 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
 #endif
 
   state->ep_sth = true;
-  epd_board_set_ctrl(state);
+  mask = (const epd_ctrl_state_t){
+    .ep_sth = true,
+  };
+  epd_board_set_ctrl(state, &mask);
 
   int tries = 0;
   while (!((tps_read_register(config_reg.port, TPS_REG_PG) & 0xFA) == 0xFA)) {
@@ -223,15 +232,20 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
 }
 
 static void epd_board_poweroff(epd_ctrl_state_t *state) {
+  epd_ctrl_state_t mask = {
+    .ep_stv = true,
+    .ep_output_enable = true,
+    .ep_mode = true,
+  };
   config_reg.vcom_ctrl = false;
   config_reg.pwrup = false;
   state->ep_stv = false;
   state->ep_output_enable = false;
   state->ep_mode = false;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
   vTaskDelay(1);
   config_reg.wakeup = false;
-  epd_board_set_ctrl(state);
+  epd_board_set_ctrl(state, &mask);
 
   i2s_gpio_detach(&i2s_config);
 }
