@@ -9,6 +9,8 @@
 
 #include <driver/i2c.h>
 
+static int v6_wait_for_interrupt(int timeout) __attribute__((unused));
+
 #define CFG_SCL             GPIO_NUM_33
 #define CFG_SDA             GPIO_NUM_32
 #define CFG_INTR            GPIO_NUM_35
