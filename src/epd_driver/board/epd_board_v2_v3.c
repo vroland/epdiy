@@ -1,11 +1,9 @@
 #include "epd_board.h"
 
+#include "epd_board_common.h"
 #include "../display_ops.h"
 #include "../i2s_data_bus.h"
 #include "../rmt_pulse.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
-#include "esp_log.h"
 
 #define CFG_DATA GPIO_NUM_23
 #define CFG_CLK GPIO_NUM_18
@@ -25,11 +23,6 @@
 
 /* Edges */
 #define CKH GPIO_NUM_5
-
-static const adc1_channel_t channel = ADC1_CHANNEL_7;
-static esp_adc_cal_characteristics_t adc_chars;
-
-#define NUMBER_OF_SAMPLES 100
 
 typedef struct {
   bool power_disable : 1;
@@ -155,32 +148,6 @@ static void epd_board_poweroff(epd_ctrl_state_t *state) {
   // END POWEROFF
 }
 
-static void epd_board_temperature_init() {
-  esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
-    ADC_UNIT_1, ADC_ATTEN_DB_6, ADC_WIDTH_BIT_12, 1100, &adc_chars
-  );
-  if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-    ESP_LOGI("epd_temperature", "Characterized using Two Point Value\n");
-  } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-    ESP_LOGI("esp_temperature", "Characterized using eFuse Vref\n");
-  } else {
-    ESP_LOGI("esp_temperature", "Characterized using Default Vref\n");
-  }
-  adc1_config_width(ADC_WIDTH_BIT_12);
-  adc1_config_channel_atten(channel, ADC_ATTEN_DB_6);
-}
-
-static float epd_board_ambient_temperature() {
-  uint32_t value = 0;
-  for (int i = 0; i < NUMBER_OF_SAMPLES; i++) {
-    value += adc1_get_raw(channel);
-  }
-  value /= NUMBER_OF_SAMPLES;
-  // voltage in mV
-  float voltage = esp_adc_cal_raw_to_voltage(value, &adc_chars);
-  return (voltage - 500.0) / 10.0;
-}
-
 const EpdBoardDefinition epd_board_v2_v3 = {
   .init = epd_board_init,
   .deinit = NULL,
@@ -188,6 +155,6 @@ const EpdBoardDefinition epd_board_v2_v3 = {
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
 
-  .temperature_init = epd_board_temperature_init,
-  .ambient_temperature = epd_board_ambient_temperature,
+  .temperature_init = epd_board_temperature_init_v2,
+  .ambient_temperature = epd_board_ambient_temperature_v2,
 };
