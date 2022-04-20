@@ -69,6 +69,27 @@ static void cfg_poweron(epd_config_register_t *cfg) {
 static void cfg_poweroff(epd_config_register_t *cfg) {
 #if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
   // This was re-purposed as power enable.
+  cfg->ep_scan_direction = true;
+  // POWEROFF
+  cfg->pos_power_enable = false;
+  push_cfg(cfg);
+  busy_delay(10 * 240);
+
+  cfg->neg_power_enable = false;
+  cfg->pos_power_enable = false;
+  push_cfg(cfg);
+  busy_delay(100 * 240);
+
+  cfg->ep_stv = false;
+  cfg->ep_output_enable = false;
+  cfg->ep_mode = false;
+  cfg->power_disable = true;
+  push_cfg(cfg);
+  // END POWEROFF
+}
+
+static void cfg_poweroff_all(epd_config_register_t *cfg) {
+   // This was re-purposed as power enable.
   cfg->ep_scan_direction = false;
 #endif
   // POWEROFF
