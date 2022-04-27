@@ -67,7 +67,6 @@ static void cfg_poweron(epd_config_register_t *cfg) {
 }
 
 static void cfg_poweroff(epd_config_register_t *cfg) {
-  cfg->ep_scan_direction = false;
   // POWEROFF
   cfg->pos_power_enable = false;
   push_cfg(cfg);
