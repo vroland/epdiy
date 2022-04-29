@@ -97,8 +97,6 @@ extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
 extern const EpdWaveform epdiy_ED060SCT;
 extern const EpdWaveform epdiy_ED133UT2;
-// Check builtin_waveforms.c and include this external Waveform if you want to use it
-//extern const EpdWaveform epdiy_ED047TC2;
 
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
 #define EPD_BUILTIN_WAVEFORM &epdiy_ED047TC1
