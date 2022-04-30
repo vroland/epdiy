@@ -24,7 +24,9 @@ menu "E-Paper Driver"
             bool "ED133UT2"
         
         config EPD_DISPLAY_TYPE_ED047TC1
-            bool "ED047TC1 (LILYGO 4.7 inch)"
+            bool "ED047TC1 LILYGO 4.7 inch, correct grays"
+        config EPD_DISPLAY_TYPE_ED047TC2
+            bool "ED047TC2 New waveform, slower and 7 times bigger, darker black"
 
         config EPD_DISPLAY_TYPE_ED097OC4_LQ
             bool "ED097OC4 Low Quality"
