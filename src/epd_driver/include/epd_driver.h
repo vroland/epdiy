@@ -209,11 +209,6 @@ void epd_poweron();
 /** Disable display power supply. */
 void epd_poweroff();
 
-#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
-/** Disable display power supply completely touch as well */
-void epd_poweroff_all();
-#endif
-
 /** Clear the whole screen by flashing it. */
 void epd_clear();
 
