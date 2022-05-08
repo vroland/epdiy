@@ -206,6 +206,17 @@ void epd_deinit();
 /** Enable display power supply. */
 void epd_poweron();
 
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+/** On lilygo disable display power but not touch screen.
+ * The epd power flag was re-purposed as power enable
+ *  however it also disables the touch.
+ * this workaround may still leave power on to epd
+ * and as such may cause other problems such as grey screen.
+ * please also use poweroff when you sleep the system
+ * wake on touch will still work just not the I2C interface.
+ */
+void epd_powerdown();
+#endif
 /** Disable display power supply. */
 void epd_poweroff();
 

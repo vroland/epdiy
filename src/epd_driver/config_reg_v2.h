@@ -66,6 +66,28 @@ static void cfg_poweron(epd_config_register_t *cfg) {
   // END POWERON
 }
 
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+static void cfg_powerdown(epd_config_register_t *cfg) {
+  // This was re-purposed as power enable however it also disables the touch.
+  // this workaround may still leave power on to epd and as such may cause other
+  // problems such as grey screen.
+  cfg->pos_power_enable = false;
+  push_cfg(cfg);
+  busy_delay(10 * 240);
+
+  cfg->neg_power_enable = false;
+  cfg->pos_power_enable = false;
+  push_cfg(cfg);
+  busy_delay(100 * 240);
+
+  cfg->ep_stv = false;
+  cfg->ep_output_enable = false;
+  cfg->ep_mode = false;
+  cfg->power_disable = true;
+  push_cfg(cfg);
+}
+#endif
+
 static void cfg_poweroff(epd_config_register_t *cfg) {
   // POWEROFF
   cfg->pos_power_enable = false;
