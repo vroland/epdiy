@@ -6,6 +6,9 @@
 #pragma once
 
 #include "driver/gpio.h"
+#include "soc/io_mux_reg.h"
+#include "soc/gpio_struct.h"
+#include "soc/gpio_periph.h"
 #include "esp_attr.h"
 #include <stdint.h>
 

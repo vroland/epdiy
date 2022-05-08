@@ -2,6 +2,8 @@
 #include "driver/rmt.h"
 #include "esp_system.h"
 
+#include "soc/rmt_struct.h"
+
 static intr_handle_t gRMT_intr_handle = NULL;
 
 // the RMT channel configuration object
