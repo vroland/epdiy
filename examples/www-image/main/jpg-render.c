@@ -369,7 +369,7 @@ static void http_post(void)
     esp_http_client_cleanup(client);
 
     #if MILLIS_DELAY_BEFORE_SLEEP>0
-      vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_RATE_MS);
+      vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_PERIOD_MS);
     #endif
     printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
     epd_poweroff();
