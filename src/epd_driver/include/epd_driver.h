@@ -206,7 +206,7 @@ void epd_deinit();
 /** Enable display power supply. */
 void epd_poweron();
 
-#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
 /** This is a Lilygo47 specific function
  
   This is a  work around a hardware issue with the Lilygo47 epd_poweroff() turns off the epaper completely
