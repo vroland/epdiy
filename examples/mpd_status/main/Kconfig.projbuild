@@ -1,0 +1,19 @@
+menu "Application Settings"
+
+	menu "WiFi Connection Settings"
+
+		config WIFI_SSID
+			string "WiFi SSID"
+			default "myssid"
+			help
+				SSID (network name) for the smart paper to connect to.
+
+		config WIFI_PASSWORD
+			string "WiFi Password"
+			default "mypassword"
+			help
+				WiFi password (WPA2 or newer) for the smart paper to use.
+
+	endmenu
+
+endmenu
