@@ -15,7 +15,6 @@ jobs:
         version:
           - release-v4.3
           - release-v4.4
-          - latest
         example:
           - calibration_helper
           - demo
@@ -45,15 +44,11 @@ jobs:
       matrix:
         version:
           - release-v4.4
-          - latest
         example:
           - weather
         include:
           - version: release-v4.4
             arduino-esp32: 2.0.3
-          - version: latest
-            arduino-esp32: master
-          
 
     steps:
       - name: Install latest git
