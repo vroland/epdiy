@@ -96,7 +96,7 @@ This is now handled in epdiy in a different way to the lilygo.
 The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work). 
 **epd_poweroff() should allways be called before sleeping the system**
 You can still use touch to wake the screen with the following.
-
+In Arduino it works like this.
 `epd_poweroff();`
 
  `epd_deinit();`
