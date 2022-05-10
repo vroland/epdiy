@@ -206,17 +206,30 @@ void epd_deinit();
 /** Enable display power supply. */
 void epd_poweron();
 
-#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
-/** On lilygo disable display power but not touch screen.
- * The epd power flag was re-purposed as power enable
- *  however it also disables the touch.
- * this workaround may still leave power on to epd
- * and as such may cause other problems such as grey screen.
- * please also use poweroff when you sleep the system
- * wake on touch will still work just not the I2C interface.
- */
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
+/** This is a Lilygo47 specific function
+ 
+  This is a  work around a hardware issue with the Lilygo47 epd_poweroff() turns off the epaper completely
+  however the hardware of the Lilygo47 is different than the official boards. Which means that on the Lilygo47 this
+  disables power to the touchscreen.
+
+  This is a workaround to allow to disable display power but not the touch screen.
+  On the Lilygo the epd power flag was re-purposed as power enable
+  for everything. This is a hardware thing. 
+ \warning This workaround may still leave power on to epd and as such may cause other problems such as grey screen.
+  Please also use epd_poweroff() and epd_deinit() when you sleep the system wake on touch will still work.
+
+ Arduino specific code:
+ \code{.c}
+  epd_poweroff();
+  epd_deinit();
+  esp_sleep_enable_ext1_wakeup(GPIO_SEL_13, ESP_EXT1_WAKEUP_ANY_HIGH);
+  esp_deep_sleep_start();
+  \endcode
+*/
 void epd_powerdown();
 #endif
+
 /** Disable display power supply. */
 void epd_poweroff();
 
