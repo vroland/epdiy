@@ -28,7 +28,6 @@
 #include "mpd/client.h"
 #include "mpd_image.h"
 #include "mpd_info.h"
-#include "wifi_config.h"
 
 const int queue_x_start = 900;
 const int album_cover_x = 100;
@@ -122,8 +121,8 @@ void epd_task() {
   wifi_config_t wifi_config = {
       .sta =
           {
-              .ssid = WIFI_SSID,
-              .password = WIFI_PASSWORD,
+              .ssid = CONFIG_WIFI_SSID,
+              .password = CONFIG_WIFI_PASSWORD,
               .scan_method = WIFI_FAST_SCAN,
               .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
               .threshold.rssi = -127,

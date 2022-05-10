@@ -1,0 +1,69 @@
+name: ESP-IDF
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - release-v4.3
+          - release-v4.4
+        example:
+          - calibration_helper
+          - demo
+          - dragon
+          - grayscale_test
+          - mpd_status
+          - terminal
+          - www-image
+          
+    continue-on-error: ${{ matrix.version == 'latest' }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: 'espressif/esp-idf-ci-action@main'
+        with:
+          esp_idf_version: ${{ matrix.version }}
+          path: 'examples/${{ matrix.example }}'
+
+  build-arduino:
+    runs-on: ubuntu-latest
+    container:
+      image: "espressif/idf:${{ matrix.version }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - release-v4.4
+        example:
+          - weather
+        include:
+          - version: release-v4.4
+            arduino-esp32: 2.0.3
+
+    steps:
+      - name: Install latest git
+        run: |
+          apt update -qq && apt install -y -qq git
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Install Arduino ESP
+        run: |
+          cd examples/${{ matrix.example }}
+          mkdir components && cd components
+          git clone --depth 1 --recursive --branch ${{ matrix.arduino-esp32 }} https://github.com/espressif/arduino-esp32.git arduino
+      - name: esp-idf build
+        run: |
+          . $IDF_PATH/export.sh
+          cd examples/${{ matrix.example }}
+          idf.py build
+

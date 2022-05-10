@@ -475,8 +475,8 @@ epdiy_v4.menu.DebugLevel.verbose.build.code_debug=5
 lilygo_t5_47.name=LILYGO T5-4.7 inch e-paper
 
 lilygo_t5_47.upload.tool=esp32:esptool_py
-lilygo_t5_47.upload.maximum_size=1310720
-lilygo_t5_47.upload.maximum_data_size=327680
+lilygo_t5_47.upload.maximum_size=6553600
+lilygo_t5_47.upload.maximum_data_size=4521984
 lilygo_t5_47.upload.wait_for_upload_port=true
 lilygo_t5_47.upload.flags=
 lilygo_t5_47.upload.extra_flags=
@@ -498,20 +498,12 @@ lilygo_t5_47.build.flash_freq=80m
 lilygo_t5_47.build.flash_mode=qio
 lilygo_t5_47.build.boot=dio
 lilygo_t5_47.build.partitions=default
-lilygo_t5_47.build.defines=-DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
+lilygo_t5_47.build.defines=-DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47 -DCONFIG_ARDUINO_ISR_IRAM
 
-lilygo_t5_47.menu.DisplayType.default=ED097OC4
-lilygo_t5_47.menu.DisplayType.default.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED097OC4 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
-lilygo_t5_47.menu.DisplayType.ed097oc4_lq=ED097OC4 Low Quality
-lilygo_t5_47.menu.DisplayType.ed097oc4_lq.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
-lilygo_t5_47.menu.DisplayType.ed060sc4=ED060SC4
-lilygo_t5_47.menu.DisplayType.ed060sc4.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED060SC4 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
-lilygo_t5_47.menu.DisplayType.ed097tc2=ED097TC2
-lilygo_t5_47.menu.DisplayType.ed097tc2.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED097TC2 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
-lilygo_t5_47.menu.DisplayType.ed047tc1=ED047TC1 (LILYGO 4.7 inch)
-lilygo_t5_47.menu.DisplayType.ed047tc1.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
-lilygo_t5_47.menu.DisplayType.ed133ut2=ED133UT2
-lilygo_t5_47.menu.DisplayType.ed133ut2.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED133UT2 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47
+lilygo_t5_47.menu.DisplayType.default=ED047TC1 LILYGO 4.7 inch. Correct grays.
+lilygo_t5_47.menu.DisplayType.default.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47 -DCONFIG_ARDUINO_ISR_IRAM
+lilygo_t5_47.menu.DisplayType.ed047tc2=ED047TC2 LILYGO 4.7 inch. New waveform, slower and 7 times bigger, darker black
+lilygo_t5_47.menu.DisplayType.ed047tc2.build.defines=-DCONFIG_EPD_DISPLAY_TYPE_ED047TC2 -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47 -DCONFIG_ARDUINO_ISR_IRAM
 
 lilygo_t5_47.menu.PartitionScheme.default=Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
 lilygo_t5_47.menu.PartitionScheme.default.build.partitions=default
