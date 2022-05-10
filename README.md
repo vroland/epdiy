@@ -89,9 +89,13 @@ The following list is compiled from past experiences and GitHub issues:
 
 LilyGo Boards
 ---------------
-There are several differences with these boards. One particular one is the way the LilyGo handles power to the display the official lilygo code has two states. **epd_poweroff()** and **epd_poweroff_all()**.
-This is now handled in epdiy in a different way **epd_poweroff()** completly turns the power off to the display and the other peripherals. The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work). 
-**epd_poweroff() should allways be called before sleeping the system** You can still use touch to wake the screen with the following.
+There are several differences with these boards.
+One particular one is the way the LilyGo handles power to the display the official lilygo code has two states.
+This is now handled in epdiy in a different way to the lilygo.
+**epd_poweroff()** completely turns the power off to the display and the other peripherals.
+The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work). 
+**epd_poweroff() should allways be called before sleeping the system**
+You can still use touch to wake the screen with the following.
 
 `epd_poweroff();`
 
