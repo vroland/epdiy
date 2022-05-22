@@ -51,6 +51,10 @@ void epd_poweroff() {
   epd_board->poweroff(&ctrl_state);
 }
 
+epd_ctrl_state_t *epd_ctrl_state() {
+  return &ctrl_state;
+}
+
 void epd_deinit() {
   epd_poweroff();
   i2s_deinit();

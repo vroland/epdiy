@@ -126,7 +126,9 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   // END POWERON
 }
 
-static void epd_board_powerdown(epd_ctrl_state_t *state) {
+void epd_powerdown_lilygo_t5_47() {
+  epd_ctrl_state_t *state = epd_ctrl_state();
+
   // This was re-purposed as power enable however it also disables the touch.
   // this workaround may still leave power on to epd and as such may cause other
   // problems such as grey screen.

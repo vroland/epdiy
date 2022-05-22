@@ -22,3 +22,7 @@ uint8_t epd_gpio_get_level() {
 esp_err_t epd_gpio_set_value(uint8_t value) {
     return epd_gpio_set_value_v6(value);
 }
+
+void epd_powerdown() {
+    epd_powerdown_lilygo_t5_47();
+}
