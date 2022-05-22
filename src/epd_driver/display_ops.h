@@ -1,6 +1,7 @@
 #pragma once
 
 #include "driver/gpio.h"
+#include "epd_board.h"
 
 /*
  * Write bits directly using the registers.
@@ -19,6 +20,8 @@ void IRAM_ATTR busy_delay(uint32_t cycles);
 void epd_hw_init(uint32_t epd_row_width);
 void epd_poweron();
 void epd_poweroff();
+
+epd_ctrl_state_t *epd_ctrl_state();
 
 /**
  * Start a draw cycle.
