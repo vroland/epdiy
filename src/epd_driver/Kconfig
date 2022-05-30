@@ -53,6 +53,9 @@ menu "E-Paper Driver"
 
         config EPD_BOARD_REVISION_V6
             bool "epdiy v6"
+
+        config EPD_BOARD_CUSTOM
+            bool "Custom board"
     endchoice
 
     config EPD_DRIVER_V6_VCOM

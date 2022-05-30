@@ -3,9 +3,9 @@
 #include "epd_driver.h"
 #include "include/epd_driver.h"
 #include "include/epd_internals.h"
+#include "include/epd_board.h"
 #include "lut.h"
 
-#include "driver/rtc_io.h"
 #include "esp_types.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -234,10 +234,22 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
 
 
 void epd_init(enum EpdInitOptions options) {
+#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
+  epd_set_board(&epd_board_lilygo_t5_47);
+#elif defined(CONFIG_EPD_BOARD_REVISION_V2_V3)
+  epd_set_board(&epd_board_v2_v3);
+#elif defined(CONFIG_EPD_BOARD_REVISION_V4)
+  epd_set_board(&epd_board_v4);
+#elif defined(CONFIG_EPD_BOARD_REVISION_V5)
+  epd_set_board(&epd_board_v5);
+#elif defined(CONFIG_EPD_BOARD_REVISION_V6)
+  epd_set_board(&epd_board_v6);
+#else
+  // Either the board should be set in menuconfig or the epd_set_board() must be called before epd_init()
+  assert(epd_board != NULL);
+#endif
 
-  gpio_hold_dis(CKH); // freeing CKH after wakeup
-
-  epd_base_init(EPD_WIDTH);
+  epd_hw_init(EPD_WIDTH);
   epd_temperature_init();
 
   size_t lut_size = 0;
@@ -284,20 +296,8 @@ void epd_init(enum EpdInitOptions options) {
     queue_len = 8;
   }
   output_queue = xQueueCreate(queue_len, EPD_WIDTH);
+
 }
-
-void epd_deinit() {
-  // FIXME: deinit processes
-#if defined(CONFIG_EPD_BOARD_REVISION_V5) || defined(CONFIG_EPD_BOARD_REVISION_V6)
-
-  gpio_reset_pin(CKH);
-  rtc_gpio_isolate(CKH);
-  //gpio_reset_pin(CFG_INTR);
-  //rtc_gpio_isolate(CFG_INTR);
-#endif
-  epd_base_deinit();
-}
-
 
 EpdRect epd_difference_image_base(
     const uint8_t* to,

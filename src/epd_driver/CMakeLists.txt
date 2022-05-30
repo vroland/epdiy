@@ -1,5 +1,6 @@
 
 set(app_sources "epd_driver.c"
+                "epd_board.c"
                 "render.c"
                 "display_ops.c"
                 "tps65185.c"
@@ -11,7 +12,14 @@ set(app_sources "epd_driver.c"
                 "i2s_data_bus.c"
                 "rmt_pulse.c"
 				"highlevel.c"
-				"epd_temperature.c")
+                "epd_temperature.c"
+                "board/epd_board_common.c"
+                "board/epd_board_lilygo_t5_47.c"
+                "board/epd_board_v2_v3.c"
+                "board/epd_board_v4.c"
+                "board/epd_board_v5.c"
+                "board/epd_board_v6.c"
+)
 
 
 idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES esp_adc_cal)
