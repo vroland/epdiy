@@ -86,7 +86,25 @@ The following list is compiled from past experiences and GitHub issues:
  * **The existing image fades / darkens when updating a partial screen region.** Make sure the VCOM voltage is [calibrated](https://epdiy.readthedocs.io/en/latest/getting_started.html#calibrate-vcom) for your specific display.
  * **The second third of the image is replaced with the last third.** This seems to be a timing issue we could not yet quite figure out the reason for. For a workarround or suggestions please [join the discussion](https://github.com/vroland/epdiy/issues/15).
  * **The ESP does not boot correctly when external periperals are connected.** Make sure not to pull GPIO12 high during boot, as it is a strapping pin internal voltage selection (https://github.com/vroland/epdiy/issues/17).
- 
+
+LilyGo Boards
+---------------
+There are several differences with these boards.
+One particular one is the way the LilyGo handles power to the display the official lilygo code has two states.
+This is now handled in epdiy in a different way to the lilygo code.
+**epd_poweroff()** completely turns the power off to the display and the other peripherals of the lilygo.
+The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work). 
+**epd_poweroff() should allways be called before sleeping the system**
+You can still use touch to wake the screen with the following.
+In Arduino it works like this.
+`epd_poweroff();`
+
+ `epd_deinit();`
+
+ `esp_sleep_enable_ext1_wakeup(GPIO_SEL_13, ESP_EXT1_WAKEUP_ANY_HIGH);`
+
+ `esp_deep_sleep_start();`
+
 More on E-Paper Displays
 ------------------------
 
@@ -115,4 +133,3 @@ The board and schematic are licensed under a <a rel="license" href="https://crea
 
 Firmware and remaining examples are licensed under the terms of the GNU Lesser GPL version 3.
 Utilities are licensed under the terms of the MIT license.
-
