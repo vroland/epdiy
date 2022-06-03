@@ -156,10 +156,7 @@ void epd_powerdown_lilygo_t5_47() {
   i2s_gpio_detach(&i2s_config);
 }
 
-static void epd_board_poweroff(epd_ctrl_state_t *state) {
-  // This was re-purposed as power enable.
-  config_reg.ep_scan_direction = false;
-
+static void epd_board_poweroff_common(epd_ctrl_state_t *state) {
   // POWEROFF
   epd_ctrl_state_t mask = {  // Trigger output to shift register
     .ep_stv = true,
@@ -186,12 +183,35 @@ static void epd_board_poweroff(epd_ctrl_state_t *state) {
   // END POWEROFF
 }
 
+static void epd_board_poweroff(epd_ctrl_state_t *state) {
+  // This was re-purposed as power enable.
+  config_reg.ep_scan_direction = false;
+  epd_board_poweroff_common(state);
+}
+
+static void epd_board_poweroff_touch(epd_ctrl_state_t *state) {
+  // This was re-purposed as power enable.
+  config_reg.ep_scan_direction = true;
+  epd_board_poweroff_common(state);
+}
+
 const EpdBoardDefinition epd_board_lilygo_t5_47 = {
   .init = epd_board_init,
   .deinit = NULL,
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
+
+  .temperature_init = NULL,
+  .ambient_temperature = NULL,
+};
+
+const EpdBoardDefinition epd_board_lilygo_t5_47_touch = {
+  .init = epd_board_init,
+  .deinit = NULL,
+  .set_ctrl = epd_board_set_ctrl,
+  .poweron = epd_board_poweron,
+  .poweroff = epd_board_poweroff_touch,
 
   .temperature_init = NULL,
   .ambient_temperature = NULL,
