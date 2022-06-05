@@ -1,5 +1,5 @@
 #include "epd_board.h"
-#include "board/epd_board_v6.h"
+#include "../include/board/epd_board_v6.h"
 
 #include "esp_log.h"
 #include "../display_ops.h"
