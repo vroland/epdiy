@@ -40,13 +40,6 @@ void epd_poweron() {
   epd_board->poweron(&ctrl_state);
 }
 
-#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
-void epd_powerdown() {
-  cfg_powerdown(&config_reg);
-  i2s_gpio_detach();
-}
-#endif
-
 void epd_poweroff() {
   epd_board->poweroff(&ctrl_state);
 }

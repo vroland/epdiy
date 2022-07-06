@@ -31,6 +31,7 @@ extern const EpdBoardDefinition *epd_board;
 
 // Built in board definitions
 extern const EpdBoardDefinition epd_board_lilygo_t5_47;
+extern const EpdBoardDefinition epd_board_lilygo_t5_47_touch;
 extern const EpdBoardDefinition epd_board_v2_v3;
 extern const EpdBoardDefinition epd_board_v4;
 extern const EpdBoardDefinition epd_board_v5;

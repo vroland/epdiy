@@ -289,6 +289,6 @@ void i2s_deinit() {
 #else
   rtc_clk_apll_enable(0, 0, 0, 8, 0);
 #endif
-  
+
   periph_module_disable(PERIPH_I2S1_MODULE);
 }
