@@ -25,6 +25,7 @@
 #include "esp_sleep.h"
 #include "st.h"
 #include "config.h"
+#include "esp_timer.h"
 
 //#include "win.h"
 
@@ -225,7 +226,7 @@ static char utf8encodebyte(Rune, size_t);
 static size_t utf8validate(Rune *, size_t);
 
 static char *base64dec(const char *);
-static char base64dec_getc(const char **);
+static char base64dec_getc(const signed char **);
 
 //static ssize_t xwrite(int, const char *, size_t);
 static const EpdFont* get_font(Glyph g);
@@ -422,7 +423,7 @@ static const char base64_digits[] = {
 };
 
 char
-base64dec_getc(const char **src)
+base64dec_getc(const signed char **src)
 {
 	while (**src && !isprint(**src))
 		(*src)++;

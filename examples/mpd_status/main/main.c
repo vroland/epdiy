@@ -29,6 +29,11 @@
 #include "mpd_image.h"
 #include "mpd_info.h"
 
+#include "esp_system.h" // for ESP_IDF_VERSION_VAL
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include "tcpip_adapter.h"
+#endif
+
 const int queue_x_start = 900;
 const int album_cover_x = 100;
 const int album_cover_y = 100;
