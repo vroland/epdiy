@@ -24,7 +24,7 @@ jobs:
           - mpd_status
           - terminal
           - www-image
-          
+
     continue-on-error: ${{ matrix.version == 'latest' }}
 
     steps:
@@ -45,15 +45,11 @@ jobs:
       matrix:
         version:
           - release-v4.4
-          - latest
         example:
           - weather
         include:
           - version: release-v4.4
             arduino-esp32: 2.0.3
-          - version: latest
-            arduino-esp32: master
-          
 
     steps:
       - name: Install latest git
