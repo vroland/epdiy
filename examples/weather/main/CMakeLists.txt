@@ -1,4 +1,4 @@
-set(COMPONENT_SRCS "weather.cpp" )
-set(COMPONENT_ADD_INCLUDEDIRS "")
+set(app_sources "weather.cpp")
 
-register_component()
+idf_component_register(SRCS ${app_sources}
+        REQUIRES epd_driver arduino)
