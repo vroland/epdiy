@@ -30,7 +30,9 @@
 #include "mpd_info.h"
 
 #include "esp_system.h" // for ESP_IDF_VERSION_VAL
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+#include "esp_netif.h"
+#else
 #include "tcpip_adapter.h"
 #endif
 
@@ -111,8 +113,16 @@ void epd_task() {
   }
 
   ESP_ERROR_CHECK(ret);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+  esp_netif_init();
+#else
   tcpip_adapter_init();
+#endif
+
   ESP_ERROR_CHECK(esp_event_loop_create_default());
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+    esp_netif_create_default_wifi_sta();
+#endif
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
