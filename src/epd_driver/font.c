@@ -132,7 +132,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
   int byte_width = (width / 2 + width % 2);
   unsigned long bitmap_size = byte_width * height;
   const uint8_t *bitmap = NULL;
-  if (font->compressed) {
+  if (bitmap_size > 0 && font->compressed) {
     uint8_t* tmp_bitmap = (uint8_t *)malloc(bitmap_size);
     if (tmp_bitmap == NULL && bitmap_size) {
       ESP_LOGE("font", "malloc failed.");
@@ -175,7 +175,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
       x++;
     }
   }
-  if (font->compressed) {
+  if (bitmap_size > 0 && font->compressed) {
     free((uint8_t*)bitmap);
   }
   *cursor_x += glyph->advance_x;
