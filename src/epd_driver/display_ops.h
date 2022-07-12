@@ -1,10 +1,10 @@
 #pragma once
 
-#include "esp_attr.h"
 #include "driver/gpio.h"
 #include "epd_board.h"
+#include "esp_attr.h"
 
-#include "esp_system.h" // for ESP_IDF_VERSION_VAL
+#include "esp_system.h"  // for ESP_IDF_VERSION_VAL
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "hal/gpio_ll.h"
 #include "soc/gpio_struct.h"
@@ -16,19 +16,19 @@
  */
 inline void fast_gpio_set_hi(gpio_num_t gpio_num) {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-  gpio_dev_t *device = GPIO_LL_GET_HW(gpio_num);
-  device->out_w1ts = (1 << gpio_num);
+    gpio_dev_t *device = GPIO_LL_GET_HW(GPIO_PORT_0);
+    device->out_w1ts   = (1 << gpio_num);
 #else
-  GPIO.out_w1ts = (1 << gpio_num);
+    GPIO.out_w1ts = (1 << gpio_num);
 #endif
 }
 
 inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-  gpio_dev_t *device = GPIO_LL_GET_HW(gpio_num);
-  device->out_w1tc = (1 << gpio_num);
+    gpio_dev_t *device = GPIO_LL_GET_HW(GPIO_PORT_0);
+    device->out_w1tc   = (1 << gpio_num);
 #else
-  GPIO.out_w1tc = (1 << gpio_num);
+    GPIO.out_w1tc = (1 << gpio_num);
 #endif
 }
 
