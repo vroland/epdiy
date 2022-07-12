@@ -15,4 +15,8 @@ dependencies:
   #   # `public` flag doesn't have an effect dependencies of the `main` component.
   #   # All dependencies of `main` are public by default.
   #   public: true
-  libsodium: "~1.0.20"
+  espressif/libsodium:
+    version: "~1.0.20"
+    rules:
+      - if: "idf_version >= 5.0.0"
+
