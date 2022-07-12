@@ -358,7 +358,7 @@ static void http_post(void)
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
     {
-        ESP_LOGI(TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n",
+        ESP_LOGI(TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %lld\n",
                  IMG_URL,
                  esp_http_client_get_status_code(client),
                  esp_http_client_get_content_length(client));
