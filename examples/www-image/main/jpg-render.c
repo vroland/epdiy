@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_types.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -358,7 +359,12 @@ static void http_post(void)
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
     {
+        // esp_http_client_get_content_length returns a uint64_t in esp-idf v5, so it needs a %lld format specifier
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
         ESP_LOGI(TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %lld\n",
+ #else
+        ESP_LOGI(TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n",
+ #endif
                  IMG_URL,
                  esp_http_client_get_status_code(client),
                  esp_http_client_get_content_length(client));
