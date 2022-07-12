@@ -69,7 +69,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
           context->use_albumart = true;
           ESP_LOGI("mpd_image", "no image with readpicture, trying albumart...\n");
           if (!mpd_response_finish(c)) {
-            handle_error(c);
+            handle_error(&c);
             return -1;
           }
           int returned = feed_jpg_chunk(jd, buff, nd);
@@ -78,7 +78,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
       }
 
       if (!mpd_response_finish(c)) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       fprintf(stderr, "No 'size'\n");
@@ -91,7 +91,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     pair = mpd_recv_pair_named(c, "binary");
     if (pair == NULL) {
       if (mpd_connection_get_error(c) != MPD_ERROR_SUCCESS) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       fprintf(stderr, "No 'binary'\n");
@@ -104,7 +104,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
 
     if (chunk_size == 0) {
       if (!mpd_response_finish(c)) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       return 0;
@@ -112,7 +112,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
 
     context->chunk_data = malloc(chunk_size);
     if (!mpd_recv_binary(c, context->chunk_data, chunk_size)) {
-      handle_error(c);
+      handle_error(&c);
       return -1;
     }
 
@@ -120,7 +120,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     context->chunk_data_offset = 0;
 
     if (!mpd_response_finish(c)) {
-      handle_error(c);
+      handle_error(&c);
       return -1;
     }
     context->cover_offset += chunk_size;
