@@ -55,6 +55,9 @@ void loop() {
 
   epd_poweron();
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
+  if (err != EPD_DRAW_SUCCESS) {
+    printf("Error in epd_hl_update_screen:%d\n", err);
+  }
   epd_poweroff();
 
 
