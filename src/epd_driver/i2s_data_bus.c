@@ -1,5 +1,5 @@
 #include "i2s_data_bus.h"
-#include "driver/periph_ctrl.h"
+
 #include "driver/rtc_io.h"
 #include "esp_system.h"
 #if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
@@ -13,6 +13,13 @@
 #include "soc/i2s_reg.h"
 #include "soc/i2s_struct.h"
 #include "soc/rtc.h"
+
+#include "esp_system.h"  // for ESP_IDF_VERSION_VAL
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include "esp_private/periph_ctrl.h"
+#else
+#include "driver/periph_ctrl.h"
+#endif
 
 /// DMA descriptors for front and back line buffer.
 /// We use two buffers, so one can be filled while the other
