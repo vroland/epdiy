@@ -52,24 +52,24 @@ void i2s_gpio_detach(i2s_bus_config *cfg);
 /**
  * Get the currently writable line buffer.
  */
-volatile uint8_t IRAM_ATTR *i2s_get_current_buffer();
+volatile uint8_t *i2s_get_current_buffer();
 
 /**
  * Switches front and back line buffer.
  * If the switched-to line buffer is currently in use,
  * this function blocks until transmission is done.
  */
-void IRAM_ATTR i2s_switch_buffer();
+void i2s_switch_buffer();
 
 /**
  * Start transmission of the current back buffer.
  */
-void IRAM_ATTR i2s_start_line_output();
+void i2s_start_line_output();
 
 /**
  * Returns true if there is an ongoing transmission.
  */
-bool IRAM_ATTR i2s_is_busy();
+bool i2s_is_busy();
 
 /**
  * Give up allocated resources.

@@ -15,7 +15,7 @@
 /*
  * Reorder the output buffer to account for I2S FIFO order.
  */
-void IRAM_ATTR reorder_line_buffer(uint32_t *line_data);
+void reorder_line_buffer(uint32_t *line_data);
 
 typedef struct {
   const uint8_t *data_ptr;
@@ -46,9 +46,9 @@ typedef struct {
 } OutputParams;
 
 
-void IRAM_ATTR feed_display(OutputParams *params);
-void IRAM_ATTR provide_out(OutputParams *params);
+void feed_display(OutputParams *params);
+void provide_out(OutputParams *params);
 
 
-void IRAM_ATTR write_row(uint32_t output_time_dus);
-void IRAM_ATTR skip_row(uint8_t pipeline_finish_time);
+void write_row(uint32_t output_time_dus);
+void skip_row(uint8_t pipeline_finish_time);
