@@ -257,19 +257,19 @@ for i, g in enumerate(glyph_props):
 print("") 
 print("*/") 
 
-print(f"const uint8_t {font_name}Bitmaps[{len(glyph_data)}] = {{")
+print(f"const uint8_t {font_name}_Bitmaps[{len(glyph_data)}] = {{")
 for c in chunks(glyph_data, 16):
     print ("    " + " ".join(f"0x{b:02X}," for b in c))
 print ("};");
 
 
 print ('// GlyphProps[width, height, advance_x, left, top, compressed_size, data_offset, code_point]')
-print(f"const EpdGlyph {font_name}Glyphs[] = {{")
+print(f"const EpdGlyph {font_name}_Glyphs[] = {{")
 for i, g in enumerate(glyph_props):
     print ("    { " + ", ".join([f"{a}" for a in list(g[:-1])]),"},", f"// {chr(g.code_point) if g.code_point != 92 else '<backslash>'}")
 print ("};");
 
-print(f"const EpdUnicodeInterval {font_name}Intervals[] = {{")
+print(f"const EpdUnicodeInterval {font_name}_Intervals[] = {{")
 offset = 0
 for i_start, i_end in intervals:
     print (f"    {{ 0x{i_start:X}, 0x{i_end:X}, 0x{offset:X} }},")
