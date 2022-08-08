@@ -82,7 +82,8 @@ for face in font_stack:
 
 if args.string != None:
     font_file =  font_files[face_index]
-    chars = sorted(set(args.string))
+    string = " " + args.string # always add space to the string it is easily forgotten
+    chars = sorted(set(string))
     #make array of code pointscode_ponts.append(ord(char))
     code_points = list() 
     intervals = []   # empty the intevals array NB. if you want to allways add default characters comment out this line 
