@@ -267,7 +267,7 @@ print ("};");
 print ('// GlyphProps[width, height, advance_x, left, top, compressed_size, data_offset, code_point]')
 print(f"const EpdGlyph {font_name}_Glyphs[] = {{")
 for i, g in enumerate(glyph_props):
-    print ("    { " + ", ".join([f"{a}" for a in list(g[:-1])]),"},", f"// {chr(g.code_point) if g.code_point != 92 else '<backslash>'}")
+    print ("    { " + ", ".join([f"{a}" for a in list(g[:-1])]),"},", f"// '{chr(g.code_point) if g.code_point != 92 else '<backslash>'}'")
 print ("};");
 
 print(f"const EpdUnicodeInterval {font_name}_Intervals[] = {{")
@@ -290,10 +290,10 @@ print("};")
 print("/*")
 print("Included intervals")  
 for i_start, i_end in intervals:
-    print (f"    ( {i_start}, {i_end}), # {chr(i_start)} -  {chr(i_end)}")
+    print (f"    ( {i_start}, {i_end}), ie. '{chr(i_start)}' -  '{chr(i_end)}'")
 print("Included intervals", file=sys.stderr)  
 for i_start, i_end in intervals:
-    print (f"    ( {i_start}, {i_end}), # {chr(i_start)} -  {chr(i_end)}", file=sys.stderr)
+    print (f"    ( {i_start}, {i_end}), ie. '{chr(i_start)}' -  '{chr(i_end)}'", file=sys.stderr)
 print("") 
 print("*/") 
 
