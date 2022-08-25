@@ -22,6 +22,11 @@ set(app_sources "epd_driver.c"
 )
 
 
+# Can also use IDF_VER for the full esp-idf version string but that is harder to parse. i.e. v4.1.1, v5.0-beta1, etc
+if (${IDF_VERSION_MAJOR} GREATER 4)
 idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES driver esp_timer esp_adc)
+else()
+idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES esp_adc_cal esp_timer)
+endif()
 
 set_source_files_properties("lut.c" PROPERTIES COMPILE_OPTIONS -mno-fix-esp32-psram-cache-issue)
