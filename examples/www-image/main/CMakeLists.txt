@@ -4,7 +4,7 @@ set(
     )
 
 idf_component_register(SRCS ${app_sources} 
-        REQUIRES epd_driver 
+        REQUIRES epd_driver esp_wifi
         # Add only if you use jpgdec-render.cpp example
         jpegdec
         nvs_flash esp-tls esp_http_client
