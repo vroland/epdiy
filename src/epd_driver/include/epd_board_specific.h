@@ -36,11 +36,13 @@ esp_err_t epd_gpio_set_value(uint8_t value) __attribute__ ((deprecated));
   On the Lilygo the epd power flag was re-purposed as power enable
   for everything. This is a hardware thing.
  \warning This workaround may still leave power on to epd and as such may cause other problems such as grey screen.
-  Please also use epd_poweroff() and epd_deinit() when you sleep the system wake on touch will still work.
-
+  
+  Please use epd_poweroff() and epd_deinit() whenever you sleep the system.
+  The following code can be used to sleep the lilygo and power down the peripherals and wake the unit on touch.
+  However is should be noted that the touch controller is not powered and as such the touch coordinates will not be captured.
  Arduino specific code:
  \code{.c}
-  epd_powerdown_lilygo_t5_47();
+  epd_poweroff();
   epd_deinit();
   esp_sleep_enable_ext1_wakeup(GPIO_SEL_13, ESP_EXT1_WAKEUP_ANY_HIGH);
   esp_deep_sleep_start();
