@@ -20,7 +20,7 @@ void reorder_line_buffer(uint32_t *line_data);
 typedef struct {
   const uint8_t *data_ptr;
   EpdRect crop_to;
-  SemaphoreHandle_t done_smphr;
+  void (*done_cb)(void);
   SemaphoreHandle_t start_smphr;
   EpdRect area;
   int frame;
@@ -37,7 +37,9 @@ typedef struct {
   enum EpdDrawError error;
   const bool *drawn_lines;
   // Queue of input data lines
-  QueueHandle_t* output_queue;
+  QueueHandle_t* pixel_queue;
+  // Queue of display data lines
+  QueueHandle_t* display_queue;
 
   // Lookup table size.
   size_t conversion_lut_size;
@@ -52,3 +54,13 @@ void provide_out(OutputParams *params);
 
 void write_row(uint32_t output_time_dus);
 void skip_row(uint8_t pipeline_finish_time);
+
+void mask_line_buffer(uint8_t* lb, int xmin, int xmax);
+enum EpdDrawError calculate_lut(OutputParams *params);
+void calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut);
+inline uint8_t lookup_pixels_4bpp_1k(uint16_t in, const uint8_t *conversion_lut, uint8_t from);
+void calc_epd_input_4bpp_1k_lut(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint8_t from);
+void calc_epd_input_1bpp(const uint32_t *line_data, uint8_t *epd_input, const uint8_t *lut);
+void calc_epd_input_4bpp_1k_lut_white(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut);
+void calc_epd_input_4bpp_1k_lut_black(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut);
+void calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input, const uint8_t *conversion_lut);
