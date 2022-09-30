@@ -1,5 +1,10 @@
 #include "lut.h"
+#include "driver/gpio.h"
+
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
 #include "display_ops.h"
+#endif
+
 #include "esp_log.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -8,6 +13,15 @@
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "esp_timer.h"
 #endif
+
+// When using the LCD peripheral, we may need padding lines to
+// satisfy the bounce buffer size requirements
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+#define FRAME_LINES               EPD_HEIGHT
+#else
+#define FRAME_LINES              (((EPD_HEIGHT  + 3) / 4) * 4)
+#endif
+
 
 /*
  * Build Lookup tables and translate via LUTs.
@@ -65,23 +79,6 @@ inline int max(int x, int y) { return x > y ? x : y; }
 // status tracker for row skipping
 uint32_t skipping;
 
-// output a row to the display.
-void IRAM_ATTR write_row(uint32_t output_time_dus) {
-  epd_output_row(output_time_dus);
-  skipping = 0;
-}
-
-// skip a display row
-void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
-  // output previously loaded row, fill buffer with no-ops.
-  if (skipping < 2) {
-    memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
-    epd_output_row(pipeline_finish_time);
-  } else {
-    epd_skip();
-  }
-  skipping++;
-}
 
 void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
   for (uint32_t i = 0; i < EPD_LINE_BYTES / 4; i++) {
@@ -112,7 +109,7 @@ static void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
 ///////////////////////////// Looking up EPD Pixels
 //////////////////////////////////
 
-static void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
+void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
                                           uint8_t *epd_input,
                                           const uint8_t *lut) {
 
@@ -128,7 +125,7 @@ static void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
   }
 }
 
-static void IRAM_ATTR
+void IRAM_ATTR
 calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input,
                             const uint8_t *conversion_lut) {
 
@@ -143,8 +140,19 @@ calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input,
     uint16_t v2 = *(line_data_16++);
     uint16_t v3 = *(line_data_16++);
     uint16_t v4 = *(line_data_16++);
+
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
     uint32_t pixel = conversion_lut[v1] << 16 | conversion_lut[v2] << 24 |
                      conversion_lut[v3] | conversion_lut[v4] << 8;
+#else
+    uint32_t pixel = conversion_lut[v4];
+    pixel = pixel << 8;
+    pixel |= conversion_lut[v3];
+    pixel = pixel << 8;
+    pixel |= conversion_lut[v2];
+    pixel = pixel << 8;
+    pixel |= conversion_lut[v1];
+#endif
     wide_epd_input[j] = pixel;
   }
 }
@@ -167,28 +175,36 @@ lookup_differential_pixels(uint32_t in, const uint8_t *conversion_lut) {
 /**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
-static void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
-                                          uint8_t *epd_input,
-                                          const uint8_t *conversion_lut) {
+void calc_epd_input_1ppB(const uint32_t *ld,
+                          uint8_t *epd_input,
+                          const uint8_t *conversion_lut) {
 
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
   for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
     epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
+#else
+    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
+#endif
   }
 }
 
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
  */
-static inline uint8_t lookup_pixels_4bpp_1k(uint16_t in,
+inline uint8_t lookup_pixels_4bpp_1k(uint16_t in,
                                             const uint8_t *conversion_lut,
                                             uint8_t from) {
   uint8_t v;
   uint8_t out;
+
   v = ((in << 4) | from);
   out = conversion_lut[v & 0xFF];
   v = ((in & 0xF0) | from);
@@ -205,7 +221,7 @@ static inline uint8_t lookup_pixels_4bpp_1k(uint16_t in,
  * Calculate EPD input for a 4bpp buffer, but with a difference image LUT.
  * This is used for small-LUT mode.
  */
-static void IRAM_ATTR calc_epd_input_4bpp_1k_lut(const uint32_t *ld,
+void IRAM_ATTR calc_epd_input_4bpp_1k_lut(const uint32_t *ld,
                                                  uint8_t *epd_input,
                                                  const uint8_t *conversion_lut,
                                                  uint8_t from) {
@@ -214,19 +230,26 @@ static void IRAM_ATTR calc_epd_input_4bpp_1k_lut(const uint32_t *ld,
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
   for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
     epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
     epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
     epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
     epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+#else
+    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+#endif
   }
 }
 
-static void IRAM_ATTR calc_epd_input_4bpp_1k_lut_white(
+void IRAM_ATTR calc_epd_input_4bpp_1k_lut_white(
     const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut) {
   calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0xF);
 }
 
-static void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
+void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
     const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut) {
   calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0x0);
 }
@@ -311,6 +334,124 @@ static void IRAM_ATTR waveform_lut_static_from(const EpdWaveform *waveform,
   }
 }
 
+/**
+ * Set all pixels not in [xmin,xmax) to nop in the current line buffer.
+ */
+void mask_line_buffer(uint8_t* lb, int xmin, int xmax) {
+  // lower bound to where byte order is not an issue.
+  int memset_start = (xmin / 16) * 4;
+  int memset_end = min(((xmax + 15) / 16) * 4, EPD_LINE_BYTES);
+
+  // memset the areas where order is not an issue
+  memset(lb, 0, memset_start);
+  memset(lb + memset_end, 0, EPD_LINE_BYTES - memset_end);
+
+  const int offset_table[4] = {2, 3, 0, 1};
+
+  // mask unused pixels at the start of the output interval
+  uint8_t line_start_mask = 0xFF << (2 * (xmin % 4));
+  uint8_t line_end_mask = 0xFF >> (8 - 2 * (xmax % 4));
+
+  // number of full bytes to mask
+  int lower_full_bytes = max(0, (xmin / 4 - memset_start));
+  int upper_full_bytes = max(0, (memset_end - ((xmax + 3) / 4)));
+  assert(lower_full_bytes <= 3);
+  assert(upper_full_bytes <= 3);
+  assert(memset_end >= 4);
+
+  // mask full bytes
+  for (int i = 0; i < lower_full_bytes; i++) {
+    lb[memset_start + offset_table[i]] = 0x0;
+  }
+  for (int i = 0; i < upper_full_bytes; i++) {
+    lb[memset_end - 4 + offset_table[3 - i]] = 0x0;
+  }
+
+  // mask partial bytes
+  if ((memset_start + lower_full_bytes) * 4 < xmin) {
+    lb[memset_start + offset_table[lower_full_bytes]] &= line_start_mask;
+  }
+  if ((memset_end - upper_full_bytes) * 4 > xmax) {
+    lb[memset_end - 4 + offset_table[3 - upper_full_bytes]] &=
+        line_end_mask;
+  }
+}
+
+enum EpdDrawError IRAM_ATTR calculate_lut(OutputParams *params) {
+
+  enum EpdDrawMode mode = params->mode;
+  enum EpdDrawMode selected_mode = mode & 0x3F;
+
+  // two pixel per byte packing with only target color
+  if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE &&
+      params->conversion_lut_size == (1 << 16)) {
+    waveform_lut_static_from(params->waveform, params->conversion_lut, 0x0F,
+                             params->waveform_index, params->waveform_range,
+                             params->frame);
+  } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK &&
+             params->conversion_lut_size == (1 << 16)) {
+    waveform_lut_static_from(params->waveform, params->conversion_lut, 0x00,
+                             params->waveform_index, params->waveform_range,
+                             params->frame);
+
+    // one pixel per byte with from and to colors
+  } else if (mode & MODE_PACKING_1PPB_DIFFERENCE ||
+             (mode & MODE_PACKING_2PPB &&
+              params->conversion_lut_size == (1 << 10))) {
+    waveform_lut(params->waveform, params->conversion_lut,
+                 params->waveform_index, params->waveform_range, params->frame);
+
+    // 1bit per pixel monochrome with only target color
+  } else if (mode & MODE_PACKING_8PPB &&
+             selected_mode == MODE_EPDIY_MONOCHROME) {
+    // FIXME: Pack into waveform?
+    if (mode & PREVIOUSLY_WHITE) {
+      memcpy(params->conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+    } else if (mode & PREVIOUSLY_BLACK) {
+      // FIXME: implement!
+      // memcpy(params->conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
+      return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    } else {
+      return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    }
+
+    // unknown format.
+  } else {
+    return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+  }
+  return EPD_DRAW_SUCCESS;
+}
+
+
+// output a row to the display.
+void IRAM_ATTR write_row(uint32_t output_time_dus) {
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+  epd_output_row(output_time_dus);
+#endif
+  skipping = 0;
+}
+
+
+#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+void epd_start_frame() {}
+void epd_end_frame() {}
+#endif
+
+
+// skip a display row
+void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+  // output previously loaded row, fill buffer with no-ops.
+  if (skipping < 2) {
+    memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
+    epd_output_row(pipeline_finish_time);
+  } else {
+    epd_skip();
+  }
+#endif
+  skipping++;
+}
+
 void IRAM_ATTR provide_out(OutputParams *params) {
   while (true) {
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
@@ -318,6 +459,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
     memset(line, 255, EPD_WIDTH);
 
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
+
     EpdRect area = params->area;
     const uint8_t *ptr = params->data_ptr;
     const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
@@ -360,7 +502,7 @@ void IRAM_ATTR provide_out(OutputParams *params) {
     // calculate start and end row with crop
     int min_y = area.y + crop_y;
     int max_y = min(min_y + (crop ? crop_h : area.height), area.height);
-    for (int i = 0; i < EPD_HEIGHT; i++) {
+    for (int i = 0; i < FRAME_LINES; i++) {
       if (i < min_y || i >= max_y) {
         continue;
       }
@@ -429,110 +571,23 @@ void IRAM_ATTR provide_out(OutputParams *params) {
         }
         lp = (uint32_t *)line;
       }
-      xQueueSendToBack(*params->output_queue, lp, portMAX_DELAY);
+      xQueueSendToBack(*params->pixel_queue, lp, portMAX_DELAY);
       if (shifted) {
         memset(line, 255, EPD_WIDTH / width_divider);
       }
     }
 
-    xSemaphoreGive(params->done_smphr);
-  }
-}
-
-/**
- * Set all pixels not in [xmin,xmax) to nop in the current line buffer.
- */
-static void IRAM_ATTR mask_line_buffer(int xmin, int xmax) {
-  // lower bound to where byte order is not an issue.
-  int memset_start = (xmin / 16) * 4;
-  int memset_end = min(((xmax + 15) / 16) * 4, EPD_LINE_BYTES);
-  uint8_t *lb = epd_get_current_buffer();
-
-  // memset the areas where order is not an issue
-  memset(lb, 0, memset_start);
-  memset(lb + memset_end, 0, EPD_LINE_BYTES - memset_end);
-
-  const int offset_table[4] = {2, 3, 0, 1};
-
-  // mask unused pixels at the start of the output interval
-  uint8_t line_start_mask = 0xFF << (2 * (xmin % 4));
-  uint8_t line_end_mask = 0xFF >> (8 - 2 * (xmax % 4));
-
-  // number of full bytes to mask
-  int lower_full_bytes = max(0, (xmin / 4 - memset_start));
-  int upper_full_bytes = max(0, (memset_end - ((xmax + 3) / 4)));
-  assert(lower_full_bytes <= 3);
-  assert(upper_full_bytes <= 3);
-  assert(memset_end >= 4);
-
-  // mask full bytes
-  for (int i = 0; i < lower_full_bytes; i++) {
-    lb[memset_start + offset_table[i]] = 0x0;
-  }
-  for (int i = 0; i < upper_full_bytes; i++) {
-    lb[memset_end - 4 + offset_table[3 - i]] = 0x0;
-  }
-
-  // mask partial bytes
-  if ((memset_start + lower_full_bytes) * 4 < xmin) {
-    epd_get_current_buffer()[memset_start + offset_table[lower_full_bytes]] &=
-        line_start_mask;
-  }
-  if ((memset_end - upper_full_bytes) * 4 > xmax) {
-    epd_get_current_buffer()[memset_end - 4 +
-                             offset_table[3 - upper_full_bytes]] &=
-        line_end_mask;
-  }
-}
-
-void IRAM_ATTR busy_delay(uint32_t cycles);
-
-static enum EpdDrawError calculate_lut(OutputParams *params) {
-
-  enum EpdDrawMode mode = params->mode;
-  enum EpdDrawMode selected_mode = mode & 0x3F;
-
-  // two pixel per byte packing with only target color
-  if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE &&
-      params->conversion_lut_size == (1 << 16)) {
-    waveform_lut_static_from(params->waveform, params->conversion_lut, 0x0F,
-                             params->waveform_index, params->waveform_range,
-                             params->frame);
-  } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK &&
-             params->conversion_lut_size == (1 << 16)) {
-    waveform_lut_static_from(params->waveform, params->conversion_lut, 0x00,
-                             params->waveform_index, params->waveform_range,
-                             params->frame);
-
-    // one pixel per byte with from and to colors
-  } else if (mode & MODE_PACKING_1PPB_DIFFERENCE ||
-             (mode & MODE_PACKING_2PPB &&
-              params->conversion_lut_size == (1 << 10))) {
-    waveform_lut(params->waveform, params->conversion_lut,
-                 params->waveform_index, params->waveform_range, params->frame);
-
-    // 1bit per pixel monochrome with only target color
-  } else if (mode & MODE_PACKING_8PPB &&
-             selected_mode == MODE_EPDIY_MONOCHROME) {
-    // FIXME: Pack into waveform?
-    if (mode & PREVIOUSLY_WHITE) {
-      memcpy(params->conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
-    } else if (mode & PREVIOUSLY_BLACK) {
-      // FIXME: implement!
-      // memcpy(params->conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
-      return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-    } else {
-      return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    if (params->done_cb != NULL) {
+        params->done_cb();
     }
-
-    // unknown format.
-  } else {
-    return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
   }
-  return EPD_DRAW_SUCCESS;
 }
 
 void IRAM_ATTR feed_display(OutputParams *params) {
+#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+  uint8_t line_buf[EPD_LINE_BYTES];
+#endif
+
   while (true) {
     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
 
@@ -580,35 +635,46 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
     line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
 
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
     uint64_t now = esp_timer_get_time();
     uint64_t diff = (now - last_frame_start) / 1000;
     if (diff < MINIMUM_FRAME_TIME) {
       vTaskDelay(MINIMUM_FRAME_TIME - diff);
     }
+#endif
 
     last_frame_start = esp_timer_get_time();
 
     epd_start_frame();
-    for (int i = 0; i < EPD_HEIGHT; i++) {
-      if (i < min_y || i >= max_y) {
+    for (int i = 0; i < FRAME_LINES; i++) {
+      if (i < min_y || i >= max_y || (params->drawn_lines != NULL && !params->drawn_lines[i - area.y])) {
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
         skip_row(frame_time);
-        continue;
-      }
-      if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
-        skip_row(frame_time);
+#else
+        memset(line_buf, 0x00, EPD_LINE_BYTES);
+        xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
+#endif
         continue;
       }
 
       uint8_t output[EPD_WIDTH];
-      xQueueReceive(*params->output_queue, output, portMAX_DELAY);
+      xQueueReceive(*params->pixel_queue, output, portMAX_DELAY);
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+      uint8_t* line_buf = epd_get_current_buffer();
+#endif
+
       if (!params->error) {
-        (*input_calc_func)((uint32_t *)output, epd_get_current_buffer(),
-                           params->conversion_lut);
+        (*input_calc_func)((uint32_t *)output, line_buf, params->conversion_lut);
         if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
-          mask_line_buffer(line_start_x, line_end_x);
+          mask_line_buffer(line_buf, line_start_x, line_end_x);
         }
       }
+        gpio_set_level(15, 0);
       write_row(frame_time);
+#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+      xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
+#endif
+        gpio_set_level(15, 1);
     }
     if (!skipping) {
       // Since we "pipeline" row output, we still have to latch out the last
@@ -617,6 +683,8 @@ void IRAM_ATTR feed_display(OutputParams *params) {
     }
     epd_end_frame();
 
-    xSemaphoreGive(params->done_smphr);
+    if (params->done_cb != NULL) {
+        params->done_cb();
+    }
   }
 }

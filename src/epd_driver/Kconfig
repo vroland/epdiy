@@ -54,6 +54,9 @@ menu "E-Paper Driver"
         config EPD_BOARD_REVISION_V6
             bool "epdiy v6"
 
+        config EPD_BOARD_S3_PROTOTYPE
+            bool "epdiy s3 prototype"
+
         config EPD_BOARD_CUSTOM
             bool "Custom board"
     endchoice

@@ -30,6 +30,8 @@ extern rmt_block_mem_t RMTMEM;
 
 void rmt_pulse_init(gpio_num_t pin) {
 
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+
   row_rmt_config.rmt_mode = RMT_MODE_TX;
   // currently hardcoded: use channel 0
   row_rmt_config.channel = RMT_CHANNEL_1;
@@ -54,10 +56,12 @@ void rmt_pulse_init(gpio_num_t pin) {
 
   rmt_config(&row_rmt_config);
   rmt_set_tx_intr_en(row_rmt_config.channel, true);
+#endif
 }
 
 void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
                                uint16_t low_time_ticks, bool wait) {
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
   while (!rmt_tx_done) {
   };
   volatile rmt_item32_t *rmt_mem_ptr =
@@ -80,6 +84,7 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
   RMT.conf_ch[row_rmt_config.channel].conf1.tx_start = 1;
   while (wait && !rmt_tx_done) {
   };
+#endif
 }
 
 void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
