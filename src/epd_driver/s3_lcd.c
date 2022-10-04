@@ -33,7 +33,7 @@
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
 
-#define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
+#define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (30 * 1000 * 1000)
 #define RMT_CLOCK_HZ                   (10 * 1000 * 1000)
 #define EXAMPLE_PIN_NUM_BK_LIGHT       -1
 #define EXAMPLE_PIN_NUM_HSYNC          46
@@ -67,16 +67,12 @@ inline int max(int x, int y) { return x > y ? x : y; }
 
 // the RMT channel configuration object
 static esp_lcd_panel_handle_t panel_handle = NULL;
-static volatile long int framecounter = 0;
-static const uint8_t EPD_NOOP = 0x00;
 
-/** set appropriate callback functions for data output in next VSYNC */
-static bool enable_data_out = false;
-static uint8_t static_output_data = EPD_NOOP;
 /** unset appropriate callback functions for data output in next VSYNC */
-static bool disable_data_out = false;
-static QueueHandle_t line_queue;
 static void (*frame_prepare_cb)(void) = NULL;
+static bool (*line_source_cb)(uint8_t*) = NULL;
+/// line source to be used from the next vsync onwards
+static bool (*next_line_source)(uint8_t*) = NULL;
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access to RMTMEM through the rmt_private.h header
@@ -88,22 +84,10 @@ extern rmt_block_mem_t RMTMEM;
 
 static bool epd_on_vsync_event(esp_lcd_panel_handle_t panel, const esp_lcd_rgb_panel_event_data_t *event_data, void *user_data);
 static bool on_bounce_buffer(esp_lcd_panel_handle_t panel, void *bounce_buf, int pos_px, int len_bytes, void *user_ctx);
-static bool on_singlecolor_bounce_buffer(esp_lcd_panel_handle_t panel, void *bounce_buf, int pos_px, int len_bytes, void *user_ctx);
 
-static void esp_lcd_set_fetch_callbacks() {
-    esp_lcd_rgb_panel_event_callbacks_t cbs = {
-        .on_vsync = epd_on_vsync_event,
-        .on_bounce_empty = on_bounce_buffer,
-    };
-    ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, &line_queue));
-}
 
-static void esp_lcd_set_singlecolor_callbacks(const uint8_t* color) {
-    esp_lcd_rgb_panel_event_callbacks_t cbs = {
-        .on_vsync = epd_on_vsync_event,
-        .on_bounce_empty = on_singlecolor_bounce_buffer,
-    };
-    ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, (void*)color));
+void s3_set_line_source(bool(*line_source)(uint8_t*)) {
+    next_line_source = line_source;
 }
 
 void s3_set_frame_prepare_cb(void (*cb)(void)) {
@@ -122,15 +106,7 @@ static bool IRAM_ATTR epd_on_vsync_event(esp_lcd_panel_handle_t panel, const esp
     rmt_ll_tx_reset_loop_count(&RMT, RMT_CKV_CHAN);
     rmt_ll_tx_reset_pointer(&RMT, RMT_CKV_CHAN);
 
-    if (enable_data_out) {
-        esp_lcd_set_fetch_callbacks();
-        enable_data_out = false;
-    }
-
-    if (disable_data_out) {
-        esp_lcd_set_singlecolor_callbacks(&static_output_data);
-        disable_data_out = false;
-    }
+    line_source_cb = next_line_source;
 
     rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
     //gpio_set_level(15, 1);
@@ -142,8 +118,6 @@ static bool IRAM_ATTR epd_on_vsync_event(esp_lcd_panel_handle_t panel, const esp
 static void IRAM_ATTR rmt_interrupt_handler(void *args) {
     uint32_t intr_status = rmt_ll_tx_get_interrupt_status(&RMT, RMT_CKV_CHAN);
     rmt_ll_clear_interrupt_status(&RMT, intr_status);
-
-    framecounter++;
 
     if (frame_prepare_cb != NULL) {
         (*frame_prepare_cb)();
@@ -157,27 +131,15 @@ static bool IRAM_ATTR on_bounce_buffer(esp_lcd_panel_handle_t panel, void *bounc
     assert(len_bytes % (EPD_WIDTH / 4) == 0);
 
     for (int i=0; i < len_bytes / (EPD_WIDTH / 4); i++) {
-        if (!xQueueReceiveFromISR(line_queue, bp, &task_awoken)) {
-            assert(false);
+        if (line_source_cb != NULL)  {
+            task_awoken |= line_source_cb(bp);
+        } else {
+            memset(bp, 0x00, EPD_WIDTH / 4);
         }
         bp += EPD_WIDTH / 4;
     }
 
     return task_awoken;
-}
-
-void s3_lcd_enable_data_out() {
-    enable_data_out = true;
-}
-void s3_lcd_disable_data_out(uint8_t color) {
-    static_output_data = color;
-    disable_data_out = true;
-}
-
-static bool IRAM_ATTR on_singlecolor_bounce_buffer(esp_lcd_panel_handle_t panel, void *bounce_buf, int pos_px, int len_bytes, void *user_ctx) {
-    uint8_t color = *((uint8_t*)user_ctx);
-    memset(bounce_buf, color, len_bytes);
-    return pdFALSE;
 }
 
 void setup_transfer() {
@@ -187,11 +149,6 @@ void setup_transfer() {
 
 void stop_transfer() {
     ESP_ERROR_CHECK(esp_lcd_panel_del(panel_handle));
-}
-
-
-void s3_set_display_queue(QueueHandle_t ext_line_queue) {
-  line_queue = ext_line_queue;
 }
 
 void epd_lcd_init() {
@@ -222,7 +179,7 @@ void epd_lcd_init() {
 
   volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = 120;
+    rmt_mem_ptr->duration0 = 60;
     rmt_mem_ptr->level0 = 0;
     rmt_mem_ptr->duration1 = 60;
     rmt_mem_ptr->level1 = 1;
@@ -320,7 +277,11 @@ void epd_lcd_init() {
     //copy_encoder->encode(copy_encoder, rmt_chan, &shape, sizeof(rmt_symbol_word_t) * 64, &rmt_state);
 
     ESP_LOGI(TAG, "Register event callbacks");
-    esp_lcd_set_singlecolor_callbacks(&EPD_NOOP);
+    esp_lcd_rgb_panel_event_callbacks_t cbs = {
+        .on_vsync = epd_on_vsync_event,
+        .on_bounce_empty = on_bounce_buffer,
+    };
+    ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, NULL));
 
     ESP_LOGI(TAG, "Initialize RGB LCD panel");
     setup_transfer();
@@ -328,161 +289,3 @@ void epd_lcd_init() {
     //Cache_WriteBack_Addr((uint32_t)buf1, EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES);
     //esp_lcd_rgb_panel_refresh(panel_handle);
 }
-
-
-void output_singlecolor_frame(EpdRect area, short time, uint8_t color) {
-    s3_lcd_disable_data_out(color);
-    //setup_transfer();
-    long int orig_counter = framecounter;
-
-    //esp_lcd_rgb_panel_refresh(panel_handle);
-    //while (!(LCD_CAM.lc_dma_int_raw.lcd_trans_done_int_raw)) {
-    while (orig_counter == framecounter) {
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
-
-    s3_lcd_disable_data_out(EPD_NOOP);
-    //stop_transfer();
-}
-
-// void IRAM_ATTR supply_display(OutputParams* params) {
-//     uint8_t line[EPD_WIDTH];
-//     memset(line, 255, EPD_WIDTH);
-//     uint8_t out_line[EPD_WIDTH / 4];
-//
-//     ESP_LOGI(TAG, "display supplicant initialized");
-//
-//     while (true) {
-//         xSemaphoreTake(params->start_smphr, portMAX_DELAY);
-//         params->error |= calculate_lut(params);
-//
-//         EpdRect area = params->area;
-//         const uint8_t *ptr = params->data_ptr;
-//         const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
-//         // number of pixels per byte of input data
-//         int ppB = 0;
-//         int bytes_per_line = 0;
-//         int width_divider = 0;
-//
-//         if (params->mode & MODE_PACKING_1PPB_DIFFERENCE) {
-//           ppB = 1;
-//           bytes_per_line = area.width;
-//           width_divider = 1;
-//         } else if (params->mode & MODE_PACKING_2PPB) {
-//           ppB = 2;
-//           bytes_per_line = area.width / 2 + area.width % 2;
-//           width_divider = 2;
-//         } else if (params->mode & MODE_PACKING_8PPB) {
-//           ppB = 8;
-//           bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
-//           width_divider = 8;
-//         } else {
-//           params->error |= EPD_DRAW_INVALID_PACKING_MODE;
-//         }
-//
-//         int crop_x = (crop ? params->crop_to.x : 0);
-//         int crop_y = (crop ? params->crop_to.y : 0);
-//         int crop_w = (crop ? params->crop_to.width : 0);
-//         int crop_h = (crop ? params->crop_to.height : 0);
-//
-//         // Adjust for negative starting coordinates with optional crop
-//         if (area.x - crop_x < 0) {
-//           ptr += -(area.x - crop_x) / width_divider;
-//         }
-//
-//         if (area.y - crop_y < 0) {
-//           ptr += -(area.y - crop_y) * bytes_per_line;
-//         }
-//
-//         // calculate start and end row with crop
-//         int min_y = area.y + crop_y;
-//         int max_y = min(min_y + (crop ? crop_h : area.height), area.height);
-//
-//
-//         // interval of the output line that is needed
-//         // FIXME: only lookup needed parts
-//         int line_start_x = area.x + (crop ? params->crop_to.x : 0);
-//         int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
-//         line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-//         line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
-//
-//
-//         enum EpdDrawMode mode = params->mode;
-//         void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) =
-//             NULL;
-//         if (mode & MODE_PACKING_2PPB) {
-//           if (params->conversion_lut_size == 1024) {
-//             if (mode & PREVIOUSLY_WHITE) {
-//               input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
-//             } else if (mode & PREVIOUSLY_BLACK) {
-//               input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
-//             } else {
-//               params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-//             }
-//           } else if (params->conversion_lut_size == (1 << 16)) {
-//             input_calc_func = &calc_epd_input_4bpp_lut_64k;
-//           } else {
-//             params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-//           }
-//         } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-//           input_calc_func = &calc_epd_input_1ppB;
-//         } else if (mode & MODE_PACKING_8PPB) {
-//           input_calc_func = &calc_epd_input_1bpp;
-//         } else {
-//           params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-//         }
-//
-//         int non_zero = 0;
-//
-//         for (int i = 0; i < EXAMPLE_LCD_V_RES; i++) {
-//
-//           if (i < min_y || i >= max_y) {
-//             memset(out_line, 0x00, EPD_WIDTH / 4);
-//             xQueueSendToBack(*params->output_queue, out_line, portMAX_DELAY);
-//             continue;
-//           }
-//
-//           uint32_t *lp = (uint32_t *)line;
-//           bool shifted = false;
-//           if (area.width == EPD_WIDTH && area.x == 0 && !crop && !params->error) {
-//             lp = (uint32_t *)ptr;
-//             ptr += bytes_per_line;
-//           } else if (!params->error) {
-//             uint8_t *buf_start = (uint8_t *)line;
-//             uint32_t line_bytes = bytes_per_line;
-//
-//             int min_x = area.x + crop_x;
-//             if (min_x >= 0) {
-//               buf_start += min_x / width_divider;
-//             } else {
-//               // reduce line_bytes to actually used bytes
-//               // ptr was already adjusted above
-//               line_bytes += min_x / width_divider;
-//             }
-//             line_bytes = min(line_bytes, EPD_WIDTH / width_divider -
-//                                              (uint32_t)(buf_start - line));
-//             gpio_set_level(15, 0);
-//             memcpy(buf_start, ptr, line_bytes);
-//             gpio_set_level(15, 1);
-//             ptr += bytes_per_line;
-//             lp = (uint32_t *)line;
-//           }
-//
-//           (*input_calc_func)(lp, out_line, params->conversion_lut);
-//           if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
-//             mask_line_buffer(out_line, line_start_x, line_end_x);
-//           }
-//
-//           xQueueSendToBack(*params->output_queue, out_line, portMAX_DELAY);
-//
-//           if (shifted) {
-//             memset(line, 255, EPD_WIDTH);
-//           }
-//
-//         }
-//
-//         //s3_lcd_disable_data_out(EPD_NOOP);
-//         //xSemaphoreGive(params->done_smphr);
-//     }
-// }
-//
