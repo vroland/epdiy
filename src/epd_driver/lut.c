@@ -14,14 +14,6 @@
 #include "esp_timer.h"
 #endif
 
-// When using the LCD peripheral, we may need padding lines to
-// satisfy the bounce buffer size requirements
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-#define FRAME_LINES               EPD_HEIGHT
-#else
-#define FRAME_LINES              (((EPD_HEIGHT  + 3) / 4) * 4)
-#endif
-
 
 /*
  * Build Lookup tables and translate via LUTs.
@@ -37,7 +29,7 @@
              number |= 1 << (2*b)
      print ('0x%04x,'%number)
  */
-const static uint32_t lut_1bpp_black[256] = {
+const uint32_t lut_1bpp_black[256] = {
     0x5555, 0x5554, 0x5551, 0x5550, 0x5545, 0x5544, 0x5541, 0x5540, 0x5515,
     0x5514, 0x5511, 0x5510, 0x5505, 0x5504, 0x5501, 0x5500, 0x5455, 0x5454,
     0x5451, 0x5450, 0x5445, 0x5444, 0x5441, 0x5440, 0x5415, 0x5414, 0x5411,
@@ -87,8 +79,7 @@ void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
-static void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len,
-                                             int shift) {
+void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
   uint8_t carry = 0xFF << (8 - shift);
   for (uint32_t i = 0; i < len; i++) {
     uint8_t val = buf[i];
@@ -97,7 +88,7 @@ static void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len,
   }
 }
 
-static void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
+void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
   uint8_t carry = 0xF;
   for (uint32_t i = 0; i < len; i++) {
     uint8_t val = buf[i];
@@ -260,10 +251,12 @@ void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
 /**
  * Unpack the waveform data into a lookup table, with bit shifted copies.
  */
-static void IRAM_ATTR waveform_lut(const EpdWaveform *waveform, uint8_t *lut,
-                                   uint8_t mode, int range, int frame) {
-  const uint8_t *p_lut =
-      waveform->mode_data[mode]->range_data[range]->luts + (16 * 4 * frame);
+static void IRAM_ATTR waveform_lut(
+    uint8_t *lut,
+    const EpdWaveformPhases *phases,
+    int frame
+) {
+  const uint8_t *p_lut = phases->luts + (16 * 4 * frame);
   for (uint8_t to = 0; to < 16; to++) {
     for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
       uint8_t index = (to << 4) | (from_packed * 4);
@@ -291,12 +284,13 @@ static void IRAM_ATTR waveform_lut(const EpdWaveform *waveform, uint8_t *lut,
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
  */
-static void IRAM_ATTR waveform_lut_static_from(const EpdWaveform *waveform,
-                                               uint8_t *lut, uint8_t from,
-                                               uint8_t mode, int range,
-                                               int frame) {
-  const uint8_t *p_lut =
-      waveform->mode_data[mode]->range_data[range]->luts + (16 * 4 * frame);
+static void IRAM_ATTR waveform_lut_static_from(
+    uint8_t *lut,
+    const EpdWaveformPhases *phases,
+    uint8_t from,
+    int frame
+) {
+  const uint8_t *p_lut = phases->luts + (16 * 4 * frame);
 
   /// index into the packed "from" row
   uint8_t fi = from >> 2;
@@ -377,39 +371,35 @@ void mask_line_buffer(uint8_t* lb, int xmin, int xmax) {
   }
 }
 
-enum EpdDrawError IRAM_ATTR calculate_lut(OutputParams *params) {
 
-  enum EpdDrawMode mode = params->mode;
+enum EpdDrawError IRAM_ATTR calculate_lut(
+    uint8_t* lut,
+    int lut_size,
+    enum EpdDrawMode mode,
+    int frame,
+    const EpdWaveformPhases* phases
+) {
+
   enum EpdDrawMode selected_mode = mode & 0x3F;
 
   // two pixel per byte packing with only target color
-  if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE &&
-      params->conversion_lut_size == (1 << 16)) {
-    waveform_lut_static_from(params->waveform, params->conversion_lut, 0x0F,
-                             params->waveform_index, params->waveform_range,
-                             params->frame);
-  } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK &&
-             params->conversion_lut_size == (1 << 16)) {
-    waveform_lut_static_from(params->waveform, params->conversion_lut, 0x00,
-                             params->waveform_index, params->waveform_range,
-                             params->frame);
+  if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE && lut_size == (1 << 16)) {
+    waveform_lut_static_from(lut, phases, 0x0F, frame);
+  } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK && lut_size == (1 << 16)) {
+    waveform_lut_static_from(lut, phases, 0x00, frame);
+  // one pixel per byte with from and to colors
+  } else if (mode & MODE_PACKING_1PPB_DIFFERENCE || (mode & MODE_PACKING_2PPB && lut_size == (1 << 10))) {
+    waveform_lut(lut, phases, frame);
 
-    // one pixel per byte with from and to colors
-  } else if (mode & MODE_PACKING_1PPB_DIFFERENCE ||
-             (mode & MODE_PACKING_2PPB &&
-              params->conversion_lut_size == (1 << 10))) {
-    waveform_lut(params->waveform, params->conversion_lut,
-                 params->waveform_index, params->waveform_range, params->frame);
-
-    // 1bit per pixel monochrome with only target color
+  // 1bit per pixel monochrome with only target color
   } else if (mode & MODE_PACKING_8PPB &&
              selected_mode == MODE_EPDIY_MONOCHROME) {
     // FIXME: Pack into waveform?
     if (mode & PREVIOUSLY_WHITE) {
-      memcpy(params->conversion_lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+      memcpy(lut, lut_1bpp_black, sizeof(lut_1bpp_black));
     } else if (mode & PREVIOUSLY_BLACK) {
       // FIXME: implement!
-      // memcpy(params->conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
+      // memcpy(render_context.conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
       return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
     } else {
       return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
@@ -422,269 +412,108 @@ enum EpdDrawError IRAM_ATTR calculate_lut(OutputParams *params) {
   return EPD_DRAW_SUCCESS;
 }
 
-
-// output a row to the display.
-void IRAM_ATTR write_row(uint32_t output_time_dus) {
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-  epd_output_row(output_time_dus);
-#endif
-  skipping = 0;
-}
-
-
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-void epd_start_frame() {}
-void epd_end_frame() {}
-#endif
-
-
-// skip a display row
-void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-  // output previously loaded row, fill buffer with no-ops.
-  if (skipping < 2) {
-    memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
-    epd_output_row(pipeline_finish_time);
-  } else {
-    epd_skip();
-  }
-#endif
-  skipping++;
-}
-
-void IRAM_ATTR provide_out(OutputParams *params) {
-  while (true) {
-    // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
-    uint8_t line[EPD_WIDTH];
-    memset(line, 255, EPD_WIDTH);
-
-    xSemaphoreTake(params->start_smphr, portMAX_DELAY);
-
-    EpdRect area = params->area;
-    const uint8_t *ptr = params->data_ptr;
-    const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
-
-    // number of pixels per byte of input data
-    int ppB = 0;
-    int bytes_per_line = 0;
-    int width_divider = 0;
-
-    if (params->mode & MODE_PACKING_1PPB_DIFFERENCE) {
-      ppB = 1;
-      bytes_per_line = area.width;
-      width_divider = 1;
-    } else if (params->mode & MODE_PACKING_2PPB) {
-      ppB = 2;
-      bytes_per_line = area.width / 2 + area.width % 2;
-      width_divider = 2;
-    } else if (params->mode & MODE_PACKING_8PPB) {
-      ppB = 8;
-      bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
-      width_divider = 8;
-    } else {
-      params->error |= EPD_DRAW_INVALID_PACKING_MODE;
-    }
-
-    int crop_x = (crop ? params->crop_to.x : 0);
-    int crop_y = (crop ? params->crop_to.y : 0);
-    int crop_w = (crop ? params->crop_to.width : 0);
-    int crop_h = (crop ? params->crop_to.height : 0);
-
-    // Adjust for negative starting coordinates with optional crop
-    if (area.x - crop_x < 0) {
-      ptr += -(area.x - crop_x) / width_divider;
-    }
-
-    if (area.y - crop_y < 0) {
-      ptr += -(area.y - crop_y) * bytes_per_line;
-    }
-
-    // calculate start and end row with crop
-    int min_y = area.y + crop_y;
-    int max_y = min(min_y + (crop ? crop_h : area.height), area.height);
-    for (int i = 0; i < FRAME_LINES; i++) {
-      if (i < min_y || i >= max_y) {
-        continue;
-      }
-      if (params->drawn_lines != NULL && !params->drawn_lines[i - area.y]) {
-        ptr += bytes_per_line;
-        continue;
-      }
-
-      uint32_t *lp = (uint32_t *)line;
-      bool shifted = false;
-      if (area.width == EPD_WIDTH && area.x == 0 && !crop && !params->error) {
-        lp = (uint32_t *)ptr;
-        ptr += bytes_per_line;
-      } else if (!params->error) {
-        uint8_t *buf_start = (uint8_t *)line;
-        uint32_t line_bytes = bytes_per_line;
-
-        int min_x = area.x + crop_x;
-        if (min_x >= 0) {
-          buf_start += min_x / width_divider;
-        } else {
-          // reduce line_bytes to actually used bytes
-          // ptr was already adjusted above
-          line_bytes += min_x / width_divider;
-        }
-        line_bytes = min(line_bytes, EPD_WIDTH / width_divider -
-                                         (uint32_t)(buf_start - line));
-        memcpy(buf_start, ptr, line_bytes);
-        ptr += bytes_per_line;
-
-        int cropped_width = (crop ? crop_w : area.width);
-        /// consider half-byte shifts in two-pixel-per-Byte mode.
-        if (ppB == 2) {
-          // mask last nibble for uneven width
-          if (cropped_width % 2 == 1 &&
-              min_x / 2 + cropped_width / 2 + 1 < EPD_WIDTH) {
-            *(buf_start + line_bytes - 1) |= 0xF0;
-          }
-          if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < EPD_WIDTH) {
-            shifted = true;
-            uint32_t remaining =
-                (uint32_t)line + EPD_WIDTH / 2 - (uint32_t)buf_start;
-            uint32_t to_shift = min(line_bytes + 1, remaining);
-            // shift one nibble to right
-            nibble_shift_buffer_right(buf_start, to_shift);
-          }
-          // consider bit shifts in bit buffers
-        } else if (ppB == 8) {
-          // mask last n bits if width is not divisible by 8
-          if (cropped_width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
-            uint8_t mask = 0;
-            for (int s = 0; s < cropped_width % 8; s++) {
-              mask = (mask << 1) | 1;
-            }
-            *(buf_start + line_bytes - 1) |= ~mask;
-          }
-
-          if (min_x % 8 != 0 && min_x < EPD_WIDTH) {
-            // shift to right
-            shifted = true;
-            uint32_t remaining =
-                (uint32_t)line + EPD_WIDTH / 8 - (uint32_t)buf_start;
-            uint32_t to_shift = min(line_bytes + 1, remaining);
-            bit_shift_buffer_right(buf_start, to_shift, min_x % 8);
-          }
-        }
-        lp = (uint32_t *)line;
-      }
-      xQueueSendToBack(*params->pixel_queue, lp, portMAX_DELAY);
-      if (shifted) {
-        memset(line, 255, EPD_WIDTH / width_divider);
-      }
-    }
-
-    if (params->done_cb != NULL) {
-        params->done_cb();
-    }
-  }
-}
-
-void IRAM_ATTR feed_display(OutputParams *params) {
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-  uint8_t line_buf[EPD_LINE_BYTES];
-#endif
-
-  while (true) {
-    xSemaphoreTake(params->start_smphr, portMAX_DELAY);
-
-    skipping = 0;
-    EpdRect area = params->area;
-    enum EpdDrawMode mode = params->mode;
-    int frame_time = params->frame_time;
-
-    params->error |= calculate_lut(params);
-
-    void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) =
-        NULL;
-    if (mode & MODE_PACKING_2PPB) {
-      if (params->conversion_lut_size == 1024) {
-        if (mode & PREVIOUSLY_WHITE) {
-          input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
-        } else if (mode & PREVIOUSLY_BLACK) {
-          input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
-        } else {
-          params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-        }
-      } else if (params->conversion_lut_size == (1 << 16)) {
-        input_calc_func = &calc_epd_input_4bpp_lut_64k;
-      } else {
-        params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-      }
-    } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-      input_calc_func = &calc_epd_input_1ppB;
-    } else if (mode & MODE_PACKING_8PPB) {
-      input_calc_func = &calc_epd_input_1bpp;
-    } else {
-      params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-    }
-
-    // Adjust min and max row for crop.
-    const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
-    int crop_y = (crop ? params->crop_to.y : 0);
-    int min_y = area.y + crop_y;
-    int max_y = min(min_y + (crop ? params->crop_to.height : area.height), area.height);
-
-    // interval of the output line that is needed
-    // FIXME: only lookup needed parts
-    int line_start_x = area.x + (crop ? params->crop_to.x : 0);
-    int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
-    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
-
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-    uint64_t now = esp_timer_get_time();
-    uint64_t diff = (now - last_frame_start) / 1000;
-    if (diff < MINIMUM_FRAME_TIME) {
-      vTaskDelay(MINIMUM_FRAME_TIME - diff);
-    }
-#endif
-
-    last_frame_start = esp_timer_get_time();
-
-    epd_start_frame();
-    for (int i = 0; i < FRAME_LINES; i++) {
-      if (i < min_y || i >= max_y || (params->drawn_lines != NULL && !params->drawn_lines[i - area.y])) {
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-        skip_row(frame_time);
-#else
-        memset(line_buf, 0x00, EPD_LINE_BYTES);
-        xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
-#endif
-        continue;
-      }
-
-      uint8_t output[EPD_WIDTH];
-      xQueueReceive(*params->pixel_queue, output, portMAX_DELAY);
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-      uint8_t* line_buf = epd_get_current_buffer();
-#endif
-
-      if (!params->error) {
-        (*input_calc_func)((uint32_t *)output, line_buf, params->conversion_lut);
-        if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
-          mask_line_buffer(line_buf, line_start_x, line_end_x);
-        }
-      }
-        gpio_set_level(15, 0);
-      write_row(frame_time);
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-      xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
-#endif
-        gpio_set_level(15, 1);
-    }
-    if (!skipping) {
-      // Since we "pipeline" row output, we still have to latch out the last
-      // row.
-      write_row(frame_time);
-    }
-    epd_end_frame();
-
-    if (params->done_cb != NULL) {
-        params->done_cb();
-    }
-  }
-}
+// void IRAM_ATTR feed_display(OutputParams *params) {
+// #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//   uint8_t line_buf[EPD_LINE_BYTES];
+// #endif
+//
+//   while (true) {
+//     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
+//
+//     skipping = 0;
+//     EpdRect area = params->area;
+//     enum EpdDrawMode mode = params->mode;
+//     int frame_time = params->frame_time;
+//
+//     params->error |= calculate_lut(params);
+//
+//     void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) =
+//         NULL;
+//     if (mode & MODE_PACKING_2PPB) {
+//       if (params->conversion_lut_size == 1024) {
+//         if (mode & PREVIOUSLY_WHITE) {
+//           input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
+//         } else if (mode & PREVIOUSLY_BLACK) {
+//           input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
+//         } else {
+//           params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+//         }
+//       } else if (params->conversion_lut_size == (1 << 16)) {
+//         input_calc_func = &calc_epd_input_4bpp_lut_64k;
+//       } else {
+//         params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+//       }
+//     } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+//       input_calc_func = &calc_epd_input_1ppB;
+//     } else if (mode & MODE_PACKING_8PPB) {
+//       input_calc_func = &calc_epd_input_1bpp;
+//     } else {
+//       params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+//     }
+//
+//     // Adjust min and max row for crop.
+//     const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
+//     int crop_y = (crop ? params->crop_to.y : 0);
+//     int min_y = area.y + crop_y;
+//     int max_y = min(min_y + (crop ? params->crop_to.height : area.height), area.height);
+//
+//     // interval of the output line that is needed
+//     // FIXME: only lookup needed parts
+//     int line_start_x = area.x + (crop ? params->crop_to.x : 0);
+//     int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
+//     line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
+//     line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+//
+// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//     uint64_t now = esp_timer_get_time();
+//     uint64_t diff = (now - last_frame_start) / 1000;
+//     if (diff < MINIMUM_FRAME_TIME) {
+//       vTaskDelay(MINIMUM_FRAME_TIME - diff);
+//     }
+// #endif
+//
+//     last_frame_start = esp_timer_get_time();
+//
+//     epd_start_frame();
+//     for (int i = 0; i < FRAME_LINES; i++) {
+//       if (i < min_y || i >= max_y || (params->drawn_lines != NULL && !params->drawn_lines[i - area.y])) {
+// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//         skip_row(frame_time);
+// #else
+//         memset(line_buf, 0x00, EPD_LINE_BYTES);
+//         xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
+// #endif
+//         continue;
+//       }
+//
+//       uint8_t output[EPD_WIDTH];
+//       xQueueReceive(*params->pixel_queue, output, portMAX_DELAY);
+// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//       uint8_t* line_buf = epd_get_current_buffer();
+// #endif
+//
+//       if (!params->error) {
+//         (*input_calc_func)((uint32_t *)output, line_buf, params->conversion_lut);
+//         if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
+//           mask_line_buffer(line_buf, line_start_x, line_end_x);
+//         }
+//       }
+//         gpio_set_level(15, 0);
+//       write_row(frame_time);
+// #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//       xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
+// #endif
+//         gpio_set_level(15, 1);
+//     }
+//     if (!skipping) {
+//       // Since we "pipeline" row output, we still have to latch out the last
+//       // row.
+//       write_row(frame_time);
+//     }
+//     epd_end_frame();
+//
+//     if (params->done_cb != NULL) {
+//         params->done_cb();
+//     }
+//   }
+// }

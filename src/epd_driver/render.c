@@ -37,23 +37,56 @@ const int DEFAULT_FRAME_TIME = 120;
 #define CLEAR_BYTE 0B10101010
 #define DARK_BYTE 0B01010101
 
-static SemaphoreHandle_t update_done;
-
-// Queue of input data lines
-static QueueHandle_t pixel_queue;
-
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-// Queue of display data lines
-static QueueHandle_t display_queue;
+// When using the LCD peripheral, we may need padding lines to
+// satisfy the bounce buffer size requirements
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+#define FRAME_LINES               EPD_HEIGHT
+#else
+#define FRAME_LINES              (((EPD_HEIGHT  + 3) / 4) * 4)
 #endif
 
-static OutputParams fetch_params;
-static OutputParams feed_params;
+/// Queue of lines prepared for output to the display.
+static QueueHandle_t line_queue;
 
 typedef struct {
-    int k;
-    int framecount;
+
+    EpdRect area;
+    EpdRect crop_to;
+    const bool *drawn_lines;
+    const uint8_t *data_ptr;
+
+
+    /// frame currently in the current update cycle
+    int current_frame;
+    /// number of frames in the current update cycle
+    int cycle_frames;
+
+    SemaphoreHandle_t frame_start_smphr;
+    SemaphoreHandle_t update_done;
+
+    /// called when the frame is fully processed
+    void (*done_cb)(void);
+
+    /// index of the waveform mode when using vendor waveforms.
+    /// This is not necessarily the mode number if the waveform header
+    //only contains a selection of modes!
+    int waveform_index;
+    /// waveform range when using vendor waveforms
+    int waveform_range;
+    /// Draw time for the current frame in 1/10ths of us.
+    int frame_time;
+
     const int* phase_times;
+
+    const EpdWaveform* waveform;
+    enum EpdDrawMode mode;
+    enum EpdDrawError error;
+
+
+    // Lookup table size.
+    size_t conversion_lut_size;
+    // Lookup table space.
+    uint8_t* conversion_lut;
 } RenderContext_t;
 
 static RenderContext_t render_context;
@@ -144,34 +177,43 @@ static int get_waveform_index(const EpdWaveform* waveform, enum EpdDrawMode mode
     return -1;
 }
 
-static void IRAM_ATTR on_frame_prepare() {
+/// start the next frame in the current update cycle
+static void IRAM_ATTR start_next_frame() {
 	int frame_time = DEFAULT_FRAME_TIME;
 	if (render_context.phase_times != NULL) {
-		frame_time = render_context.phase_times[render_context.k];
+		frame_time = render_context.phase_times[render_context.current_frame];
 	}
 
-    //if (mode & MODE_EPDIY_MONOCHROME) {
-    //    frame_time = MONOCHROME_FRAME_TIME;
-    //}
-
-    if (render_context.k == 0) {
-        s3_lcd_enable_data_out(pixel_queue);
+    if (render_context.mode & MODE_EPDIY_MONOCHROME) {
+        frame_time = MONOCHROME_FRAME_TIME;
     }
 
-    BaseType_t task_awoken = false;
-    fetch_params.frame = render_context.k;
-    fetch_params.frame_time = frame_time;
-    feed_params.frame = render_context.k;
-    feed_params.frame_time = frame_time;
-    render_context.k++;
+    if (render_context.current_frame == 0) {
+        s3_lcd_enable_data_out(line_queue);
+    }
 
-    if (render_context.k >= render_context.framecount) {
+    enum EpdDrawMode mode = render_context.mode;
+    const EpdWaveformPhases* phases =
+        render_context.waveform->mode_data[render_context.waveform_index]->range_data[render_context.waveform_range];
+
+    render_context.error |= calculate_lut(
+            render_context.conversion_lut,
+            render_context.conversion_lut_size,
+            mode,
+            render_context.current_frame,
+            phases
+    );
+
+    BaseType_t task_awoken = false;
+    render_context.current_frame++;
+
+    if (render_context.current_frame >= render_context.cycle_frames) {
         s3_delete_frame_prepare_cb();
         s3_lcd_disable_data_out(0x00);
-        xSemaphoreGiveFromISR(update_done, &task_awoken);
+        xSemaphoreGiveFromISR(render_context.update_done, &task_awoken);
     } else {
-        xSemaphoreGiveFromISR(feed_params.start_smphr, &task_awoken);
-        xSemaphoreGiveFromISR(fetch_params.start_smphr, &task_awoken);
+        xSemaphoreGiveFromISR(render_context.frame_start_smphr, &task_awoken);
+        xSemaphoreGiveFromISR(render_context.frame_start_smphr, &task_awoken);
     }
     portYIELD_FROM_ISR();
 }
@@ -221,34 +263,19 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
       return EPD_DRAW_INVALID_CROP;
   }
 
-    fetch_params.area = area;
-    fetch_params.crop_to = crop_to;
-    fetch_params.waveform_range = waveform_range;
-    fetch_params.waveform_index = waveform_index;
-    fetch_params.mode = mode;
-    fetch_params.waveform = waveform;
-    fetch_params.error = EPD_DRAW_SUCCESS;
-    fetch_params.drawn_lines = drawn_lines;
-    fetch_params.pixel_queue = &pixel_queue;
-    fetch_params.display_queue = NULL;
-    fetch_params.data_ptr = data;
-    fetch_params.done_cb = NULL;
+    render_context.area = area;
+    render_context.crop_to = crop_to;
+    render_context.waveform_range = waveform_range;
+    render_context.waveform_index = waveform_index;
+    render_context.mode = mode;
+    render_context.waveform = waveform;
+    render_context.error = EPD_DRAW_SUCCESS;
+    render_context.drawn_lines = drawn_lines;
+    render_context.data_ptr = data;
+    render_context.done_cb = NULL;
 
-    feed_params.area = area;
-    feed_params.crop_to = crop_to;
-    feed_params.waveform_range = waveform_range;
-    feed_params.waveform_index = waveform_index;
-    feed_params.mode = mode;
-    feed_params.waveform = waveform;
-    feed_params.error = EPD_DRAW_SUCCESS;
-    feed_params.drawn_lines = drawn_lines;
-    feed_params.pixel_queue = &pixel_queue;
-    feed_params.display_queue = NULL;
-    feed_params.data_ptr = data;
-    feed_params.done_cb = NULL;
-
-    render_context.k = 0;
-    render_context.framecount = frame_count;
+    render_context.current_frame = 0;
+    render_context.cycle_frames = frame_count;
     render_context.phase_times = NULL;
 	if (waveform_phases != NULL && waveform_phases->phase_times != NULL) {
 		render_context.phase_times = waveform_phases->phase_times;
@@ -256,36 +283,240 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 
     ESP_LOGI("epdiy", "starting update, phases: %d", frame_count);
 #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-    feed_params.display_queue = &display_queue;
     //feed_params.done_cb = on_frame_prepare;
-    s3_set_frame_prepare_cb(on_frame_prepare);
-    xSemaphoreTake(update_done, portMAX_DELAY);
+    s3_set_frame_prepare_cb(start_next_frame);
+    xSemaphoreTake(render_context.update_done, portMAX_DELAY);
     ESP_LOGI("epdiy", "transfer done");
 #else
 
-  for (uint8_t k = 0; k < frame_count; k++) {
+  //for (uint8_t k = 0; k < frame_count; k++) {
 
 
-    // IMPORTANT: This must only ever read from PSRAM,
-    //            Since the PSRAM workaround is disabled for lut.c
-    fetch_params.data_ptr = data;
-    fetch_params.frame = k;
+  //  // IMPORTANT: This must only ever read from PSRAM,
+  //  //            Since the PSRAM workaround is disabled for lut.c
+  //  fetch_params.data_ptr = data;
+  //  fetch_params.frame = k;
 
-    feed_params.frame = k;
-    feed_params.frame_time = frame_time;
+  //  feed_params.frame = k;
+  //  feed_params.frame_time = frame_time;
 
-    xSemaphoreGive(fetch_params.start_smphr);
-    xSemaphoreGive(feed_params.start_smphr);
+  //  xSemaphoreGive(fetch_params.start_smphr);
+  //  xSemaphoreGive(feed_params.start_smphr);
 
-    xSemaphoreTake(fetch_params.done_smphr, portMAX_DELAY);
-    xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
-  }
+  //  xSemaphoreTake(fetch_params.done_smphr, portMAX_DELAY);
+  //  xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
+  //}
 #endif
-  enum EpdDrawError all_errors = fetch_params.error | feed_params.error;
-  if (all_errors != EPD_DRAW_SUCCESS) {
-      return all_errors;
+  if (render_context.error != EPD_DRAW_SUCCESS) {
+      return render_context.error;
   }
   return EPD_DRAW_SUCCESS;
+}
+
+// output a row to the display.
+// void IRAM_ATTR write_row(uint32_t output_time_dus) {
+// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//   epd_output_row(output_time_dus);
+// #endif
+//   skipping = 0;
+// }
+//
+//
+// #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+// void epd_start_frame() {}
+// void epd_end_frame() {}
+// #endif
+//
+//
+// // skip a display row
+// void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
+// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+//   // output previously loaded row, fill buffer with no-ops.
+//   if (skipping < 2) {
+//     memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
+//     epd_output_row(pipeline_finish_time);
+//   } else {
+//     epd_skip();
+//   }
+// #endif
+//   skipping++;
+// }
+
+void IRAM_ATTR feed_display(int thread_id) {
+  uint8_t line_buf[EPD_LINE_BYTES];
+  uint8_t input_line[EPD_WIDTH];
+
+  while (true) {
+    // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
+    memset(input_line, 255, EPD_WIDTH);
+
+    xSemaphoreTake(render_context.frame_start_smphr, portMAX_DELAY);
+
+    EpdRect area = render_context.area;
+    const uint8_t *ptr = render_context.data_ptr;
+    const enum EpdDrawMode mode = render_context.mode;
+    const EpdRect crop_to = render_context.crop_to;
+    const bool crop = (crop_to.width > 0 && crop_to.height > 0);
+
+    void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) = NULL;
+    if (mode & MODE_PACKING_2PPB) {
+      if (render_context.conversion_lut_size == 1024) {
+        if (mode & PREVIOUSLY_WHITE) {
+          input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
+        } else if (mode & PREVIOUSLY_BLACK) {
+          input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
+        } else {
+          render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+        }
+      } else if (render_context.conversion_lut_size == (1 << 16)) {
+        input_calc_func = &calc_epd_input_4bpp_lut_64k;
+      } else {
+        render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+      }
+    } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+      input_calc_func = &calc_epd_input_1ppB;
+    } else if (mode & MODE_PACKING_8PPB) {
+      input_calc_func = &calc_epd_input_1bpp;
+    } else {
+      render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    }
+
+    // number of pixels per byte of input data
+    int ppB = 0;
+    int bytes_per_line = 0;
+    int width_divider = 0;
+
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+      ppB = 1;
+      bytes_per_line = area.width;
+      width_divider = 1;
+    } else if (mode & MODE_PACKING_2PPB) {
+      ppB = 2;
+      bytes_per_line = area.width / 2 + area.width % 2;
+      width_divider = 2;
+    } else if (mode & MODE_PACKING_8PPB) {
+      ppB = 8;
+      bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
+      width_divider = 8;
+    } else {
+      render_context.error |= EPD_DRAW_INVALID_PACKING_MODE;
+    }
+
+    int crop_x = (crop ? crop_to.x : 0);
+    int crop_y = (crop ? crop_to.y : 0);
+    int crop_w = (crop ? crop_to.width : 0);
+    int crop_h = (crop ? crop_to.height : 0);
+
+    // Adjust for negative starting coordinates with optional crop
+    if (area.x - crop_x < 0) {
+      ptr += -(area.x - crop_x) / width_divider;
+    }
+
+    if (area.y - crop_y < 0) {
+      ptr += -(area.y - crop_y) * bytes_per_line;
+    }
+
+    // interval of the output line that is needed
+    // FIXME: only lookup needed parts
+    int line_start_x = area.x + (crop ? crop_to.x : 0);
+    int line_end_x = line_start_x + (crop ? crop_to.width : area.width);
+    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
+    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+
+    // calculate start and end row with crop
+    int min_y = area.y + crop_y;
+    int max_y = min(min_y + (crop ? crop_h : area.height), area.height);
+    for (int i = 0; i < FRAME_LINES; i++) {
+
+      if (i < min_y || i >= max_y) {
+        memset(line_buf, 0x00, EPD_LINE_BYTES);
+        xQueueSendToBack(line_queue, line_buf, portMAX_DELAY);
+        continue;
+      }
+      if (render_context.drawn_lines != NULL && !render_context.drawn_lines[i - area.y]) {
+        memset(line_buf, 0x00, EPD_LINE_BYTES);
+        xQueueSendToBack(line_queue, line_buf, portMAX_DELAY);
+        ptr += bytes_per_line;
+        continue;
+      }
+
+      gpio_set_level(15, 0);
+      uint32_t *lp = (uint32_t *)input_line;
+      bool shifted = false;
+      if (area.width == EPD_WIDTH && area.x == 0 && !crop && !render_context.error) {
+        lp = (uint32_t *)ptr;
+        ptr += bytes_per_line;
+      } else if (!render_context.error) {
+        uint8_t *buf_start = (uint8_t *)input_line;
+        uint32_t line_bytes = bytes_per_line;
+
+        int min_x = area.x + crop_x;
+        if (min_x >= 0) {
+          buf_start += min_x / width_divider;
+        } else {
+          // reduce line_bytes to actually used bytes
+          // ptr was already adjusted above
+          line_bytes += min_x / width_divider;
+        }
+        line_bytes = min(line_bytes, EPD_WIDTH / width_divider -
+                                         (uint32_t)(buf_start - input_line));
+        memcpy(buf_start, ptr, line_bytes);
+        ptr += bytes_per_line;
+
+        int cropped_width = (crop ? crop_w : area.width);
+        /// consider half-byte shifts in two-pixel-per-Byte mode.
+        if (ppB == 2) {
+          // mask last nibble for uneven width
+          if (cropped_width % 2 == 1 &&
+              min_x / 2 + cropped_width / 2 + 1 < EPD_WIDTH) {
+            *(buf_start + line_bytes - 1) |= 0xF0;
+          }
+          if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < EPD_WIDTH) {
+            shifted = true;
+            uint32_t remaining =
+                (uint32_t)input_line + EPD_WIDTH / 2 - (uint32_t)buf_start;
+            uint32_t to_shift = min(line_bytes + 1, remaining);
+            // shift one nibble to right
+            nibble_shift_buffer_right(buf_start, to_shift);
+          }
+          // consider bit shifts in bit buffers
+        } else if (ppB == 8) {
+          // mask last n bits if width is not divisible by 8
+          if (cropped_width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
+            uint8_t mask = 0;
+            for (int s = 0; s < cropped_width % 8; s++) {
+              mask = (mask << 1) | 1;
+            }
+            *(buf_start + line_bytes - 1) |= ~mask;
+          }
+
+          if (min_x % 8 != 0 && min_x < EPD_WIDTH) {
+            // shift to right
+            shifted = true;
+            uint32_t remaining =
+                (uint32_t)input_line + EPD_WIDTH / 8 - (uint32_t)buf_start;
+            uint32_t to_shift = min(line_bytes + 1, remaining);
+            bit_shift_buffer_right(buf_start, to_shift, min_x % 8);
+          }
+        }
+        lp = (uint32_t *)input_line;
+      }
+
+      (*input_calc_func)(lp, line_buf, render_context.conversion_lut);
+      if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
+        mask_line_buffer(line_buf, line_start_x, line_end_x);
+      }
+      gpio_set_level(15, 1);
+      xQueueSendToBack(line_queue, line_buf, portMAX_DELAY);
+      if (shifted) {
+        memset(input_line, 255, EPD_WIDTH / width_divider);
+      }
+    }
+
+    if (render_context.done_cb != NULL) {
+        render_context.done_cb();
+    }
+  }
 }
 
 void epd_clear_area(EpdRect area) {
@@ -350,22 +581,19 @@ void epd_init(enum EpdInitOptions options) {
   }
   assert(conversion_lut != NULL);
 
-  fetch_params.conversion_lut = conversion_lut;
-  fetch_params.conversion_lut_size = lut_size;
-  feed_params.conversion_lut = conversion_lut;
-  feed_params.conversion_lut_size = lut_size;
+  render_context.conversion_lut = conversion_lut;
+  render_context.conversion_lut_size = lut_size;
 
-  update_done = xSemaphoreCreateBinary();
+  render_context.update_done = xSemaphoreCreateBinary();
 
-  fetch_params.start_smphr = xSemaphoreCreateBinary();
-  feed_params.start_smphr = xSemaphoreCreateBinary();
+  render_context.frame_start_smphr = xSemaphoreCreateCounting(2, 0);
 
-  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))provide_out,
-                                           "epd_fetch", (1 << 12), &fetch_params, 5,
-                                           NULL, 0));
+  //RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))provide_out,
+  //                                         "epd_fetch", (1 << 12), &fetch_params, 5,
+  //                                         NULL, 0));
 
   RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))feed_display,
-                                           "epd_feed", 1 << 12, &feed_params,
+                                           "epd_feed", 1 << 12, 0,
                                            5, NULL, 1));
 
   //conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
@@ -377,11 +605,8 @@ void epd_init(enum EpdInitOptions options) {
     queue_len = 8;
   }
 
-  pixel_queue = xQueueCreate(queue_len, EPD_WIDTH);
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-  display_queue = xQueueCreate(queue_len, EPD_WIDTH / 4);
-  s3_set_display_queue(display_queue);
-#endif
+  line_queue = xQueueCreate(queue_len, EPD_WIDTH / 4);
+  s3_set_display_queue(line_queue);
 
 }
 

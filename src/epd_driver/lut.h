@@ -18,6 +18,7 @@
 void reorder_line_buffer(uint32_t *line_data);
 
 typedef struct {
+  int thread_id;
   const uint8_t *data_ptr;
   EpdRect crop_to;
   void (*done_cb)(void);
@@ -48,15 +49,18 @@ typedef struct {
 } OutputParams;
 
 
-void feed_display(OutputParams *params);
-void provide_out(OutputParams *params);
+//void feed_display(OutputParams *params);
+//void provide_out(OutputParams *params);
 
 
 void write_row(uint32_t output_time_dus);
 void skip_row(uint8_t pipeline_finish_time);
 
+
+void bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift);
 void mask_line_buffer(uint8_t* lb, int xmin, int xmax);
-enum EpdDrawError calculate_lut(OutputParams *params);
+void nibble_shift_buffer_right(uint8_t *buf, uint32_t len);
+
 void calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut);
 inline uint8_t lookup_pixels_4bpp_1k(uint16_t in, const uint8_t *conversion_lut, uint8_t from);
 void calc_epd_input_4bpp_1k_lut(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint8_t from);
@@ -64,3 +68,13 @@ void calc_epd_input_1bpp(const uint32_t *line_data, uint8_t *epd_input, const ui
 void calc_epd_input_4bpp_1k_lut_white(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut);
 void calc_epd_input_4bpp_1k_lut_black(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut);
 void calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input, const uint8_t *conversion_lut);
+
+enum EpdDrawError calculate_lut(
+    uint8_t* lut,
+    int lut_size,
+    enum EpdDrawMode mode,
+    int frame,
+    const EpdWaveformPhases* phases
+);
+
+extern const uint32_t lut_1bpp_black[256];
