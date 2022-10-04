@@ -118,6 +118,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       &previously_black
   );
 
+  ESP_LOGI("epdiy", "highlevel diff area: x: %d, y: %d, w: %d, h: %d", diff_area.x, diff_area.y, diff_area.width, diff_area.height);
+
   if (diff_area.height == 0 || diff_area.width == 0) {
       return EPD_DRAW_SUCCESS;
   }

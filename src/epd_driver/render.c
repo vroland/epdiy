@@ -421,7 +421,7 @@ void IRAM_ATTR feed_display(int thread_id) {
     EpdRect area = render_context.area;
     const enum EpdDrawMode mode = render_context.mode;
     const EpdRect crop_to = render_context.crop_to;
-    const bool crop = (crop_to.width > 0 && crop_to.height > 0);
+    const bool crop = !(crop_to.x == 0 && crop_to.y ==0 && crop_to.width == area.width && crop_to.height == area.height);
 
     void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) = NULL;
     if (mode & MODE_PACKING_2PPB) {
@@ -509,7 +509,7 @@ void IRAM_ATTR feed_display(int thread_id) {
         continue;
       }
 
-      gpio_set_level(15, 0);
+      if (thread_id) gpio_set_level(15, 0);
       uint32_t *lp = (uint32_t *)input_line;
       bool shifted = false;
       const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
@@ -569,12 +569,12 @@ void IRAM_ATTR feed_display(int thread_id) {
         }
         lp = (uint32_t *)input_line;
       }
+      if (thread_id) gpio_set_level(15, 1);
 
       (*input_calc_func)(lp, line_buf, render_context.conversion_lut);
       if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
         mask_line_buffer(line_buf, line_start_x, line_end_x);
       }
-      gpio_set_level(15, 1);
       xQueueSendToBack(render_context.line_queues[thread_id], line_buf, portMAX_DELAY);
       if (shifted) {
         memset(input_line, 255, EPD_WIDTH / width_divider);
