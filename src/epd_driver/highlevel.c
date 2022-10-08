@@ -8,6 +8,7 @@
 #include <string.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
@@ -124,6 +125,13 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       return EPD_DRAW_SUCCESS;
   }
 
+  uint32_t t1 = esp_timer_get_time() / 1000;
+
+  previously_white = false;
+
+  diff_area.x = 0;
+  diff_area.width = EPD_WIDTH;
+
   enum EpdDrawError err;
   if (previously_white) {
       err = epd_draw_base(epd_full_screen(), state->front_fb, diff_area, MODE_PACKING_2PPB | PREVIOUSLY_WHITE | mode, temperature, state->dirty_lines, state->waveform);
@@ -132,6 +140,10 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   } else {
       err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->waveform);
   }
+
+
+  uint32_t t2 = esp_timer_get_time() / 1000;
+  printf("actual draw took %ldms.\n", t2 - t1);
 
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
 	if (state->dirty_lines[l] > 0) {

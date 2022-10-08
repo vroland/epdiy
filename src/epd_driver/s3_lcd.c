@@ -33,7 +33,7 @@
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
 
-#define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (30 * 1000 * 1000)
+#define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (24 * 1000 * 1000)
 #define RMT_CLOCK_HZ                   (10 * 1000 * 1000)
 #define EXAMPLE_PIN_NUM_BK_LIGHT       -1
 #define EXAMPLE_PIN_NUM_HSYNC          46
@@ -108,7 +108,9 @@ static bool IRAM_ATTR epd_on_vsync_event(esp_lcd_panel_handle_t panel, const esp
 
     line_source_cb = next_line_source;
 
-    rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
+    if (line_source_cb) {
+        rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
+    }
     //gpio_set_level(15, 1);
 
     return pdFALSE;
@@ -179,7 +181,7 @@ void epd_lcd_init() {
 
   volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = 60;
+    rmt_mem_ptr->duration0 = 90;
     rmt_mem_ptr->level0 = 0;
     rmt_mem_ptr->duration1 = 60;
     rmt_mem_ptr->level1 = 1;
@@ -253,8 +255,8 @@ void epd_lcd_init() {
             .hsync_back_porch = 20,
             .hsync_front_porch = 30,
             .hsync_pulse_width = 10,
-            .vsync_back_porch = 5,
-            .vsync_front_porch = 100,
+            .vsync_back_porch = 0,
+            .vsync_front_porch = 80,
             .vsync_pulse_width = 1,
             // test
             .flags.pclk_active_neg = false,
