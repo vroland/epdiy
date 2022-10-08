@@ -152,21 +152,26 @@ calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input,
  * Look up 4 pixels of a differential image.
  */
 static inline uint8_t
-lookup_differential_pixels(uint32_t in, const uint8_t *conversion_lut) {
-  uint8_t out = conversion_lut[in & 0xFF];
-  in = in >> 8;
-  out |= (conversion_lut + 0x100)[in & 0xFF];
-  in = in >> 8;
-  out |= (conversion_lut + 0x200)[in & 0xFF];
-  in = in >> 8;
-  out |= (conversion_lut + 0x300)[in];
+lookup_differential_pixels(const uint32_t in, const uint8_t *conversion_lut) {
+  uint8_t out = conversion_lut[(in >> 24) & 0xFF];
+  out |= (conversion_lut + 0x100)[(in >> 16) & 0xFF];
+  out |= (conversion_lut + 0x200)[(in >> 8) & 0xFF];
+  out |= (conversion_lut + 0x300)[in & 0xFF];
   return out;
+}
+
+/**
+ * Look up 4 pixels of a differential image.
+ */
+static inline uint8_t
+lookup_differential_pixels_64k(const uint32_t in, const uint8_t *conversion_lut) {
+      return (conversion_lut[(in >> 16)] << 4) | conversion_lut[in & 0xFFFF];
 }
 
 /**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
-void calc_epd_input_1ppB(const uint32_t *ld,
+void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
                           uint8_t *epd_input,
                           const uint8_t *conversion_lut) {
 
@@ -179,13 +184,39 @@ void calc_epd_input_1ppB(const uint32_t *ld,
     epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
 #else
-    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
 #endif
   }
 }
+
+/**
+ * Calculate EPD input for a difference image with one pixel per byte.
+ */
+__attribute__((optimize("unroll-loops")))
+void IRAM_ATTR calc_epd_input_1ppB_64k(const uint32_t *ld,
+                          uint8_t *epd_input,
+                          const uint8_t *conversion_lut) {
+
+#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+  // this is reversed for little-endian, but this is later compensated
+  // through the output peripheral.
+  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+    epd_input[j + 2] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
+    epd_input[j + 3] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
+    epd_input[j + 0] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
+    epd_input[j + 1] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
+  }
+#else
+#endif
+    uint16_t* lp = (uint16_t*) ld;
+    for (uint32_t j = 0; j < EPD_WIDTH / 4; j++) {
+      epd_input[j] = (conversion_lut[lp[2 * j + 1]] << 4) | conversion_lut[lp[2 * j]];
+    }
+}
+
 
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
@@ -275,6 +306,43 @@ static void IRAM_ATTR waveform_lut(
     for (int i = 0; i < 0x100; i++) {
       lut[index] = lut[index % 0x100] << s;
       index++;
+    }
+  }
+}
+
+/**
+ * Unpack the waveform data into a lookup table,
+ * 64k to loop up two bytes at once
+ */
+static void IRAM_ATTR waveform_lut_64k(
+    uint8_t *lut,
+    const EpdWaveformPhases *phases,
+    int frame
+) {
+
+  const uint8_t *p_lut = phases->luts + (16 * 4 * frame);
+  for (uint8_t to = 0; to < 16; to++) {
+    for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
+      uint8_t index = (to << 4) | (from_packed * 4);
+      uint8_t packed = *(p_lut++);
+      lut[index] = (packed >> 6) & 3;
+      lut[index + 1] = (packed >> 4) & 3;
+      lut[index + 2] = (packed >> 2) & 3;
+      lut[index + 3] = (packed >> 0) & 3;
+      // printf("%2X%2X%2X%2X (%d)", lut[index], lut[index + 1], lut[index + 2],
+      // lut[index + 3], index);
+    }
+    // printf("\n");
+  }
+
+  for (int outer = 0xFF; outer >= 0; outer--) {
+    uint32_t outer_result = lut[outer] << 2;
+    outer_result = (outer_result << 16) | outer_result;
+    outer_result = (outer_result << 8) | outer_result;
+    uint32_t* lut_section = (uint32_t*)(&lut[outer << 8]);
+    memcpy(lut_section, lut, 0x100);
+    for (int i = 0; i < 0x100 / 4; i++) {
+      lut_section[i] = lut_section[i] | outer_result;
     }
   }
 }
@@ -383,13 +451,21 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
   enum EpdDrawMode selected_mode = mode & 0x3F;
 
   // two pixel per byte packing with only target color
-  if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_WHITE && lut_size == (1 << 16)) {
-    waveform_lut_static_from(lut, phases, 0x0F, frame);
-  } else if (mode & MODE_PACKING_2PPB && mode & PREVIOUSLY_BLACK && lut_size == (1 << 16)) {
-    waveform_lut_static_from(lut, phases, 0x00, frame);
-  // one pixel per byte with from and to colors
-  } else if (mode & MODE_PACKING_1PPB_DIFFERENCE || (mode & MODE_PACKING_2PPB && lut_size == (1 << 10))) {
-    waveform_lut(lut, phases, frame);
+  if (lut_size == (1 << 16)) {
+      if (mode & MODE_PACKING_2PPB) {
+        if (mode & PREVIOUSLY_WHITE) {
+            waveform_lut_static_from(lut, phases, 0x0F, frame);
+        } else if (mode & PREVIOUSLY_BLACK) {
+            waveform_lut_static_from(lut, phases, 0x00, frame);
+        } else {
+            waveform_lut(lut, phases, frame);
+        }
+      // one pixel per byte with from and to colors
+      } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+        waveform_lut_64k(lut, phases, frame);
+      } else {
+        return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+      }
 
   // 1bit per pixel monochrome with only target color
   } else if (mode & MODE_PACKING_8PPB &&
