@@ -108,6 +108,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   area.width = rotated_area.width;
   area.height = rotated_area.height;
 
+  ESP_LOGI("epdiy", "calculating diff..");
   //FIXME: use crop information here, if available
   EpdRect diff_area = epd_difference_image_cropped(
 	  state->front_fb,
@@ -130,7 +131,9 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   previously_white = false;
 
   diff_area.x = 0;
+  diff_area.y = 0;
   diff_area.width = EPD_WIDTH;
+  diff_area.height = EPD_HEIGHT;
 
   enum EpdDrawError err;
   if (previously_white) {
