@@ -13,10 +13,12 @@
 #include "esp_types.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "xtensa/core-macros.h"
+#include "rom/cache.h"
+#include <stdint.h>
+#include <stdalign.h>
 #include <stdatomic.h>
 #include <string.h>
 
@@ -47,6 +49,52 @@ const int DEFAULT_FRAME_TIME = 120;
 #endif
 
 #define NUM_FEED_THREADS 2
+
+typedef struct {
+    int size;
+    atomic_int current;
+    atomic_int last;
+    uint8_t* buf;
+} LineQueue_t;
+
+uint8_t* lq_current(LineQueue_t* queue) {
+    int current = atomic_load_explicit(&queue->current, memory_order_acquire);
+    int last = atomic_load_explicit(&queue->last, memory_order_acquire);
+
+    if ((current  + 1) % queue->size == last) {
+        return NULL;
+    }
+    return &queue->buf[current * EPD_LINE_BYTES];
+}
+
+void lq_commit(LineQueue_t* queue) {
+
+    int current = atomic_load_explicit(&queue->current, memory_order_acquire);
+    if (current == queue->size - 1) {
+        queue->current = 0;
+    } else {
+        atomic_fetch_add(&queue->current, 1);
+    }
+}
+
+int lq_read(LineQueue_t* queue, uint8_t* dst) {
+    int current = atomic_load_explicit(&queue->current, memory_order_acquire);
+    int last = atomic_load_explicit(&queue->last, memory_order_acquire);
+
+    if (current == last) {
+        return -1;
+    }
+
+    memcpy(dst, &queue->buf[last * EPD_LINE_BYTES], EPD_LINE_BYTES);
+
+    if (last == queue->size - 1) {
+        queue->last = 0;
+    } else {
+        atomic_fetch_add(&queue->last, 1);
+    }
+    return 0;
+}
+
 
 typedef struct {
 
@@ -91,7 +139,7 @@ typedef struct {
 
     /// Queue of lines prepared for output to the display,
     /// one for each thread.
-    QueueHandle_t line_queues[NUM_FEED_THREADS];
+    LineQueue_t line_queues[NUM_FEED_THREADS];
     uint8_t line_threads[FRAME_LINES];
 } RenderContext_t;
 
@@ -227,13 +275,16 @@ static bool IRAM_ATTR retrieve_line(uint8_t* buf) {
     }
     int thread = render_context.line_threads[render_context.lines_consumed];
     assert(thread < NUM_FEED_THREADS);
-    QueueHandle_t queue = render_context.line_queues[thread];
-    BaseType_t task_awoken = pdFALSE;
-    if (!xQueueReceiveFromISR(queue, buf, &task_awoken)) {
-        assert(false);
+
+    LineQueue_t* lq = &render_context.line_queues[thread];
+
+    BaseType_t awoken = pdFALSE;
+    assert(lq_read(lq, buf) == 0);
+    if (render_context.lines_consumed >= EPD_HEIGHT) {
+        memset(buf, 0x00, EPD_LINE_BYTES);
     }
     render_context.lines_consumed += 1;
-    return task_awoken;
+    return awoken;
 }
 
 /// start the next frame in the current update cycle
@@ -341,13 +392,14 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 		render_context.phase_times = waveform_phases->phase_times;
 	}
 
+    //Cache_Suspend_DCache_Autoload();
+
     ESP_LOGI("epdiy", "starting update, phases: %d", frame_count);
 #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
     for (uint8_t k = 0; k < frame_count; k++) {
         s3_set_frame_prepare_cb(push_pixels_frame_prepare);
         start_next_frame();
-        vTaskDelay(1);
-        s3_start_transmission();
+        // transmission started in renderer threads
         xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
 
         for (int i=0; i<NUM_FEED_THREADS; i++) {
@@ -356,6 +408,9 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 
         render_context.current_frame++;
     }
+
+    //Cache_Resume_DCache_Autoload(0);
+
     s3_set_line_source(NULL);
     //xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
     s3_delete_frame_prepare_cb();
@@ -509,20 +564,25 @@ void IRAM_ATTR feed_display(int thread_id) {
     int min_y = area.y + crop_y;
     int max_y = min(min_y + (vertically_cropped ? crop_h : area.height), area.height);
 
+    LineQueue_t* lq = &render_context.line_queues[thread_id];
+
     int l = 0;
     while (l = atomic_fetch_add(&render_context.lines_prepared, 1), l < FRAME_LINES) {
       //if (thread_id) gpio_set_level(15, 0);
       render_context.line_threads[l] = thread_id;
 
       // queue is sufficiently filled to fill both bounce buffers, frame can begin
-      if (l > 8) {
+      if (l - min_y == 32) {
         //s3_set_frame_prepare_cb(on_frame_done);
         s3_set_line_source(&retrieve_line);
+        s3_start_transmission();
       }
 
       if (l < min_y || l >= max_y || (render_context.drawn_lines != NULL && !render_context.drawn_lines[l - area.y])) {
-        memset(line_buf, 0x00, EPD_LINE_BYTES);
-        assert(xQueueSendToBack(render_context.line_queues[thread_id], line_buf, portMAX_DELAY) == pdPASS);
+        uint8_t* buf = NULL;
+        while (buf == NULL) buf = lq_current(lq);
+        memset(buf, 0x00, EPD_LINE_BYTES);
+        lq_commit(lq);
         //if (thread_id) gpio_set_level(15, 1);
         continue;
       }
@@ -530,6 +590,9 @@ void IRAM_ATTR feed_display(int thread_id) {
       uint32_t *lp = (uint32_t *)input_line;
       bool shifted = false;
       const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
+
+      Cache_Start_DCache_Preload((uint32_t)ptr , EPD_WIDTH, 0);
+
       if (area.width == EPD_WIDTH && area.x == 0 && !horizontally_cropped && !render_context.error) {
         lp = (uint32_t *)ptr;
       } else if (!render_context.error) {
@@ -589,11 +652,20 @@ void IRAM_ATTR feed_display(int thread_id) {
         lp = (uint32_t *)input_line;
       }
 
-      (*input_calc_func)(lp, line_buf, render_context.conversion_lut);
+      uint8_t* buf = NULL;
+      //if (thread_id) gpio_set_level(15, 0);
+      while (buf == NULL) buf = lq_current(lq);
+      //if (thread_id) gpio_set_level(15, 1);
+
+      (*input_calc_func)(lp, buf, render_context.conversion_lut);
+
       if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
         mask_line_buffer(line_buf, line_start_x, line_end_x);
       }
-      assert(xQueueSendToBack(render_context.line_queues[thread_id], line_buf, portMAX_DELAY) == pdPASS);
+
+      //if (thread_id) gpio_set_level(15, 0);
+      lq_commit(lq);
+      //if (thread_id) gpio_set_level(15, 1);
       if (shifted) {
         memset(input_line, 255, EPD_WIDTH / width_divider);
       }
@@ -689,11 +761,10 @@ void epd_init(enum EpdInitOptions options) {
   }
 
   for (int i=0; i < NUM_FEED_THREADS; i++) {
-      render_context.line_queues[i] = xQueueCreate(queue_len, EPD_WIDTH / 4);
-      if (render_context.line_queues[i] == 0) {
-          ESP_LOGE("epd", "could not create output queue %d!", i);
-          abort();
-      }
+      render_context.line_queues[i].size = queue_len;
+      render_context.line_queues[i].current = 0;
+      render_context.line_queues[i].last = 0;
+      render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(queue_len * EPD_LINE_BYTES, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
       RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))feed_display,
                                                "epd_feed", 1 << 13, (void*)i,
                                                10 | portPRIVILEGE_BIT,
