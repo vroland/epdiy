@@ -42,7 +42,7 @@
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
 
-#define S3_LCD_PIXEL_CLOCK             (10 * 1000 * 1000)
+#define S3_LCD_PIXEL_CLOCK             (12 * 1000 * 1000)
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 #define S3_LCD_PIN_NUM_HSYNC          46
 #define S3_LCD_PIN_NUM_VSYNC          3
@@ -175,8 +175,10 @@ void s3_start_transmission() {
     int initial_lines = min(LINE_BATCH, S3_LCD_RES_V);
 
     // hsync: pulse with, back porch, active width, front porch
-    lcd_ll_set_horizontal_timing(lcd.hal.dev, 6, 10, S3_LCD_RES_H, 10);
-    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 5, initial_lines, 1);
+    lcd_ll_set_horizontal_timing(lcd.hal.dev, 4, 12, S3_LCD_RES_H, 2);
+    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 4, initial_lines, 1);
+
+    gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
 
     // reset FIFO of DMA and LCD, incase there remains old frame data
     gdma_reset(lcd.dma_chan);
@@ -186,20 +188,20 @@ void s3_start_transmission() {
 
     lcd.batches = 0;
     fill_bounce_buffer(lcd.bounce_buffer[0]);
+    fill_bounce_buffer(lcd.bounce_buffer[1]);
 
-    gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 0);
     // the start of DMA should be prior to the start of LCD engine
     gdma_start(lcd.dma_chan, (intptr_t)&lcd.dma_nodes[0]);
     // delay 1us is sufficient for DMA to pass data to LCD FIFO
     // in fact, this is only needed when LCD pixel clock is set too high
+    gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 0);
     esp_rom_delay_us(1);
     // start LCD engine
-    start_ckv_cycles(initial_lines + 7);
+    start_ckv_cycles(initial_lines + 6);
     esp_rom_delay_us(12);
-    lcd_ll_start(lcd.hal.dev);
-    gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
-    esp_rom_delay_us(3);
     gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);
+    lcd_ll_start(lcd.hal.dev);
+    esp_rom_delay_us(3);
 }
 
 void stop_transfer() {
@@ -227,9 +229,9 @@ void init_ckv_rmt() {
 
   volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = 120;
+    rmt_mem_ptr->duration0 = 60;
     rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration1 = 140;
+    rmt_mem_ptr->duration1 = 150;
     rmt_mem_ptr->level1 = 0;
   //rmt_mem_ptr[1] = rmt_mem_ptr[0];
   rmt_mem_ptr[1].val = 0;
@@ -253,26 +255,26 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
     uint32_t intr_status = lcd_ll_get_interrupt_status(lcd.hal.dev);
     lcd_ll_clear_interrupt_status(lcd.hal.dev, intr_status);
 
-    gpio_set_level(15, 0);
-    gpio_set_level(15, 1);
+    //gpio_set_level(15, 0);
+    //gpio_set_level(15, 1);
 
     if (intr_status & LCD_LL_EVENT_VSYNC_END) {
         int batches_needed = S3_LCD_RES_V / LINE_BATCH ;
         if (lcd.batches >= batches_needed) {
             lcd_ll_stop(lcd.hal.dev);
-            gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
-            rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
+            //rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
             if (frame_prepare_cb != NULL) {
                 (*frame_prepare_cb)();
             }
+            gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
         } else {
             int ckv_cycles = 0;
             // last batch
             if (lcd.batches == batches_needed - 1) {
                 lcd_ll_enable_auto_next_frame(lcd.hal.dev, false);
-                lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, S3_LCD_RES_V % LINE_BATCH, 3);
-                ckv_cycles = S3_LCD_RES_V % LINE_BATCH + 1;
+                lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, S3_LCD_RES_V % LINE_BATCH, 36);
+                ckv_cycles = S3_LCD_RES_V % LINE_BATCH + 36;
             } else {
                 lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, LINE_BATCH, 1);
                 ckv_cycles = LINE_BATCH + 1;
@@ -280,7 +282,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             // apparently, this is needed for the new timing to take effect.
             lcd_ll_start(lcd.hal.dev);
             // ensure we skip "vsync" with CKV, so we don't skip a line.
-            esp_rom_delay_us(26);
+            esp_rom_delay_us(21);
             start_ckv_cycles(ckv_cycles);
         }
 
@@ -552,6 +554,7 @@ esp_err_t epd_lcd_init() {
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
     lcd_ll_set_data_width(lcd.hal.dev, 16);
     lcd_ll_set_phase_cycles(lcd.hal.dev, 0, 0, 1); // enable data phase only
+    lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false); // enable data phase only
 
     // number of data cycles is controlled by DMA buffer size
     lcd_ll_enable_output_always_on(lcd.hal.dev, true);
