@@ -97,7 +97,6 @@ int lq_read(LineQueue_t* queue, uint8_t* dst) {
 
 
 typedef struct {
-
     EpdRect area;
     EpdRect crop_to;
     const bool *drawn_lines;
@@ -208,9 +207,9 @@ void epd_push_pixels(EpdRect area, short time, int color) {
 #else
 
 /// start the next frame in the current update cycle
-static void IRAM_ATTR push_pixels_frame_prepare() {
-    s3_delete_frame_prepare_cb();
-    s3_set_line_source(NULL);
+static void IRAM_ATTR handle_lcd_frame_done() {
+    s3_set_frame_done_cb(NULL);
+    s3_set_line_source_cb(NULL);
 
     BaseType_t task_awoken = pdFALSE;
     xSemaphoreGiveFromISR(render_context.frame_done, &task_awoken);
@@ -221,13 +220,13 @@ static void IRAM_ATTR push_pixels_frame_prepare() {
 
 void epd_push_pixels(EpdRect area, short time, int color) {
     render_context.current_frame = 0;
-    s3_set_frame_prepare_cb(push_pixels_frame_prepare);
+    s3_set_frame_done_cb(handle_lcd_frame_done);
     if (color == 0) {
-        s3_set_line_source(&fill_line_black);
+        s3_set_line_source_cb(&fill_line_black);
     } else if (color == 1) {
-        s3_set_line_source(&fill_line_white);
+        s3_set_line_source_cb(&fill_line_white);
     } else {
-        s3_set_line_source(&fill_line_noop);
+        s3_set_line_source_cb(&fill_line_noop);
     }
     s3_start_transmission();
     xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
@@ -394,10 +393,11 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 
     //Cache_Suspend_DCache_Autoload();
 
+
     ESP_LOGI("epdiy", "starting update, phases: %d", frame_count);
 #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
     for (uint8_t k = 0; k < frame_count; k++) {
-        s3_set_frame_prepare_cb(push_pixels_frame_prepare);
+        s3_set_frame_done_cb(handle_lcd_frame_done);
         start_next_frame();
         // transmission started in renderer threads
         xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
@@ -411,10 +411,8 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 
     //Cache_Resume_DCache_Autoload(0);
 
-    s3_set_line_source(NULL);
-    //xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
-    s3_delete_frame_prepare_cb();
-    ESP_LOGI("epdiy", "transfer done");
+    s3_set_line_source_cb(NULL);
+    s3_set_frame_done_cb(NULL);
 #else
 
   //for (uint8_t k = 0; k < frame_count; k++) {
@@ -574,7 +572,7 @@ void IRAM_ATTR feed_display(int thread_id) {
       // queue is sufficiently filled to fill both bounce buffers, frame can begin
       if (l - min_y == 32) {
         //s3_set_frame_prepare_cb(on_frame_done);
-        s3_set_line_source(&retrieve_line);
+        s3_set_line_source_cb(&retrieve_line);
         s3_start_transmission();
       }
 
@@ -692,6 +690,9 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
     for (int i = 0; i < 10; i++) {
       epd_push_pixels(area, white_time, 1);
     }
+    for (int i = 0; i < 2; i++) {
+      epd_push_pixels(area, white_time, 2);
+    }
   }
   //stop_transfer();
 }
@@ -770,7 +771,7 @@ void epd_init(enum EpdInitOptions options) {
                                                10 | portPRIVILEGE_BIT,
                                                &render_context.feed_tasks[i], i));
   }
-  s3_set_line_source(NULL);
+  s3_set_line_source_cb(NULL);
 
 }
 

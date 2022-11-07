@@ -16,7 +16,14 @@ typedef struct {
 
 
 static void epd_board_init(uint32_t epd_row_width) {
-    epd_lcd_init();
+    LcdEpdConfig_t config = {
+        .pixel_clock = 22 * 1000 * 1000,
+        .ckv_high_time = 60,
+        .line_front_porch = 4,
+        .le_high_time = 4,
+        .bus_width = 8
+    };
+    epd_lcd_init(&config);
 }
 
 static void epd_board_deinit() {}
