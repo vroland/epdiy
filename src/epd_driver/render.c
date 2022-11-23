@@ -55,6 +55,7 @@ typedef struct {
     atomic_int current;
     atomic_int last;
     uint8_t* buf;
+    size_t element_size;
 } LineQueue_t;
 
 uint8_t* lq_current(LineQueue_t* queue) {
@@ -64,7 +65,7 @@ uint8_t* lq_current(LineQueue_t* queue) {
     if ((current  + 1) % queue->size == last) {
         return NULL;
     }
-    return &queue->buf[current * EPD_LINE_BYTES];
+    return &queue->buf[current * queue->element_size];
 }
 
 void lq_commit(LineQueue_t* queue) {
@@ -85,7 +86,7 @@ int lq_read(LineQueue_t* queue, uint8_t* dst) {
         return -1;
     }
 
-    memcpy(dst, &queue->buf[last * EPD_LINE_BYTES], EPD_LINE_BYTES);
+    memcpy(dst, &queue->buf[last * queue->element_size], queue->element_size);
 
     if (last == queue->size - 1) {
         queue->last = 0;
@@ -140,10 +141,15 @@ typedef struct {
     /// one for each thread.
     LineQueue_t line_queues[NUM_FEED_THREADS];
     uint8_t line_threads[FRAME_LINES];
+
+    /// track line skipping when working in old i2s mode
+    int skipping;
 } RenderContext_t;
 
 static RenderContext_t render_context;
 
+void i2s_write_row(uint32_t output_time_dus);
+void i2s_skip_row(uint8_t pipeline_finish_time);
 
 static bool IRAM_ATTR fill_line_noop(uint8_t* line) {
     memset(line, 0x00, EPD_LINE_BYTES);
@@ -160,12 +166,40 @@ static bool IRAM_ATTR fill_line_black(uint8_t* line) {
     return false;
 }
 
-// Space to use for the EPD output lookup table, which
-// is calculated for each cycle.
-static uint8_t* conversion_lut;
+#ifdef CONFIG_IDF_TARGET_ESP32S3
 
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+/// start the next frame in the current update cycle
+static void IRAM_ATTR handle_lcd_frame_done() {
+    epd_lcd_frame_done_cb(NULL);
+    epd_lcd_line_source_cb(NULL);
+
+    BaseType_t task_awoken = pdFALSE;
+    xSemaphoreGiveFromISR(render_context.frame_done, &task_awoken);
+
+    portYIELD_FROM_ISR();
+}
+
+
+void epd_push_pixels_lcd(EpdRect area, short time, int color) {
+    render_context.current_frame = 0;
+    epd_lcd_frame_done_cb(handle_lcd_frame_done);
+    if (color == 0) {
+        epd_lcd_line_source_cb(&fill_line_black);
+    } else if (color == 1) {
+        epd_lcd_line_source_cb(&fill_line_white);
+    } else {
+        epd_lcd_line_source_cb(&fill_line_noop);
+    }
+    epd_lcd_start_frame();
+    xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
+}
+
 void epd_push_pixels(EpdRect area, short time, int color) {
+    epd_push_pixels_lcd(area, time, color);
+}
+#else
+
+void epd_push_pixels_i2s(EpdRect area, short time, int color) {
 
   uint8_t row[EPD_LINE_BYTES] = {0};
 
@@ -182,7 +216,7 @@ void epd_push_pixels(EpdRect area, short time, int color) {
   for (int i = 0; i < EPD_HEIGHT; i++) {
     // before are of interest: skip
     if (i < area.y) {
-      skip_row(time);
+      i2s_skip_row(time);
       // start area of interest: set row data
     } else if (i == area.y) {
       epd_switch_buffer();
@@ -190,49 +224,26 @@ void epd_push_pixels(EpdRect area, short time, int color) {
       epd_switch_buffer();
       memcpy(epd_get_current_buffer(), row, EPD_LINE_BYTES);
 
-      write_row(time * 10);
+      i2s_write_row(time * 10);
       // load nop row if done with area
     } else if (i >= area.y + area.height) {
-      skip_row(time);
+      i2s_skip_row(time);
       // output the same as before
     } else {
-      write_row(time * 10);
+      i2s_write_row(time * 10);
     }
   }
   // Since we "pipeline" row output, we still have to latch out the last row.
-  write_row(time * 10);
+  i2s_write_row(time * 10);
 
   epd_end_frame();
 }
-#else
-
-/// start the next frame in the current update cycle
-static void IRAM_ATTR handle_lcd_frame_done() {
-    s3_set_frame_done_cb(NULL);
-    s3_set_line_source_cb(NULL);
-
-    BaseType_t task_awoken = pdFALSE;
-    xSemaphoreGiveFromISR(render_context.frame_done, &task_awoken);
-
-    portYIELD_FROM_ISR();
-}
-
 
 void epd_push_pixels(EpdRect area, short time, int color) {
-    render_context.current_frame = 0;
-    s3_set_frame_done_cb(handle_lcd_frame_done);
-    if (color == 0) {
-        s3_set_line_source_cb(&fill_line_black);
-    } else if (color == 1) {
-        s3_set_line_source_cb(&fill_line_white);
-    } else {
-        s3_set_line_source_cb(&fill_line_noop);
-    }
-    s3_start_transmission();
-    xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
+    epd_push_pixels_i2s(area, time, color);
 }
-
 #endif
+
 
 
 ///////////////////////////// Coordination ///////////////////////////////
@@ -267,8 +278,7 @@ static int get_waveform_index(const EpdWaveform* waveform, enum EpdDrawMode mode
     return -1;
 }
 
-
-static bool IRAM_ATTR retrieve_line(uint8_t* buf) {
+static bool IRAM_ATTR retrieve_line_isr(uint8_t* buf) {
     if (render_context.lines_consumed >= FRAME_LINES) {
         return false;
     }
@@ -287,10 +297,7 @@ static bool IRAM_ATTR retrieve_line(uint8_t* buf) {
 }
 
 /// start the next frame in the current update cycle
-static void IRAM_ATTR start_next_frame() {
-
-
-
+static void IRAM_ATTR prepare_lcd_frame() {
 	int frame_time = DEFAULT_FRAME_TIME;
 	if (render_context.phase_times != NULL) {
 		frame_time = render_context.phase_times[render_context.current_frame];
@@ -299,13 +306,13 @@ static void IRAM_ATTR start_next_frame() {
     if (render_context.mode & MODE_EPDIY_MONOCHROME) {
         frame_time = MONOCHROME_FRAME_TIME;
     }
+    render_context.frame_time = frame_time;
 
 
     enum EpdDrawMode mode = render_context.mode;
     const EpdWaveformPhases* phases =
         render_context.waveform->mode_data[render_context.waveform_index]->range_data[render_context.waveform_range];
 
-    //gpio_set_level(15, 0);
     render_context.error |= calculate_lut(
             render_context.conversion_lut,
             render_context.conversion_lut_size,
@@ -313,15 +320,18 @@ static void IRAM_ATTR start_next_frame() {
             render_context.current_frame,
             phases
     );
-    //gpio_set_level(15, 1);
 
     render_context.lines_prepared = 0;
     render_context.lines_consumed = 0;
 
-
-    // notify feeder tasks to start running
+// on the classic ESP32, the prepare task starts the feeder task
+#ifdef CONFIG_IDF_TARGET_ESP32S3
     xTaskNotifyGive(render_context.feed_tasks[!xPortGetCoreID()]);
     xTaskNotifyGive(render_context.feed_tasks[xPortGetCoreID()]);
+#else
+    xTaskNotifyGive(render_context.feed_tasks[0]);
+    xTaskNotifyGive(render_context.feed_tasks[1]);
+#endif
 }
 
 // FIXME: fix misleading naming:
@@ -334,9 +344,6 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
                             int temperature,
                             const bool *drawn_lines,
                             const EpdWaveform *waveform) {
-  uint8_t line[EPD_WIDTH / 2];
-  memset(line, 255, EPD_WIDTH / 2);
-
   int waveform_range = waveform_temp_range_index(waveform, temperature);
   if (waveform_range < 0) {
     return EPD_DRAW_NO_PHASES_AVAILABLE;
@@ -391,14 +398,12 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
 		render_context.phase_times = waveform_phases->phase_times;
 	}
 
-    //Cache_Suspend_DCache_Autoload();
-
-
     ESP_LOGI("epdiy", "starting update, phases: %d", frame_count);
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
     for (uint8_t k = 0; k < frame_count; k++) {
-        s3_set_frame_done_cb(handle_lcd_frame_done);
-        start_next_frame();
+#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+        epd_lcd_frame_done_cb(handle_lcd_frame_done);
+#endif
+        prepare_lcd_frame();
         // transmission started in renderer threads
         xSemaphoreTake(render_context.frame_done, portMAX_DELAY);
 
@@ -407,13 +412,17 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
         }
 
         render_context.current_frame++;
+
+        // make the watchdog happy.
+        if (k % 10 == 0) {
+            vTaskDelay(1);
+        }
     }
 
-    //Cache_Resume_DCache_Autoload(0);
-
-    s3_set_line_source_cb(NULL);
-    s3_set_frame_done_cb(NULL);
-#else
+#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+    epd_lcd_line_source_cb(NULL);
+    epd_lcd_frame_done_cb(NULL);
+#endif
 
   //for (uint8_t k = 0; k < frame_count; k++) {
 
@@ -432,41 +441,62 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(EpdRect area,
   //  xSemaphoreTake(fetch_params.done_smphr, portMAX_DELAY);
   //  xSemaphoreTake(feed_params.done_smphr, portMAX_DELAY);
   //}
-#endif
   if (render_context.error != EPD_DRAW_SUCCESS) {
       return render_context.error;
   }
   return EPD_DRAW_SUCCESS;
 }
 
-// output a row to the display.
-// void IRAM_ATTR write_row(uint32_t output_time_dus) {
-// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//   epd_output_row(output_time_dus);
-// #endif
-//   skipping = 0;
-// }
-//
-//
-// #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-// void epd_start_frame() {}
-// void epd_end_frame() {}
-// #endif
-//
-//
-// // skip a display row
-// void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
-// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//   // output previously loaded row, fill buffer with no-ops.
-//   if (skipping < 2) {
-//     memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
-//     epd_output_row(pipeline_finish_time);
-//   } else {
-//     epd_skip();
-//   }
-// #endif
-//   skipping++;
-// }
+//output a row to the display.
+void IRAM_ATTR i2s_write_row(uint32_t output_time_dus) {
+  epd_output_row(output_time_dus);
+  render_context.skipping = 0;
+}
+
+
+// skip a display row
+void IRAM_ATTR i2s_skip_row(uint8_t pipeline_finish_time) {
+  // output previously loaded row, fill buffer with no-ops.
+  if (render_context.skipping < 2) {
+    memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
+    epd_output_row(pipeline_finish_time);
+  } else {
+    epd_skip();
+  }
+  render_context.skipping++;
+}
+
+typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*);
+
+lut_func_t get_lut_function() {
+    const enum EpdDrawMode mode = render_context.mode;
+    if (mode & MODE_PACKING_2PPB) {
+      if (render_context.conversion_lut_size == 1024) {
+        if (mode & PREVIOUSLY_WHITE) {
+          return &calc_epd_input_4bpp_1k_lut_white;
+        } else if (mode & PREVIOUSLY_BLACK) {
+          return &calc_epd_input_4bpp_1k_lut_black;
+        } else {
+          render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+        }
+      } else if (render_context.conversion_lut_size == (1 << 16)) {
+        return &calc_epd_input_4bpp_lut_64k;
+      } else {
+        render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+      }
+    } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+      if (render_context.conversion_lut_size == 1024) {
+          return &calc_epd_input_1ppB;
+      } else {
+          return &calc_epd_input_1ppB_64k;
+      }
+    } else if (mode & MODE_PACKING_8PPB) {
+      return &calc_epd_input_1bpp;
+    } else {
+      render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    }
+    return NULL;
+}
 
 void IRAM_ATTR feed_display(int thread_id) {
   uint8_t line_buf[EPD_LINE_BYTES];
@@ -487,32 +517,7 @@ void IRAM_ATTR feed_display(int thread_id) {
     const bool horizontally_cropped = !(crop_to.x == 0 && crop_to.width == area.width);
     const bool vertically_cropped = !(crop_to.y == 0 && crop_to.height == area.height);
 
-    void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) = NULL;
-    if (mode & MODE_PACKING_2PPB) {
-      if (render_context.conversion_lut_size == 1024) {
-        if (mode & PREVIOUSLY_WHITE) {
-          input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
-        } else if (mode & PREVIOUSLY_BLACK) {
-          input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
-        } else {
-          render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-        }
-      } else if (render_context.conversion_lut_size == (1 << 16)) {
-        input_calc_func = &calc_epd_input_4bpp_lut_64k;
-      } else {
-        render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-      }
-    } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-      if (render_context.conversion_lut_size == 1024) {
-          input_calc_func = &calc_epd_input_1ppB;
-      } else {
-          input_calc_func = &calc_epd_input_1ppB_64k;
-      }
-    } else if (mode & MODE_PACKING_8PPB) {
-      input_calc_func = &calc_epd_input_1bpp;
-    } else {
-      render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-    }
+    lut_func_t input_calc_func = get_lut_function();
 
     // number of pixels per byte of input data
     int ppB = 0;
@@ -569,17 +574,22 @@ void IRAM_ATTR feed_display(int thread_id) {
       //if (thread_id) gpio_set_level(15, 0);
       render_context.line_threads[l] = thread_id;
 
+      // FIXME: handle too-small updates
       // queue is sufficiently filled to fill both bounce buffers, frame can begin
-      if (l - min_y == 32) {
-        //s3_set_frame_prepare_cb(on_frame_done);
-        s3_set_line_source_cb(&retrieve_line);
-        s3_start_transmission();
+      if (l - min_y == 31) {
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        //epd_lcd_frame_prepare_cb(on_frame_done);
+        epd_lcd_line_source_cb(&retrieve_line_isr);
+        epd_lcd_start_frame();
+#else
+        xTaskNotifyGive(render_context.feed_tasks[1]);
+#endif
       }
 
       if (l < min_y || l >= max_y || (render_context.drawn_lines != NULL && !render_context.drawn_lines[l - area.y])) {
         uint8_t* buf = NULL;
         while (buf == NULL) buf = lq_current(lq);
-        memset(buf, 0x00, EPD_LINE_BYTES);
+        memset(buf, 0x00, lq->element_size);
         lq_commit(lq);
         //if (thread_id) gpio_set_level(15, 1);
         continue;
@@ -589,7 +599,9 @@ void IRAM_ATTR feed_display(int thread_id) {
       bool shifted = false;
       const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
 
+#ifdef CONFIG_IDF_TARGET_ESP32S3
       Cache_Start_DCache_Preload((uint32_t)ptr , EPD_WIDTH, 0);
+#endif
 
       if (area.width == EPD_WIDTH && area.x == 0 && !horizontally_cropped && !render_context.error) {
         lp = (uint32_t *)ptr;
@@ -651,26 +663,71 @@ void IRAM_ATTR feed_display(int thread_id) {
       }
 
       uint8_t* buf = NULL;
-      //if (thread_id) gpio_set_level(15, 0);
       while (buf == NULL) buf = lq_current(lq);
-      //if (thread_id) gpio_set_level(15, 1);
 
-      (*input_calc_func)(lp, buf, render_context.conversion_lut);
+        memcpy(buf, lp, EPD_WIDTH);
+//#ifdef CONFIG_IDF_TARGET_ESP32S3
+      //(*input_calc_func)(buf, buf, render_context.conversion_lut);
+//#else
+//      memset(buf, 0, EPD_LINE_BYTES);
+//#endif
 
-      if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
-        mask_line_buffer(line_buf, line_start_x, line_end_x);
-      }
+      //if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
+      //  mask_line_buffer(line_buf, line_start_x, line_end_x);
+      //}
 
-      //if (thread_id) gpio_set_level(15, 0);
       lq_commit(lq);
-      //if (thread_id) gpio_set_level(15, 1);
+
       if (shifted) {
         memset(input_line, 255, EPD_WIDTH / width_divider);
       }
-      //if (thread_id) gpio_set_level(15, 1);
     }
 
     xSemaphoreGive(render_context.feed_done_smphr[thread_id]);
+  }
+}
+
+void IRAM_ATTR i2s_feed_display(int thread_id) {
+  uint8_t line_buf[EPD_WIDTH];
+
+  ESP_LOGI("epdiy", "thread id: %d", thread_id);
+
+  while (true) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    render_context.skipping = 0;
+    EpdRect area = render_context.area;
+    enum EpdDrawMode mode = render_context.mode;
+    int frame_time = render_context.frame_time;
+
+    lut_func_t input_calc_func = get_lut_function();
+
+    epd_start_frame();
+    for (int i = 0; i < FRAME_LINES; i++) {
+        LineQueue_t* lq = &render_context.line_queues[0];
+
+        memset(line_buf, 0, EPD_WIDTH);
+        while (lq_read(lq, line_buf) < 0) {};
+
+        render_context.lines_consumed += 1;
+
+        if (render_context.drawn_lines != NULL && !render_context.drawn_lines[i - area.y]) {
+            i2s_skip_row(frame_time);
+            continue;
+        }
+
+        (*input_calc_func)(line_buf, epd_get_current_buffer(), render_context.conversion_lut);
+        i2s_write_row(frame_time);
+    }
+    if (!render_context.skipping) {
+      // Since we "pipeline" row output, we still have to latch out the last
+      // row.
+      i2s_write_row(frame_time);
+    }
+    epd_end_frame();
+
+    xSemaphoreGive(render_context.feed_done_smphr[thread_id]);
+    xSemaphoreGive(render_context.frame_done);
   }
 }
 
@@ -682,7 +739,6 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
   const short white_time = cycle_time;
   const short dark_time = cycle_time;
 
-  //setup_transfer();
   for (int c = 0; c < cycles; c++) {
     for (int i = 0; i < 10; i++) {
       epd_push_pixels(area, dark_time, 0);
@@ -694,7 +750,6 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
       epd_push_pixels(area, white_time, 2);
     }
   }
-  //stop_transfer();
 }
 
 
@@ -718,9 +773,7 @@ void epd_init(enum EpdInitOptions options) {
 #endif
 
   epd_board->init(EPD_WIDTH);
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
   epd_hw_init(EPD_WIDTH);
-#endif
   epd_temperature_init();
 
   size_t lut_size = 0;
@@ -735,13 +788,11 @@ void epd_init(enum EpdInitOptions options) {
 
     //gpio_set_level(15, 1);
   ESP_LOGE("epd", "lut size: %d", lut_size);
-  conversion_lut = (uint8_t *)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-  if (conversion_lut == NULL) {
+  render_context.conversion_lut = (uint8_t *)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+  if (render_context.conversion_lut == NULL) {
     ESP_LOGE("epd", "could not allocate LUT!");
+    abort();
   }
-  assert(conversion_lut != NULL);
-
-  render_context.conversion_lut = conversion_lut;
   render_context.conversion_lut_size = lut_size;
 
   render_context.frame_done = xSemaphoreCreateBinary();
@@ -761,17 +812,42 @@ void epd_init(enum EpdInitOptions options) {
     queue_len = 8;
   }
 
-  for (int i=0; i < NUM_FEED_THREADS; i++) {
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+  int feed_threads = NUM_FEED_THREADS;
+  size_t queue_elem_size = EPD_LINE_BYTES;
+  epd_lcd_line_source_cb(NULL);
+#else
+  size_t queue_elem_size = EPD_WIDTH;
+  int feed_threads = 1;
+#endif
+
+  for (int i=0; i < feed_threads; i++) {
       render_context.line_queues[i].size = queue_len;
+      render_context.line_queues[i].element_size = queue_elem_size;
       render_context.line_queues[i].current = 0;
       render_context.line_queues[i].last = 0;
-      render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(queue_len * EPD_LINE_BYTES, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+      render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(queue_len * queue_elem_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
       RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))feed_display,
-                                               "epd_feed", 1 << 13, (void*)i,
+                                               "epd_prep", 1 << 13, (void*)i,
                                                10 | portPRIVILEGE_BIT,
                                                &render_context.feed_tasks[i], i));
+      if (render_context.line_queues[i].buf == NULL) {
+            ESP_LOGE("epd", "could not allocate line queue!");
+            abort();
+      }
   }
-  s3_set_line_source_cb(NULL);
+
+#ifndef CONFIG_IDF_TARGET_ESP32S3
+  render_context.line_queues[1].size = 0;
+  render_context.line_queues[1].element_size = 0;
+  render_context.line_queues[1].current = 0;
+  render_context.line_queues[1].last = 0;
+  render_context.line_queues[1].buf = NULL;
+  RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))i2s_feed_display,
+                                           "epd_feed", 1 << 13, (void*)1,
+                                           10 | portPRIVILEGE_BIT,
+                                           &render_context.feed_tasks[1], 1));
+#endif
 
 }
 

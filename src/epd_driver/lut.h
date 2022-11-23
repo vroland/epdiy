@@ -53,10 +53,6 @@ typedef struct {
 //void provide_out(OutputParams *params);
 
 
-void write_row(uint32_t output_time_dus);
-void skip_row(uint8_t pipeline_finish_time);
-
-
 void bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift);
 void mask_line_buffer(uint8_t* lb, int xmin, int xmax);
 void nibble_shift_buffer_right(uint8_t *buf, uint32_t len);

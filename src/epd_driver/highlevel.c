@@ -129,6 +129,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   uint32_t t1 = esp_timer_get_time() / 1000;
 
   previously_white = false;
+  previously_black = false;
 
   diff_area.x = 0;
   diff_area.y = 0;

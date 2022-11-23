@@ -1,5 +1,7 @@
 #include "s3_lcd.h"
 
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -42,7 +44,6 @@
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
 
-#define S3_LCD_PIXEL_CLOCK             (12 * 1000 * 1000)
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 #define S3_LCD_PIN_NUM_HSYNC          46
 #define S3_LCD_PIN_NUM_VSYNC          3
@@ -69,22 +70,12 @@ inline int max(int x, int y) { return x > y ? x : y; }
 #define S3_LCD_PIN_NUM_DATA15         45 // G2
 
 // The pixel number in horizontal and vertical
-#define DATA_WIDTH                     16
-#define S3_LCD_RES_H              EPD_WIDTH / 8
 #define LINE_BYTES                     (EPD_WIDTH / 4)
-#define S3_LCD_RES_V               (((EPD_HEIGHT  + 7) / 8) * 8)
-#define LINE_BATCH                     800
+#define S3_LCD_RES_V                   (((EPD_HEIGHT  + 7) / 8) * 8)
+#define LINE_BATCH                     1000
+#define BOUNCE_BUF_LINES               4
 
 #define RMT_CKV_CHAN                   RMT_CHANNEL_1
-
-// the RMT channel configuration object
-static esp_lcd_panel_handle_t panel_handle = NULL;
-
-/** unset appropriate callback functions for data output in next VSYNC */
-static void (*frame_prepare_cb)(void) = NULL;
-static bool (*line_source_cb)(uint8_t*) = NULL;
-/// line source to be used from the next vsync onwards
-static bool (*next_line_source)(uint8_t*) = NULL;
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access to RMTMEM through the rmt_private.h header
@@ -94,24 +85,18 @@ typedef rmt_mem_t rmt_block_mem_t ;
 extern rmt_block_mem_t RMTMEM;
 #endif
 
-
-
-void s3_set_line_source(bool(*line_source)(uint8_t*)) {
-    line_source_cb = line_source;
-}
-
-void s3_set_frame_prepare_cb(void (*cb)(void)) {
-    frame_prepare_cb = cb;
-}
-
-void s3_delete_frame_prepare_cb() {
-    frame_prepare_cb = NULL;
-}
-
 typedef struct {
     lcd_hal_context_t hal;
     intr_handle_t vsync_intr;
     intr_handle_t done_intr;
+
+    void (*frame_done_cb)(void);
+    bool (*line_source_cb)(uint8_t*);
+    int line_length_us;
+    int line_cycles;
+    int lcd_res_h;
+
+    LcdEpdConfig_t config;
 
     uint8_t *bounce_buffer[2];
     // size of a single bounce buffer
@@ -129,26 +114,19 @@ typedef struct {
 static s3_lcd_t lcd;
 
 
-static bool IRAM_ATTR epd_on_vsync_event() {
+void epd_lcd_line_source_cb(bool(*line_source)(uint8_t*)) {
+    lcd.line_source_cb = line_source;
+}
 
-    //rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
-    //gpio_set_level(15, 0);
-
-    //rmt_ll_tx_reset_loop_count(&RMT, RMT_CKV_CHAN);
-    //rmt_ll_tx_reset_pointer(&RMT, RMT_CKV_CHAN);
-
-    //rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
-
-    //gpio_set_level(15, 1);
-
-    return pdFALSE;
+void epd_lcd_frame_done_cb(void (*cb)(void)) {
+    lcd.frame_done_cb = cb;
 }
 
 static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     bool task_awoken = false;
     for (int i=0; i < lcd.bb_size / LINE_BYTES; i++) {
-        if (line_source_cb != NULL)  {
-            task_awoken |= line_source_cb(&buffer[i * LINE_BYTES]);
+        if (lcd.line_source_cb != NULL)  {
+            task_awoken |= lcd.line_source_cb(&buffer[i * LINE_BYTES]);
         } else {
             memset(&buffer[i * LINE_BYTES], 0x00, LINE_BYTES);
         }
@@ -171,11 +149,17 @@ void start_ckv_cycles(int cycles) {
     rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
 }
 
-void s3_start_transmission() {
+void epd_lcd_start_frame() {
     int initial_lines = min(LINE_BATCH, S3_LCD_RES_V);
 
     // hsync: pulse with, back porch, active width, front porch
-    lcd_ll_set_horizontal_timing(lcd.hal.dev, 4, 12, S3_LCD_RES_H, 2);
+    int end_line = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
+    lcd_ll_set_horizontal_timing(lcd.hal.dev,
+            lcd.config.le_high_time,
+            lcd.config.line_front_porch,
+            lcd.lcd_res_h,
+            end_line
+    );
     lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 4, initial_lines, 1);
 
     gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
@@ -198,14 +182,12 @@ void s3_start_transmission() {
     esp_rom_delay_us(1);
     // start LCD engine
     start_ckv_cycles(initial_lines + 6);
-    esp_rom_delay_us(12);
+    esp_rom_delay_us(1);
     gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);
+    // for picture clarity, it seems to be important to start CKV at a "good"
+    // time, seemingly start or towards end of line.
+    esp_rom_delay_us(lcd.line_length_us - lcd.config.ckv_high_time / 10 - 1);
     lcd_ll_start(lcd.hal.dev);
-    esp_rom_delay_us(3);
-}
-
-void stop_transfer() {
-    ESP_ERROR_CHECK(esp_lcd_panel_del(panel_handle));
 }
 
 
@@ -222,16 +204,13 @@ void init_ckv_rmt() {
   rmt_ll_tx_enable_carrier_modulation(&RMT, RMT_CKV_CHAN, false);
 
   rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
-  //rmt_ll_tx_enable_loop_count(&RMT, RMT_CKV_CHAN, true);
-  //rmt_ll_tx_enable_loop_autostop(&RMT, RMT_CKV_CHAN, true);
-  //rmt_ll_tx_set_loop_count(&RMT, RMT_CKV_CHAN, S3_LCD_RES_V / 2);
-  //rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
 
+  int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
   volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = 60;
+    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
     rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration1 = 150;
+    rmt_mem_ptr->duration1 = low_time;
     rmt_mem_ptr->level1 = 0;
   //rmt_mem_ptr[1] = rmt_mem_ptr[0];
   rmt_mem_ptr[1].val = 0;
@@ -255,16 +234,13 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
     uint32_t intr_status = lcd_ll_get_interrupt_status(lcd.hal.dev);
     lcd_ll_clear_interrupt_status(lcd.hal.dev, intr_status);
 
-    //gpio_set_level(15, 0);
-    //gpio_set_level(15, 1);
-
     if (intr_status & LCD_LL_EVENT_VSYNC_END) {
         int batches_needed = S3_LCD_RES_V / LINE_BATCH ;
         if (lcd.batches >= batches_needed) {
             lcd_ll_stop(lcd.hal.dev);
             //rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
-            if (frame_prepare_cb != NULL) {
-                (*frame_prepare_cb)();
+            if (lcd.frame_done_cb != NULL) {
+                (*lcd.frame_done_cb)();
             }
             gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
@@ -273,8 +249,8 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             // last batch
             if (lcd.batches == batches_needed - 1) {
                 lcd_ll_enable_auto_next_frame(lcd.hal.dev, false);
-                lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, S3_LCD_RES_V % LINE_BATCH, 36);
-                ckv_cycles = S3_LCD_RES_V % LINE_BATCH + 36;
+                lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, S3_LCD_RES_V % LINE_BATCH, 10);
+                ckv_cycles = S3_LCD_RES_V % LINE_BATCH + 10;
             } else {
                 lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, LINE_BATCH, 1);
                 ckv_cycles = LINE_BATCH + 1;
@@ -282,21 +258,12 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             // apparently, this is needed for the new timing to take effect.
             lcd_ll_start(lcd.hal.dev);
             // ensure we skip "vsync" with CKV, so we don't skip a line.
-            esp_rom_delay_us(21);
+            esp_rom_delay_us(lcd.line_length_us);
             start_ckv_cycles(ckv_cycles);
         }
 
         lcd.batches += 1;
     }
-
-
-    if (intr_status & LCD_LL_EVENT_TRANS_DONE) {
-        if (frame_prepare_cb != NULL) {
-            (*frame_prepare_cb)();
-        }
-    }
-
-    //lcd_rgb_panel_restart_transmission_in_isr(rgb_panel);
 
     if (need_yield) {
         portYIELD_FROM_ISR();
@@ -325,14 +292,6 @@ static IRAM_ATTR bool lcd_rgb_panel_eof_handler(gdma_channel_handle_t dma_chan, 
     // Figure out which bounce buffer to write to.
     // Note: what we receive is the *last* descriptor of this bounce buffer.
     int bb = (desc == &lcd.dma_nodes[0]) ? 0 : 1;
-
-    //gpio_set_level(15, 0);
-    //gpio_set_level(15, 1);
-
-    //if (bb) {
-    //    gpio_set_level(15, 0);
-    //    gpio_set_level(15, 1);
-    //}
 
     bool need_yield = fill_bounce_buffer(lcd.bounce_buffer[bb]);
 
@@ -407,7 +366,32 @@ static esp_err_t init_dma_trans_link() {
 
 const int DATA_LINES[16] = {
 
-    S3_LCD_PIN_NUM_DATA6,
+    S3_LCD_PIN_NUM_DATA14,
+    S3_LCD_PIN_NUM_DATA15,
+
+    S3_LCD_PIN_NUM_DATA12,
+    S3_LCD_PIN_NUM_DATA13,
+
+    S3_LCD_PIN_NUM_DATA10,
+    S3_LCD_PIN_NUM_DATA11,
+
+    S3_LCD_PIN_NUM_DATA8,
+    S3_LCD_PIN_NUM_DATA9,
+
+    // S3_LCD_PIN_NUM_DATA8,
+    // S3_LCD_PIN_NUM_DATA9,
+
+    // S3_LCD_PIN_NUM_DATA10,
+    // S3_LCD_PIN_NUM_DATA11,
+
+    // S3_LCD_PIN_NUM_DATA12,
+    // S3_LCD_PIN_NUM_DATA13,
+
+    // S3_LCD_PIN_NUM_DATA14,
+    // S3_LCD_PIN_NUM_DATA15,
+
+    // FIXME: swap for 16 bit
+
     S3_LCD_PIN_NUM_DATA7,
 
     S3_LCD_PIN_NUM_DATA4,
@@ -419,24 +403,12 @@ const int DATA_LINES[16] = {
     S3_LCD_PIN_NUM_DATA0,
     S3_LCD_PIN_NUM_DATA1,
 
-    S3_LCD_PIN_NUM_DATA8,
-    S3_LCD_PIN_NUM_DATA9,
-
-    S3_LCD_PIN_NUM_DATA10,
-    S3_LCD_PIN_NUM_DATA11,
-
-    S3_LCD_PIN_NUM_DATA12,
-    S3_LCD_PIN_NUM_DATA13,
-
-    S3_LCD_PIN_NUM_DATA14,
-    S3_LCD_PIN_NUM_DATA15,
-
 };
 
 static esp_err_t s3_lcd_configure_gpio()
 {
     // connect peripheral signals via GPIO matrix
-    for (size_t i = 0; i < 16; i++) {
+    for (size_t i = 0; i < lcd.config.bus_width; i++) {
         gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[DATA_LINES[i]], PIN_FUNC_GPIO);
         gpio_set_direction(DATA_LINES[i], GPIO_MODE_OUTPUT);
         esp_rom_gpio_connect_out_signal(DATA_LINES[i],
@@ -460,14 +432,13 @@ static esp_err_t s3_lcd_configure_gpio()
     return ESP_OK;
 }
 
-esp_err_t epd_lcd_init() {
+void epd_lcd_init(const LcdEpdConfig_t* config) {
 
     esp_err_t ret = ESP_OK;
 
-    gpio_config_t debug_io_conf = {
-      .mode = GPIO_MODE_OUTPUT,
-      .pin_bit_mask = 1ull << 15,
-    };
+    memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
+
+    lcd.lcd_res_h = EPD_WIDTH / 4 / (lcd.config.bus_width / 8);
 
     gpio_config_t vsync_gpio_conf = {
       .mode = GPIO_MODE_OUTPUT,
@@ -479,17 +450,13 @@ esp_err_t epd_lcd_init() {
       .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_MODE,
     };
 
-    gpio_config(&debug_io_conf);
     gpio_config(&vsync_gpio_conf);
     gpio_config(&mode_gpio_conf);
 
-    gpio_set_level(15, 1);
     gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);
     gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
-    init_ckv_rmt();
-
-    ESP_LOGI(TAG, "using resolution %dx%d", S3_LCD_RES_H, S3_LCD_RES_V);
+    ESP_LOGI(TAG, "using resolution %dx%d", lcd.lcd_res_h, S3_LCD_RES_V);
 
     // enable APB to access LCD registers
     periph_module_enable(lcd_periph_signals.panels[0].module);
@@ -507,7 +474,7 @@ esp_err_t epd_lcd_init() {
     for (int i = 0; i < 2; i++) {
         // bounce buffer must come from SRAM
         lcd.bounce_buffer[i] = heap_caps_aligned_calloc(4, 1, lcd.bb_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-        ESP_RETURN_ON_FALSE(lcd.bounce_buffer[i], ESP_ERR_NO_MEM, TAG, "no mem for bounce buffer");
+        ESP_GOTO_ON_ERROR(ret, err, TAG, "install interrupt failed");
     }
 
     lcd_hal_init(&lcd.hal, 0);
@@ -539,12 +506,9 @@ esp_err_t epd_lcd_init() {
     ESP_GOTO_ON_ERROR(ret, err, TAG, "configure GPIO failed");
 
 
-    //uint16_t line_len = S3_LCD_RES_H + panel_config.timings.hsync_front_porch + panel_config.timings.hsync_back_porch + panel_config.timings.hsync_pulse_width;
-    //ESP_LOGI(TAG, "line len: %u cycles", line_len);
-
     // set pclk
     int flags = 0;
-    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, S3_LCD_PIXEL_CLOCK, flags);
+    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
     ESP_LOGI(TAG, "pclk freq: %lu Hz", freq);
     // pixel clock phase and polarity
     lcd_ll_set_clock_idle_level(lcd.hal.dev, false);
@@ -552,7 +516,7 @@ esp_err_t epd_lcd_init() {
 
     // enable RGB mode and set data width
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
-    lcd_ll_set_data_width(lcd.hal.dev, 16);
+    lcd_ll_set_data_width(lcd.hal.dev, lcd.config.bus_width);
     lcd_ll_set_phase_cycles(lcd.hal.dev, 0, 0, 1); // enable data phase only
     lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false); // enable data phase only
 
@@ -578,16 +542,19 @@ esp_err_t epd_lcd_init() {
     esp_intr_enable(lcd.vsync_intr);
     esp_intr_enable(lcd.done_intr);
 
+    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 / lcd.config.pixel_clock + 1;
+    lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
+    ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
+
+    init_ckv_rmt();
+
     ESP_LOGI(TAG, "LCD init done.");
 
-    //ESP_LOGI(TAG, "Initialize RGB LCD panel");
-    //s3_start_transmission();
-
-    //Cache_WriteBack_Addr((uint32_t)buf1, EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES);
-    //esp_lcd_rgb_panel_refresh(panel_handle);
-    return ESP_OK;
-
+    return;
 err:
     // do some deconstruction
-    return ESP_FAIL;
+    ESP_LOGI(TAG, "LCD initialization failed!");
+    abort();
 }
+
+#endif // S3 Target

@@ -32,7 +32,6 @@ void epd_hw_init(uint32_t epd_row_width) {
     .ep_stv = true,
   };
 
-  epd_board->init(epd_row_width);
   epd_board->set_ctrl(&ctrl_state, &mask);
 }
 
