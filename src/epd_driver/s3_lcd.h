@@ -15,6 +15,6 @@ typedef struct {
 } LcdEpdConfig_t;
 
 void epd_lcd_init(const LcdEpdConfig_t* config);
-void s3_set_frame_done_cb(void (*cb)(void));
-void s3_set_line_source_cb(bool(*line_source)(uint8_t*));
-void s3_start_transmission();
+void epd_lcd_frame_done_cb(void (*cb)(void));
+void epd_lcd_line_source_cb(bool(*line_source)(uint8_t*));
+void epd_lcd_start_frame();

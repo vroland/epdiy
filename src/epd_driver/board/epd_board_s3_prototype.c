@@ -31,12 +31,6 @@ static void epd_board_deinit() {}
 static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t * const mask) {
 }
 
-void epd_poweron() {
-}
-
-void epd_poweroff() {
-}
-
 static void epd_board_poweron(epd_ctrl_state_t *state) {}
 
 static void epd_board_poweroff(epd_ctrl_state_t *state) {}

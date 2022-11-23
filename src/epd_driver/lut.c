@@ -161,14 +161,6 @@ lookup_differential_pixels(const uint32_t in, const uint8_t *conversion_lut) {
 }
 
 /**
- * Look up 4 pixels of a differential image.
- */
-static inline uint8_t
-lookup_differential_pixels_64k(const uint32_t in, const uint8_t *conversion_lut) {
-      return (conversion_lut[(in >> 16)] << 4) | conversion_lut[in & 0xFFFF];
-}
-
-/**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
 void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
@@ -200,21 +192,25 @@ void IRAM_ATTR calc_epd_input_1ppB_64k(const uint32_t *ld,
                           uint8_t *epd_input,
                           const uint8_t *conversion_lut) {
 
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-  // this is reversed for little-endian, but this is later compensated
-  // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
-    epd_input[j + 2] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
-    epd_input[j + 3] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
-    epd_input[j + 0] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
-    epd_input[j + 1] = lookup_differential_pixels_64k(*(ld++), conversion_lut);
-  }
-#else
-#endif
-    uint16_t* lp = (uint16_t*) ld;
+uint16_t* lp = (uint16_t*) ld;
+#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
     for (uint32_t j = 0; j < EPD_WIDTH / 4; j++) {
       epd_input[j] = (conversion_lut[lp[2 * j + 1]] << 4) | conversion_lut[lp[2 * j]];
     }
+#else
+  // this is reversed for little-endian, but this is later compensated
+  // through the output peripheral.
+  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+    epd_input[j + 2] = conversion_lut[*(lp++)];;
+    epd_input[j + 2] |=  (conversion_lut[*(lp++)] << 4);
+    epd_input[j + 3] = conversion_lut[*(lp++)];;
+    epd_input[j + 3] |=  (conversion_lut[*(lp++)] << 4);
+    epd_input[j + 0] = conversion_lut[*(lp++)];;
+    epd_input[j + 0] |=  (conversion_lut[*(lp++)] << 4);
+    epd_input[j + 1] = conversion_lut[*(lp++)];;
+    epd_input[j + 1] |=  (conversion_lut[*(lp++)] << 4);
+  }
+#endif
 }
 
 
