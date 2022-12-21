@@ -33,11 +33,6 @@ static utf_t *utf[] = {
     &(utf_t){0},
 };
 
-/**
- * static decompressor object for compressed fonts.
- */
-static tinfl_decompressor decomp;
-
 static inline int min(int x, int y) { return x < y ? x : y; }
 static inline int max(int x, int y) { return x > y ? x : y; }
 
@@ -94,13 +89,20 @@ const EpdGlyph* epd_get_glyph(const EpdFont *font, uint32_t code_point) {
 }
 
 static int uncompress(uint8_t *dest, size_t uncompressed_size, const uint8_t *source, size_t source_size) {
+    tinfl_decompressor *decomp;
     if (uncompressed_size == 0 || dest == NULL || source_size == 0 || source == NULL) {
         return -1;
     }
-    tinfl_init(&decomp);
+    decomp = malloc(sizeof(tinfl_decompressor));
+    if (!decomp) {
+        // Out of memory
+        return -1;
+    }
+    tinfl_init(decomp);
 
     // we know everything will fit into the buffer.
-    tinfl_status decomp_status = tinfl_decompress(&decomp, source, &source_size, dest, dest, &uncompressed_size, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+    tinfl_status decomp_status = tinfl_decompress(decomp, source, &source_size, dest, dest, &uncompressed_size, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+    free(decomp);
     if (decomp_status != TINFL_STATUS_DONE) {
         return decomp_status;
     }
@@ -132,7 +134,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
   int byte_width = (width / 2 + width % 2);
   unsigned long bitmap_size = byte_width * height;
   const uint8_t *bitmap = NULL;
-  if (font->compressed) {
+  if (bitmap_size > 0 && font->compressed) {
     uint8_t* tmp_bitmap = (uint8_t *)malloc(bitmap_size);
     if (tmp_bitmap == NULL && bitmap_size) {
       ESP_LOGE("font", "malloc failed.");
@@ -175,7 +177,7 @@ static enum EpdDrawError IRAM_ATTR draw_char(const EpdFont *font, uint8_t *buffe
       x++;
     }
   }
-  if (font->compressed) {
+  if (bitmap_size > 0 && font->compressed) {
     free((uint8_t*)bitmap);
   }
   *cursor_x += glyph->advance_x;
