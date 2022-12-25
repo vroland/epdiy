@@ -4,3 +4,6 @@
 [submodule "hardware/epaper-breakout/tp4056"]
 	path = hardware/epaper-breakout/tp4056
 	url = https://github.com/alltheworld/tp4056/
+[submodule "hardware/epdiy-v7/kicad-libraries"]
+	path = hardware/epdiy-v7/kicad-libraries
+	url = https://github.com/espressif/kicad-libraries.git
