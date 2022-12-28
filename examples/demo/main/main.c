@@ -14,6 +14,7 @@
 #include "sdkconfig.h"
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
@@ -105,7 +106,7 @@ void idf_loop() {
   err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
   t2 = millis();
   epd_poweroff();
-  printf("EPD update %dms. err: %d\n", t2 - t1, err);
+  printf("EPD update %"PRIu32"ms. err: %u\n", t2 - t1, err);
 
   for (int i=0; i < 6; i++) {
     epd_poweron();

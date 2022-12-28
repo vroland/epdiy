@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h> // round + pow
+#include <inttypes.h>
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
@@ -165,7 +166,7 @@ void jpegRender(int xpos, int ypos, int width, int height) {
   uint32_t padding_x = (epd_rotated_display_width() - width) / 2;
   uint32_t padding_y = (epd_rotated_display_height() - height) / 2;
 
-  ESP_LOGI("Padding", "x:%d y:%d", padding_x, padding_y);
+  ESP_LOGI("Padding", "x:%"PRIu32" y:%"PRIu32"", padding_x, padding_y);
 
   for (uint32_t by=0; by<height-1;by++) {
     for (uint32_t bx=0; bx<width;bx++) {
@@ -174,7 +175,7 @@ void jpegRender(int xpos, int ypos, int width, int height) {
   }
   // calculate how long it took to draw the image
   time_render = (esp_timer_get_time() - drawTime)/1000;
-  ESP_LOGI("render", "%d ms - jpeg draw", time_render);
+  ESP_LOGI("render", "%"PRIu32" ms - jpeg draw", time_render);
 }
 
 void deepsleep(){
@@ -261,7 +262,7 @@ int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
   time_decomp = (esp_timer_get_time() - decode_start)/1000;
 
   ESP_LOGI("JPG", "width: %d height: %d\n", jd.width, jd.height);
-  ESP_LOGI("decode", "%d ms . image decompression", time_decomp);
+  ESP_LOGI("decode", "%"PRIu32" ms . image decompression", time_decomp);
 
   // Render the image onto the screen at given coordinates
   jpegRender(xpos, ypos, jd.width, jd.height);
@@ -309,14 +310,14 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     case HTTP_EVENT_ON_FINISH:
         // Do not draw if it's a redirect (302)
         if (esp_http_client_get_status_code(evt->client) == 200) {
-          printf("%d bytes read from %s\n\n", img_buf_pos, IMG_URL);
+          printf("%"PRIu32" bytes read from %s\n\n", img_buf_pos, IMG_URL);
           drawBufJpeg(source_buf, 0, 0);
           time_download = (esp_timer_get_time()-startTime)/1000;
-          ESP_LOGI("www-dw", "%d ms - download", time_download);
+          ESP_LOGI("www-dw", "%"PRIu32" ms - download", time_download);
           // Refresh display
           epd_hl_update_screen(&hl, MODE_GC16, 25);
 
-          ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
+          ESP_LOGI("total", "%"PRIu32" ms - total time spent\n", time_download+time_decomp+time_render);
         }
         break;
 
@@ -350,7 +351,7 @@ static void http_post(void)
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
     #if DEBUG_VERBOSE
-      printf("Free heap before HTTP download: %d\n", xPortGetFreeHeapSize());
+      printf("Free heap before HTTP download: %"PRIu32"\n", xPortGetFreeHeapSize());
       if (esp_http_client_get_transport_type(client) == HTTP_TRANSPORT_OVER_SSL && config.cert_pem) {
         printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
       }
@@ -514,7 +515,7 @@ void app_main() {
   if (source_buf == NULL) {
       ESP_LOGE("main", "Initial alloc source_buf failed!");
   }
-  printf("Free heap after buffers allocation: %d\n", xPortGetFreeHeapSize());
+  printf("Free heap after buffers allocation: %"PRIu32"\n", xPortGetFreeHeapSize());
 
   double gammaCorrection = 1.0 / gamma_value;
   for (int gray_value =0; gray_value<256;gray_value++)

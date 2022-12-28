@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "mpd_image.h"
 
@@ -41,7 +42,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
   image_fetch_context_t *context = jd->device;
   if (context->chunk_data == NULL) {
     char offset_s[32];
-    snprintf(offset_s, sizeof(offset_s), "%u", context->cover_offset);
+    snprintf(offset_s, sizeof(offset_s), "%"PRIu32"", context->cover_offset);
 
     printf("use albumart: %d\n", context->use_albumart);
     struct mpd_connection *c = context->conn;
@@ -99,7 +100,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     }
 
     uint32_t chunk_size = strtoull(pair->value, NULL, 10);
-    printf("chunk size: %d\n", chunk_size);
+    printf("chunk size: %"PRIu32"\n", chunk_size);
     mpd_return_pair(c, pair);
 
     if (chunk_size == 0) {
@@ -236,7 +237,7 @@ album_cover_t *readpicture(struct mpd_connection *c, char *uri,
   context.decoded_image = buf;
   context.scale = scale;
   printf("orig width: %d orig height: %d\n", jd.width, jd.height);
-  printf("scaled width: %d scaled height: %d\n", width, height);
+  printf("scaled width: %"PRIu32" scaled height: %"PRIu32"\n", width, height);
 
   /* Start to decompress the JPEG file */
   rc = jd_decomp(&jd, tjd_output, scale);

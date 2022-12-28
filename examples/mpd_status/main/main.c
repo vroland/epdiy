@@ -17,6 +17,7 @@
 #include "sdkconfig.h"
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
@@ -203,7 +204,7 @@ void epd_task() {
       free_playback_info(playback_info);
 
     playback_info = new_info;
-    ESP_LOGW("info", "info is null? %X", (uint32_t)new_info);
+    ESP_LOGW("info", "info is null? %"PRIX32"", (uint32_t)new_info);
     ESP_LOGW("info", "do update? %d", do_update);
 
     // no song playing
@@ -316,7 +317,7 @@ void epd_task() {
             .x = album_cover_x,
             .y = album_cover_y,
         };
-        printf("album cover dimensions: %dx%d\n", album_cover->width,
+        printf("album cover dimensions: %"PRIu32"x%"PRIu32"\n", album_cover->width,
                album_cover->height);
         album_height = album_cover->height;
         epd_copy_to_framebuffer(area, album_cover->data, img_buf);
@@ -327,7 +328,7 @@ void epd_task() {
             .x = album_cover_x,
             .y = album_cover_y,
         };
-        printf("album cover dimensions: %dx%d\n", DefaultAlbum_width, DefaultAlbum_height);
+        printf("album cover dimensions: %"PRIu32"x%"PRIu32"\n", DefaultAlbum_width, DefaultAlbum_height);
         album_height = DefaultAlbum_height;
         epd_copy_to_framebuffer(area, (uint8_t*)DefaultAlbum_data, img_buf);
       }
