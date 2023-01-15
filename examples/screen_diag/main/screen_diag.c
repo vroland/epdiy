@@ -9,6 +9,8 @@
 #include <nvs.h>
 #include <nvs_flash.h>
 
+#include "epd.h"
+
 static const char* TAG = "screen_diag";
 
 static void initialize_filesystem(void)
@@ -41,6 +43,7 @@ void app_main(void)
 {
     initialize_nvs();
     initialize_filesystem();
+    initialize_screen();
 
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_config.prompt = "diag>";
