@@ -7,6 +7,7 @@
 #include <argtable3/argtable3.h>
 
 #include "../epd.h"
+#include "fonts.h"
 
 static struct {
     struct arg_int *x, *y;
@@ -44,6 +45,14 @@ static struct {
     struct arg_end *end;
 } draw_triangle_args;
 
+static struct {
+    struct arg_int *x, *y;
+    struct arg_int *color;
+    struct arg_lit *serif;
+    struct arg_str *msg;
+    struct arg_end *end;
+} write_text_args;
+
 static int draw_hline(int argc, char* argv[]);
 static int draw_vline(int argc, char* argv[]);
 static int draw_line(int argc, char* argv[]);
@@ -53,6 +62,7 @@ static int draw_circle(int argc, char* argv[]);
 static int fill_circle(int argc, char* argv[]);
 static int draw_triangle(int argc, char* argv[]);
 static int fill_triangle(int argc, char* argv[]);
+static int write_text(int argc, char* argv[]);
 
 void register_graphics_commands(void)
 {
@@ -91,6 +101,14 @@ void register_graphics_commands(void)
     draw_triangle_args.y2 = arg_intn(NULL, NULL, "<y0>", 1, 1, "third edge y position");
     draw_triangle_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
     draw_triangle_args.end = arg_end(7);
+
+
+    write_text_args.x = arg_intn(NULL, NULL, "<x>", 1, 1, "x position");
+    write_text_args.y = arg_intn(NULL, NULL, "<y>", 1, 1, "y position");
+    write_text_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
+    write_text_args.serif = arg_litn("s", "serif", 0, 1, "Use serif font rather than sans-serif.");
+    write_text_args.msg = arg_strn(NULL, NULL, "<msg>", 1, 1, "Text to be printed.");
+    write_text_args.end = arg_end(5);
 
     // register commands
     const esp_console_cmd_t commands[] = {
@@ -156,6 +174,13 @@ void register_graphics_commands(void)
             .hint = NULL,
             .func = &fill_triangle,
             .argtable = &draw_triangle_args
+        },
+        {
+            .command = "write_text",
+            .help = "Write text message to the screen using the sans-serif font by default.",
+            .hint = NULL,
+            .func = &write_text,
+            .argtable = &write_text_args
         }
     };
 
@@ -350,6 +375,35 @@ static int fill_triangle(int argc, char* argv[])
         draw_triangle_args.x1->ival[0], draw_triangle_args.y1->ival[0],
         draw_triangle_args.x2->ival[0], draw_triangle_args.y2->ival[0],
         color, g_framebuffer);
+
+    return 0;
+}
+
+static int write_text(int argc, char* argv[])
+{
+    int nerrors = arg_parse(argc, argv, (void**) &write_text_args);
+    if (nerrors > 0)
+    {
+        arg_print_errors(stdout, write_text_args.end, "write_text");
+        return 1;
+    }
+
+    const int color = validate_color(draw_triangle_args.color);
+    if (color == -1) return 1;
+
+    const EpdFont* font = &Alexandria;
+    if (write_text_args.serif->count)
+        font = &Amiri;
+
+    EpdFontProperties props = {
+        .bg_color = 0x00,
+        .fg_color = color
+    };
+
+    int pos_x = write_text_args.x->ival[0];
+    int pos_y = write_text_args.y->ival[0];
+
+    epd_write_string(font, write_text_args.msg->sval[0], &pos_x, &pos_y, g_framebuffer, &props);
 
     return 0;
 }
