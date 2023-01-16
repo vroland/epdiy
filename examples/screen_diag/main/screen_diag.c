@@ -13,6 +13,9 @@
 #include "commands/screen.h"
 #include "commands/graphics.h"
 
+#define DEFINE_FONTS
+#include "fonts.h"
+
 static const char* TAG = "screen_diag";
 
 static void initialize_filesystem(void)
