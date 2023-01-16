@@ -11,6 +11,7 @@
 
 #include "epd.h"
 #include "commands/screen.h"
+#include "commands/graphics.h"
 
 static const char* TAG = "screen_diag";
 
@@ -53,6 +54,7 @@ void app_main(void)
     /* Register commands */
     esp_console_register_help_command();
     register_screen_commands();
+    register_graphics_commands();
 
     esp_console_repl_t *repl;
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
