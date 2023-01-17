@@ -21,12 +21,12 @@ void rmt_pulse_init(gpio_num_t pin);
  * @param: low_time_us Pulse low time in us.
  * @param: wait Block until the pulse is finished.
  */
-void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
-                            bool wait);
+void pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
+                  bool wait);
 /**
  * Indicates if the rmt is currently sending a pulse.
  */
-bool IRAM_ATTR rmt_busy();
+bool rmt_busy();
 
 /**
  * Outputs a single pulse (high -> low) on the configured pin.
@@ -36,5 +36,5 @@ bool IRAM_ATTR rmt_busy();
  * @param: low_time_us Pulse low time in clock ticks.
  * @param: wait Block until the pulse is finished.
  */
-void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_us, uint16_t low_time_us,
-                               bool wait);
+void pulse_ckv_ticks(uint16_t high_time_us, uint16_t low_time_us,
+                     bool wait);

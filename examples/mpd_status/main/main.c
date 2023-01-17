@@ -17,6 +17,7 @@
 #include "sdkconfig.h"
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "epd_driver.h"
 #include "epd_highlevel.h"
@@ -28,6 +29,13 @@
 #include "mpd/client.h"
 #include "mpd_image.h"
 #include "mpd_info.h"
+
+#include "esp_system.h" // for ESP_IDF_VERSION_VAL
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+#include "esp_netif.h"
+#else
+#include "tcpip_adapter.h"
+#endif
 
 const int queue_x_start = 900;
 const int album_cover_x = 100;
@@ -106,8 +114,16 @@ void epd_task() {
   }
 
   ESP_ERROR_CHECK(ret);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+  esp_netif_init();
+#else
   tcpip_adapter_init();
+#endif
+
   ESP_ERROR_CHECK(esp_event_loop_create_default());
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+    esp_netif_create_default_wifi_sta();
+#endif
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -188,7 +204,7 @@ void epd_task() {
       free_playback_info(playback_info);
 
     playback_info = new_info;
-    ESP_LOGW("info", "info is null? %X", (uint32_t)new_info);
+    ESP_LOGW("info", "info is null? %"PRIX32"", (uint32_t)new_info);
     ESP_LOGW("info", "do update? %d", do_update);
 
     // no song playing
@@ -301,7 +317,7 @@ void epd_task() {
             .x = album_cover_x,
             .y = album_cover_y,
         };
-        printf("album cover dimensions: %dx%d\n", album_cover->width,
+        printf("album cover dimensions: %"PRIu32"x%"PRIu32"\n", album_cover->width,
                album_cover->height);
         album_height = album_cover->height;
         epd_copy_to_framebuffer(area, album_cover->data, img_buf);
@@ -312,7 +328,7 @@ void epd_task() {
             .x = album_cover_x,
             .y = album_cover_y,
         };
-        printf("album cover dimensions: %dx%d\n", DefaultAlbum_width, DefaultAlbum_height);
+        printf("album cover dimensions: %"PRIu32"x%"PRIu32"\n", DefaultAlbum_width, DefaultAlbum_height);
         album_height = DefaultAlbum_height;
         epd_copy_to_framebuffer(area, (uint8_t*)DefaultAlbum_data, img_buf);
       }

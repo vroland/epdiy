@@ -4,6 +4,11 @@
 #include "freertos/task.h"
 #include <string.h>
 
+#include "esp_system.h" // for ESP_IDF_VERSION_VAL
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include "esp_timer.h"
+#endif
+
 /*
  * Build Lookup tables and translate via LUTs.
  * WARNING: These functions must only ever write to internal memory,

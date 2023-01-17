@@ -15,6 +15,7 @@ jobs:
         version:
           - release-v4.3
           - release-v4.4
+          - release-v5.0
         example:
           - calibration_helper
           - demo
@@ -23,7 +24,7 @@ jobs:
           - mpd_status
           - terminal
           - www-image
-          
+
     continue-on-error: ${{ matrix.version == 'latest' }}
 
     steps:

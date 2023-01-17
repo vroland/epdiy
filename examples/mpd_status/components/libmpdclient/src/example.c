@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 static int
 handle_error(struct mpd_connection *c)
@@ -169,7 +170,7 @@ int main(int argc, char ** argv) {
 
 		audio_format = mpd_status_get_audio_format(status);
 		if (audio_format != NULL) {
-			printf("sampleRate: %i\n", audio_format->sample_rate);
+			printf("sampleRate: %"PRIu32"\n", audio_format->sample_rate);
 			printf("bits: %i\n", audio_format->bits);
 			printf("channels: %i\n", audio_format->channels);
 		}

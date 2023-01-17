@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "mpd_image.h"
 
@@ -41,7 +42,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
   image_fetch_context_t *context = jd->device;
   if (context->chunk_data == NULL) {
     char offset_s[32];
-    snprintf(offset_s, sizeof(offset_s), "%u", context->cover_offset);
+    snprintf(offset_s, sizeof(offset_s), "%"PRIu32"", context->cover_offset);
 
     printf("use albumart: %d\n", context->use_albumart);
     struct mpd_connection *c = context->conn;
@@ -69,7 +70,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
           context->use_albumart = true;
           ESP_LOGI("mpd_image", "no image with readpicture, trying albumart...\n");
           if (!mpd_response_finish(c)) {
-            handle_error(c);
+            handle_error(&c);
             return -1;
           }
           int returned = feed_jpg_chunk(jd, buff, nd);
@@ -78,7 +79,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
       }
 
       if (!mpd_response_finish(c)) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       fprintf(stderr, "No 'size'\n");
@@ -91,7 +92,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     pair = mpd_recv_pair_named(c, "binary");
     if (pair == NULL) {
       if (mpd_connection_get_error(c) != MPD_ERROR_SUCCESS) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       fprintf(stderr, "No 'binary'\n");
@@ -99,12 +100,12 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     }
 
     uint32_t chunk_size = strtoull(pair->value, NULL, 10);
-    printf("chunk size: %d\n", chunk_size);
+    printf("chunk size: %"PRIu32"\n", chunk_size);
     mpd_return_pair(c, pair);
 
     if (chunk_size == 0) {
       if (!mpd_response_finish(c)) {
-        handle_error(c);
+        handle_error(&c);
         return -1;
       }
       return 0;
@@ -112,7 +113,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
 
     context->chunk_data = malloc(chunk_size);
     if (!mpd_recv_binary(c, context->chunk_data, chunk_size)) {
-      handle_error(c);
+      handle_error(&c);
       return -1;
     }
 
@@ -120,7 +121,7 @@ feed_jpg_chunk(JDEC *jd,      /* Decompressor object */
     context->chunk_data_offset = 0;
 
     if (!mpd_response_finish(c)) {
-      handle_error(c);
+      handle_error(&c);
       return -1;
     }
     context->cover_offset += chunk_size;
@@ -236,7 +237,7 @@ album_cover_t *readpicture(struct mpd_connection *c, char *uri,
   context.decoded_image = buf;
   context.scale = scale;
   printf("orig width: %d orig height: %d\n", jd.width, jd.height);
-  printf("scaled width: %d scaled height: %d\n", width, height);
+  printf("scaled width: %"PRIu32" scaled height: %"PRIu32"\n", width, height);
 
   /* Start to decompress the JPEG file */
   rc = jd_decomp(&jd, tjd_output, scale);

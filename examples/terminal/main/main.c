@@ -5,6 +5,7 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 
+#include "esp_system.h" // for ESP_IDF_VERSION_VAL
 #include "driver/uart.h"
 #include "esp_heap_caps.h"
 #include "driver/gpio.h"
@@ -77,7 +78,11 @@ void app_main() {
           .parity    = UART_PARITY_DISABLE,
           .stop_bits = UART_STOP_BITS_1,
           .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-          .use_ref_tick = true,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+          .source_clk = UART_SCLK_REF_TICK
+#else
+          .use_ref_tick = true
+#endif
   };
   uart_param_config(UART_NUM_1, &uart_config);
   // Change here to modify tx/rx pins
