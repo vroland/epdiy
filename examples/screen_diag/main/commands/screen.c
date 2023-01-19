@@ -32,6 +32,7 @@ static int get_height(int argc, char* argv[]);
 static int get_pixel(int argc, char* argv[]);
 static int set_pixel(int argc, char* argv[]);
 static int clear_screen_cmd(int argc, char* argv[]);
+static int full_clear_screen_cmd(int argc, char* argv[]);
 
 void register_screen_commands(void)
 {
@@ -94,6 +95,12 @@ void register_screen_commands(void)
             .help = "Clear the entire screen and reset the front buffer to white.",
             .hint = NULL,
             .func = &clear_screen_cmd
+        },
+        {
+            .command = "full_clear_screen",
+            .help = "Same as clear_screen, but also tries to get rid of any artifacts by cycling through colors on the screen.",
+            .hint = NULL,
+            .func = &full_clear_screen_cmd
         }
     };
 
@@ -248,7 +255,14 @@ static int set_pixel(int argc, char* argv[])
 
 static int clear_screen_cmd(int argc, char* argv[])
 {
-    clear_full_screen();
+    clear_screen();
+    printf("Cleared screen.\r\n");
+    return 0;
+}
+
+static int full_clear_screen_cmd(int argc, char* argv[])
+{
+    full_clear_screen();
     printf("Cleared screen.\r\n");
     return 0;
 }
