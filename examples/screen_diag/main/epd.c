@@ -17,8 +17,6 @@ void initialize_screen(void)
     epd_set_rotation(EPD_ROT_PORTRAIT);
 
     s_temperature = (int)epd_ambient_temperature();
-
-    clear_full_screen();
 }
 
 void update_screen(void)
@@ -35,7 +33,13 @@ void update_screen(void)
     }
 }
 
-void clear_full_screen(void)
+void clear_screen(void)
+{
+    epd_hl_set_all_white(&s_state);
+    update_screen();
+}
+
+void full_clear_screen(void)
 {
     epd_poweron();
     epd_fullclear(&s_state, s_temperature);
