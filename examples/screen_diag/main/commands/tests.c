@@ -6,6 +6,7 @@
 #include <argtable3/argtable3.h>
 
 #include "../epd.h"
+#include "../commands.h"
 #include "fonts.h"
 
 static struct {
@@ -30,11 +31,11 @@ void register_tests_commands(void)
     render_stairs_args.slope = arg_intn(NULL, NULL, "<slope>", 0, 1, "angle by which each diagonal line is drawn. default value: 3");
     render_stairs_args.width = arg_intn(NULL, NULL, "<width>", 0, 1, "thickness of each diagonal line. default value: 100");
     render_stairs_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    render_stairs_args.end = arg_end(3);
+    render_stairs_args.end = arg_end(NARGS(render_stairs_args));
 
     render_grid_args.gutter = arg_intn(NULL, NULL, "<gutter>", 0, 1, "default value: 75"); // gcd(1200, 825) = 75
     render_grid_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    render_grid_args.end = arg_end(2);
+    render_grid_args.end = arg_end(NARGS(render_grid_args));
 
     // register commands
     const esp_console_cmd_t commands[] = {
@@ -54,20 +55,8 @@ void register_tests_commands(void)
         },
     };
 
-    for (size_t i = 0; i < (sizeof(commands) / sizeof(commands[0])); ++i)
+    for (size_t i = 0; i < ARRAY_SIZE(commands); ++i)
         ESP_ERROR_CHECK(esp_console_cmd_register(&commands[i]));
-}
-
-static int validate_color(struct arg_int* arg)
-{
-    int color = arg->count != 0 ? arg->ival[0] : 0x00;
-    if (color < 0 || color > 0xFF)
-    {
-        printf("Invalid color %d (0x%02x): Must be in range 0x00 to 0xFF.\r\n", color, color);
-        return -1;
-    }
-
-    return color;
 }
 
 static void render_stairs(int slope, int width, uint8_t color)
@@ -82,22 +71,14 @@ static void render_stairs(int slope, int width, uint8_t color)
 
 static int render_stairs_cmd(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &render_stairs_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, render_stairs_args.end, "render_stairs");
+    HANDLE_ARGUMENTS(render_stairs_args)
+
+    uint8_t color = 0x00;
+    if (!validate_color(&color, render_stairs_args.color))
         return 1;
-    }
 
-    const int color = validate_color(render_stairs_args.color);
-    if (color == -1) return 1;
-
-    const int slope = render_stairs_args.slope->count == 1
-        ? render_stairs_args.slope->ival[0]
-        : 3;
-    const int width = render_stairs_args.width->count == 1
-        ? render_stairs_args.width->ival[0]
-        : 100;
+    const int slope = GET_INT_ARG(render_stairs_args.slope, 3);
+    const int width = GET_INT_ARG(render_stairs_args.width, 100);
 
     if (slope < 1 || slope > width)
     {
@@ -146,19 +127,13 @@ void render_grid(int gutter, uint8_t color)
 
 static int render_grid_cmd(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &render_grid_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, render_grid_args.end, "render_grid");
+    HANDLE_ARGUMENTS(render_grid_args)
+
+    uint8_t color = 0x00;
+    if (!validate_color(&color, render_grid_args.color))
         return 1;
-    }
 
-    const int color = validate_color(render_grid_args.color);
-    if (color == -1) return 1;
-
-    const int gutter = render_grid_args.gutter->count == 1
-        ? render_grid_args.gutter->ival[0]
-        : 75;
+    const int gutter = GET_INT_ARG(render_grid_args.gutter, 75);
 
     render_grid(gutter, color);
 

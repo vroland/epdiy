@@ -7,6 +7,7 @@
 #include <argtable3/argtable3.h>
 
 #include "../epd.h"
+#include "../commands.h"
 
 static struct {
     struct arg_str* rotation;
@@ -38,16 +39,16 @@ void register_screen_commands(void)
     // setup arguments
     set_rotation_args.rotation = arg_strn(NULL, NULL, "<rotation>", 1, 1, "screen rotation: \"horizontal\" or \"portrait\"");
     set_rotation_args.inverted = arg_litn(NULL, "inverted", 0, 1, "");
-    set_rotation_args.end = arg_end(2);
+    set_rotation_args.end = arg_end(NARGS(set_rotation_args));
 
     get_pixel_args.posx = arg_intn(NULL, NULL, "<posx>", 1, 1, "x position");
     get_pixel_args.posy = arg_intn(NULL, NULL, "<posy>", 1, 1, "y position");
-    get_pixel_args.end = arg_end(2);
+    get_pixel_args.end = arg_end(NARGS(get_pixel_args));
 
     set_pixel_args.posx = arg_intn(NULL, NULL, "<posx>", 1, 1, "x position");
     set_pixel_args.posy = arg_intn(NULL, NULL, "<posy>", 1, 1, "y position");
     set_pixel_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "color. default value: 0 (0x00)");
-    set_pixel_args.end = arg_end(3);
+    set_pixel_args.end = arg_end(NARGS(set_pixel_args));
 
     const esp_console_cmd_t commands[] = {
         {
@@ -103,7 +104,7 @@ void register_screen_commands(void)
         }
     };
 
-    for (size_t i = 0; i < (sizeof(commands) / sizeof(commands[0])); ++i)
+    for (size_t i = 0; i < ARRAY_SIZE(commands); ++i)
         ESP_ERROR_CHECK(esp_console_cmd_register(&commands[i]));
 }
 
@@ -123,12 +124,7 @@ static int get_rotation(int argc, char* argv[])
 
 static int set_rotation(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &set_rotation_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, set_rotation_args.end, "set_rotation");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(set_rotation_args)
 
     const char* rot_str = set_rotation_args.rotation->sval[0];
     const bool invert = set_rotation_args.inverted->count == 1;
@@ -220,12 +216,7 @@ static int get_pixel_color(int x, int y)
 
 static int get_pixel(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &get_pixel_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, get_pixel_args.end, "get_pixel");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(get_pixel_args)
 
     const int pos_x = get_pixel_args.posx->ival[0];
     const int pos_y = get_pixel_args.posy->ival[0];
@@ -245,25 +236,17 @@ static int get_pixel(int argc, char* argv[])
 
 static int set_pixel(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &set_pixel_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, set_pixel_args.end, "set_pixel");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(set_pixel_args)
 
     const int pos_x = set_pixel_args.posx->ival[0];
     const int pos_y = set_pixel_args.posy->ival[0];
 
-    const int color = set_pixel_args.color->count == 1 ? set_pixel_args.color->ival[0] : 0x00;
-    if (color > 0xFF || color < 0)
-    {
-        printf("Invalid color %d (0x%02x): Must be in range 0x00 to 0xFF.\r\n", color, color);
+    uint8_t color = 0x00;
+    if (!validate_color(&color, set_pixel_args.color))
         return 1;
-    }
 
-    epd_draw_pixel(pos_x, pos_y, (uint8_t) color, g_framebuffer);
-    printf("Set pixel (%d,%d) to color %d (0x%02x)\r\n", pos_x, pos_y, color, (uint8_t) color);
+    epd_draw_pixel(pos_x, pos_y, color, g_framebuffer);
+    printf("Set pixel (%d,%d) to color %d (0x%02x)\r\n", pos_x, pos_y, color, color);
 
     return 0;
 }
