@@ -31,8 +31,7 @@ static int get_width(int argc, char* argv[]);
 static int get_height(int argc, char* argv[]);
 static int get_pixel(int argc, char* argv[]);
 static int set_pixel(int argc, char* argv[]);
-static int update_screen(int argc, char* argv[]);
-static int clear_screen(int argc, char* argv[]);
+static int clear_screen_cmd(int argc, char* argv[]);
 
 void register_screen_commands(void)
 {
@@ -91,16 +90,10 @@ void register_screen_commands(void)
             .argtable = &set_pixel_args
         },
         {
-            .command = "update_screen",
-            .help = "Flush the front buffer onto the screen.",
-            .hint = NULL,
-            .func = &update_screen
-        },
-        {
             .command = "clear_screen",
             .help = "Clear the entire screen and reset the front buffer to white.",
             .hint = NULL,
-            .func = &clear_screen
+            .func = &clear_screen_cmd
         }
     };
 
@@ -248,17 +241,12 @@ static int set_pixel(int argc, char* argv[])
     epd_draw_pixel(pos_x, pos_y, color, g_framebuffer);
     printf("Set pixel (%d,%d) to color %d (0x%02x)\r\n", pos_x, pos_y, color, color);
 
+    update_screen();
+
     return 0;
 }
 
-static int update_screen(int argc, char* argv[])
-{
-    update_full_screen();
-    printf("Updated screen.\r\n");
-    return 0;
-}
-
-static int clear_screen(int argc, char* argv[])
+static int clear_screen_cmd(int argc, char* argv[])
 {
     clear_full_screen();
     printf("Cleared screen.\r\n");
