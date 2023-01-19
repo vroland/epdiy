@@ -7,6 +7,7 @@
 #include <argtable3/argtable3.h>
 
 #include "../epd.h"
+#include "../commands.h"
 #include "fonts.h"
 
 static struct {
@@ -71,27 +72,27 @@ void register_graphics_commands(void)
     draw_hvline_args.y = arg_intn(NULL, NULL, "<y>", 1, 1, "start y position");
     draw_hvline_args.len = arg_intn(NULL, NULL, "<len>", 1, 1, "length of the line");
     draw_hvline_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    draw_hvline_args.end = arg_end(3);
+    draw_hvline_args.end = arg_end(NARGS(draw_hvline_args));
 
     draw_line_args.from_x = arg_intn(NULL, NULL, "<start_x>", 1, 1, "start x position");
     draw_line_args.from_y = arg_intn(NULL, NULL, "<start_y>", 1, 1, "start y position");
     draw_line_args.to_x = arg_intn(NULL, NULL, "<end_x>", 1, 1, "end x position");
     draw_line_args.to_y = arg_intn(NULL, NULL, "<end_y>", 1, 1, "end y position");
     draw_line_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    draw_line_args.end = arg_end(5);
+    draw_line_args.end = arg_end(NARGS(draw_line_args));
 
     draw_rect_args.x = arg_intn(NULL, NULL, "<x>", 1, 1, "top left x position");
     draw_rect_args.y = arg_intn(NULL, NULL, "<y>", 1, 1, "top left y position");
     draw_rect_args.width = arg_intn(NULL, NULL, "<width>", 1, 1, "square width");
     draw_rect_args.height = arg_intn(NULL, NULL, "<height>", 1, 1, "square height");
     draw_rect_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    draw_rect_args.end = arg_end(5);
+    draw_rect_args.end = arg_end(NARGS(draw_rect_args));
 
     draw_circle_args.x = arg_intn(NULL, NULL, "<center_x>", 1, 1, "center x position");
     draw_circle_args.y = arg_intn(NULL, NULL, "<center_y>", 1, 1, "center y position");
     draw_circle_args.radius = arg_intn(NULL, NULL, "<radius>", 1, 1, "circle radius");
     draw_circle_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    draw_circle_args.end = arg_end(5);
+    draw_circle_args.end = arg_end(NARGS(draw_circle_args));
 
     draw_triangle_args.x0 = arg_intn(NULL, NULL, "<x0>", 1, 1, "first edge x position");
     draw_triangle_args.y0 = arg_intn(NULL, NULL, "<y0>", 1, 1, "first edge y position");
@@ -100,15 +101,14 @@ void register_graphics_commands(void)
     draw_triangle_args.x2 = arg_intn(NULL, NULL, "<x0>", 1, 1, "third edge x position");
     draw_triangle_args.y2 = arg_intn(NULL, NULL, "<y0>", 1, 1, "third edge y position");
     draw_triangle_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
-    draw_triangle_args.end = arg_end(7);
-
+    draw_triangle_args.end = arg_end(NARGS(draw_triangle_args));
 
     write_text_args.x = arg_intn(NULL, NULL, "<x>", 1, 1, "x position");
     write_text_args.y = arg_intn(NULL, NULL, "<y>", 1, 1, "y position");
     write_text_args.color = arg_intn(NULL, NULL, "<color>", 0, 1, "default value: 0x00");
     write_text_args.serif = arg_litn("s", "serif", 0, 1, "Use serif font rather than sans-serif.");
     write_text_args.msg = arg_strn(NULL, NULL, "<msg>", 1, 1, "Text to be printed.");
-    write_text_args.end = arg_end(5);
+    write_text_args.end = arg_end(NARGS(write_text_args));
 
     // register commands
     const esp_console_cmd_t commands[] = {
@@ -184,33 +184,17 @@ void register_graphics_commands(void)
         }
     };
 
-    for (size_t i = 0; i < (sizeof(commands) / sizeof(commands[0])); ++i)
+    for (size_t i = 0; i < ARRAY_SIZE(commands); ++i)
         ESP_ERROR_CHECK(esp_console_cmd_register(&commands[i]));
-}
-
-static int validate_color(struct arg_int* arg)
-{
-    int color = arg->count != 0 ? arg->ival[0] : 0x00;
-    if (color < 0 || color > 0xFF)
-    {
-        printf("Invalid color %d (0x%02x): Must be in range 0x00 to 0xFF.\r\n", color, color);
-        return -1;
-    }
-
-    return color;
 }
 
 static int draw_hline(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_hvline_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_hvline_args.end, "draw_hline");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_hvline_args)
 
-    const int color = validate_color(draw_hvline_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_hvline_args.color))
+        return 1;
 
     epd_draw_hline(draw_hvline_args.x->ival[0], draw_hvline_args.y->ival[0],
         draw_hvline_args.len->ival[0], color, g_framebuffer);
@@ -220,15 +204,11 @@ static int draw_hline(int argc, char* argv[])
 
 static int draw_vline(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_hvline_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_hvline_args.end, "draw_vline");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_hvline_args)
 
-    const int color = validate_color(draw_hvline_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_hvline_args.color))
+        return 1;
 
     epd_draw_vline(draw_hvline_args.x->ival[0], draw_hvline_args.y->ival[0],
         draw_hvline_args.len->ival[0], color, g_framebuffer);
@@ -238,15 +218,11 @@ static int draw_vline(int argc, char* argv[])
 
 static int draw_line(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_line_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_line_args.end, "draw_line");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_line_args)
 
-    const int color = validate_color(draw_line_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_line_args.color))
+        return 1;
 
     epd_draw_line(draw_line_args.from_x->ival[0], draw_line_args.from_y->ival[0],
         draw_line_args.to_x->ival[0], draw_line_args.to_y->ival[0],
@@ -257,15 +233,11 @@ static int draw_line(int argc, char* argv[])
 
 static int draw_rect(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_rect_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_rect_args.end, "draw_rect");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_rect_args)
 
-    const int color = validate_color(draw_rect_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_rect_args.color))
+        return 1;
 
     EpdRect rect = {
         .x = draw_rect_args.x->ival[0],
@@ -281,15 +253,11 @@ static int draw_rect(int argc, char* argv[])
 
 static int fill_rect(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_rect_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_rect_args.end, "fill_rect");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_rect_args)
 
-    const int color = validate_color(draw_rect_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_rect_args.color))
+        return 1;
 
     EpdRect rect = {
         .x = draw_rect_args.x->ival[0],
@@ -305,15 +273,11 @@ static int fill_rect(int argc, char* argv[])
 
 static int draw_circle(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_circle_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_circle_args.end, "draw_circle");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_circle_args)
 
-    const int color = validate_color(draw_circle_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_circle_args.color))
+        return 1;
 
     epd_draw_circle(draw_circle_args.x->ival[0], draw_circle_args.y->ival[0],
         draw_circle_args.radius->ival[0], color, g_framebuffer);
@@ -323,15 +287,11 @@ static int draw_circle(int argc, char* argv[])
 
 static int fill_circle(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_circle_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_circle_args.end, "fill_circle");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_circle_args)
 
-    const int color = validate_color(draw_circle_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_circle_args.color))
+        return 1;
 
     epd_fill_circle(draw_circle_args.x->ival[0], draw_circle_args.y->ival[0],
         draw_circle_args.radius->ival[0], color, g_framebuffer);
@@ -341,15 +301,11 @@ static int fill_circle(int argc, char* argv[])
 
 static int draw_triangle(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_triangle_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_triangle_args.end, "draw_triangle");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_triangle_args)
 
-    const int color = validate_color(draw_triangle_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_triangle_args.color))
+        return 1;
 
     epd_draw_triangle(draw_triangle_args.x0->ival[0], draw_triangle_args.y0->ival[0],
         draw_triangle_args.x1->ival[0], draw_triangle_args.y1->ival[0],
@@ -361,15 +317,11 @@ static int draw_triangle(int argc, char* argv[])
 
 static int fill_triangle(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &draw_triangle_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, draw_triangle_args.end, "fill_triangle");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(draw_triangle_args)
 
-    const int color = validate_color(draw_triangle_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_triangle_args.color))
+        return 1;
 
     epd_fill_triangle(draw_triangle_args.x0->ival[0], draw_triangle_args.y0->ival[0],
         draw_triangle_args.x1->ival[0], draw_triangle_args.y1->ival[0],
@@ -381,15 +333,11 @@ static int fill_triangle(int argc, char* argv[])
 
 static int write_text(int argc, char* argv[])
 {
-    int nerrors = arg_parse(argc, argv, (void**) &write_text_args);
-    if (nerrors > 0)
-    {
-        arg_print_errors(stdout, write_text_args.end, "write_text");
-        return 1;
-    }
+    HANDLE_ARGUMENTS(write_text_args)
 
-    const int color = validate_color(draw_triangle_args.color);
-    if (color == -1) return 1;
+    uint8_t color = 0x00;
+    if (!validate_color(&color, draw_triangle_args.color))
+        return 1;
 
     const EpdFont* font = &Alexandria;
     if (write_text_args.serif->count)
