@@ -87,6 +87,7 @@ static int render_stairs_cmd(int argc, char* argv[])
     }
 
     render_stairs(slope, width, color);
+    update_screen();
 
     return 0;
 }
@@ -136,6 +137,7 @@ static int render_grid_cmd(int argc, char* argv[])
     const int gutter = GET_INT_ARG(render_grid_args.gutter, 75);
 
     render_grid(gutter, color);
+    update_screen();
 
     return 0;
 }

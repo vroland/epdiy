@@ -199,6 +199,8 @@ static int draw_hline(int argc, char* argv[])
     epd_draw_hline(draw_hvline_args.x->ival[0], draw_hvline_args.y->ival[0],
         draw_hvline_args.len->ival[0], color, g_framebuffer);
 
+    update_screen();
+
     return 0;
 }
 
@@ -212,6 +214,8 @@ static int draw_vline(int argc, char* argv[])
 
     epd_draw_vline(draw_hvline_args.x->ival[0], draw_hvline_args.y->ival[0],
         draw_hvline_args.len->ival[0], color, g_framebuffer);
+
+    update_screen();
 
     return 0;
 }
@@ -227,6 +231,8 @@ static int draw_line(int argc, char* argv[])
     epd_draw_line(draw_line_args.from_x->ival[0], draw_line_args.from_y->ival[0],
         draw_line_args.to_x->ival[0], draw_line_args.to_y->ival[0],
         color, g_framebuffer);
+
+    update_screen();
 
     return 0;
 }
@@ -248,6 +254,8 @@ static int draw_rect(int argc, char* argv[])
 
     epd_draw_rect(rect, color, g_framebuffer);
 
+    update_screen();
+
     return 0;
 }
 
@@ -268,6 +276,8 @@ static int fill_rect(int argc, char* argv[])
 
     epd_fill_rect(rect, color, g_framebuffer);
 
+    update_screen();
+
     return 0;
 }
 
@@ -282,6 +292,8 @@ static int draw_circle(int argc, char* argv[])
     epd_draw_circle(draw_circle_args.x->ival[0], draw_circle_args.y->ival[0],
         draw_circle_args.radius->ival[0], color, g_framebuffer);
 
+    update_screen();
+
     return 0;
 }
 
@@ -295,6 +307,8 @@ static int fill_circle(int argc, char* argv[])
 
     epd_fill_circle(draw_circle_args.x->ival[0], draw_circle_args.y->ival[0],
         draw_circle_args.radius->ival[0], color, g_framebuffer);
+
+    update_screen();
 
     return 0;
 }
@@ -312,6 +326,8 @@ static int draw_triangle(int argc, char* argv[])
         draw_triangle_args.x2->ival[0], draw_triangle_args.y2->ival[0],
         color, g_framebuffer);
 
+    update_screen();
+
     return 0;
 }
 
@@ -327,6 +343,8 @@ static int fill_triangle(int argc, char* argv[])
         draw_triangle_args.x1->ival[0], draw_triangle_args.y1->ival[0],
         draw_triangle_args.x2->ival[0], draw_triangle_args.y2->ival[0],
         color, g_framebuffer);
+
+    update_screen();
 
     return 0;
 }
@@ -352,6 +370,8 @@ static int write_text(int argc, char* argv[])
     int pos_y = write_text_args.y->ival[0];
 
     epd_write_string(font, write_text_args.msg->sval[0], &pos_x, &pos_y, g_framebuffer, &props);
+
+    update_screen();
 
     return 0;
 }

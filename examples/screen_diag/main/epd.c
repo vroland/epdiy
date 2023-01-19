@@ -21,7 +21,7 @@ void initialize_screen(void)
     clear_full_screen();
 }
 
-void update_full_screen(void)
+void update_screen(void)
 {
     enum EpdDrawError err;
 
