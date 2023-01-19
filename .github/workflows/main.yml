@@ -19,6 +19,7 @@ jobs:
           - mpd_status
           - terminal
           - www-image
+          - screen_diag
 
     continue-on-error: ${{ matrix.version == 'latest' }}
 
