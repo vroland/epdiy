@@ -18,3 +18,4 @@ __pycache__
 examples/weather/components
 sdkconfig
 managed_components/
+epaper-breakout-backups/
