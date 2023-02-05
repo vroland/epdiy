@@ -4,6 +4,12 @@
 [submodule "hardware/epaper-breakout/tp4056"]
 	path = hardware/epaper-breakout/tp4056
 	url = https://github.com/alltheworld/tp4056/
+[submodule "hardware/epdiy-v7/esp32-wrover-kicad"]
+	path = hardware/epdiy-v7/esp32-wrover-kicad
+	url = https://github.com/aliafshar/esp32-wrover-kicad
+[submodule "hardware/epdiy-v7/tp4056"]
+	path = hardware/epdiy-v7/tp4056
+	url = https://github.com/alltheworld/tp4056/
 [submodule "hardware/epdiy-v7/kicad-libraries"]
 	path = hardware/epdiy-v7/kicad-libraries
 	url = https://github.com/espressif/kicad-libraries.git
