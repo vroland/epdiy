@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "epaper-breakout")(type "KiCad")(uri "${KIPRJMOD}/../epdiy-v7/epaper-breakout.pretty")(options "")(descr ""))
+)

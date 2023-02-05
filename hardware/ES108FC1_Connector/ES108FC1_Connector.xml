@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>/home/vroland/dev/misc/epdiy/hardware/ES108FC1_Connector/ES108FC1_Connector.kicad_sch</source>
+    <date>So 05 Feb 2023 22:55:56 CET</date>
+    <tool>Eeschema (6.0.11)</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title/>
+        <company/>
+        <rev/>
+        <date/>
+        <source>ES108FC1_Connector.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="J1">
+      <value>Conn_02x03_Odd_Even</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical</footprint>
+      <libsource lib="Connector_Generic" part="Conn_02x03_Odd_Even" description="Generic connector, double row, 02x03, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="ES108FC1_Connector.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>8cc074b8-3fb0-4073-b478-09493de00ad4</tstamps>
+    </comp>
+    <comp ref="J2">
+      <value>ES108FC1</value>
+      <footprint>epaper-breakout:ES108FC1</footprint>
+      <fields>
+        <field name="LCSC">C2880696</field>
+      </fields>
+      <libsource lib="epdiy" part="ES108FC1" description=""/>
+      <property name="LCSC" value="C2880696"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="ES108FC1_Connector.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e6de0320-dad0-41e0-a7a9-8fdf0eb5068b</tstamps>
+    </comp>
+    <comp ref="U1">
+      <value>ED078KH6</value>
+      <footprint>epaper-breakout:Hirose_FH12-40S-0.5SH_mirrored</footprint>
+      <fields>
+        <field name="LCSC">C202114</field>
+      </fields>
+      <libsource lib="epdiy" part="ED078KH6_REV" description=""/>
+      <property name="LCSC" value="C202114"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="ES108FC1_Connector.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>8a3a2ca5-be7d-4249-bcac-ac3913cac6b0</tstamps>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Connector_Generic" part="Conn_02x03_Odd_Even">
+      <description>Generic connector, double row, 02x03, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_2x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_02x03_Odd_Even</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+        <pin num="5" name="Pin_5" type="passive"/>
+        <pin num="6" name="Pin_6" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="epdiy" part="ED078KH6_REV">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">ED078KH6_REV</field>
+      </fields>
+      <pins>
+        <pin num="1" name="VGL" type="power_out"/>
+        <pin num="2" name="NC" type="no_connect"/>
+        <pin num="3" name="VGH" type="power_out"/>
+        <pin num="4" name="NC" type="no_connect"/>
+        <pin num="5" name="VDD" type="power_in"/>
+        <pin num="6" name="Mode" type="output"/>
+        <pin num="7" name="CKV" type="output"/>
+        <pin num="8" name="SPV" type="output"/>
+        <pin num="9" name="VSS" type="power_in"/>
+        <pin num="10" name="VCOM" type="power_out"/>
+        <pin num="11" name="VDD" type="power_in"/>
+        <pin num="12" name="VSS" type="power_in"/>
+        <pin num="13" name="XCL" type="output"/>
+        <pin num="14" name="D0" type="output"/>
+        <pin num="15" name="D1" type="output"/>
+        <pin num="16" name="D2" type="output"/>
+        <pin num="17" name="D3" type="output"/>
+        <pin num="18" name="D4" type="output"/>
+        <pin num="19" name="D5" type="output"/>
+        <pin num="20" name="D6" type="output"/>
+        <pin num="21" name="D7" type="output"/>
+        <pin num="22" name="VSS" type="power_in"/>
+        <pin num="23" name="D8" type="output"/>
+        <pin num="24" name="D9" type="output"/>
+        <pin num="25" name="D10" type="output"/>
+        <pin num="26" name="D11" type="output"/>
+        <pin num="27" name="D12" type="output"/>
+        <pin num="28" name="D13" type="output"/>
+        <pin num="29" name="D14" type="output"/>
+        <pin num="30" name="D15" type="output"/>
+        <pin num="31" name="XSTL" type="output"/>
+        <pin num="32" name="XLE" type="output"/>
+        <pin num="33" name="XOE" type="output"/>
+        <pin num="34" name="TEST" type="output"/>
+        <pin num="35" name="NC" type="no_connect"/>
+        <pin num="36" name="VPOS" type="power_out"/>
+        <pin num="37" name="NC" type="no_connect"/>
+        <pin num="38" name="VNEG" type="power_out"/>
+        <pin num="39" name="NC" type="no_connect"/>
+        <pin num="40" name="BORDER" type="power_out"/>
+      </pins>
+    </libpart>
+    <libpart lib="epdiy" part="ES108FC1">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">ES108FC1</field>
+      </fields>
+      <pins>
+        <pin num="1" name="VGL" type="power_in"/>
+        <pin num="2" name="VGH" type="power_in"/>
+        <pin num="3" name="VDD" type="power_in"/>
+        <pin num="4" name="MODE" type="input"/>
+        <pin num="5" name="CKV" type="input"/>
+        <pin num="6" name="SPV" type="input"/>
+        <pin num="7" name="VCOM" type="power_in"/>
+        <pin num="8" name="VDD" type="power_in"/>
+        <pin num="9" name="VSS" type="power_in"/>
+        <pin num="10" name="XCL" type="input"/>
+        <pin num="11" name="D0" type="input"/>
+        <pin num="12" name="D8" type="input"/>
+        <pin num="13" name="D1" type="input"/>
+        <pin num="14" name="D9" type="input"/>
+        <pin num="15" name="D2" type="input"/>
+        <pin num="16" name="D10" type="input"/>
+        <pin num="17" name="D3" type="input"/>
+        <pin num="18" name="D11" type="input"/>
+        <pin num="19" name="D4" type="input"/>
+        <pin num="20" name="D12" type="input"/>
+        <pin num="21" name="D5" type="input"/>
+        <pin num="22" name="D13" type="input"/>
+        <pin num="23" name="D6" type="input"/>
+        <pin num="24" name="D14" type="input"/>
+        <pin num="25" name="D7" type="input"/>
+        <pin num="26" name="D15" type="input"/>
+        <pin num="27" name="VSS" type="power_in"/>
+        <pin num="28" name="XSTL" type="input"/>
+        <pin num="29" name="XLE" type="input"/>
+        <pin num="30" name="XOE" type="input"/>
+        <pin num="31" name="XON" type="input"/>
+        <pin num="32" name="VPOS" type="power_in"/>
+        <pin num="33" name="VNEG" type="power_in"/>
+        <pin num="34" name="Border" type="power_in"/>
+        <pin num="35" name="NC" type="no_connect"/>
+        <pin num="36" name="NC" type="no_connect"/>
+        <pin num="37" name="NC" type="no_connect"/>
+        <pin num="38" name="NC" type="no_connect"/>
+        <pin num="39" name="VSS" type="power_in"/>
+        <pin num="40" name="VSS" type="power_in"/>
+        <pin num="41" name="NC" type="no_connect"/>
+        <pin num="42" name="NC" type="no_connect"/>
+        <pin num="43" name="NC" type="no_connect"/>
+        <pin num="44" name="NC" type="no_connect"/>
+        <pin num="45" name="VSS" type="power_in"/>
+        <pin num="46" name="VDD2" type="power_in"/>
+        <pin num="47" name="SPI_SCL" type="input"/>
+        <pin num="48" name="SPI_NCS" type="input"/>
+        <pin num="49" name="SPI_SDI" type="input"/>
+        <pin num="50" name="SPI_SDO" type="output"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Connector_Generic">
+      <uri>/usr/share/kicad/symbols//Connector_Generic.kicad_sym</uri>
+    </library>
+    <library logical="epdiy">
+      <uri>/home/vroland/dev/misc/epdiy/hardware/ES108FC1_Connector/../epdiy-v7/epdiy.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="/BRD">
+      <node ref="J2" pin="34" pinfunction="Border" pintype="power_in"/>
+      <node ref="U1" pin="40" pinfunction="BORDER" pintype="power_out"/>
+    </net>
+    <net code="2" name="/CKV">
+      <node ref="J2" pin="5" pinfunction="CKV" pintype="input"/>
+      <node ref="U1" pin="7" pinfunction="CKV" pintype="output"/>
+    </net>
+    <net code="3" name="/D0">
+      <node ref="J2" pin="11" pinfunction="D0" pintype="input"/>
+      <node ref="U1" pin="14" pinfunction="D0" pintype="output"/>
+    </net>
+    <net code="4" name="/D1">
+      <node ref="J2" pin="13" pinfunction="D1" pintype="input"/>
+      <node ref="U1" pin="15" pinfunction="D1" pintype="output"/>
+    </net>
+    <net code="5" name="/D2">
+      <node ref="J2" pin="15" pinfunction="D2" pintype="input"/>
+      <node ref="U1" pin="16" pinfunction="D2" pintype="output"/>
+    </net>
+    <net code="6" name="/D3">
+      <node ref="J2" pin="17" pinfunction="D3" pintype="input"/>
+      <node ref="U1" pin="17" pinfunction="D3" pintype="output"/>
+    </net>
+    <net code="7" name="/D4">
+      <node ref="J2" pin="19" pinfunction="D4" pintype="input"/>
+      <node ref="U1" pin="18" pinfunction="D4" pintype="output"/>
+    </net>
+    <net code="8" name="/D5">
+      <node ref="J2" pin="21" pinfunction="D5" pintype="input"/>
+      <node ref="U1" pin="19" pinfunction="D5" pintype="output"/>
+    </net>
+    <net code="9" name="/D6">
+      <node ref="J2" pin="23" pinfunction="D6" pintype="input"/>
+      <node ref="U1" pin="20" pinfunction="D6" pintype="output"/>
+    </net>
+    <net code="10" name="/D7">
+      <node ref="J2" pin="25" pinfunction="D7" pintype="input"/>
+      <node ref="U1" pin="21" pinfunction="D7" pintype="output"/>
+    </net>
+    <net code="11" name="/D8">
+      <node ref="J2" pin="12" pinfunction="D8" pintype="input"/>
+      <node ref="U1" pin="23" pinfunction="D8" pintype="output"/>
+    </net>
+    <net code="12" name="/D9">
+      <node ref="J2" pin="14" pinfunction="D9" pintype="input"/>
+      <node ref="U1" pin="24" pinfunction="D9" pintype="output"/>
+    </net>
+    <net code="13" name="/D10">
+      <node ref="J2" pin="16" pinfunction="D10" pintype="input"/>
+      <node ref="U1" pin="25" pinfunction="D10" pintype="output"/>
+    </net>
+    <net code="14" name="/D11">
+      <node ref="J2" pin="18" pinfunction="D11" pintype="input"/>
+      <node ref="U1" pin="26" pinfunction="D11" pintype="output"/>
+    </net>
+    <net code="15" name="/D12">
+      <node ref="J2" pin="20" pinfunction="D12" pintype="input"/>
+      <node ref="U1" pin="27" pinfunction="D12" pintype="output"/>
+    </net>
+    <net code="16" name="/D13">
+      <node ref="J2" pin="22" pinfunction="D13" pintype="input"/>
+      <node ref="U1" pin="28" pinfunction="D13" pintype="output"/>
+    </net>
+    <net code="17" name="/D14">
+      <node ref="J2" pin="24" pinfunction="D14" pintype="input"/>
+      <node ref="U1" pin="29" pinfunction="D14" pintype="output"/>
+    </net>
+    <net code="18" name="/D15">
+      <node ref="J2" pin="26" pinfunction="D15" pintype="input"/>
+      <node ref="U1" pin="30" pinfunction="D15" pintype="output"/>
+    </net>
+    <net code="19" name="/MODE">
+      <node ref="J2" pin="4" pinfunction="MODE" pintype="input"/>
+      <node ref="U1" pin="6" pinfunction="Mode" pintype="output"/>
+    </net>
+    <net code="20" name="/SPI_NCS">
+      <node ref="J1" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="J2" pin="48" pinfunction="SPI_NCS" pintype="input"/>
+    </net>
+    <net code="21" name="/SPI_SCL">
+      <node ref="J1" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="J2" pin="47" pinfunction="SPI_SCL" pintype="input"/>
+    </net>
+    <net code="22" name="/SPI_SDI">
+      <node ref="J1" pin="6" pinfunction="Pin_6" pintype="passive"/>
+      <node ref="J2" pin="49" pinfunction="SPI_SDI" pintype="input"/>
+    </net>
+    <net code="23" name="/SPI_SDO">
+      <node ref="J1" pin="5" pinfunction="Pin_5" pintype="passive"/>
+      <node ref="J2" pin="50" pinfunction="SPI_SDO" pintype="output"/>
+    </net>
+    <net code="24" name="/SPI_VDD">
+      <node ref="J1" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J2" pin="46" pinfunction="VDD2" pintype="power_in"/>
+    </net>
+    <net code="25" name="/SPV">
+      <node ref="J2" pin="6" pinfunction="SPV" pintype="input"/>
+      <node ref="U1" pin="8" pinfunction="SPV" pintype="output"/>
+    </net>
+    <net code="26" name="/TEST">
+      <node ref="J2" pin="31" pinfunction="XON" pintype="input"/>
+      <node ref="U1" pin="34" pinfunction="TEST" pintype="output"/>
+    </net>
+    <net code="27" name="/VCOM">
+      <node ref="J2" pin="7" pinfunction="VCOM" pintype="power_in"/>
+      <node ref="U1" pin="10" pinfunction="VCOM" pintype="power_out"/>
+    </net>
+    <net code="28" name="/VGH">
+      <node ref="J2" pin="2" pinfunction="VGH" pintype="power_in"/>
+      <node ref="U1" pin="3" pinfunction="VGH" pintype="power_out"/>
+    </net>
+    <net code="29" name="/VGL">
+      <node ref="J2" pin="1" pinfunction="VGL" pintype="power_in"/>
+      <node ref="U1" pin="1" pinfunction="VGL" pintype="power_out"/>
+    </net>
+    <net code="30" name="/VNEG">
+      <node ref="J2" pin="33" pinfunction="VNEG" pintype="power_in"/>
+      <node ref="U1" pin="38" pinfunction="VNEG" pintype="power_out"/>
+    </net>
+    <net code="31" name="/VPOS">
+      <node ref="J2" pin="32" pinfunction="VPOS" pintype="power_in"/>
+      <node ref="U1" pin="36" pinfunction="VPOS" pintype="power_out"/>
+    </net>
+    <net code="32" name="/XCL">
+      <node ref="J2" pin="10" pinfunction="XCL" pintype="input"/>
+      <node ref="U1" pin="13" pinfunction="XCL" pintype="output"/>
+    </net>
+    <net code="33" name="/XLE">
+      <node ref="J2" pin="29" pinfunction="XLE" pintype="input"/>
+      <node ref="U1" pin="32" pinfunction="XLE" pintype="output"/>
+    </net>
+    <net code="34" name="/XOE">
+      <node ref="J2" pin="30" pinfunction="XOE" pintype="input"/>
+      <node ref="U1" pin="33" pinfunction="XOE" pintype="output"/>
+    </net>
+    <net code="35" name="/XSTL">
+      <node ref="J2" pin="28" pinfunction="XSTL" pintype="input"/>
+      <node ref="U1" pin="31" pinfunction="XSTL" pintype="output"/>
+    </net>
+    <net code="36" name="GND">
+      <node ref="J1" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="J2" pin="27" pinfunction="VSS" pintype="power_in"/>
+      <node ref="J2" pin="39" pinfunction="VSS" pintype="power_in"/>
+      <node ref="J2" pin="40" pinfunction="VSS" pintype="power_in"/>
+      <node ref="J2" pin="45" pinfunction="VSS" pintype="power_in"/>
+      <node ref="J2" pin="9" pinfunction="VSS" pintype="power_in"/>
+      <node ref="U1" pin="12" pinfunction="VSS" pintype="power_in"/>
+      <node ref="U1" pin="22" pinfunction="VSS" pintype="power_in"/>
+      <node ref="U1" pin="9" pinfunction="VSS" pintype="power_in"/>
+    </net>
+    <net code="37" name="VDD">
+      <node ref="J2" pin="3" pinfunction="VDD" pintype="power_in"/>
+      <node ref="J2" pin="8" pinfunction="VDD" pintype="power_in"/>
+      <node ref="U1" pin="11" pinfunction="VDD" pintype="power_in"/>
+      <node ref="U1" pin="5" pinfunction="VDD" pintype="power_in"/>
+    </net>
+    <net code="38" name="unconnected-(J2-Pad35)">
+      <node ref="J2" pin="35" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="39" name="unconnected-(J2-Pad36)">
+      <node ref="J2" pin="36" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="40" name="unconnected-(J2-Pad37)">
+      <node ref="J2" pin="37" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="41" name="unconnected-(J2-Pad38)">
+      <node ref="J2" pin="38" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="42" name="unconnected-(J2-Pad41)">
+      <node ref="J2" pin="41" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="43" name="unconnected-(J2-Pad42)">
+      <node ref="J2" pin="42" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="44" name="unconnected-(J2-Pad43)">
+      <node ref="J2" pin="43" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="45" name="unconnected-(J2-Pad44)">
+      <node ref="J2" pin="44" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="46" name="unconnected-(U1-Pad2)">
+      <node ref="U1" pin="2" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="47" name="unconnected-(U1-Pad4)">
+      <node ref="U1" pin="4" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="48" name="unconnected-(U1-Pad35)">
+      <node ref="U1" pin="35" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="49" name="unconnected-(U1-Pad37)">
+      <node ref="U1" pin="37" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="50" name="unconnected-(U1-Pad39)">
+      <node ref="U1" pin="39" pinfunction="NC" pintype="no_connect"/>
+    </net>
+  </nets>
+</export>
