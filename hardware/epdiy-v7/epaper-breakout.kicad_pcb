@@ -2099,7 +2099,7 @@
     (property "Sheetfile" "epaper-breakout.kicad_sch")
     (property "Sheetname" "")
     (path "/00000000-0000-0000-0000-0000607396d1")
-    (attr through_hole)
+    (attr smd)
     (fp_text reference "U3" (at 3.224 4.228 180 unlocked) (layer "F.SilkS")
       (effects (font (size 0.7 0.7) (thickness 0.12)))
       (tstamp c2c64cbb-97fc-44e1-aaa5-848d495055ee)
