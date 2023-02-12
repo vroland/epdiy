@@ -127,6 +127,11 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
 enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area);
 
 /**
+ * @brief Similar to epd_hl_update_area, but no diff with area, to render faster
+ */
+enum EpdDrawError epd_hl_update_area_directly(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area);
+
+/**
  * Reset the front framebuffer to a white state.
  *
  * @param state: A reference to the `EpdiyHighlevelState` object used.

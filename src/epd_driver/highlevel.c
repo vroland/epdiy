@@ -148,6 +148,46 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   return err;
 }
 
+enum EpdDrawError epd_hl_update_area_directly(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area) {
+  assert(state != NULL);
+  // Not right to rotate here since this copies part of buffer directly
+
+  bool previously_white = true;
+  bool previously_black = false;
+  // Check rotation FIX
+  EpdRect rotated_area = _inverse_rotated_area(area.x, area.y, area.width, area.height);
+  area.x = rotated_area.x;
+  area.y = rotated_area.y;
+  area.width = rotated_area.width;
+  area.height = rotated_area.height;
+
+  memset(state->dirty_lines + area.y, 1, area.height);
+
+  enum EpdDrawError err;
+  if (previously_white) {
+      err = epd_draw_base(epd_full_screen(), state->front_fb, area, MODE_PACKING_2PPB | PREVIOUSLY_WHITE | mode, temperature, state->dirty_lines, state->waveform);
+  } else if (previously_black) {
+      err = epd_draw_base(epd_full_screen(), state->front_fb, area, MODE_PACKING_2PPB | PREVIOUSLY_BLACK | mode, temperature, state->dirty_lines, state->waveform);
+  } else {
+      err = epd_draw_base(epd_full_screen(), state->difference_fb, area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->waveform);
+  }
+
+  for (int l=area.y; l < area.y + area.height; l++) {
+	if (state->dirty_lines[l] > 0) {
+      uint8_t* lfb = state->front_fb + EPD_WIDTH / 2 * l;
+      uint8_t* lbb = state->back_fb + EPD_WIDTH / 2 * l;
+
+      for (int x=area.x; x < area.x + area.width; x++) {
+          if (x % 2) {
+            *(lbb + x / 2) = (*(lfb + x / 2) & 0xF0) | (*(lbb + x / 2) & 0x0F);
+          } else {
+            *(lbb + x / 2) = (*(lfb + x / 2) & 0x0F) | (*(lbb + x / 2) & 0xF0);
+          }
+      }
+	}
+  }
+  return err;
+}
 
 void epd_hl_set_all_white(EpdiyHighlevelState* state) {
   assert(state != NULL);
