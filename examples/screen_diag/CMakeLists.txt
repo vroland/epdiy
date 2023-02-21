@@ -9,3 +9,8 @@ set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../src")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(screen_diag)
+
+set(IDF_VER_SANE "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}")
+if (IDF_VER_SANE VERSION_LESS "5.0.0")
+    message(FATAL_ERROR "screen_diag requires at least ESP-IDF v5.0.0")
+endif()
