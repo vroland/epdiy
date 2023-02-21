@@ -12,6 +12,7 @@
 #include "epd.h"
 #include "commands/screen.h"
 #include "commands/graphics.h"
+#include "commands/system.h"
 #include "commands/tests.h"
 
 #define DEFINE_FONTS
@@ -57,6 +58,7 @@ void app_main(void)
 
     /* Register commands */
     esp_console_register_help_command();
+    register_system_commands();
     register_screen_commands();
     register_graphics_commands();
     register_tests_commands();
