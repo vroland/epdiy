@@ -3,6 +3,8 @@ This example app implements a simple shell to allow you to tinker with the displ
 
 There are also pre-programmed algorithms (e.g. `render_stairs`, `render_grid`) which can be used to find pixel errors or display incompatibilities.
 
+The `screen_diag` examples requires ESP-IDF v5.x or newer.
+
 ## Setup
 Don't forget to set your display type for the  _epd driver_ in `menuconfig`!
 

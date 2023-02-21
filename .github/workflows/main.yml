@@ -19,7 +19,9 @@ jobs:
           - mpd_status
           - terminal
           - www-image
-          - screen_diag
+        include:
+          - version: release-v5.0
+            example: screen_diag
 
     continue-on-error: ${{ matrix.version == 'latest' }}
 
