@@ -33,6 +33,9 @@ static int get_pixel(int argc, char* argv[]);
 static int set_pixel(int argc, char* argv[]);
 static int clear_screen_cmd(int argc, char* argv[]);
 static int full_clear_screen_cmd(int argc, char* argv[]);
+static int get_temp(int argc, char* argv[]);
+static int power_on(int argc, char* argv[]);
+static int power_off(int argc, char* argv[]);
 
 void register_screen_commands(void)
 {
@@ -101,6 +104,24 @@ void register_screen_commands(void)
             .help = "Same as clear_screen, but also tries to get rid of any artifacts by cycling through colors on the screen.",
             .hint = NULL,
             .func = &full_clear_screen_cmd
+        },
+        {
+            .command = "get_temp",
+            .help = "Returns the ambient temperature.",
+            .hint = NULL,
+            .func = &get_temp
+        },
+        {
+            .command = "power_on",
+            .help = "Turns on the power of the display.",
+            .hint = NULL,
+            .func = &power_on
+        },
+        {
+            .command = "power_off",
+            .help = "Turns off the power of the display.",
+            .hint = NULL,
+            .func = &power_off
         }
     };
 
@@ -264,5 +285,25 @@ static int full_clear_screen_cmd(int argc, char* argv[])
 {
     full_clear_screen();
     printf("Cleared screen.\r\n");
+    return 0;
+}
+
+static int get_temp(int argc, char* argv[])
+{
+    printf("%.2f\r\n", epd_ambient_temperature());
+    return 0;
+}
+
+static int power_on(int argc, char* argv[])
+{
+    epd_poweron();
+    printf("Power turned on.\r\n");
+    return 0;
+}
+
+static int power_off(int argc, char* argv[])
+{
+    epd_poweroff();
+    printf("Power turned off.\r\n");
     return 0;
 }
