@@ -3,6 +3,43 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <driver/gpio.h>
+
+
+/**
+ * LCD bus configuration parameters.
+ */
+typedef struct {
+  // GPIO numbers of the parallel bus pins.
+  gpio_num_t data_0;
+  gpio_num_t data_1;
+  gpio_num_t data_2;
+  gpio_num_t data_3;
+  gpio_num_t data_4;
+  gpio_num_t data_5;
+  gpio_num_t data_6;
+  gpio_num_t data_7;
+
+
+  gpio_num_t data_8;
+  gpio_num_t data_9;
+  gpio_num_t data_10;
+  gpio_num_t data_11;
+  gpio_num_t data_12;
+  gpio_num_t data_13;
+  gpio_num_t data_14;
+  gpio_num_t data_15;
+
+  // horizontal clock pin.
+  gpio_num_t clock;
+  // vertical clock pin
+  gpio_num_t ckv;
+
+  // "Start Pulse", enabling data input on the slave device (active low)
+  gpio_num_t start_pulse;
+  // latch enable
+  gpio_num_t leh;
+} lcd_bus_config_t;
 
 /// Configuration structure for the LCD-based Epd driver.
 typedef struct {
@@ -12,7 +49,9 @@ typedef struct {
     int line_front_porch; // = 4
     int le_high_time; // = 4
     int bus_width; // = 16
+    lcd_bus_config_t bus;
 } LcdEpdConfig_t;
+
 
 void epd_lcd_init(const LcdEpdConfig_t* config);
 void epd_lcd_frame_done_cb(void (*cb)(void));
