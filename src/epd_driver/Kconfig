@@ -69,7 +69,7 @@ menu "E-Paper Driver"
         default 1560
         help
             Absolute VCOM voltage in mV. Only supported on V6+ boards.
-        depends on EPD_BOARD_REVISION_V6
+        depends on EPD_BOARD_REVISION_V6 || EPD_BOARD_S3_PROTOTYPE
         range 0 5110
 
 endmenu

@@ -1,6 +1,6 @@
 #include "s3_lcd.h"
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+//#ifdef CONFIG_IDF_TARGET_ESP32S3
 
 #include <assert.h>
 #include <stddef.h>
@@ -45,29 +45,30 @@ inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
 
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
-#define S3_LCD_PIN_NUM_HSYNC          46
-#define S3_LCD_PIN_NUM_VSYNC          3
-#define S3_LCD_PIN_NUM_CKV            1
-#define S3_LCD_PIN_NUM_DE             0
-#define S3_LCD_PIN_NUM_PCLK           9
+#define S3_LCD_PIN_NUM_HSYNC          GPIO_NUM_42
+#define S3_LCD_PIN_NUM_VSYNC          GPIO_NUM_0
+#define S3_LCD_PIN_NUM_CKV            GPIO_NUM_48
+#define S3_LCD_PIN_NUM_DE             GPIO_NUM_41
+#define S3_LCD_PIN_NUM_PCLK           GPIO_NUM_4
 #define S3_LCD_PIN_NUM_MODE           4
 
-#define S3_LCD_PIN_NUM_DATA0          48 // G3
-#define S3_LCD_PIN_NUM_DATA1          47 // G4
-#define S3_LCD_PIN_NUM_DATA2         21 // G5
-#define S3_LCD_PIN_NUM_DATA3         17  // R0
-#define S3_LCD_PIN_NUM_DATA4         2  // R1
-#define S3_LCD_PIN_NUM_DATA5         42 // R2
-#define S3_LCD_PIN_NUM_DATA6         41 // R3
-#define S3_LCD_PIN_NUM_DATA7         40 // R4
-#define S3_LCD_PIN_NUM_DATA8          14 // B0
-#define S3_LCD_PIN_NUM_DATA9          13 // B1
-#define S3_LCD_PIN_NUM_DATA10          12 // B2
-#define S3_LCD_PIN_NUM_DATA11          11 // B3
-#define S3_LCD_PIN_NUM_DATA12          10 // B4
-#define S3_LCD_PIN_NUM_DATA13          39 // G0
-#define S3_LCD_PIN_NUM_DATA14          38 // G1
-#define S3_LCD_PIN_NUM_DATA15         45 // G2
+#define D15 GPIO_NUM_47
+#define D14 GPIO_NUM_21
+#define D13 GPIO_NUM_14
+#define D12 GPIO_NUM_13
+#define D11 GPIO_NUM_12
+#define D10 GPIO_NUM_11
+#define D9 GPIO_NUM_10
+#define D8 GPIO_NUM_9
+
+#define D7 GPIO_NUM_8
+#define D6 GPIO_NUM_18
+#define D5 GPIO_NUM_17
+#define D4 GPIO_NUM_16
+#define D3 GPIO_NUM_15
+#define D2 GPIO_NUM_7
+#define D1 GPIO_NUM_6
+#define D0 GPIO_NUM_5
 
 // The pixel number in horizontal and vertical
 #define LINE_BYTES                     (EPD_WIDTH / 4)
@@ -366,43 +367,31 @@ static esp_err_t init_dma_trans_link() {
 
 const int DATA_LINES[16] = {
 
-    S3_LCD_PIN_NUM_DATA14,
-    S3_LCD_PIN_NUM_DATA15,
+    D14,
+    D15,
 
-    S3_LCD_PIN_NUM_DATA12,
-    S3_LCD_PIN_NUM_DATA13,
+    D12,
+    D13,
 
-    S3_LCD_PIN_NUM_DATA10,
-    S3_LCD_PIN_NUM_DATA11,
+    D10,
+    D11,
 
-    S3_LCD_PIN_NUM_DATA8,
-    S3_LCD_PIN_NUM_DATA9,
-
-    // S3_LCD_PIN_NUM_DATA8,
-    // S3_LCD_PIN_NUM_DATA9,
-
-    // S3_LCD_PIN_NUM_DATA10,
-    // S3_LCD_PIN_NUM_DATA11,
-
-    // S3_LCD_PIN_NUM_DATA12,
-    // S3_LCD_PIN_NUM_DATA13,
-
-    // S3_LCD_PIN_NUM_DATA14,
-    // S3_LCD_PIN_NUM_DATA15,
+    D8,
+    D9,
 
     // FIXME: swap for 16 bit
 
-    S3_LCD_PIN_NUM_DATA7,
+    D6,
+    D7,
 
-    S3_LCD_PIN_NUM_DATA4,
-    S3_LCD_PIN_NUM_DATA5,
+    D4,
+    D5,
 
-    S3_LCD_PIN_NUM_DATA2,
-    S3_LCD_PIN_NUM_DATA3,
+    D2,
+    D3,
 
-    S3_LCD_PIN_NUM_DATA0,
-    S3_LCD_PIN_NUM_DATA1,
-
+    D0,
+    D1,
 };
 
 static esp_err_t s3_lcd_configure_gpio()
@@ -557,4 +546,4 @@ err:
     abort();
 }
 
-#endif // S3 Target
+//#endif // S3 Target
