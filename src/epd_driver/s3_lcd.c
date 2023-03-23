@@ -86,6 +86,8 @@ typedef rmt_mem_t rmt_block_mem_t ;
 extern rmt_block_mem_t RMTMEM;
 #endif
 
+#define DEBUG_PIN GPIO_NUM_46
+
 typedef struct {
     lcd_hal_context_t hal;
     intr_handle_t vsync_intr;
@@ -366,6 +368,17 @@ static esp_err_t init_dma_trans_link() {
 }
 
 const int DATA_LINES[16] = {
+    D6,
+    D7,
+
+    D4,
+    D5,
+
+    D2,
+    D3,
+
+    D0,
+    D1,
 
     D14,
     D15,
@@ -380,18 +393,6 @@ const int DATA_LINES[16] = {
     D9,
 
     // FIXME: swap for 16 bit
-
-    D6,
-    D7,
-
-    D4,
-    D5,
-
-    D2,
-    D3,
-
-    D0,
-    D1,
 };
 
 static esp_err_t s3_lcd_configure_gpio()
@@ -434,12 +435,18 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
       .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_VSYNC,
     };
 
+    gpio_config_t debug_gpio_conf = {
+      .mode = GPIO_MODE_OUTPUT,
+      .pin_bit_mask = 1ull << DEBUG_PIN,
+    };
+
     //gpio_config_t mode_gpio_conf = {
     //  .mode = GPIO_MODE_OUTPUT,
     //  .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_MODE,
     //};
 
     gpio_config(&vsync_gpio_conf);
+    gpio_config(&debug_gpio_conf);
     //gpio_config(&mode_gpio_conf);
 
     gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);

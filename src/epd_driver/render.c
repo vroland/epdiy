@@ -48,7 +48,7 @@ const int DEFAULT_FRAME_TIME = 120;
 #define FRAME_LINES              (((EPD_HEIGHT  + 7) / 8) * 8)
 #endif
 
-#define NUM_FEED_THREADS 2
+#define NUM_FEED_THREADS 1
 
 typedef struct {
     int size;
@@ -287,7 +287,7 @@ static bool IRAM_ATTR retrieve_line_isr(uint8_t* buf) {
 
     LineQueue_t* lq = &render_context.line_queues[thread];
 
-    BaseType_t awoken = pdFALSE;
+    BaseType_t awoken = pdTRUE;
     assert(lq_read(lq, buf) == 0);
     if (render_context.lines_consumed >= EPD_HEIGHT) {
         memset(buf, 0x00, EPD_LINE_BYTES);

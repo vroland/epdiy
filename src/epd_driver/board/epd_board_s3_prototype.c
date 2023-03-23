@@ -175,10 +175,12 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t *
 
 static void epd_board_poweron(epd_ctrl_state_t *state) {
   epd_ctrl_state_t mask = {
+    .ep_output_enable = true,
     .ep_stv = true,
   };
   state->ep_stv = true;
   state->ep_mode = true;
+  state->ep_output_enable = true;
   config_reg.wakeup = true;
   epd_board_set_ctrl(state, &mask);
   config_reg.pwrup = true;
