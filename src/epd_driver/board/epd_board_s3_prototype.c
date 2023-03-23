@@ -178,6 +178,7 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
     .ep_stv = true,
   };
   state->ep_stv = true;
+  state->ep_mode = true;
   config_reg.wakeup = true;
   epd_board_set_ctrl(state, &mask);
   config_reg.pwrup = true;

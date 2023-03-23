@@ -50,7 +50,7 @@ inline int max(int x, int y) { return x > y ? x : y; }
 #define S3_LCD_PIN_NUM_CKV            GPIO_NUM_48
 #define S3_LCD_PIN_NUM_DE             GPIO_NUM_41
 #define S3_LCD_PIN_NUM_PCLK           GPIO_NUM_4
-#define S3_LCD_PIN_NUM_MODE           4
+//#define S3_LCD_PIN_NUM_MODE           4
 
 #define D15 GPIO_NUM_47
 #define D14 GPIO_NUM_21
@@ -163,7 +163,7 @@ void epd_lcd_start_frame() {
     );
     lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 4, initial_lines, 1);
 
-    gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
+    //gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
 
     // reset FIFO of DMA and LCD, incase there remains old frame data
     gdma_reset(lcd.dma_chan);
@@ -243,7 +243,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             if (lcd.frame_done_cb != NULL) {
                 (*lcd.frame_done_cb)();
             }
-            gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
+            //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
         } else {
             int ckv_cycles = 0;
@@ -434,16 +434,16 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
       .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_VSYNC,
     };
 
-    gpio_config_t mode_gpio_conf = {
-      .mode = GPIO_MODE_OUTPUT,
-      .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_MODE,
-    };
+    //gpio_config_t mode_gpio_conf = {
+    //  .mode = GPIO_MODE_OUTPUT,
+    //  .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_MODE,
+    //};
 
     gpio_config(&vsync_gpio_conf);
-    gpio_config(&mode_gpio_conf);
+    //gpio_config(&mode_gpio_conf);
 
     gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);
-    gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
+    //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
     ESP_LOGI(TAG, "using resolution %dx%d", lcd.lcd_res_h, S3_LCD_RES_V);
 

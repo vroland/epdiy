@@ -147,7 +147,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
 
   uint32_t t2 = esp_timer_get_time() / 1000;
-  printf("actual draw took %ldms.\n", t2 - t1);
+  //printf("actual draw took %ldms.\n", t2 - t1);
 
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
 	if (state->dirty_lines[l] > 0) {

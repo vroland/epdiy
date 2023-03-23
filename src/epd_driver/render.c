@@ -509,6 +509,7 @@ void IRAM_ATTR feed_display(int thread_id) {
     memset(input_line, 255, EPD_WIDTH);
 
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    printf("task started!\n");
     //xSemaphoreTake(render_context.frame_start_smphr[thread_id], portMAX_DELAY);
 
     EpdRect area = render_context.area;
@@ -828,7 +829,7 @@ void epd_init(enum EpdInitOptions options) {
       render_context.line_queues[i].last = 0;
       render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(queue_len * queue_elem_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
       RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))feed_display,
-                                               "epd_prep", 1 << 13, (void*)i,
+                                               "epd_prep", 1 << 15, (void*)i,
                                                10 | portPRIVILEGE_BIT,
                                                &render_context.feed_tasks[i], i));
       if (render_context.line_queues[i].buf == NULL) {
