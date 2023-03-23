@@ -39,6 +39,7 @@ void epd_poweron();
 void epd_poweroff();
 
 epd_ctrl_state_t *epd_ctrl_state();
+void epd_set_mode(bool state);
 
 /**
  * Start a draw cycle.

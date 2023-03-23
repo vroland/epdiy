@@ -176,10 +176,11 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t *
 static void epd_board_poweron(epd_ctrl_state_t *state) {
   epd_ctrl_state_t mask = {
     .ep_output_enable = true,
+    .ep_mode = true,
     .ep_stv = true,
   };
   state->ep_stv = true;
-  state->ep_mode = true;
+  state->ep_mode = false;
   state->ep_output_enable = true;
   config_reg.wakeup = true;
   epd_board_set_ctrl(state, &mask);
@@ -191,9 +192,7 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   // give the IC time to powerup and set lines
   vTaskDelay(1);
 
-  printf("waiting for PG...\n");
   while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
-    vTaskDelay(1);
   }
 
   printf("PG is up\n");
