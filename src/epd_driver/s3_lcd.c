@@ -368,18 +368,6 @@ static esp_err_t init_dma_trans_link() {
 }
 
 const int DATA_LINES[16] = {
-    D6,
-    D7,
-
-    D4,
-    D5,
-
-    D2,
-    D3,
-
-    D0,
-    D1,
-
     D14,
     D15,
 
@@ -392,13 +380,24 @@ const int DATA_LINES[16] = {
     D8,
     D9,
 
+    D6,
+    D7,
+
+    D4,
+    D5,
+
+    D2,
+    D3,
+
+    D0,
+    D1,
     // FIXME: swap for 16 bit
 };
 
 static esp_err_t s3_lcd_configure_gpio()
 {
     // connect peripheral signals via GPIO matrix
-    for (size_t i = 0; i < lcd.config.bus_width; i++) {
+    for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
         gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[DATA_LINES[i]], PIN_FUNC_GPIO);
         gpio_set_direction(DATA_LINES[i], GPIO_MODE_OUTPUT);
         esp_rom_gpio_connect_out_signal(DATA_LINES[i],

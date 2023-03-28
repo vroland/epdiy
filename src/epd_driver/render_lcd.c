@@ -107,10 +107,11 @@ void lcd_draw_prepared(RenderContext_t *ctx) {
     epd_lcd_line_source_cb(NULL);
     epd_lcd_frame_done_cb(NULL);
 
-    epd_set_mode(1);
+    epd_set_mode(0);
 }
 
 void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
+    epd_set_mode(1);
     ctx->current_frame = 0;
     epd_lcd_frame_done_cb(handle_lcd_frame_done);
     if (color == 0) {
@@ -122,6 +123,7 @@ void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
     }
     epd_lcd_start_frame();
     xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
+    epd_set_mode(0);
 }
 
 void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {

@@ -37,8 +37,10 @@ void epd_hw_init(uint32_t epd_row_width) {
 
 void epd_set_mode(bool state) {
   ctrl_state.ep_output_enable = state;
+  ctrl_state.ep_mode = state;
   epd_ctrl_state_t mask = {
     .ep_output_enable = true,
+    .ep_mode = true,
   };
   epd_board->set_ctrl(&ctrl_state, &mask);
 }
