@@ -52,8 +52,10 @@ typedef struct {
     lcd_bus_config_t bus;
 } LcdEpdConfig_t;
 
+typedef bool(*line_cb_func_t)(void*, uint8_t*);
+typedef bool(*frame_done_func_t)(void*);
 
 void epd_lcd_init(const LcdEpdConfig_t* config);
-void epd_lcd_frame_done_cb(void (*cb)(void));
-void epd_lcd_line_source_cb(bool(*line_source)(uint8_t*));
+void epd_lcd_frame_done_cb(frame_done_func_t, void* payload);
+void epd_lcd_line_source_cb(line_cb_func_t, void* payload);
 void epd_lcd_start_frame();

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __RENDER_H
+#define __RENDER_H
 
 #include <stdatomic.h>
 #include "line_queue.h"
@@ -20,7 +21,7 @@
 #define FRAME_LINES (((EPD_HEIGHT + 7) / 8) * 8)
 #endif
 
-const int DEFAULT_FRAME_TIME = 120;
+const static int DEFAULT_FRAME_TIME = 120;
 
 typedef struct {
     EpdRect area;
@@ -70,3 +71,10 @@ typedef struct {
     /// track line skipping when working in old i2s mode
     int skipping;
 } RenderContext_t;
+
+typedef void (*lut_func_t)(const uint32_t *, uint8_t *, const uint8_t *);
+
+void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, uint8_t** start_ptr, int* min_y, int* max_y);
+lut_func_t get_lut_function();
+
+#endif // __RENDER_H

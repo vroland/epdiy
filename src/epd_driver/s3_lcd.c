@@ -93,8 +93,11 @@ typedef struct {
     intr_handle_t vsync_intr;
     intr_handle_t done_intr;
 
-    void (*frame_done_cb)(void);
-    bool (*line_source_cb)(uint8_t*);
+    frame_done_func_t frame_done_cb;
+    line_cb_func_t line_source_cb;
+    void* line_cb_payload;
+    void* frame_cb_payload;
+
     int line_length_us;
     int line_cycles;
     int lcd_res_h;
@@ -117,19 +120,21 @@ typedef struct {
 static s3_lcd_t lcd;
 
 
-void epd_lcd_line_source_cb(bool(*line_source)(uint8_t*)) {
+void epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
     lcd.line_source_cb = line_source;
+    lcd.line_cb_payload = payload;
 }
 
-void epd_lcd_frame_done_cb(void (*cb)(void)) {
+void epd_lcd_frame_done_cb(frame_done_func_t cb, void* payload) {
     lcd.frame_done_cb = cb;
+    lcd.frame_cb_payload = payload;
 }
 
 static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     bool task_awoken = false;
     for (int i=0; i < lcd.bb_size / LINE_BYTES; i++) {
         if (lcd.line_source_cb != NULL)  {
-            task_awoken |= lcd.line_source_cb(&buffer[i * LINE_BYTES]);
+            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * LINE_BYTES]);
         } else {
             memset(&buffer[i * LINE_BYTES], 0x00, LINE_BYTES);
         }
@@ -163,7 +168,7 @@ void epd_lcd_start_frame() {
             lcd.lcd_res_h,
             end_line
     );
-    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 4, initial_lines, 1);
+    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 1, initial_lines, 1);
 
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
 
@@ -243,7 +248,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             lcd_ll_stop(lcd.hal.dev);
             //rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
             if (lcd.frame_done_cb != NULL) {
-                (*lcd.frame_done_cb)();
+                (*lcd.frame_done_cb)(lcd.frame_cb_payload);
             }
             //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
@@ -513,7 +518,7 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
     lcd_ll_set_data_width(lcd.hal.dev, lcd.config.bus_width);
     lcd_ll_set_phase_cycles(lcd.hal.dev, 0, 0, 1); // enable data phase only
-    lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false); // enable data phase only
+        lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false); // enable data phase only
 
     // number of data cycles is controlled by DMA buffer size
     lcd_ll_enable_output_always_on(lcd.hal.dev, true);

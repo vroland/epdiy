@@ -13,7 +13,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "rom/cache.h"
 #include "xtensa/core-macros.h"
 #include <stdalign.h>
 #include <stdint.h>
@@ -150,7 +149,6 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 }
 
 
-typedef void (*lut_func_t)(const uint32_t *, uint8_t *, const uint8_t *);
 
 lut_func_t get_lut_function() {
     const enum EpdDrawMode mode = render_context.mode;
@@ -180,6 +178,67 @@ lut_func_t get_lut_function() {
         render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
     }
     return NULL;
+}
+
+void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, uint8_t** start_ptr, int* min_y, int* max_y) {
+    EpdRect area = ctx->area;
+
+    enum EpdDrawMode mode = ctx->mode;
+    const EpdRect crop_to = ctx->crop_to;
+    const bool horizontally_cropped =
+        !(crop_to.x == 0 && crop_to.width == area.width);
+    const bool vertically_cropped =
+        !(crop_to.y == 0 && crop_to.height == area.height);
+
+    // number of pixels per byte of input data
+    int ppB = 0;
+    int width_divider = 0;
+
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+        ppB = 1;
+        *bytes_per_line = area.width;
+        width_divider = 1;
+    } else if (mode & MODE_PACKING_2PPB) {
+        ppB = 2;
+        *bytes_per_line = area.width / 2 + area.width % 2;
+        width_divider = 2;
+    } else if (mode & MODE_PACKING_8PPB) {
+        ppB = 8;
+        *bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
+        width_divider = 8;
+    } else {
+        ctx->error |= EPD_DRAW_INVALID_PACKING_MODE;
+    }
+
+    int crop_x = (horizontally_cropped ? crop_to.x : 0);
+    int crop_w = (horizontally_cropped ? crop_to.width : 0);
+    int crop_y = (vertically_cropped ? crop_to.y : 0);
+    int crop_h = (vertically_cropped ? crop_to.height : 0);
+
+    const uint8_t *ptr_start = ctx->data_ptr;
+
+    // Adjust for negative starting coordinates with optional crop
+    if (area.x - crop_x < 0) {
+        ptr_start += -(area.x - crop_x) / width_divider;
+    }
+
+    if (area.y - crop_y < 0) {
+        ptr_start += -(area.y - crop_y) * *bytes_per_line;
+    }
+
+    // interval of the output line that is needed
+    // FIXME: only lookup needed parts
+    int line_start_x = area.x + (horizontally_cropped ? crop_to.x : 0);
+    int line_end_x =
+        line_start_x + (horizontally_cropped ? crop_to.width : area.width);
+    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
+    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+
+    // calculate start and end row with crop
+    *min_y = area.y + crop_y;
+    *max_y =
+        min(*min_y + (vertically_cropped ? crop_h : area.height), area.height);
+    *start_ptr = ptr_start;
 }
 
 void IRAM_ATTR feed_display(int thread_id) {
@@ -279,7 +338,7 @@ void epd_init(enum EpdInitOptions options) {
 #ifdef CONFIG_IDF_TARGET_ESP32S3
     int feed_threads = NUM_FEED_THREADS;
     size_t queue_elem_size = EPD_LINE_BYTES;
-    epd_lcd_line_source_cb(NULL);
+    epd_lcd_line_source_cb(NULL, NULL);
 #else
     size_t queue_elem_size = EPD_WIDTH;
     int feed_threads = 1;

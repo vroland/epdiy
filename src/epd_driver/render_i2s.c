@@ -1,4 +1,6 @@
 // output a row to the display.
+#include "render.h"
+#include <stdint.h>
 void IRAM_ATTR i2s_write_row(RenderContext_t *ctx, uint32_t output_time_dus) {
     epd_output_row(output_time_dus);
     ctx->skipping = 0;
@@ -114,64 +116,13 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
     LineQueue_t *lq = &render_context.line_queues[thread_id];
 
     EpdRect area = render_context.area;
-    const enum EpdDrawMode mode = render_context.mode;
-    const EpdRect crop_to = render_context.crop_to;
-    const bool horizontally_cropped =
-        !(crop_to.x == 0 && crop_to.width == area.width);
-    const bool vertically_cropped =
-        !(crop_to.y == 0 && crop_to.height == area.height);
 
     lut_func_t input_calc_func = get_lut_function();
 
-    // number of pixels per byte of input data
-    int ppB = 0;
-    int bytes_per_line = 0;
-    int width_divider = 0;
+    int min_y, max_y, bytes_per_line;
+    uint8_t *ptr_start;
+    get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y);
 
-    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-        ppB = 1;
-        bytes_per_line = area.width;
-        width_divider = 1;
-    } else if (mode & MODE_PACKING_2PPB) {
-        ppB = 2;
-        bytes_per_line = area.width / 2 + area.width % 2;
-        width_divider = 2;
-    } else if (mode & MODE_PACKING_8PPB) {
-        ppB = 8;
-        bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
-        width_divider = 8;
-    } else {
-        render_context.error |= EPD_DRAW_INVALID_PACKING_MODE;
-    }
-
-    int crop_x = (horizontally_cropped ? crop_to.x : 0);
-    int crop_w = (horizontally_cropped ? crop_to.width : 0);
-    int crop_y = (vertically_cropped ? crop_to.y : 0);
-    int crop_h = (vertically_cropped ? crop_to.height : 0);
-
-    const uint8_t *ptr_start = render_context.data_ptr;
-
-    // Adjust for negative starting coordinates with optional crop
-    if (area.x - crop_x < 0) {
-        ptr_start += -(area.x - crop_x) / width_divider;
-    }
-
-    if (area.y - crop_y < 0) {
-        ptr_start += -(area.y - crop_y) * bytes_per_line;
-    }
-
-    // interval of the output line that is needed
-    // FIXME: only lookup needed parts
-    int line_start_x = area.x + (horizontally_cropped ? crop_to.x : 0);
-    int line_end_x =
-        line_start_x + (horizontally_cropped ? crop_to.width : area.width);
-    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
-
-    // calculate start and end row with crop
-    int min_y = area.y + crop_y;
-    int max_y =
-        min(min_y + (vertically_cropped ? crop_h : area.height), area.height);
 
     int l = 0;
     while (l = atomic_fetch_add(&render_context.lines_prepared, 1),
