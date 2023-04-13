@@ -132,9 +132,13 @@ void epd_lcd_frame_done_cb(frame_done_func_t cb, void* payload) {
 
 static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     bool task_awoken = false;
-    for (int i=0; i < lcd.bb_size / LINE_BYTES; i++) {
+
+    // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
+    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - LINE_BYTES;
+
+    for (int i=0; i < BOUNCE_BUF_LINES; i++) {
         if (lcd.line_source_cb != NULL)  {
-            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * LINE_BYTES]);
+            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (LINE_BYTES + dummy_bytes) + dummy_bytes]);
         } else {
             memset(&buffer[i * LINE_BYTES], 0x00, LINE_BYTES);
         }
@@ -160,15 +164,21 @@ void start_ckv_cycles(int cycles) {
 void epd_lcd_start_frame() {
     int initial_lines = min(LINE_BATCH, S3_LCD_RES_V);
 
+    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - LINE_BYTES;
+
     // hsync: pulse with, back porch, active width, front porch
     int end_line = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(lcd.hal.dev,
             lcd.config.le_high_time,
             lcd.config.line_front_porch,
-            lcd.lcd_res_h,
+            // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
+            lcd.lcd_res_h + (dummy_bytes > 0),
             end_line
     );
     lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 1, initial_lines, 1);
+
+    // generate the hsync at the very beginning of line
+    lcd_ll_set_hsync_position(lcd.hal.dev, 1);
 
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 1);
 
@@ -463,8 +473,15 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
     periph_module_reset(lcd_periph_signals.panels[0].module);
 
     // each bounce buffer holds two lines of display data
-    lcd.bb_size = 4 * LINE_BYTES;
-    assert(lcd.bb_size % (LINE_BYTES) == 0);
+
+    // With 8 bit bus width, we need a dummy cycle before the actual data,
+    // because the LCD peripheral behaves weirdly.
+    // Also see:
+    // https://blog.adafruit.com/2022/06/14/esp32uesday-hacking-the-esp32-s3-lcd-peripheral/
+    int dummy_bytes = (lcd.config.bus_width == 8);
+
+    lcd.bb_size = BOUNCE_BUF_LINES * (LINE_BYTES + dummy_bytes);
+    //assert(lcd.bb_size % (LINE_BYTES) == 1);
     size_t num_dma_nodes = (lcd.bb_size + DMA_DESCRIPTOR_BUFFER_MAX_SIZE - 1) / DMA_DESCRIPTOR_BUFFER_MAX_SIZE;
     ESP_LOGI(TAG, "num dma nodes: %u", num_dma_nodes);
     lcd.dma_nodes = heap_caps_calloc(1, num_dma_nodes * sizeof(dma_descriptor_t) * 2, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
@@ -517,11 +534,11 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
     // enable RGB mode and set data width
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
     lcd_ll_set_data_width(lcd.hal.dev, lcd.config.bus_width);
-    lcd_ll_set_phase_cycles(lcd.hal.dev, 0, 0, 1); // enable data phase only
-        lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false); // enable data phase only
+    lcd_ll_set_phase_cycles(lcd.hal.dev, 0, (dummy_bytes > 0), 1); // enable data phase only
+    lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false); // enable data phase only
 
     // number of data cycles is controlled by DMA buffer size
-    lcd_ll_enable_output_always_on(lcd.hal.dev, true);
+    lcd_ll_enable_output_always_on(lcd.hal.dev, false);
     lcd_ll_set_idle_level(lcd.hal.dev, false, true, true);
 
     // configure blank region timing
@@ -530,8 +547,6 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
 
     // output hsync even in porch region?
     lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false);
-    // generate the hsync at the very beginning of line
-    lcd_ll_set_hsync_position(lcd.hal.dev, 1);
     // send next frame automatically in stream mode
     lcd_ll_enable_auto_next_frame(lcd.hal.dev, false);
 
