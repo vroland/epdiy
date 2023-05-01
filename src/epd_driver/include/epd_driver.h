@@ -12,6 +12,7 @@ extern "C" {
 #include <stdint.h>
 #include "epd_internals.h"
 #include "epd_board.h"
+#include "epd_display.h"
 
 /** Display software rotation.
  *  Sets the rotation for the purposes of the drawing and font functions

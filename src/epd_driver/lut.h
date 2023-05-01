@@ -8,7 +8,9 @@
 #include "epd_driver.h"
 
 // number of bytes needed for one line of EPD pixel data.
-#define EPD_LINE_BYTES EPD_WIDTH / 4
+#define EPD_LINE_BYTES (epd_display.width / 4)
+// maximum number of line bytes, if needed at compile time.
+#define EPD_MAX_LINE_BYTES (EPD_WIDTH / 4)
 
 ///////////////////////////// Utils /////////////////////////////////////
 

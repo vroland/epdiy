@@ -25,7 +25,7 @@ static enum EpdRotation display_rotation = EPD_ROT_LANDSCAPE;
 #endif
 
 EpdRect epd_full_screen() {
-  EpdRect area = {.x = 0, .y = 0, .width = EPD_WIDTH, .height = EPD_HEIGHT};
+  EpdRect area = {.x = 0, .y = 0, .width = epd_display.width, .height = epd_display.height};
   return area;
 }
 
@@ -53,15 +53,15 @@ Coord_xy _rotate(uint16_t x, uint16_t y) {
         break;
         case EPD_ROT_PORTRAIT:
             _swap_int(x, y);
-            x = EPD_WIDTH - x - 1;
+            x = epd_display.width - x - 1;
         break;
         case EPD_ROT_INVERTED_LANDSCAPE:
-            x = EPD_WIDTH - x - 1;
-            y = EPD_HEIGHT - y - 1;
+            x = epd_display.width - x - 1;
+            y = epd_display.height - y - 1;
         break;
         case EPD_ROT_INVERTED_PORTRAIT:
             _swap_int(x, y);
-            y = EPD_HEIGHT - y - 1;
+            y = epd_display.height - y - 1;
         break;
     }
     Coord_xy coord = {
@@ -76,14 +76,14 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
   x = coord.x;
   y = coord.y;
 
-  if (x < 0 || x >= EPD_WIDTH) {
+  if (x < 0 || x >= epd_display.width) {
     return;
   }
-  if (y < 0 || y >= EPD_HEIGHT) {
+  if (y < 0 || y >= epd_display.height) {
     return;
   }
 
-  uint8_t *buf_ptr = &framebuffer[y * EPD_WIDTH / 2 + x / 2];
+  uint8_t *buf_ptr = &framebuffer[y * epd_display.width / 2 + x / 2];
   if (x % 2) {
     *buf_ptr = (*buf_ptr & 0x0F) | (color & 0xF0);
   } else {
@@ -351,14 +351,14 @@ void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
                                     : image_data[value_index / 2] & 0x0F;
 
     int xx = image_area.x + i % image_area.width;
-    if (xx < 0 || xx >= EPD_WIDTH) {
+    if (xx < 0 || xx >= epd_display.width) {
       continue;
     }
     int yy = image_area.y + i / image_area.width;
-    if (yy < 0 || yy >= EPD_HEIGHT) {
+    if (yy < 0 || yy >= epd_display.height) {
       continue;
     }
-    uint8_t *buf_ptr = &framebuffer[yy * EPD_WIDTH / 2 + xx / 2];
+    uint8_t *buf_ptr = &framebuffer[yy * epd_display.width / 2 + xx / 2];
     if (xx % 2) {
       *buf_ptr = (*buf_ptr & 0x0F) | (val << 4);
     } else {
@@ -388,13 +388,13 @@ enum EpdRotation epd_get_rotation() {
 }
 
 int epd_rotated_display_width() {
-  int display_width = EPD_WIDTH;
+  int display_width = epd_display.width;
   switch (display_rotation) {
           case EPD_ROT_PORTRAIT:
-              display_width = EPD_HEIGHT;
+              display_width = epd_display.height;
           break;
           case EPD_ROT_INVERTED_PORTRAIT:
-              display_width = EPD_HEIGHT;
+              display_width = epd_display.height;
           break;
           case EPD_ROT_INVERTED_LANDSCAPE:
           case EPD_ROT_LANDSCAPE:
@@ -404,13 +404,13 @@ int epd_rotated_display_width() {
 }
 
 int epd_rotated_display_height() {
-  int display_height = EPD_HEIGHT;
+  int display_height = epd_display.height;
   switch (display_rotation) {
           case EPD_ROT_PORTRAIT:
-              display_height = EPD_WIDTH;
+              display_height = epd_display.width;
           break;
           case EPD_ROT_INVERTED_PORTRAIT:
-              display_height = EPD_WIDTH;
+              display_height = epd_display.width;
           break;
           case EPD_ROT_INVERTED_LANDSCAPE:
           case EPD_ROT_LANDSCAPE:

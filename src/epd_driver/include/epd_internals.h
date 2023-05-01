@@ -52,7 +52,8 @@
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 540
 #else
-#error "no display type defined!"
+// No display set at compile time, make all buffers as large as the largest supported display
+#define EPD_WIDTH 1600
 #endif
 
 
@@ -148,5 +149,3 @@ typedef struct {
 
 
 #endif // EPD_INTERNALS_H
-
-

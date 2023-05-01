@@ -45,7 +45,7 @@ static uint8_t* conversion_lut;
 
 void epd_push_pixels(EpdRect area, short time, int color) {
 
-  uint8_t row[EPD_LINE_BYTES] = {0};
+  uint8_t row[EPD_MAX_LINE_BYTES] = {0};
 
   const uint8_t color_choice[4] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
   for (uint32_t i = 0; i < area.width; i++) {
@@ -57,7 +57,7 @@ void epd_push_pixels(EpdRect area, short time, int color) {
 
   epd_start_frame();
 
-  for (int i = 0; i < EPD_HEIGHT; i++) {
+  for (int i = 0; i < epd_display.height; i++) {
     // before are of interest: skip
     if (i < area.y) {
       skip_row(time);
@@ -249,7 +249,19 @@ void epd_init(enum EpdInitOptions options) {
   assert(epd_board != NULL);
 #endif
 
-  epd_hw_init(EPD_WIDTH);
+#if defined(EPD_WIDTH) && defined(EPD_HEIGHT)
+  if (epd_display.width == 0 || epd_display.height == 0) {
+    epd_set_display(EPD_WIDTH, EPD_HEIGHT);
+  } else {
+    // Make sure the user does not set the display larger than our buffers...
+    assert(epd_display.width <= EPD_WIDTH && epd_display.height <= EPD_HEIGHT);
+  }
+#else
+  // Either the display should be set in menuconfig or the epd_set_display() must be called before epd_init()
+  assert(epd_display.width > 0 && epd_display.height > 0);
+#endif
+
+  epd_hw_init(epd_display.width);
   epd_temperature_init();
 
   size_t lut_size = 0;
@@ -295,7 +307,7 @@ void epd_init(enum EpdInitOptions options) {
   } else if (options & EPD_FEED_QUEUE_8) {
     queue_len = 8;
   }
-  output_queue = xQueueCreate(queue_len, EPD_WIDTH);
+  output_queue = xQueueCreate(queue_len, epd_display.width);
 
 }
 
@@ -312,6 +324,7 @@ EpdRect epd_difference_image_base(
 ) {
     assert(from_or != NULL);
     assert(from_and != NULL);
+    assert(epd_display.width);
     // OR over all pixels of the "from"-image
     *from_or = 0x00;
     // AND over all pixels of the "from"-image
@@ -366,7 +379,7 @@ EpdRect epd_difference_image(
 ) {
   uint8_t from_or = 0;
   uint8_t from_and = 0;
-  return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
+  return epd_difference_image_base(to, from, epd_full_screen(), epd_display.width, epd_display.height, interlaced, dirty_lines, &from_or, &from_and);
 }
 
 EpdRect epd_difference_image_cropped(
@@ -381,7 +394,7 @@ EpdRect epd_difference_image_cropped(
 
   uint8_t from_or, from_and;
 
-  EpdRect result = epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT, interlaced, dirty_lines, &from_or, &from_and);
+  EpdRect result = epd_difference_image_base(to, from, crop_to, epd_display.width, epd_display.height, interlaced, dirty_lines, &from_or, &from_and);
 
   if (previously_white != NULL) *previously_white = (from_and == 0x0F);
   if (previously_black != NULL) *previously_black = (from_or == 0x00);

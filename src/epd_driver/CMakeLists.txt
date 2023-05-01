@@ -1,5 +1,6 @@
 
 set(app_sources "epd_driver.c"
+                "epd_display.c"
                 "epd_board.c"
                 "render.c"
                 "display_ops.c"
