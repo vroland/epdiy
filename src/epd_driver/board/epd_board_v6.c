@@ -201,7 +201,16 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   // give the IC time to powerup and set lines
   vTaskDelay(1);
 
+  int tries = 0;
   while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
+    if (tries >= 500) {
+      ESP_LOGE("epdiy", "Power enable failed! INT status: 0x%X 0x%X",
+        tps_read_register(config_reg.port, TPS_REG_INT1),
+        tps_read_register(config_reg.port, TPS_REG_INT2)
+      );
+      return;
+    }
+    tries++;
     vTaskDelay(1);
   }
 
@@ -215,7 +224,6 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   };
   epd_board_set_ctrl(state, &mask);
 
-  int tries = 0;
   while (!((tps_read_register(config_reg.port, TPS_REG_PG) & 0xFA) == 0xFA)) {
     if (tries >= 500) {
       ESP_LOGE("epdiy", "Power enable failed! PG status: %X", tps_read_register(config_reg.port, TPS_REG_PG));
