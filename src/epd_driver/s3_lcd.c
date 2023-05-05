@@ -46,7 +46,7 @@ inline int max(int x, int y) { return x > y ? x : y; }
 
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 #define S3_LCD_PIN_NUM_HSYNC          GPIO_NUM_42
-#define S3_LCD_PIN_NUM_VSYNC          GPIO_NUM_0
+#define S3_LCD_PIN_NUM_VSYNC          GPIO_NUM_45
 #define S3_LCD_PIN_NUM_CKV            GPIO_NUM_48
 #define S3_LCD_PIN_NUM_DE             GPIO_NUM_41
 #define S3_LCD_PIN_NUM_PCLK           GPIO_NUM_4

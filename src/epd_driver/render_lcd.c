@@ -144,6 +144,9 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
     lut_func_t input_calc_func = get_lut_function();
 
     int l = 0;
+
+    assert(area.width == EPD_WIDTH && area.x == 0 && !ctx->error);
+
     while (l = atomic_fetch_add(&ctx->lines_prepared, 1),
            l < FRAME_LINES) {
 
@@ -172,8 +175,6 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
         const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
 
         Cache_Start_DCache_Preload((uint32_t)ptr, EPD_WIDTH, 0);
-
-        assert(area.width == EPD_WIDTH && area.x == 0 && area.width == EPD_WIDTH && !ctx->error);
 
         lp = (uint32_t *)ptr;
 
