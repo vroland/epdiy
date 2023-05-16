@@ -1,3 +1,7 @@
+#include "render_method.h"
+
+#ifdef RENDER_METHOD_I2S
+
 #include "rmt_pulse.h"
 #include "driver/rmt.h"
 #include "esp_system.h"
@@ -93,3 +97,5 @@ void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
 }
 
 bool IRAM_ATTR rmt_busy() { return !rmt_tx_done; }
+
+#endif

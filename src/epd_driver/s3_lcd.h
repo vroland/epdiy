@@ -35,10 +35,12 @@ typedef struct {
   // vertical clock pin
   gpio_num_t ckv;
 
-  // "Start Pulse", enabling data input on the slave device (active low)
+  // horizontal "Start Pulse", enabling data input on the line shift register
   gpio_num_t start_pulse;
   // latch enable
   gpio_num_t leh;
+  // vertical start pulse, resetting the vertical line shift register.
+  gpio_num_t stv;
 } lcd_bus_config_t;
 
 /// Configuration structure for the LCD-based Epd driver.
@@ -53,7 +55,7 @@ typedef struct {
 } LcdEpdConfig_t;
 
 typedef bool(*line_cb_func_t)(void*, uint8_t*);
-typedef bool(*frame_done_func_t)(void*);
+typedef void(*frame_done_func_t)(void*);
 
 void epd_lcd_init(const LcdEpdConfig_t* config);
 void epd_lcd_frame_done_cb(frame_done_func_t, void* payload);

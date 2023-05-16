@@ -49,7 +49,7 @@ static int v6_wait_for_interrupt(int timeout) __attribute__((unused));
 #define CKV GPIO_NUM_48
 #define STH GPIO_NUM_41
 #define LEH GPIO_NUM_42
-
+#define STV GPIO_NUM_45
 
 /* Edges */
 #define CKH GPIO_NUM_4
@@ -75,6 +75,7 @@ static lcd_bus_config_t lcd_config = {
     .ckv = CKV,
     .leh = LEH,
     .start_pulse = STH,
+    .stv = STV,
     .data_0 = D0,
     .data_1 = D1,
     .data_2 = D2,

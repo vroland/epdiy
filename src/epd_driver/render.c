@@ -1,5 +1,6 @@
 #include "epd_temperature.h"
 
+#include "render_method.h"
 #include "display_ops.h"
 #include "epd_driver.h"
 #include "include/epd_board.h"
@@ -18,10 +19,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#ifdef RENDER_METHOD_LCD
 #include "render_lcd.h"
-#else
+#elif defined(RENDER_METHOD_I2S)
 #include "render_i2s.h"
+#else
+#error "invalid render method!"
 #endif
 
 inline int min(int x, int y) { return x < y ? x : y; }
@@ -41,7 +44,7 @@ static RenderContext_t render_context;
 
 void epd_push_pixels(EpdRect area, short time, int color) {
     render_context.area = area;
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#ifdef RENDER_METHOD_LCD
     epd_push_pixels_lcd(&render_context, time, color);
 #else
     epd_push_pixels_i2s(area, time, color);
@@ -180,7 +183,7 @@ lut_func_t get_lut_function() {
     return NULL;
 }
 
-void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, uint8_t** start_ptr, int* min_y, int* max_y) {
+void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y) {
     EpdRect area = ctx->area;
 
     enum EpdDrawMode mode = ctx->mode;
@@ -191,19 +194,15 @@ void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, uint8_t** star
         !(crop_to.y == 0 && crop_to.height == area.height);
 
     // number of pixels per byte of input data
-    int ppB = 0;
     int width_divider = 0;
 
     if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-        ppB = 1;
         *bytes_per_line = area.width;
         width_divider = 1;
     } else if (mode & MODE_PACKING_2PPB) {
-        ppB = 2;
         *bytes_per_line = area.width / 2 + area.width % 2;
         width_divider = 2;
     } else if (mode & MODE_PACKING_8PPB) {
-        ppB = 8;
         *bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
         width_divider = 8;
     } else {
@@ -335,7 +334,7 @@ void epd_init(enum EpdInitOptions options) {
         queue_len = 8;
     }
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#ifdef RENDER_METHOD_LCD
     int feed_threads = NUM_FEED_THREADS;
     size_t queue_elem_size = EPD_LINE_BYTES;
     epd_lcd_line_source_cb(NULL, NULL);

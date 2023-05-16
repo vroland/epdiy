@@ -45,30 +45,7 @@ inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
 
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
-#define S3_LCD_PIN_NUM_HSYNC          GPIO_NUM_42
-#define S3_LCD_PIN_NUM_VSYNC          GPIO_NUM_45
-#define S3_LCD_PIN_NUM_CKV            GPIO_NUM_48
-#define S3_LCD_PIN_NUM_DE             GPIO_NUM_41
-#define S3_LCD_PIN_NUM_PCLK           GPIO_NUM_4
 //#define S3_LCD_PIN_NUM_MODE           4
-
-#define D15 GPIO_NUM_47
-#define D14 GPIO_NUM_21
-#define D13 GPIO_NUM_14
-#define D12 GPIO_NUM_13
-#define D11 GPIO_NUM_12
-#define D10 GPIO_NUM_11
-#define D9 GPIO_NUM_10
-#define D8 GPIO_NUM_9
-
-#define D7 GPIO_NUM_8
-#define D6 GPIO_NUM_18
-#define D5 GPIO_NUM_17
-#define D4 GPIO_NUM_16
-#define D3 GPIO_NUM_15
-#define D2 GPIO_NUM_7
-#define D1 GPIO_NUM_6
-#define D0 GPIO_NUM_5
 
 // The pixel number in horizontal and vertical
 #define LINE_BYTES                     (EPD_WIDTH / 4)
@@ -196,12 +173,12 @@ void epd_lcd_start_frame() {
     gdma_start(lcd.dma_chan, (intptr_t)&lcd.dma_nodes[0]);
     // delay 1us is sufficient for DMA to pass data to LCD FIFO
     // in fact, this is only needed when LCD pixel clock is set too high
-    gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 0);
+    gpio_set_level(lcd.config.bus.stv, 0);
     esp_rom_delay_us(1);
     // start LCD engine
     start_ckv_cycles(initial_lines + 6);
     esp_rom_delay_us(1);
-    gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);
+    gpio_set_level(lcd.config.bus.stv, 1);
     // for picture clarity, it seems to be important to start CKV at a "good"
     // time, seemingly start or towards end of line.
     esp_rom_delay_us(lcd.line_length_us - lcd.config.ckv_high_time / 10 - 1);
@@ -235,9 +212,9 @@ void init_ckv_rmt() {
 
   // Divide 80MHz APB Clock by 8 -> .1us resolution delay
 
-  gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[S3_LCD_PIN_NUM_CKV], PIN_FUNC_GPIO);
-  gpio_set_direction(S3_LCD_PIN_NUM_CKV, GPIO_MODE_OUTPUT);
-  esp_rom_gpio_connect_out_signal(S3_LCD_PIN_NUM_CKV, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0);
+  gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.ckv], PIN_FUNC_GPIO);
+  gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
+  esp_rom_gpio_connect_out_signal(lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0);
   rmt_ll_enable_interrupt(&RMT, RMT_LL_EVENT_TX_LOOP_END(RMT_CKV_CHAN), true);
   intr_handle_t rmt_intr_handle;
   ESP_ERROR_CHECK(esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_SHARED | ESP_INTR_FLAG_IRAM,
@@ -286,22 +263,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
     if (need_yield) {
         portYIELD_FROM_ISR();
     }
-}
-
-IRAM_ATTR static void lcd_isr_trans_done(void *args)
-{
-    bool need_yield = false;
-
-    uint32_t intr_status = lcd_ll_get_interrupt_status(lcd.hal.dev);
-    lcd_ll_clear_interrupt_status(lcd.hal.dev, intr_status);
-
-
-    // do something
-
-    if (need_yield) {
-        portYIELD_FROM_ISR();
-    }
-}
+};
 
 // ISR handling bounce buffer refill
 static IRAM_ATTR bool lcd_rgb_panel_eof_handler(gdma_channel_handle_t dma_chan, gdma_event_data_t *event_data, void *user_data)
@@ -382,35 +344,38 @@ static esp_err_t init_dma_trans_link() {
     return ESP_OK;
 }
 
-const int DATA_LINES[16] = {
-    D14,
-    D15,
-
-    D12,
-    D13,
-
-    D10,
-    D11,
-
-    D8,
-    D9,
-
-    D6,
-    D7,
-
-    D4,
-    D5,
-
-    D2,
-    D3,
-
-    D0,
-    D1,
-    // FIXME: swap for 16 bit
-};
 
 static esp_err_t s3_lcd_configure_gpio()
 {
+    const int DATA_LINES[16] = {
+        lcd.config.bus.data_14,
+        lcd.config.bus.data_15,
+
+        lcd.config.bus.data_12,
+        lcd.config.bus.data_13,
+
+
+        lcd.config.bus.data_10,
+        lcd.config.bus.data_11,
+
+        lcd.config.bus.data_8,
+        lcd.config.bus.data_9,
+
+
+        lcd.config.bus.data_6,
+        lcd.config.bus.data_7,
+
+        lcd.config.bus.data_4,
+        lcd.config.bus.data_5,
+
+        lcd.config.bus.data_2,
+        lcd.config.bus.data_3,
+
+
+        lcd.config.bus.data_0,
+        lcd.config.bus.data_1,
+    };
+
     // connect peripheral signals via GPIO matrix
     for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
         gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[DATA_LINES[i]], PIN_FUNC_GPIO);
@@ -418,21 +383,17 @@ static esp_err_t s3_lcd_configure_gpio()
         esp_rom_gpio_connect_out_signal(DATA_LINES[i],
                                         lcd_periph_signals.panels[0].data_sigs[i], false, false);
     }
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[S3_LCD_PIN_NUM_HSYNC], PIN_FUNC_GPIO);
-    gpio_set_direction(S3_LCD_PIN_NUM_HSYNC, GPIO_MODE_OUTPUT);
-    esp_rom_gpio_connect_out_signal(S3_LCD_PIN_NUM_HSYNC, lcd_periph_signals.panels[0].hsync_sig, false, false);
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.leh], PIN_FUNC_GPIO);
+    gpio_set_direction(lcd.config.bus.leh, GPIO_MODE_OUTPUT);
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.leh, lcd_periph_signals.panels[0].hsync_sig, false, false);
 
-    //gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[S3_LCD_PIN_NUM_VSYNC], PIN_FUNC_GPIO);
-    //gpio_set_direction(S3_LCD_PIN_NUM_VSYNC, GPIO_MODE_OUTPUT);
-    //esp_rom_gpio_connect_out_signal(S3_LCD_PIN_NUM_VSYNC, lcd_periph_signals.panels[0].vsync_sig, false, false);
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.clock], PIN_FUNC_GPIO);
+    gpio_set_direction(lcd.config.bus.clock, GPIO_MODE_OUTPUT);
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.clock, lcd_periph_signals.panels[0].pclk_sig, false, false);
 
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[S3_LCD_PIN_NUM_PCLK], PIN_FUNC_GPIO);
-    gpio_set_direction(S3_LCD_PIN_NUM_PCLK, GPIO_MODE_OUTPUT);
-    esp_rom_gpio_connect_out_signal(S3_LCD_PIN_NUM_PCLK, lcd_periph_signals.panels[0].pclk_sig, false, false);
-
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[S3_LCD_PIN_NUM_DE], PIN_FUNC_GPIO);
-    gpio_set_direction(S3_LCD_PIN_NUM_DE, GPIO_MODE_OUTPUT);
-    esp_rom_gpio_connect_out_signal(S3_LCD_PIN_NUM_DE, lcd_periph_signals.panels[0].de_sig, false, false);
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.start_pulse], PIN_FUNC_GPIO);
+    gpio_set_direction(lcd.config.bus.start_pulse, GPIO_MODE_OUTPUT);
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.start_pulse, lcd_periph_signals.panels[0].de_sig, false, false);
     return ESP_OK;
 }
 
@@ -446,7 +407,7 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
 
     gpio_config_t vsync_gpio_conf = {
       .mode = GPIO_MODE_OUTPUT,
-      .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_VSYNC,
+      .pin_bit_mask = 1ull << lcd.config.bus.stv,
     };
 
     gpio_config_t debug_gpio_conf = {
@@ -463,7 +424,7 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
     gpio_config(&debug_gpio_conf);
     //gpio_config(&mode_gpio_conf);
 
-    gpio_set_level(S3_LCD_PIN_NUM_VSYNC, 1);
+    gpio_set_level(lcd.config.bus.stv, 1);
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
     ESP_LOGI(TAG, "using resolution %dx%d", lcd.lcd_res_h, S3_LCD_RES_V);

@@ -1,0 +1,2 @@
+//#define RENDER_METHOD_I2S
+#define RENDER_METHOD_LCD

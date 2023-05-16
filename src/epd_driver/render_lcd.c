@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "render_method.h"
+
+#ifdef RENDER_METHOD_LCD
+
 #include "render_lcd.h"
 #include "include/epd_board.h"
 #include "include/epd_driver.h"
@@ -88,7 +92,7 @@ void lcd_draw_prepared(RenderContext_t *ctx) {
     epd_set_mode(1);
 
     for (uint8_t k = 0; k < ctx->cycle_frames; k++) {
-        epd_lcd_frame_done_cb(handle_lcd_frame_done, ctx);
+        epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
         prepare_lcd_frame(ctx);
         // transmission started in renderer threads
         xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
@@ -114,13 +118,13 @@ void lcd_draw_prepared(RenderContext_t *ctx) {
 void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
     epd_set_mode(1);
     ctx->current_frame = 0;
-    epd_lcd_frame_done_cb(handle_lcd_frame_done, ctx);
+    epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
     if (color == 0) {
-        epd_lcd_line_source_cb(&fill_line_black, ctx);
+        epd_lcd_line_source_cb((line_cb_func_t)&fill_line_black, ctx);
     } else if (color == 1) {
-        epd_lcd_line_source_cb(&fill_line_white, ctx);
+        epd_lcd_line_source_cb((line_cb_func_t)&fill_line_white, ctx);
     } else {
-        epd_lcd_line_source_cb(&fill_line_noop, ctx);
+        epd_lcd_line_source_cb((line_cb_func_t)&fill_line_noop, ctx);
     }
     epd_lcd_start_frame();
     xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
@@ -128,7 +132,6 @@ void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
 }
 
 void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
-    uint8_t line_buf[EPD_LINE_BYTES];
     uint8_t input_line[EPD_WIDTH];
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
@@ -138,7 +141,7 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
 
     EpdRect area = ctx->area;
     int min_y, max_y, bytes_per_line;
-    uint8_t *ptr_start;
+    const uint8_t *ptr_start;
     get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y);
 
     lut_func_t input_calc_func = get_lut_function();
@@ -156,7 +159,7 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
         // queue is sufficiently filled to fill both bounce buffers, frame
         // can begin
         if (l - min_y == 31) {
-            epd_lcd_line_source_cb(&retrieve_line_isr, ctx);
+            epd_lcd_line_source_cb((line_cb_func_t)&retrieve_line_isr, ctx);
             epd_lcd_start_frame();
         }
 
@@ -187,3 +190,5 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
         lq_commit(lq);
     }
 }
+
+#endif

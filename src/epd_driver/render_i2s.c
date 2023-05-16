@@ -1,3 +1,7 @@
+#include "render_method.h"
+
+#ifdef RENDER_METHOD_I2S
+
 // output a row to the display.
 #include "render.h"
 #include <stdint.h>
@@ -234,3 +238,5 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
         }
     }
 }
+
+#endif
