@@ -72,6 +72,7 @@ inline int max(int x, int y) { return x > y ? x : y; }
 uint32_t skipping;
 
 
+__attribute__((optimize("O3")))
 void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
   for (uint32_t i = 0; i < EPD_LINE_BYTES / 4; i++) {
     uint32_t val = *line_data;
@@ -79,6 +80,7 @@ void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
   }
 }
 
+__attribute__((optimize("O3")))
 void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
   uint8_t carry = 0xFF << (8 - shift);
   for (uint32_t i = 0; i < len; i++) {
@@ -88,6 +90,7 @@ void IRAM_ATTR bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift) {
   }
 }
 
+__attribute__((optimize("O3")))
 void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
   uint8_t carry = 0xF;
   for (uint32_t i = 0; i < len; i++) {
@@ -100,32 +103,40 @@ void IRAM_ATTR nibble_shift_buffer_right(uint8_t *buf, uint32_t len) {
 ///////////////////////////// Looking up EPD Pixels
 //////////////////////////////////
 
-void IRAM_ATTR calc_epd_input_1bpp(const uint32_t *line_data,
-                                          uint8_t *epd_input,
-                                          const uint8_t *lut) {
+__attribute__((optimize("O3")))
+void IRAM_ATTR calc_epd_input_1bpp(
+    const uint32_t *line_data,
+    uint8_t *epd_input,
+    const uint8_t *lut,
+    uint32_t epd_width
+) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
   uint8_t *data_ptr = (uint8_t *)line_data;
   uint32_t *lut_32 = (uint32_t *)lut;
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 16; j++) {
+  for (uint32_t j = 0; j < epd_width / 16; j++) {
     uint8_t v1 = *(data_ptr++);
     uint8_t v2 = *(data_ptr++);
     wide_epd_input[j] = (lut_32[v1] << 16) | lut_32[v2];
   }
 }
 
-void IRAM_ATTR
-calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input,
-                            const uint8_t *conversion_lut) {
+__attribute__((optimize("O3")))
+void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
+    const uint32_t *line_data,
+    uint8_t *epd_input,
+    const uint8_t *conversion_lut,
+    uint32_t epd_width
+) {
 
   uint32_t *wide_epd_input = (uint32_t *)epd_input;
   const uint16_t *line_data_16 = (const uint16_t *)line_data;
 
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 16; j++) {
+  for (uint32_t j = 0; j < epd_width / 16; j++) {
 
     uint16_t v1 = *(line_data_16++);
     uint16_t v2 = *(line_data_16++);
@@ -151,8 +162,8 @@ calc_epd_input_4bpp_lut_64k(const uint32_t *line_data, uint8_t *epd_input,
 /**
  * Look up 4 pixels of a differential image.
  */
-static inline uint8_t
-lookup_differential_pixels(const uint32_t in, const uint8_t *conversion_lut) {
+__attribute__((optimize("O3")))
+static inline uint8_t lookup_differential_pixels(const uint32_t in, const uint8_t *conversion_lut) {
   uint8_t out = conversion_lut[(in >> 24) & 0xFF];
   out |= (conversion_lut + 0x100)[(in >> 16) & 0xFF];
   out |= (conversion_lut + 0x200)[(in >> 8) & 0xFF];
@@ -163,13 +174,17 @@ lookup_differential_pixels(const uint32_t in, const uint8_t *conversion_lut) {
 /**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
-void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
-                          uint8_t *epd_input,
-                          const uint8_t *conversion_lut) {
+__attribute__((optimize("O3")))
+void IRAM_ATTR calc_epd_input_1ppB(
+    const uint32_t *ld,
+    uint8_t *epd_input,
+    const uint8_t *conversion_lut,
+    uint32_t epd_width
+) {
 
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+  for (uint32_t j = 0; j < epd_width / 4; j += 4) {
 #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
     epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
@@ -187,20 +202,24 @@ void IRAM_ATTR calc_epd_input_1ppB(const uint32_t *ld,
 /**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
-__attribute__((optimize("unroll-loops")))
-void IRAM_ATTR calc_epd_input_1ppB_64k(const uint32_t *ld,
-                          uint8_t *epd_input,
-                          const uint8_t *conversion_lut) {
 
-uint16_t* lp = (uint16_t*) ld;
+__attribute__((optimize("O3")))
+void IRAM_ATTR calc_epd_input_1ppB_64k(
+    const uint32_t *ld,
+    uint8_t *epd_input,
+    const uint8_t *conversion_lut,
+    uint32_t epd_width
+) {
+
+    const uint16_t* lp = (uint16_t*) ld;
 #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-    for (uint32_t j = 0; j < EPD_WIDTH / 4; j++) {
+    for (uint32_t j = 0; j < epd_width / 4; j++) {
       epd_input[j] = (conversion_lut[lp[2 * j + 1]] << 4) | conversion_lut[lp[2 * j]];
     }
 #else
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+  for (uint32_t j = 0; j < epd_width / 4; j += 4) {
     epd_input[j + 2] = conversion_lut[*(lp++)];;
     epd_input[j + 2] |=  (conversion_lut[*(lp++)] << 4);
     epd_input[j + 3] = conversion_lut[*(lp++)];;
@@ -217,9 +236,13 @@ uint16_t* lp = (uint16_t*) ld;
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
  */
-inline uint8_t lookup_pixels_4bpp_1k(uint16_t in,
-                                            const uint8_t *conversion_lut,
-                                            uint8_t from) {
+__attribute__((optimize("O3")))
+uint8_t lookup_pixels_4bpp_1k(
+    uint16_t in,
+    const uint8_t *conversion_lut,
+    uint8_t from,
+    uint32_t epd_width
+) {
   uint8_t v;
   uint8_t out;
 
@@ -239,37 +262,51 @@ inline uint8_t lookup_pixels_4bpp_1k(uint16_t in,
  * Calculate EPD input for a 4bpp buffer, but with a difference image LUT.
  * This is used for small-LUT mode.
  */
-void IRAM_ATTR calc_epd_input_4bpp_1k_lut(const uint32_t *ld,
-                                                 uint8_t *epd_input,
-                                                 const uint8_t *conversion_lut,
-                                                 uint8_t from) {
+__attribute__((optimize("O3")))
+void IRAM_ATTR calc_epd_input_4bpp_1k_lut(
+    const uint32_t *ld,
+    uint8_t *epd_input,
+    const uint8_t *conversion_lut,
+    uint8_t from,
+    uint32_t epd_width
+) {
 
   uint16_t *ptr = (uint16_t *)ld;
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
-  for (uint32_t j = 0; j < EPD_WIDTH / 4; j += 4) {
+  for (uint32_t j = 0; j < epd_width / 4; j += 4) {
 #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
-    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
-    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
-    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
 #else
-    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
-    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
-    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
-    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from);
+    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
 #endif
   }
 }
 
+__attribute__((optimize("O3")))
 void IRAM_ATTR calc_epd_input_4bpp_1k_lut_white(
-    const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut) {
-  calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0xF);
+    const uint32_t *ld,
+    uint8_t *epd_input,
+    const uint8_t *conversion_lut,
+    uint32_t epd_width
+) {
+  calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0xF, epd_width);
 }
 
+__attribute__((optimize("O3")))
 void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
-    const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut) {
-  calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0x0);
+    const uint32_t *ld,
+    uint8_t *epd_input,
+    const uint8_t *conversion_lut,
+    uint32_t epd_width
+) {
+  calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0x0, epd_width);
 }
 
 ///////////////////////////// Calculate Lookup Tables
@@ -278,6 +315,7 @@ void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
 /**
  * Unpack the waveform data into a lookup table, with bit shifted copies.
  */
+__attribute__((optimize("O3")))
 static void IRAM_ATTR waveform_lut(
     uint8_t *lut,
     const EpdWaveformPhases *phases,
@@ -310,6 +348,7 @@ static void IRAM_ATTR waveform_lut(
  * Unpack the waveform data into a lookup table,
  * 64k to loop up two bytes at once
  */
+__attribute__((optimize("O3")))
 static void IRAM_ATTR waveform_lut_64k(
     uint8_t *lut,
     const EpdWaveformPhases *phases,
@@ -348,6 +387,7 @@ static void IRAM_ATTR waveform_lut_64k(
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
  */
+__attribute__((optimize("O3")))
 static void IRAM_ATTR waveform_lut_static_from(
     uint8_t *lut,
     const EpdWaveformPhases *phases,
@@ -395,6 +435,7 @@ static void IRAM_ATTR waveform_lut_static_from(
 /**
  * Set all pixels not in [xmin,xmax) to nop in the current line buffer.
  */
+__attribute__((optimize("O3")))
 void mask_line_buffer(uint8_t* lb, int xmin, int xmax) {
   // lower bound to where byte order is not an issue.
   int memset_start = (xmin / 16) * 4;
@@ -436,6 +477,7 @@ void mask_line_buffer(uint8_t* lb, int xmin, int xmax) {
 }
 
 
+__attribute__((optimize("O3")))
 enum EpdDrawError IRAM_ATTR calculate_lut(
     uint8_t* lut,
     int lut_size,
@@ -533,8 +575,8 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
 //     // FIXME: only lookup needed parts
 //     int line_start_x = area.x + (crop ? params->crop_to.x : 0);
 //     int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
-//     line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-//     line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+//     line_start_x = min(max(line_start_x, 0), epd_width);
+//     line_end_x = min(max(line_end_x, 0), epd_width);
 //
 // #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
 //     uint64_t now = esp_timer_get_time();
@@ -558,7 +600,7 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
 //         continue;
 //       }
 //
-//       uint8_t output[EPD_WIDTH];
+//       uint8_t output[epd_width];
 //       xQueueReceive(*params->pixel_queue, output, portMAX_DELAY);
 // #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
 //       uint8_t* line_buf = epd_get_current_buffer();
@@ -566,7 +608,7 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
 //
 //       if (!params->error) {
 //         (*input_calc_func)((uint32_t *)output, line_buf, params->conversion_lut);
-//         if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
+//         if (line_start_x > 0 || line_end_x < epd_width) {
 //           mask_line_buffer(line_buf, line_start_x, line_end_x);
 //         }
 //       }

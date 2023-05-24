@@ -185,7 +185,7 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
         while (buf == NULL)
             buf = lq_current(lq);
 
-        (*input_calc_func)(lp, buf, ctx->conversion_lut);
+        (*input_calc_func)(lp, buf, ctx->conversion_lut, EPD_WIDTH);
 
         lq_commit(lq);
     }

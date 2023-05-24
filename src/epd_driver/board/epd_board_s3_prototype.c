@@ -128,11 +128,11 @@ static void epd_board_init(uint32_t epd_row_width) {
     ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 
     LcdEpdConfig_t config = {
-        .pixel_clock = 11 * 1000 * 1000,
+        .pixel_clock = 23 * 1000 * 1000,
         .ckv_high_time = 60,
         .line_front_porch = 4,
         .le_high_time = 4,
-        .bus_width = 16,
+        .bus_width = 8,
         .bus = lcd_config,
     };
     epd_lcd_init(&config);
