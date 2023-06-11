@@ -59,7 +59,9 @@ epd_ctrl_state_t *epd_ctrl_state() {
 
 void epd_deinit() {
   epd_poweroff();
+#ifndef RENDER_METHOD_LCD
   i2s_deinit();
+#endif
 
   ctrl_state.ep_output_enable = false;
   ctrl_state.ep_mode = false;

@@ -158,7 +158,27 @@ static int v6_wait_for_interrupt(int timeout) {
 
 
 
-static void epd_board_deinit() {}
+static void epd_board_deinit() {
+
+  ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
+
+  int tries = 0;
+  while (!((pca9555_read_input(config_reg.port, 1) & 0xC0) == 0x80)) {
+    if (tries >= 500) {
+      ESP_LOGE("epdiy", "failed to shut down TPS65185!");
+      break;
+    }
+    tries++;
+    vTaskDelay(1);
+    printf("%X\n", pca9555_read_input(config_reg.port, 1));
+  }
+  // Not sure why we need this delay, but the TPS65185 seems to generate an interrupt after some time that needs to be cleared.
+  vTaskDelay(500);
+  pca9555_read_input(config_reg.port, 0);
+  pca9555_read_input(config_reg.port, 1);
+  ESP_LOGI("epdiy", "going to sleep.");
+  i2c_driver_delete(EPDIY_I2C_PORT);
+}
 
 static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t * const mask) {
   uint8_t value = 0x00;
