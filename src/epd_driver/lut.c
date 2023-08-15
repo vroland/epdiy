@@ -1,10 +1,8 @@
 #include "lut.h"
+
+#include "render_method.h"
+
 #include "driver/gpio.h"
-
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-#include "display_ops.h"
-#endif
-
 #include "esp_log.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -143,10 +141,10 @@ void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
     uint16_t v3 = *(line_data_16++);
     uint16_t v4 = *(line_data_16++);
 
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
+#ifdef RENDER_METHOD_LCD
     uint32_t pixel = conversion_lut[v1] << 16 | conversion_lut[v2] << 24 |
                      conversion_lut[v3] | conversion_lut[v4] << 8;
-#else
+#elif RENDER_METHOD_I2S
     uint32_t pixel = conversion_lut[v4];
     pixel = pixel << 8;
     pixel |= conversion_lut[v3];
@@ -185,16 +183,16 @@ void IRAM_ATTR calc_epd_input_1ppB(
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
   for (uint32_t j = 0; j < epd_width / 4; j += 4) {
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
-#else
+#ifdef RENDER_METHOD_LCD
     epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
     epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
+#elif RENDER_METHOD_I2S
+    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
+    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
 #endif
   }
 }
@@ -212,11 +210,11 @@ void IRAM_ATTR calc_epd_input_1ppB_64k(
 ) {
 
     const uint16_t* lp = (uint16_t*) ld;
-#ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
+#ifdef RENDER_METHOD_LCD
     for (uint32_t j = 0; j < epd_width / 4; j++) {
       epd_input[j] = (conversion_lut[lp[2 * j + 1]] << 4) | conversion_lut[lp[2 * j]];
     }
-#else
+#elif RENDER_METHOD_I2S
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
   for (uint32_t j = 0; j < epd_width / 4; j += 4) {
@@ -275,16 +273,16 @@ void IRAM_ATTR calc_epd_input_4bpp_1k_lut(
   // this is reversed for little-endian, but this is later compensated
   // through the output peripheral.
   for (uint32_t j = 0; j < epd_width / 4; j += 4) {
-#ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-#else
+#ifdef RENDER_METHOD_LCD
     epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
     epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
     epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
     epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+#elif RENDER_METHOD_I2S
+    epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
 #endif
   }
 }

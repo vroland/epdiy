@@ -359,7 +359,7 @@ void epd_init(enum EpdInitOptions options) {
         }
     }
 
-#ifndef CONFIG_IDF_TARGET_ESP32S3
+#ifdef RENDER_METHOD_I2S
     render_context.line_queues[1].size = 0;
     render_context.line_queues[1].element_size = 0;
     render_context.line_queues[1].current = 0;
