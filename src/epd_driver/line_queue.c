@@ -39,3 +39,9 @@ int lq_read(LineQueue_t* queue, uint8_t* dst) {
     }
     return 0;
 }
+
+
+void lq_reset(LineQueue_t* queue) {
+    queue->current = 0;
+    queue->last = 0;
+}

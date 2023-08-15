@@ -1,5 +1,6 @@
 #pragma once
 
+#include "render_method.h"
 #include "driver/gpio.h"
 #include "epd_board.h"
 #include "esp_attr.h"

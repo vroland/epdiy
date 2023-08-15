@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "line_queue.h"
 #include "render_method.h"
 
 #ifdef RENDER_METHOD_LCD
@@ -14,6 +15,7 @@
 #include "s3_lcd.h"
 #include "display_ops.h"
 #include "rom/cache.h"
+#include "esp_log.h"
 
 static bool IRAM_ATTR fill_line_noop(RenderContext_t* _ctx, uint8_t *line) {
     memset(line, 0x00, EPD_LINE_BYTES);
@@ -40,7 +42,12 @@ static bool IRAM_ATTR retrieve_line_isr(RenderContext_t* ctx, uint8_t *buf) {
     LineQueue_t *lq = &ctx->line_queues[thread];
 
     BaseType_t awoken = pdFALSE;
-    assert(lq_read(lq, buf) == 0);
+
+    if (lq_read(lq, buf) != 0) {
+        ctx->error |= EPD_DRAW_EMPTY_LINE_QUEUE;
+        memset(buf, 0x00, EPD_LINE_BYTES);
+    }
+
     if (ctx->lines_consumed >= EPD_HEIGHT) {
         memset(buf, 0x00, EPD_LINE_BYTES);
     }
@@ -131,13 +138,23 @@ void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
     epd_set_mode(0);
 }
 
+#define int_min(a, b) (((a) < (b)) ? (a) : (b))
 void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
     uint8_t input_line[EPD_WIDTH];
+    LineQueue_t *lq = &ctx->line_queues[thread_id];
+    int l = 0;
+
+    // if there is an error, start the frame but don't feed data.
+    if (ctx->error) {
+        epd_lcd_line_source_cb((line_cb_func_t)&retrieve_line_isr, ctx);
+        epd_lcd_start_frame();
+        ESP_LOGW("epd_lcd", "draw frame draw initiated, but an error flag is set: %X", ctx->error);
+        return;
+    }
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
     memset(input_line, 0x00, EPD_WIDTH);
 
-    LineQueue_t *lq = &ctx->line_queues[thread_id];
 
     EpdRect area = ctx->area;
     int min_y, max_y, bytes_per_line;
@@ -146,19 +163,19 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
 
     lut_func_t input_calc_func = get_lut_function();
 
-    int l = 0;
-
     assert(area.width == EPD_WIDTH && area.x == 0 && !ctx->error);
+
+    // index of the line that triggers the frame output when processed
+    int trigger_line = int_min(31, max_y - min_y);
 
     while (l = atomic_fetch_add(&ctx->lines_prepared, 1),
            l < FRAME_LINES) {
 
         ctx->line_threads[l] = thread_id;
 
-        // FIXME: handle too-small updates
         // queue is sufficiently filled to fill both bounce buffers, frame
         // can begin
-        if (l - min_y == 31) {
+        if (l - min_y == trigger_line) {
             epd_lcd_line_source_cb((line_cb_func_t)&retrieve_line_isr, ctx);
             epd_lcd_start_frame();
         }
@@ -167,8 +184,15 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
             (ctx->drawn_lines != NULL &&
              !ctx->drawn_lines[l - area.y])) {
             uint8_t *buf = NULL;
-            while (buf == NULL)
+            while (buf == NULL) {
+                // break in case of errors
+                if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
+                    lq_reset(lq);
+                    return;
+                };
+
                 buf = lq_current(lq);
+            }
             memset(buf, 0x00, lq->element_size);
             lq_commit(lq);
             continue;
@@ -182,8 +206,15 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
         lp = (uint32_t *)ptr;
 
         uint8_t *buf = NULL;
-        while (buf == NULL)
+        while (buf == NULL) {
+            // break in case of errors
+            if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
+                lq_reset(lq);
+                return;
+            };
+
             buf = lq_current(lq);
+        }
 
         (*input_calc_func)(lp, buf, ctx->conversion_lut, EPD_WIDTH);
 

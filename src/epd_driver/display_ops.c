@@ -1,7 +1,11 @@
 #include "display_ops.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+
+#ifdef RENDER_METHOD_I2S
 #include "i2s_data_bus.h"
+#endif
+
 #include "rmt_pulse.h"
 #include "epd_board.h"
 #include "freertos/FreeRTOS.h"
@@ -59,7 +63,7 @@ epd_ctrl_state_t *epd_ctrl_state() {
 
 void epd_deinit() {
   epd_poweroff();
-#ifndef RENDER_METHOD_LCD
+#ifdef RENDER_METHOD_I2S
   i2s_deinit();
 #endif
 
@@ -80,6 +84,7 @@ void epd_deinit() {
   // FIXME: deinit processes
 }
 
+#ifdef RENDER_METHOD_I2S
 void epd_start_frame() {
   while (i2s_is_busy() || rmt_busy()) {
   };
@@ -114,6 +119,7 @@ void epd_start_frame() {
   mask.ep_output_enable = true;
   epd_board->set_ctrl(&ctrl_state, &mask);
 }
+#endif
 
 void IRAM_ATTR epd_skip() {
 #if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
@@ -125,6 +131,7 @@ void IRAM_ATTR epd_skip() {
 #endif
 }
 
+#ifdef RENDER_METHOD_I2S
 void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
   while (i2s_is_busy() || rmt_busy()) {
   };
@@ -152,6 +159,8 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
   i2s_switch_buffer();
 }
 
+#endif
+
 void epd_end_frame() {
   epd_ctrl_state_t mask = NoChangeState;
   ctrl_state.ep_stv = false;
@@ -176,7 +185,10 @@ void epd_end_frame() {
   pulse_ckv_us(1, 1, true);
 }
 
+
+#ifdef RENDER_METHOD_I2S
 void IRAM_ATTR epd_switch_buffer() { i2s_switch_buffer(); }
 uint8_t IRAM_ATTR *epd_get_current_buffer() {
   return (uint8_t *)i2s_get_current_buffer();
 };
+#endif

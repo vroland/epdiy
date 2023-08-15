@@ -69,6 +69,11 @@ enum EpdDrawError {
 
   /// An invalid combination of font flags was used.
   EPD_DRAW_INVALID_FONT_FLAGS = 0x200,
+
+  /// The waveform lookup could not keep up with the display output.
+  ///
+  /// Reduce the display clock speed.
+  EPD_DRAW_EMPTY_LINE_QUEUE = 0x400,
 };
 
 /// Global EPD driver options.
