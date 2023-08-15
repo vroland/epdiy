@@ -2,7 +2,9 @@
 #include "display_ops.h"
 #include "include/epd_driver.h"
 
-void i2s_write_row(uint32_t output_time_dus);
-void i2s_skip_row(uint8_t pipeline_finish_time);
 
-void epd_push_pixels_i2s(EpdRect area, short time, int color);
+void i2s_feed_frame(RenderContext_t *ctx, int thread_id);
+void i2s_output_frame(RenderContext_t *ctx, int thread_id);
+void i2s_do_update(RenderContext_t *ctx);
+
+void epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short time, int color);

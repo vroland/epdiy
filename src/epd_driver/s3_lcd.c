@@ -1,6 +1,7 @@
 #include "s3_lcd.h"
+#include "render_method.h"
 
-//#ifdef CONFIG_IDF_TARGET_ESP32S3
+#ifdef RENDER_METHOD_LCD
 
 #include <assert.h>
 #include <stddef.h>
@@ -533,4 +534,4 @@ err:
     abort();
 }
 
-//#endif // S3 Target
+#endif // S3 Target

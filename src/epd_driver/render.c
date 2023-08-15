@@ -21,7 +21,7 @@
 
 #ifdef RENDER_METHOD_LCD
 #include "render_lcd.h"
-#elif defined(RENDER_METHOD_I2S)
+#elif RENDER_METHOD_I2S
 #include "render_i2s.h"
 #else
 #error "invalid render method!"
@@ -47,7 +47,7 @@ void epd_push_pixels(EpdRect area, short time, int color) {
 #ifdef RENDER_METHOD_LCD
     epd_push_pixels_lcd(&render_context, time, color);
 #else
-    epd_push_pixels_i2s(area, time, color);
+    epd_push_pixels_i2s(&render_context, area, time, color);
 #endif
 }
 
@@ -82,6 +82,32 @@ static int get_waveform_index(const EpdWaveform *waveform,
 }
 
 /////////////////////////////  API Procedures //////////////////////////////////
+
+/// start the next frame in the current update cycle
+void IRAM_ATTR prepare_frame(RenderContext_t *ctx) {
+    int frame_time = DEFAULT_FRAME_TIME;
+    if (ctx->phase_times != NULL) {
+        frame_time = ctx->phase_times[ctx->current_frame];
+    }
+
+    if (ctx->mode & MODE_EPDIY_MONOCHROME) {
+        frame_time = MONOCHROME_FRAME_TIME;
+    }
+    ctx->frame_time = frame_time;
+
+    enum EpdDrawMode mode = ctx->mode;
+    const EpdWaveformPhases *phases =
+        ctx->waveform->mode_data[ctx->waveform_index]
+            ->range_data[ctx->waveform_range];
+
+    ctx->error |=
+        calculate_lut(ctx->conversion_lut, ctx->conversion_lut_size, mode,
+                      ctx->current_frame, phases);
+
+    ctx->lines_prepared = 0;
+    ctx->lines_consumed = 0;
+}
+
 
 // FIXME: fix misleading naming:
 //  area -> buffer dimensions
@@ -143,7 +169,11 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 
     ESP_LOGI("epdiy", "starting update, phases: %d", frame_count);
 
-    lcd_draw_prepared(&render_context);
+#ifdef RENDER_METHOD_I2S
+    i2s_do_update(&render_context);
+#elif defined(RENDER_METHOD_LCD)
+    lcd_do_update(&render_context);
+#endif
 
     if (render_context.error != EPD_DRAW_SUCCESS) {
         return render_context.error;
@@ -183,15 +213,13 @@ lut_func_t get_lut_function() {
     return NULL;
 }
 
-void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y) {
+void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y, int* pixels_per_byte) {
     EpdRect area = ctx->area;
 
     enum EpdDrawMode mode = ctx->mode;
     const EpdRect crop_to = ctx->crop_to;
-    const bool horizontally_cropped =
-        !(crop_to.x == 0 && crop_to.width == area.width);
-    const bool vertically_cropped =
-        !(crop_to.y == 0 && crop_to.height == area.height);
+    const bool horizontally_cropped = !(crop_to.x == 0 && crop_to.width == area.width);
+    const bool vertically_cropped = !(crop_to.y == 0 && crop_to.height == area.height);
 
     // number of pixels per byte of input data
     int width_divider = 0;
@@ -225,19 +253,12 @@ void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t*
         ptr_start += -(area.y - crop_y) * *bytes_per_line;
     }
 
-    // interval of the output line that is needed
-    // FIXME: only lookup needed parts
-    int line_start_x = area.x + (horizontally_cropped ? crop_to.x : 0);
-    int line_end_x =
-        line_start_x + (horizontally_cropped ? crop_to.width : area.width);
-    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
-
     // calculate start and end row with crop
     *min_y = area.y + crop_y;
     *max_y =
         min(*min_y + (vertically_cropped ? crop_h : area.height), area.height);
     *start_ptr = ptr_start;
+    *pixels_per_byte = width_divider;
 }
 
 void IRAM_ATTR feed_display(int thread_id) {
@@ -245,10 +266,16 @@ void IRAM_ATTR feed_display(int thread_id) {
 
     while (true) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        // xSemaphoreTake(render_context.frame_start_smphr[thread_id],
-        // portMAX_DELAY);
 
+#ifdef RENDER_METHOD_LCD
         lcd_feed_frame(&render_context, thread_id);
+#elif defined(RENDER_METHOD_I2S)
+        if (thread_id == 0) {
+            i2s_feed_frame(&render_context, thread_id);
+        } else {
+            i2s_output_frame(&render_context, thread_id);
+        }
+#endif
 
         xSemaphoreGive(render_context.feed_done_smphr[thread_id]);
     }
@@ -334,13 +361,12 @@ void epd_init(enum EpdInitOptions options) {
         queue_len = 8;
     }
 
-#ifdef RENDER_METHOD_LCD
     int feed_threads = NUM_FEED_THREADS;
+#ifdef RENDER_METHOD_LCD
     size_t queue_elem_size = EPD_LINE_BYTES;
     epd_lcd_line_source_cb(NULL, NULL);
-#else
+#elif defined(RENDER_METHOD_I2S)
     size_t queue_elem_size = EPD_WIDTH;
-    int feed_threads = 1;
 #endif
 
     for (int i = 0; i < feed_threads; i++) {
@@ -358,17 +384,6 @@ void epd_init(enum EpdInitOptions options) {
             abort();
         }
     }
-
-#ifdef RENDER_METHOD_I2S
-    render_context.line_queues[1].size = 0;
-    render_context.line_queues[1].element_size = 0;
-    render_context.line_queues[1].current = 0;
-    render_context.line_queues[1].last = 0;
-    render_context.line_queues[1].buf = NULL;
-    RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-        (void (*)(void *))i2s_feed_display, "epd_feed", 1 << 13, (void *)1,
-        10 | portPRIVILEGE_BIT, &render_context.feed_tasks[1], 1));
-#endif
 }
 
 EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,

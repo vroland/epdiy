@@ -1,7 +1,9 @@
 #include "i2s_data_bus.h"
 
+#include "sdkconfig.h"
+
 // the I2S driver is based on ESP32 registers and won't compile on the S3
-#ifndef CONFIG_IDF_TARGET_ESP32S3
+#ifdef CONFIG_IDF_TARGET_ESP32
 
 #include "driver/rtc_io.h"
 #include "esp_system.h"

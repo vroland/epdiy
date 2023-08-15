@@ -1,5 +1,9 @@
 #include "epd_board.h"
 
+#include "sdkconfig.h"
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+
 #include "../display_ops.h"
 #include "../i2s_data_bus.h"
 #include "../rmt_pulse.h"
@@ -216,3 +220,5 @@ const EpdBoardDefinition epd_board_lilygo_t5_47_touch = {
   .temperature_init = NULL,
   .ambient_temperature = NULL,
 };
+
+#endif

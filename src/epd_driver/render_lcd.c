@@ -56,35 +56,6 @@ static bool IRAM_ATTR retrieve_line_isr(RenderContext_t* ctx, uint8_t *buf) {
 }
 
 /// start the next frame in the current update cycle
-static void IRAM_ATTR prepare_lcd_frame(RenderContext_t *ctx) {
-    int frame_time = DEFAULT_FRAME_TIME;
-    if (ctx->phase_times != NULL) {
-        frame_time = ctx->phase_times[ctx->current_frame];
-    }
-
-    if (ctx->mode & MODE_EPDIY_MONOCHROME) {
-        frame_time = MONOCHROME_FRAME_TIME;
-    }
-    ctx->frame_time = frame_time;
-
-    enum EpdDrawMode mode = ctx->mode;
-    const EpdWaveformPhases *phases =
-        ctx->waveform->mode_data[ctx->waveform_index]
-            ->range_data[ctx->waveform_range];
-
-    ctx->error |=
-        calculate_lut(ctx->conversion_lut, ctx->conversion_lut_size, mode,
-                      ctx->current_frame, phases);
-
-    ctx->lines_prepared = 0;
-    ctx->lines_consumed = 0;
-
-    // on the classic ESP32, the prepare task starts the feeder task
-    xTaskNotifyGive(ctx->feed_tasks[!xPortGetCoreID()]);
-    xTaskNotifyGive(ctx->feed_tasks[xPortGetCoreID()]);
-}
-
-/// start the next frame in the current update cycle
 static void IRAM_ATTR handle_lcd_frame_done(RenderContext_t *ctx) {
     epd_lcd_frame_done_cb(NULL, NULL);
     epd_lcd_line_source_cb(NULL, NULL);
@@ -95,13 +66,18 @@ static void IRAM_ATTR handle_lcd_frame_done(RenderContext_t *ctx) {
     portYIELD_FROM_ISR();
 }
 
-void lcd_draw_prepared(RenderContext_t *ctx) {
+void lcd_do_update(RenderContext_t *ctx) {
     epd_set_mode(1);
 
     for (uint8_t k = 0; k < ctx->cycle_frames; k++) {
         epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
-        prepare_lcd_frame(ctx);
-        // transmission started in renderer threads
+        prepare_frame(ctx);
+
+        // start both feeder tasks
+        xTaskNotifyGive(ctx->feed_tasks[!xPortGetCoreID()]);
+        xTaskNotifyGive(ctx->feed_tasks[xPortGetCoreID()]);
+
+        // transmission is started in renderer threads, now wait util it's done
         xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
 
         for (int i = 0; i < NUM_FEED_THREADS; i++) {
@@ -157,9 +133,9 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
 
 
     EpdRect area = ctx->area;
-    int min_y, max_y, bytes_per_line;
+    int min_y, max_y, bytes_per_line, _ppB;
     const uint8_t *ptr_start;
-    get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y);
+    get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y, &_ppB);
 
     lut_func_t input_calc_func = get_lut_function();
 

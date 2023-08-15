@@ -74,7 +74,8 @@ typedef struct {
 
 typedef void (*lut_func_t)(const uint32_t *, uint8_t *, const uint8_t *, uint32_t);
 
-void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y);
+void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y, int* pixels_per_byte);
 lut_func_t get_lut_function();
+void prepare_frame(RenderContext_t *ctx);
 
 #endif // __RENDER_H

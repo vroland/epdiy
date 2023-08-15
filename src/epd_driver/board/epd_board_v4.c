@@ -1,5 +1,9 @@
 #include "epd_board.h"
 
+#include "sdkconfig.h"
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+
 #include "epd_board_common.h"
 #include "../display_ops.h"
 #include "../i2s_data_bus.h"
@@ -180,3 +184,5 @@ const EpdBoardDefinition epd_board_v4 = {
   .temperature_init = epd_board_temperature_init_v2,
   .ambient_temperature = epd_board_ambient_temperature_v2,
 };
+
+#endif

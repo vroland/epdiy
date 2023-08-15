@@ -12,6 +12,10 @@
 
 static int v6_wait_for_interrupt(int timeout) __attribute__((unused));
 
+#include "sdkconfig.h"
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+
 #define CFG_SCL             GPIO_NUM_33
 #define CFG_SDA             GPIO_NUM_32
 #define CFG_INTR            GPIO_NUM_35
@@ -300,3 +304,5 @@ const EpdBoardDefinition epd_board_v6 = {
   .temperature_init = NULL,
   .ambient_temperature = epd_board_ambient_temperature,
 };
+
+#endif
