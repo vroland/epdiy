@@ -262,8 +262,6 @@ void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t*
 }
 
 void IRAM_ATTR feed_display(int thread_id) {
-    ESP_LOGI("epdiy", "thread id: %d", thread_id);
-
     while (true) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 

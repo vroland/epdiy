@@ -226,8 +226,6 @@ void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short tim
 void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
     uint8_t line_buf[EPD_WIDTH];
 
-    //ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
     ctx->skipping = 0;
     EpdRect area = ctx->area;
     enum EpdDrawMode mode = ctx->mode;
@@ -305,13 +303,6 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
            l < FRAME_LINES) {
         // if (thread_id) gpio_set_level(15, 0);
         ctx->line_threads[l] = thread_id;
-
-        // FIXME: handle too-small updates
-        // queue is sufficiently filled to fill both bounce buffers, frame
-        // can begin
-        if (l - min_y == 31) {
-            xTaskNotifyGive(ctx->feed_tasks[1]);
-        }
 
         if (l < min_y || l >= max_y ||
             (ctx->drawn_lines != NULL &&
