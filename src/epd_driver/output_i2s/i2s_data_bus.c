@@ -300,7 +300,7 @@ void i2s_bus_init(i2s_bus_config *cfg, uint32_t epd_row_width) {
   dev->conf.tx_start = 0;
 }
 
-void i2s_deinit() {
+void i2s_bus_deinit() {
   esp_intr_free(gI2S_intr_handle);
 
   free(i2s_state.buf_a);

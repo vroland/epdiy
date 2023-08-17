@@ -1,5 +1,5 @@
-#include "s3_lcd.h"
-#include "render_method.h"
+#include "lcd_driver.h"
+#include "../output_common/render_method.h"
 
 #ifdef RENDER_METHOD_LCD
 
@@ -8,37 +8,37 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "soc/rmt_periph.h"
-#include "soc/lcd_periph.h"
-#include "driver/rmt_types.h"
-#include "driver/rmt_types_legacy.h"
-#include "hal/rmt_types.h"
-#include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "esp_timer.h"
-#include "driver/rmt_tx.h"
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_rgb.h"
-#include "driver/gpio.h"
-#include "hal/gpio_hal.h"
-#include "esp_check.h"
-#include "esp_err.h"
-#include "esp_log.h"
-//#include "driver/rmt.h"
-#include "soc/rmt_struct.h"
-#include "hal/rmt_ll.h"
-#include "hal/lcd_ll.h"
-#include "soc/lcd_periph.h"
-#include "hal/lcd_hal.h"
-#include "hal/lcd_ll.h"
-#include "hal/dma_types.h"
-#include "esp_private/gdma.h"
-#include "hal/gdma_ll.h"
-#include "rom/cache.h"
-#include "lut.h"
-#include "esp_private/periph_ctrl.h"
+#include <soc/rmt_periph.h>
+#include <soc/lcd_periph.h>
+#include <driver/rmt_types.h>
+#include <driver/rmt_types_legacy.h>
+#include <hal/rmt_types.h>
+#include <sdkconfig.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/semphr.h>
+#include <esp_timer.h>
+#include <driver/rmt_tx.h>
+#include <esp_lcd_panel_ops.h>
+#include <esp_lcd_panel_rgb.h>
+#include <driver/gpio.h>
+#include <hal/gpio_hal.h>
+#include <esp_check.h>
+#include <esp_err.h>
+#include <esp_log.h>
+#include <soc/rmt_struct.h>
+#include <hal/rmt_ll.h>
+#include <hal/lcd_ll.h>
+#include <soc/lcd_periph.h>
+#include <hal/lcd_hal.h>
+#include <hal/lcd_ll.h>
+#include <hal/dma_types.h>
+#include <esp_private/gdma.h>
+#include <hal/gdma_ll.h>
+#include <rom/cache.h>
+#include <esp_private/periph_ctrl.h>
+
+#include "../output_common/lut.h"
 
 #define TAG "epdiy_s3"
 
@@ -524,6 +524,8 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
     ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
 
     init_ckv_rmt();
+
+    epd_lcd_line_source_cb(NULL, NULL);
 
     ESP_LOGI(TAG, "LCD init done.");
 

@@ -1,21 +1,21 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "line_queue.h"
-#include "render_method.h"
+#include "../output_common/render_method.h"
 
 #ifdef RENDER_METHOD_LCD
 
+#include <rom/cache.h>
+#include <esp_log.h>
+
 #include "render_lcd.h"
-#include "include/epd_board.h"
-#include "include/epd_driver.h"
-#include "include/epd_internals.h"
-#include "lut.h"
-#include "render.h"
-#include "s3_lcd.h"
-#include "display_ops.h"
-#include "rom/cache.h"
-#include "esp_log.h"
+#include "epd_board.h"
+#include "epd_driver.h"
+#include "epd_internals.h"
+#include "lcd_driver.h"
+#include "../output_common/line_queue.h"
+#include "../output_common/lut.h"
+#include "../output_common/render_context.h"
 
 static bool IRAM_ATTR fill_line_noop(RenderContext_t* _ctx, uint8_t *line) {
     memset(line, 0x00, EPD_LINE_BYTES);
@@ -37,7 +37,7 @@ static bool IRAM_ATTR retrieve_line_isr(RenderContext_t* ctx, uint8_t *buf) {
         return false;
     }
     int thread = ctx->line_threads[ctx->lines_consumed];
-    assert(thread < NUM_FEED_THREADS);
+    assert(thread < NUM_RENDER_THREADS);
 
     LineQueue_t *lq = &ctx->line_queues[thread];
 
@@ -71,7 +71,7 @@ void lcd_do_update(RenderContext_t *ctx) {
 
     for (uint8_t k = 0; k < ctx->cycle_frames; k++) {
         epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
-        prepare_frame(ctx);
+        prepare_context_for_next_frame(ctx);
 
         // start both feeder tasks
         xTaskNotifyGive(ctx->feed_tasks[!xPortGetCoreID()]);
@@ -80,7 +80,7 @@ void lcd_do_update(RenderContext_t *ctx) {
         // transmission is started in renderer threads, now wait util it's done
         xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
 
-        for (int i = 0; i < NUM_FEED_THREADS; i++) {
+        for (int i = 0; i < NUM_RENDER_THREADS; i++) {
             xSemaphoreTake(ctx->feed_done_smphr[i], portMAX_DELAY);
         }
 
@@ -137,7 +137,7 @@ void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
     const uint8_t *ptr_start;
     get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y, &_ppB);
 
-    lut_func_t input_calc_func = get_lut_function();
+    lut_func_t input_calc_func = get_lut_function(ctx);
 
     assert(area.width == EPD_WIDTH && area.x == 0 && !ctx->error);
 

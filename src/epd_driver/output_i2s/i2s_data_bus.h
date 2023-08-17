@@ -5,12 +5,12 @@
 
 #pragma once
 
-#include "driver/gpio.h"
-#include "soc/io_mux_reg.h"
-#include "soc/gpio_struct.h"
-#include "soc/gpio_periph.h"
-#include "esp_attr.h"
 #include <stdint.h>
+#include <driver/gpio.h>
+#include <soc/io_mux_reg.h>
+#include <soc/gpio_struct.h>
+#include <soc/gpio_periph.h>
+#include <esp_attr.h>
 
 /**
  * I2S bus configuration parameters.
@@ -74,4 +74,4 @@ bool i2s_is_busy();
 /**
  * Give up allocated resources.
  */
-void i2s_deinit();
+void i2s_bus_deinit();

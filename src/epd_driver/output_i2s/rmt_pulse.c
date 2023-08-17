@@ -1,4 +1,4 @@
-#include "render_method.h"
+#include "../output_common/render_method.h"
 
 #ifdef RENDER_METHOD_I2S
 

@@ -1,22 +1,23 @@
-#include "include/epd_board.h"
-#include "render_method.h"
+#include "render_i2s.h"
+
+#include "../output_common/render_method.h"
 
 #ifdef RENDER_METHOD_I2S
 #include <string.h>
 #include <stdint.h>
 
-#include "esp_log.h"
+#include <esp_log.h>
+
+#include "epd_driver.h"
+#include "epd_internals.h"
 
 // output a row to the display.
-#include "render_i2s.h"
-#include "render.h"
 #include "i2s_data_bus.h"
-#include "display_ops.h"
-#include "lut.h"
-#include "include/epd_internals.h"
+#include "../output_common/lut.h"
+#include "../output_common/render_context.h"
 #include "rmt_pulse.h"
 
-#include <stdint.h>
+
 
 static const epd_ctrl_state_t NoChangeState = {0};
 
@@ -38,6 +39,7 @@ static void IRAM_ATTR i2s_output_row(uint32_t output_time_dus) {
     while (i2s_is_busy() || rmt_busy()) {
     };
 
+    const EpdBoardDefinition* epd_board = epd_current_board();
     epd_ctrl_state_t* ctrl_state = epd_ctrl_state();
     epd_ctrl_state_t mask = NoChangeState;
 
@@ -95,6 +97,7 @@ static void i2s_start_frame() {
     while (i2s_is_busy() || rmt_busy()) {
     };
 
+    const EpdBoardDefinition* epd_board = epd_current_board();
     epd_ctrl_state_t* ctrl_state = epd_ctrl_state();
     epd_ctrl_state_t mask = NoChangeState;
 
@@ -131,6 +134,7 @@ static void i2s_start_frame() {
  * End a draw cycle.
  */
 static void i2s_end_frame() {
+    const EpdBoardDefinition* epd_board = epd_current_board();
     epd_ctrl_state_t* ctrl_state = epd_ctrl_state();
     epd_ctrl_state_t mask = NoChangeState;
 
@@ -159,7 +163,7 @@ static void i2s_end_frame() {
 void i2s_do_update(RenderContext_t *ctx) {
 
     for (uint8_t k = 0; k < ctx->cycle_frames; k++) {
-        prepare_frame(ctx);
+        prepare_context_for_next_frame(ctx);
 
         // start both feeder tasks
         xTaskNotifyGive(ctx->feed_tasks[!xPortGetCoreID()]);
@@ -168,7 +172,7 @@ void i2s_do_update(RenderContext_t *ctx) {
         // transmission is started in renderer threads, now wait util it's done
         xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
 
-        for (int i = 0; i < NUM_FEED_THREADS; i++) {
+        for (int i = 0; i < NUM_RENDER_THREADS; i++) {
             xSemaphoreTake(ctx->feed_done_smphr[i], portMAX_DELAY);
         }
 
@@ -231,10 +235,10 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
     enum EpdDrawMode mode = ctx->mode;
     int frame_time = ctx->frame_time;
 
-    lut_func_t input_calc_func = get_lut_function();
+    lut_func_t input_calc_func = get_lut_function(ctx);
 
     i2s_start_frame();
-    for (int i = 0; i < FRAME_LINES; i++) {
+    for (int i = 0; i < EPD_HEIGHT; i++) {
         LineQueue_t *lq = &ctx->line_queues[0];
 
         memset(line_buf, 0, EPD_WIDTH);
@@ -277,7 +281,7 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
 
     EpdRect area = ctx->area;
 
-    lut_func_t input_calc_func = get_lut_function();
+    lut_func_t input_calc_func = get_lut_function(ctx);
 
     int min_y, max_y, bytes_per_line, pixels_per_byte;
     const uint8_t *ptr_start;
@@ -299,8 +303,7 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
     line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
 
     int l = 0;
-    while (l = atomic_fetch_add(&ctx->lines_prepared, 1),
-           l < FRAME_LINES) {
+    while (l = atomic_fetch_add(&ctx->lines_prepared, 1), l < EPD_HEIGHT) {
         // if (thread_id) gpio_set_level(15, 0);
         ctx->line_threads[l] = thread_id;
 
@@ -394,6 +397,10 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
             memset(input_line, 255, EPD_WIDTH / pixels_per_byte);
         }
     }
+}
+
+void i2s_deinit() {
+    i2s_bus_deinit();
 }
 
 #endif

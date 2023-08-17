@@ -7,8 +7,10 @@
 #include "freertos/queue.h"
 #include "epd_driver.h"
 
-// number of bytes needed for one line of EPD pixel data.
-#define EPD_LINE_BYTES EPD_WIDTH / 4
+// Make a block of 4 pixels lighter on the EPD.
+#define CLEAR_BYTE 0B10101010
+// Make a block of 4 pixels darker on the EPD.
+#define DARK_BYTE 0B01010101
 
 ///////////////////////////// Utils /////////////////////////////////////
 

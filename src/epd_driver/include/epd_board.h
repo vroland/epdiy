@@ -8,6 +8,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <xtensa/core-macros.h>
+
+/**
+ * State of display control pins.
+ */
 typedef struct {
   bool ep_latch_enable : 1;
   bool ep_output_enable : 1;
@@ -16,6 +21,9 @@ typedef struct {
   bool ep_stv : 1;
 } epd_ctrl_state_t;
 
+/**
+ * Operations available on an epdiy board.
+ */
 typedef struct {
   void (*init)(uint32_t epd_row_width);
   void (*deinit)(void);
@@ -27,7 +35,30 @@ typedef struct {
   float (*ambient_temperature)(void);
 } EpdBoardDefinition;
 
-extern const EpdBoardDefinition *epd_board;
+/**
+ * Get the current board.
+ */
+const EpdBoardDefinition* epd_current_board();
+
+/**
+ * Get the board's current control register state.
+ */
+epd_ctrl_state_t *epd_ctrl_state();
+
+/**
+ * Set the display mode pin.
+ */
+void epd_set_mode(bool state);
+
+/**
+ * Initialize the control register
+ */
+void epd_control_reg_init();
+
+/**
+ * Put the control register into the state of lowest power consumption.
+ */
+void epd_control_reg_deinit();
 
 // Built in board definitions
 extern const EpdBoardDefinition epd_board_lilygo_t5_47;
@@ -38,3 +69,7 @@ extern const EpdBoardDefinition epd_board_v5;
 extern const EpdBoardDefinition epd_board_v6;
 extern const EpdBoardDefinition epd_board_s3_prototype;
 
+/**
+ * Helper for short, precise delays.
+ */
+void epd_busy_delay(uint32_t cycles);

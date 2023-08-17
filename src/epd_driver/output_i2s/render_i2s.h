@@ -1,18 +1,28 @@
-#pragma once
+#include "epd_driver.h"
 
-#include "render_method.h"
-#include "driver/gpio.h"
-#include "epd_board.h"
-#include "esp_attr.h"
-
-#include "esp_system.h"  // for ESP_IDF_VERSION_VAL
+#include <driver/gpio.h>
+#include <esp_system.h>  // for ESP_IDF_VERSION_VAL
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-#include "hal/gpio_ll.h"
-#include "soc/gpio_struct.h"
+#include <hal/gpio_ll.h>
+#include <soc/gpio_struct.h>
 #endif
 
+#include "sdkconfig.h"
+#include "../output_common/render_context.h"
+
+
+void i2s_feed_frame(RenderContext_t *ctx, int thread_id);
+void i2s_output_frame(RenderContext_t *ctx, int thread_id);
+void i2s_do_update(RenderContext_t *ctx);
+void i2s_deinit();
+
+void epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short time, int color);
+
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+
 /*
- * Write bits directly using the registers.
+ * Write bits directly using the registers in the ESP32.
  * Won't work for some pins (>= 32).
  */
 inline void fast_gpio_set_hi(gpio_num_t gpio_num) {
@@ -33,12 +43,4 @@ inline void fast_gpio_set_lo(gpio_num_t gpio_num) {
 #endif
 }
 
-void busy_delay(uint32_t cycles);
-
-void epd_hw_init(uint32_t epd_row_width);
-void epd_poweron();
-void epd_poweroff();
-
-epd_ctrl_state_t *epd_ctrl_state();
-void epd_set_mode(bool state);
-
+#endif

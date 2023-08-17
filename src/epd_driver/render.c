@@ -1,31 +1,24 @@
-#include "epd_temperature.h"
-
-#include "render_method.h"
-#include "display_ops.h"
-#include "epd_driver.h"
-#include "include/epd_board.h"
-#include "include/epd_driver.h"
-#include "include/epd_internals.h"
-#include "lut.h"
 #include "render.h"
-#include "s3_lcd.h"
-#include "esp_log.h"
-#include "esp_types.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-#include "freertos/task.h"
-#include "xtensa/core-macros.h"
+
+#include "epd_driver.h"
+#include "epd_board.h"
+#include "epd_internals.h"
+
 #include <stdalign.h>
 #include <stdint.h>
 #include <string.h>
+#include <esp_log.h>
+#include <esp_types.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 
-#ifdef RENDER_METHOD_LCD
-#include "render_lcd.h"
-#elif RENDER_METHOD_I2S
-#include "render_i2s.h"
-#else
-#error "invalid render method!"
-#endif
+#include "board/epd_temperature.h"
+#include "include/epd_board.h"
+#include "output_common/render_context.h"
+#include "output_common/render_method.h"
+#include "output_lcd/render_lcd.h"
+#include "output_i2s/render_i2s.h"
 
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
@@ -83,30 +76,6 @@ static int get_waveform_index(const EpdWaveform *waveform,
 
 /////////////////////////////  API Procedures //////////////////////////////////
 
-/// start the next frame in the current update cycle
-void IRAM_ATTR prepare_frame(RenderContext_t *ctx) {
-    int frame_time = DEFAULT_FRAME_TIME;
-    if (ctx->phase_times != NULL) {
-        frame_time = ctx->phase_times[ctx->current_frame];
-    }
-
-    if (ctx->mode & MODE_EPDIY_MONOCHROME) {
-        frame_time = MONOCHROME_FRAME_TIME;
-    }
-    ctx->frame_time = frame_time;
-
-    enum EpdDrawMode mode = ctx->mode;
-    const EpdWaveformPhases *phases =
-        ctx->waveform->mode_data[ctx->waveform_index]
-            ->range_data[ctx->waveform_range];
-
-    ctx->error |=
-        calculate_lut(ctx->conversion_lut, ctx->conversion_lut_size, mode,
-                      ctx->current_frame, phases);
-
-    ctx->lines_prepared = 0;
-    ctx->lines_consumed = 0;
-}
 
 
 // FIXME: fix misleading naming:
@@ -182,85 +151,6 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 }
 
 
-
-lut_func_t get_lut_function() {
-    const enum EpdDrawMode mode = render_context.mode;
-    if (mode & MODE_PACKING_2PPB) {
-        if (render_context.conversion_lut_size == 1024) {
-            if (mode & PREVIOUSLY_WHITE) {
-                return &calc_epd_input_4bpp_1k_lut_white;
-            } else if (mode & PREVIOUSLY_BLACK) {
-                return &calc_epd_input_4bpp_1k_lut_black;
-            } else {
-                render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-            }
-        } else if (render_context.conversion_lut_size == (1 << 16)) {
-            return &calc_epd_input_4bpp_lut_64k;
-        } else {
-            render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-        }
-    } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-        if (render_context.conversion_lut_size == 1024) {
-            return &calc_epd_input_1ppB;
-        } else {
-            return &calc_epd_input_1ppB_64k;
-        }
-    } else if (mode & MODE_PACKING_8PPB) {
-        return &calc_epd_input_1bpp;
-    } else {
-        render_context.error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-    }
-    return NULL;
-}
-
-void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y, int* pixels_per_byte) {
-    EpdRect area = ctx->area;
-
-    enum EpdDrawMode mode = ctx->mode;
-    const EpdRect crop_to = ctx->crop_to;
-    const bool horizontally_cropped = !(crop_to.x == 0 && crop_to.width == area.width);
-    const bool vertically_cropped = !(crop_to.y == 0 && crop_to.height == area.height);
-
-    // number of pixels per byte of input data
-    int width_divider = 0;
-
-    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-        *bytes_per_line = area.width;
-        width_divider = 1;
-    } else if (mode & MODE_PACKING_2PPB) {
-        *bytes_per_line = area.width / 2 + area.width % 2;
-        width_divider = 2;
-    } else if (mode & MODE_PACKING_8PPB) {
-        *bytes_per_line = (area.width / 8 + (area.width % 8 > 0));
-        width_divider = 8;
-    } else {
-        ctx->error |= EPD_DRAW_INVALID_PACKING_MODE;
-    }
-
-    int crop_x = (horizontally_cropped ? crop_to.x : 0);
-    int crop_w = (horizontally_cropped ? crop_to.width : 0);
-    int crop_y = (vertically_cropped ? crop_to.y : 0);
-    int crop_h = (vertically_cropped ? crop_to.height : 0);
-
-    const uint8_t *ptr_start = ctx->data_ptr;
-
-    // Adjust for negative starting coordinates with optional crop
-    if (area.x - crop_x < 0) {
-        ptr_start += -(area.x - crop_x) / width_divider;
-    }
-
-    if (area.y - crop_y < 0) {
-        ptr_start += -(area.y - crop_y) * *bytes_per_line;
-    }
-
-    // calculate start and end row with crop
-    *min_y = area.y + crop_y;
-    *max_y =
-        min(*min_y + (vertically_cropped ? crop_h : area.height), area.height);
-    *start_ptr = ptr_start;
-    *pixels_per_byte = width_divider;
-}
-
 void IRAM_ATTR feed_display(int thread_id) {
     while (true) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -319,8 +209,8 @@ void epd_init(enum EpdInitOptions options) {
     assert(epd_board != NULL);
 #endif
 
-    epd_board->init(EPD_WIDTH);
-    epd_hw_init(EPD_WIDTH);
+    epd_current_board()->init(EPD_WIDTH);
+    epd_control_reg_init();
     epd_temperature_init();
 
     size_t lut_size = 0;
@@ -345,7 +235,7 @@ void epd_init(enum EpdInitOptions options) {
 
     render_context.frame_done = xSemaphoreCreateBinary();
 
-    for (int i = 0; i < NUM_FEED_THREADS; i++) {
+    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         render_context.feed_done_smphr[i] = xSemaphoreCreateBinary();
     }
 
@@ -359,15 +249,13 @@ void epd_init(enum EpdInitOptions options) {
         queue_len = 8;
     }
 
-    int feed_threads = NUM_FEED_THREADS;
 #ifdef RENDER_METHOD_LCD
     size_t queue_elem_size = EPD_LINE_BYTES;
-    epd_lcd_line_source_cb(NULL, NULL);
 #elif defined(RENDER_METHOD_I2S)
     size_t queue_elem_size = EPD_WIDTH;
 #endif
 
-    for (int i = 0; i < feed_threads; i++) {
+    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         render_context.line_queues[i].size = queue_len;
         render_context.line_queues[i].element_size = queue_elem_size;
         render_context.line_queues[i].current = 0;
@@ -381,6 +269,27 @@ void epd_init(enum EpdInitOptions options) {
             ESP_LOGE("epd", "could not allocate line queue!");
             abort();
         }
+    }
+}
+
+
+void epd_deinit() {
+    const EpdBoardDefinition* epd_board = epd_current_board();
+
+    epd_board->poweroff(epd_ctrl_state());
+
+#ifdef RENDER_METHOD_I2S
+    i2s_deinit();
+#endif
+
+    epd_control_reg_deinit();
+
+    if (epd_board->deinit) {
+        epd_board->deinit();
+    }
+
+    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
+        vTaskDelete(render_context.feed_tasks[i]);
     }
 }
 
@@ -466,3 +375,4 @@ EpdRect epd_difference_image_cropped(const uint8_t *to, const uint8_t *from,
         *previously_black = (from_or == 0x00);
     return result;
 }
+

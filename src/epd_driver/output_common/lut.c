@@ -1,10 +1,8 @@
 #include "lut.h"
 
 #include "render_method.h"
+#include "render_context.h"
 
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "freertos/task.h"
 #include <string.h>
 
 #include "esp_system.h" // for ESP_IDF_VERSION_VAL
@@ -57,11 +55,6 @@ const uint32_t lut_1bpp_black[256] = {
     0x0111, 0x0110, 0x0105, 0x0104, 0x0101, 0x0100, 0x0055, 0x0054, 0x0051,
     0x0050, 0x0045, 0x0044, 0x0041, 0x0040, 0x0015, 0x0014, 0x0011, 0x0010,
     0x0005, 0x0004, 0x0001, 0x0000};
-
-// Timestamp when the last frame draw was started.
-// This is used to enforce a minimum frame draw time, allowing
-// all pixels to set.
-static uint64_t last_frame_start = 0;
 
 inline int min(int x, int y) { return x < y ? x : y; }
 inline int max(int x, int y) { return x > y ? x : y; }
@@ -523,109 +516,3 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
   }
   return EPD_DRAW_SUCCESS;
 }
-
-// void IRAM_ATTR feed_display(OutputParams *params) {
-// #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//   uint8_t line_buf[EPD_LINE_BYTES];
-// #endif
-//
-//   while (true) {
-//     xSemaphoreTake(params->start_smphr, portMAX_DELAY);
-//
-//     skipping = 0;
-//     EpdRect area = params->area;
-//     enum EpdDrawMode mode = params->mode;
-//     int frame_time = params->frame_time;
-//
-//     params->error |= calculate_lut(params);
-//
-//     void (*input_calc_func)(const uint32_t *, uint8_t *, const uint8_t *) =
-//         NULL;
-//     if (mode & MODE_PACKING_2PPB) {
-//       if (params->conversion_lut_size == 1024) {
-//         if (mode & PREVIOUSLY_WHITE) {
-//           input_calc_func = &calc_epd_input_4bpp_1k_lut_white;
-//         } else if (mode & PREVIOUSLY_BLACK) {
-//           input_calc_func = &calc_epd_input_4bpp_1k_lut_black;
-//         } else {
-//           params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-//         }
-//       } else if (params->conversion_lut_size == (1 << 16)) {
-//         input_calc_func = &calc_epd_input_4bpp_lut_64k;
-//       } else {
-//         params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-//       }
-//     } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-//       input_calc_func = &calc_epd_input_1ppB;
-//     } else if (mode & MODE_PACKING_8PPB) {
-//       input_calc_func = &calc_epd_input_1bpp;
-//     } else {
-//       params->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-//     }
-//
-//     // Adjust min and max row for crop.
-//     const bool crop = (params->crop_to.width > 0 && params->crop_to.height > 0);
-//     int crop_y = (crop ? params->crop_to.y : 0);
-//     int min_y = area.y + crop_y;
-//     int max_y = min(min_y + (crop ? params->crop_to.height : area.height), area.height);
-//
-//     // interval of the output line that is needed
-//     // FIXME: only lookup needed parts
-//     int line_start_x = area.x + (crop ? params->crop_to.x : 0);
-//     int line_end_x = line_start_x + (crop ? params->crop_to.width : area.width);
-//     line_start_x = min(max(line_start_x, 0), epd_width);
-//     line_end_x = min(max(line_end_x, 0), epd_width);
-//
-// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//     uint64_t now = esp_timer_get_time();
-//     uint64_t diff = (now - last_frame_start) / 1000;
-//     if (diff < MINIMUM_FRAME_TIME) {
-//       vTaskDelay(MINIMUM_FRAME_TIME - diff);
-//     }
-// #endif
-//
-//     last_frame_start = esp_timer_get_time();
-//
-//     epd_start_frame();
-//     for (int i = 0; i < FRAME_LINES; i++) {
-//       if (i < min_y || i >= max_y || (params->drawn_lines != NULL && !params->drawn_lines[i - area.y])) {
-// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//         skip_row(frame_time);
-// #else
-//         memset(line_buf, 0x00, EPD_LINE_BYTES);
-//         xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
-// #endif
-//         continue;
-//       }
-//
-//       uint8_t output[epd_width];
-//       xQueueReceive(*params->pixel_queue, output, portMAX_DELAY);
-// #ifndef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//       uint8_t* line_buf = epd_get_current_buffer();
-// #endif
-//
-//       if (!params->error) {
-//         (*input_calc_func)((uint32_t *)output, line_buf, params->conversion_lut);
-//         if (line_start_x > 0 || line_end_x < epd_width) {
-//           mask_line_buffer(line_buf, line_start_x, line_end_x);
-//         }
-//       }
-//         gpio_set_level(15, 0);
-//       write_row(frame_time);
-// #ifdef CONFIG_EPD_BOARD_S3_PROTOTYPE
-//       xQueueSendToBack(*params->display_queue, line_buf, portMAX_DELAY);
-// #endif
-//         gpio_set_level(15, 1);
-//     }
-//     if (!skipping) {
-//       // Since we "pipeline" row output, we still have to latch out the last
-//       // row.
-//       write_row(frame_time);
-//     }
-//     epd_end_frame();
-//
-//     if (params->done_cb != NULL) {
-//         params->done_cb();
-//     }
-//   }
-// }

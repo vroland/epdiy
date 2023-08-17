@@ -4,9 +4,9 @@
 #include "../include/board/epd_board_v6.h"
 
 #include "esp_log.h"
-#include "../s3_lcd.h"
-#include "../tps65185.h"
-#include "../pca9555.h"
+#include "../output_lcd/lcd_driver.h"
+#include "tps65185.h"
+#include "pca9555.h"
 
 #include <driver/gpio.h>
 #include <driver/i2c.h>

@@ -7,9 +7,10 @@ extern "C" {
 #endif
 
 #pragma once
-#include "esp_attr.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <esp_attr.h>
+
 #include "epd_internals.h"
 #include "epd_board.h"
 
@@ -194,7 +195,11 @@ typedef struct {
 /** Initialize the ePaper display */
 void epd_init(enum EpdInitOptions options);
 
-/** Set the board hardware definition. This must be called before epd_init() */
+/**
+ * Set the board hardware definition. This must be called before epd_init()
+ *
+ * The implementation of this method is in board/epd_board.c.
+ **/
 void epd_set_board(const EpdBoardDefinition *board);
 
 /** Get the display rotation value */

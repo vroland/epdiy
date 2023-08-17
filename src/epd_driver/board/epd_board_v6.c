@@ -2,11 +2,11 @@
 #include "../include/board/epd_board_v6.h"
 
 #include "esp_log.h"
-#include "../display_ops.h"
-#include "../i2s_data_bus.h"
-#include "../rmt_pulse.h"
-#include "../tps65185.h"
-#include "../pca9555.h"
+#include "../output_i2s/rmt_pulse.h"
+#include "../output_i2s/i2s_data_bus.h"
+#include "../output_i2s/render_i2s.h"
+#include "tps65185.h"
+#include "pca9555.h"
 
 #include <driver/i2c.h>
 

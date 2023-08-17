@@ -5,9 +5,9 @@
 #ifdef CONFIG_IDF_TARGET_ESP32
 
 #include "epd_board_common.h"
-#include "../display_ops.h"
-#include "../i2s_data_bus.h"
-#include "../rmt_pulse.h"
+#include "../output_i2s/i2s_data_bus.h"
+#include "../output_i2s/rmt_pulse.h"
+#include "../output_i2s/render_i2s.h"
 
 #define CFG_DATA GPIO_NUM_23
 #define CFG_CLK GPIO_NUM_18
@@ -112,13 +112,13 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   };
   config_reg.power_disable = false;
   epd_board_set_ctrl(state, &mask);
-  busy_delay(100 * 240);
+  epd_busy_delay(100 * 240);
   config_reg.neg_power_enable = true;
   epd_board_set_ctrl(state, &mask);
-  busy_delay(500 * 240);
+  epd_busy_delay(500 * 240);
   config_reg.pos_power_enable = true;
   epd_board_set_ctrl(state, &mask);
-  busy_delay(100 * 240);
+  epd_busy_delay(100 * 240);
   state->ep_stv = true;
   state->ep_sth = true;
   mask.ep_sth = true;
@@ -133,12 +133,12 @@ static void epd_board_poweroff(epd_ctrl_state_t *state) {
   };
   config_reg.pos_power_enable = false;
   epd_board_set_ctrl(state, &mask);
-  busy_delay(10 * 240);
+  epd_busy_delay(10 * 240);
 
   config_reg.neg_power_enable = false;
   config_reg.pos_power_enable = false;
   epd_board_set_ctrl(state, &mask);
-  busy_delay(100 * 240);
+  epd_busy_delay(100 * 240);
 
   state->ep_stv = false;
   state->ep_output_enable = false;

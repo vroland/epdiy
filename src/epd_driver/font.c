@@ -5,7 +5,7 @@
 #if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
 #include "rom/miniz.h"
 #else
-#include "esp32/rom/miniz.h"
+#include <miniz.h>
 #endif
 #include <math.h>
 #include <stdio.h>
@@ -233,12 +233,12 @@ EpdRect epd_get_string_rect (const EpdFont *font, const char *string,
   EpdFontProperties props = *properties;
   props.flags |= EPD_DRAW_BACKGROUND;
   EpdRect temp  = {.x = x, .y = y, .width = 0, .height = 0};
-  if (*string == '\0') 
+  if (*string == '\0')
     return temp;
   int minx = 100000, miny = 100000, maxx = -1, maxy = -1;
   int temp_x = x;
   int temp_y = y + font->ascender;
-  
+
   // Go through each line and get it's co-ordinates
   uint32_t c;
   while ((c = next_cp((const uint8_t **)&string)))
@@ -248,7 +248,7 @@ EpdRect epd_get_string_rect (const EpdFont *font, const char *string,
       temp_x = x;
       temp_y += font->advance_y;
     }
-    else 
+    else
       get_char_bounds(font, c, &temp_x, &temp_y, &minx, &miny, &maxx, &maxy, &props);
   }
   temp.width = maxx - x + ( margin * 2 );

@@ -1,10 +1,10 @@
 #include "epd_driver.h"
-#include "epd_temperature.h"
+#include "board/epd_temperature.h"
 
-#include "esp_assert.h"
-#include "esp_heap_caps.h"
-#include "esp_log.h"
-#include "esp_types.h"
+#include <esp_assert.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
+#include <esp_types.h>
 
 // Simple x and y coordinate
 typedef struct {
@@ -469,4 +469,12 @@ void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uin
     } else {
       epd_copy_to_framebuffer(image_area, image_buffer, framebuffer);
     }
+}
+
+void epd_poweron() {
+  epd_current_board()->poweron(epd_ctrl_state());
+}
+
+void epd_poweroff() {
+  epd_current_board()->poweroff(epd_ctrl_state());
 }
