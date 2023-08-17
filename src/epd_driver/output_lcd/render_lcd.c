@@ -115,7 +115,7 @@ void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
 }
 
 #define int_min(a, b) (((a) < (b)) ? (a) : (b))
-void IRAM_ATTR lcd_feed_frame(RenderContext_t *ctx, int thread_id) {
+void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
     uint8_t input_line[EPD_WIDTH];
     LineQueue_t *lq = &ctx->line_queues[thread_id];
     int l = 0;

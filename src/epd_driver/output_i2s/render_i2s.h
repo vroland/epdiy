@@ -10,14 +10,30 @@
 #include "sdkconfig.h"
 #include "../output_common/render_context.h"
 
-
-void i2s_feed_frame(RenderContext_t *ctx, int thread_id);
-void i2s_output_frame(RenderContext_t *ctx, int thread_id);
-void i2s_do_update(RenderContext_t *ctx);
-void i2s_deinit();
-
+/**
+ * Lighten / darken picels using the I2S driving method.
+ */
 void epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short time, int color);
 
+/**
+ * Do a full update cycle with a configured context.
+ */
+void i2s_do_update(RenderContext_t *ctx);
+
+/**
+ * Worker to fetch framebuffer data and write into a queue for processing.
+ */
+void i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id);
+
+/**
+ * Worker to output frame data to the display.
+ */
+void i2s_output_frame(RenderContext_t *ctx, int thread_id);
+
+/**
+ * Deinitialize the I2S peripheral for low power consumption.
+ */
+void i2s_deinit();
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 

@@ -56,8 +56,8 @@ const uint32_t lut_1bpp_black[256] = {
     0x0050, 0x0045, 0x0044, 0x0041, 0x0040, 0x0015, 0x0014, 0x0011, 0x0010,
     0x0005, 0x0004, 0x0001, 0x0000};
 
-inline int min(int x, int y) { return x < y ? x : y; }
-inline int max(int x, int y) { return x > y ? x : y; }
+static inline int min(int x, int y) { return x < y ? x : y; }
+static inline int max(int x, int y) { return x > y ? x : y; }
 
 // status tracker for row skipping
 uint32_t skipping;

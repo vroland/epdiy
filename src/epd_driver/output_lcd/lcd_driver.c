@@ -42,8 +42,8 @@
 
 #define TAG "epdiy_s3"
 
-inline int min(int x, int y) { return x < y ? x : y; }
-inline int max(int x, int y) { return x > y ? x : y; }
+static inline int min(int x, int y) { return x < y ? x : y; }
+static inline int max(int x, int y) { return x > y ? x : y; }
 
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 //#define S3_LCD_PIN_NUM_MODE           4

@@ -156,10 +156,10 @@ void IRAM_ATTR feed_display(int thread_id) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 #ifdef RENDER_METHOD_LCD
-        lcd_feed_frame(&render_context, thread_id);
+        lcd_calculate_frame(&render_context, thread_id);
 #elif defined(RENDER_METHOD_I2S)
         if (thread_id == 0) {
-            i2s_feed_frame(&render_context, thread_id);
+            i2s_fetch_frame_data(&render_context, thread_id);
         } else {
             i2s_output_frame(&render_context, thread_id);
         }
@@ -239,9 +239,7 @@ void epd_init(enum EpdInitOptions options) {
         render_context.feed_done_smphr[i] = xSemaphoreCreateBinary();
     }
 
-    // RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))provide_out,
-    //                                          "epd_fetch", (1 << 12),
-    //                                          &fetch_params, 5, NULL, 0));
+
     int queue_len = 32;
     if (options & EPD_FEED_QUEUE_32) {
         queue_len = 32;

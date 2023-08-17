@@ -267,10 +267,10 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
     xSemaphoreGive(ctx->frame_done);
 }
 
-inline int min(int x, int y) { return x < y ? x : y; }
-inline int max(int x, int y) { return x > y ? x : y; }
+static inline int min(int x, int y) { return x < y ? x : y; }
+static inline int max(int x, int y) { return x > y ? x : y; }
 
-void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
+void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
     uint8_t line_buf[EPD_LINE_BYTES];
     uint8_t input_line[EPD_WIDTH];
 
@@ -281,8 +281,6 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
 
     EpdRect area = ctx->area;
 
-    lut_func_t input_calc_func = get_lut_function(ctx);
-
     int min_y, max_y, bytes_per_line, pixels_per_byte;
     const uint8_t *ptr_start;
     get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y, &pixels_per_byte);
@@ -292,8 +290,6 @@ void IRAM_ATTR i2s_feed_frame(RenderContext_t *ctx, int thread_id) {
     const bool vertically_cropped = !(crop_to.y == 0 && crop_to.height == area.height);
     int crop_x = (horizontally_cropped ? crop_to.x : 0);
     int crop_w = (horizontally_cropped ? crop_to.width : 0);
-    int crop_y = (vertically_cropped ? crop_to.y : 0);
-    int crop_h = (vertically_cropped ? crop_to.height : 0);
 
     // interval of the output line that is needed
     // FIXME: only lookup needed parts
