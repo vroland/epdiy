@@ -13,7 +13,6 @@ set(app_sources "epd_driver.c"
                 "board_specific.c"
                 "builtin_waveforms.c"
                 "highlevel.c"
-                "board/epd_temperature.c"
                 "board/tps65185.c"
                 "board/pca9555.c"
                 "board/epd_board.c"
@@ -23,7 +22,7 @@ set(app_sources "epd_driver.c"
                 "board/epd_board_v4.c"
                 "board/epd_board_v5.c"
                 "board/epd_board_v6.c"
-                "board/epd_board_s3_prototype.c"
+                "board/epd_board_v7.c"
 )
 
 

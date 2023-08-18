@@ -1,12 +1,16 @@
 #include "epd_board.h"
 
-#include "sdkconfig.h"
-
-#ifdef CONFIG_IDF_TARGET_ESP32
-
 #include "../output_i2s/i2s_data_bus.h"
 #include "../output_i2s/rmt_pulse.h"
 #include "../output_i2s/render_i2s.h"
+
+// Make this compile on the S3 to avoid long ifdefs
+#ifndef GPIO_NUM_22
+#define GPIO_NUM_22 0
+#define GPIO_NUM_23 0
+#define GPIO_NUM_24 0
+#define GPIO_NUM_25 0
+#endif
 
 #define CFG_DATA GPIO_NUM_23
 #define CFG_CLK GPIO_NUM_18
@@ -205,9 +209,7 @@ const EpdBoardDefinition epd_board_lilygo_t5_47 = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-
-  .temperature_init = NULL,
-  .ambient_temperature = NULL,
+  .get_temperature = NULL,
 };
 
 const EpdBoardDefinition epd_board_lilygo_t5_47_touch = {
@@ -216,9 +218,6 @@ const EpdBoardDefinition epd_board_lilygo_t5_47_touch = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff_touch,
-
-  .temperature_init = NULL,
-  .ambient_temperature = NULL,
+  .get_temperature = NULL,
+  .set_vcom = NULL,
 };
-
-#endif

@@ -232,7 +232,6 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
 
     ctx->skipping = 0;
     EpdRect area = ctx->area;
-    enum EpdDrawMode mode = ctx->mode;
     int frame_time = ctx->frame_time;
 
     lut_func_t input_calc_func = get_lut_function(ctx);
@@ -287,7 +286,6 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
 
     const EpdRect crop_to = ctx->crop_to;
     const bool horizontally_cropped = !(crop_to.x == 0 && crop_to.width == area.width);
-    const bool vertically_cropped = !(crop_to.y == 0 && crop_to.height == area.height);
     int crop_x = (horizontally_cropped ? crop_to.x : 0);
     int crop_w = (horizontally_cropped ? crop_to.width : 0);
 

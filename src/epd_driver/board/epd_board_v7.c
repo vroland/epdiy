@@ -1,7 +1,5 @@
 #include "epd_board.h"
 #include <stdint.h>
-//////////////////
-#include "../include/board/epd_board_v6.h"
 
 #include "esp_log.h"
 #include "../output_lcd/lcd_driver.h"
@@ -11,11 +9,19 @@
 #include <driver/gpio.h>
 #include <driver/i2c.h>
 
-#include "sdkconfig.h"
+// Make this compile von the ESP32 without ifdefing the whole file
+#ifdef GPIO_NUM_22
+#define GPIO_NUM_40 -1
+#define GPIO_NUM_41 -1
+#define GPIO_NUM_42 -1
+#define GPIO_NUM_43 -1
+#define GPIO_NUM_44 -1
+#define GPIO_NUM_45 -1
+#define GPIO_NUM_46 -1
+#define GPIO_NUM_47 -1
+#define GPIO_NUM_48 -1
+#endif
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
-
-static int v6_wait_for_interrupt(int timeout) __attribute__((unused));
 
 #define CFG_SCL             GPIO_NUM_40
 #define CFG_SDA             GPIO_NUM_39
@@ -65,6 +71,9 @@ typedef struct {
     bool wakeup;
     bool others[8];
 } epd_config_register_t;
+
+/** The VCOM voltage to use. */
+static int vcom = 1600;
 
 static epd_config_register_t config_reg;
 
@@ -142,26 +151,6 @@ static void epd_board_init(uint32_t epd_row_width) {
     epd_lcd_init(&config);
 }
 
-static int v6_wait_for_interrupt(int timeout) {
-  int tries = 0;
-  while (!interrupt_done && gpio_get_level(CFG_INTR) == 1) {
-    if (tries >= 500) {
-        return -1;
-    }
-    tries++;
-    vTaskDelay(1);
-  }
-  int ival = 0;
-  interrupt_done = false;
-  pca9555_read_input(EPDIY_I2C_PORT, 1);
-  ival = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT1);
-  ival |= tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2) << 8;
-  while (!gpio_get_level(CFG_INTR)) { vTaskDelay(1); }
-  return ival;
-}
-
-
-
 static void epd_board_deinit() {
 
   ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
@@ -224,7 +213,7 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
 
   ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
 
-  tps_set_vcom(config_reg.port, epd_board_vcom_v6());
+  tps_set_vcom(config_reg.port, vcom);
 
   state->ep_sth = true;
   mask = (const epd_ctrl_state_t){
@@ -287,25 +276,18 @@ esp_err_t epd_gpio_set_value_v6(uint8_t value) {
     return 0;
 }
 
-uint16_t __attribute__((weak)) epd_board_vcom_v6() {
-#ifdef CONFIG_EPD_DRIVER_V6_VCOM
-  return CONFIG_EPD_DRIVER_V6_VCOM;
-#else
-  // Arduino IDE...
-  extern int epd_driver_v6_vcom;
-  return epd_driver_v6_vcom;
-#endif
+static void set_vcom(int value) {
+  vcom = value;
 }
 
-const EpdBoardDefinition epd_board_s3_prototype = {
+const EpdBoardDefinition epd_board_v7 = {
   .init = epd_board_init,
   .deinit = epd_board_deinit,
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
 
-  .temperature_init = NULL,
-  .ambient_temperature = epd_board_ambient_temperature,
+  .get_temperature = epd_board_ambient_temperature,
+  .set_vcom = set_vcom,
 };
 
-#endif // S3 Target

@@ -1,5 +1,7 @@
 #include "epd_driver.h"
-#include "board/epd_temperature.h"
+#include "include/epd_board.h"
+#include "include/epd_driver.h"
+#include "render.h"
 
 #include <esp_assert.h>
 #include <esp_heap_caps.h>
@@ -477,4 +479,40 @@ void epd_poweron() {
 
 void epd_poweroff() {
   epd_current_board()->poweroff(epd_ctrl_state());
+}
+
+void epd_init(const EpdBoardDefinition* board, enum EpdInitOptions options) {
+    epd_set_board(board);
+    epd_renderer_init(options);
+}
+
+void epd_deinit() {
+    epd_renderer_deinit();
+}
+
+float epd_ambient_temperature()
+{
+    if (!epd_current_board()) {
+        ESP_LOGE("epdiy", "Could not read temperature: board not set!");
+        return 0.0;
+    }
+
+    if (!epd_current_board()->get_temperature) {
+        ESP_LOGW("epdiy", "No ambient temperature sensor - returning 21C");
+        return 21.0;
+    }
+    return epd_current_board()->get_temperature();
+}
+
+void epd_set_vcom(uint16_t vcom) {
+    if (!epd_current_board()) {
+        ESP_LOGE("epdiy", "Could not set VCOM: board not set!");
+        return;
+    }
+
+    if (!epd_current_board()->set_vcom) {
+        ESP_LOGE("epdiy", "Could not set VCOM: board does not support setting VCOM in software.");
+        return;
+    }
+    return epd_current_board()->set_vcom(vcom);
 }

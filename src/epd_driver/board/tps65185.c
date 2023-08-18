@@ -74,8 +74,6 @@ void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV) {
     ESP_ERROR_CHECK(tps_write_register(i2c_num, 3, val & 0xFF));
 }
 
-int v6_wait_for_interrupt(int timeout);
-
 int8_t tps_read_thermistor(i2c_port_t i2c_num) {
     tps_write_register(i2c_num, TPS_REG_TMST1, 0x80);
     int tries = 0;

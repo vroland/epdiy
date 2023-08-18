@@ -1,5 +1,4 @@
 #include "epd_board.h"
-#include "../include/board/epd_board_v6.h"
 
 #include "esp_log.h"
 #include "../output_i2s/rmt_pulse.h"
@@ -8,13 +7,13 @@
 #include "tps65185.h"
 #include "pca9555.h"
 
-#include <driver/i2c.h>
-
-static int v6_wait_for_interrupt(int timeout) __attribute__((unused));
-
-#include "sdkconfig.h"
-
-#ifdef CONFIG_IDF_TARGET_ESP32
+// Make this compile on the S3 to avoid long ifdefs
+#ifndef GPIO_NUM_22
+#define GPIO_NUM_22 0
+#define GPIO_NUM_23 0
+#define GPIO_NUM_24 0
+#define GPIO_NUM_25 0
+#endif
 
 #define CFG_SCL             GPIO_NUM_33
 #define CFG_SDA             GPIO_NUM_32
@@ -67,28 +66,13 @@ static i2s_bus_config i2s_config = {
   .data_7 = D7,
 };
 
+/** The VCOM voltage to use. */
+static int vcom = 1600;
+
 static bool interrupt_done = false;
 
 static void IRAM_ATTR interrupt_handler(void* arg) {
     interrupt_done = true;
-}
-
-static int v6_wait_for_interrupt(int timeout) {
-  int tries = 0;
-  while (!interrupt_done && gpio_get_level(CFG_INTR) == 1) {
-    if (tries >= 500) {
-        return -1;
-    }
-    tries++;
-    vTaskDelay(1);
-  }
-  int ival = 0;
-  interrupt_done = false;
-  pca9555_read_input(EPDIY_I2C_PORT, 1);
-  ival = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT1);
-  ival |= tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2) << 8;
-  while (!gpio_get_level(CFG_INTR)) { vTaskDelay(1); }
-  return ival;
 }
 
 static epd_config_register_t config_reg;
@@ -220,7 +204,7 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
 
   ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
 
-  tps_set_vcom(config_reg.port, epd_board_vcom_v6());
+  tps_set_vcom(config_reg.port, vcom);
 
   state->ep_sth = true;
   mask = (const epd_ctrl_state_t){
@@ -284,14 +268,8 @@ esp_err_t epd_gpio_set_value_v6(uint8_t value) {
     return pca9555_set_value(EPDIY_I2C_PORT, value, 0);
 }
 
-uint16_t __attribute__((weak)) epd_board_vcom_v6() {
-#ifdef CONFIG_EPD_DRIVER_V6_VCOM
-  return CONFIG_EPD_DRIVER_V6_VCOM;
-#else
-  // Arduino IDE...
-  extern int epd_driver_v6_vcom;
-  return epd_driver_v6_vcom;
-#endif
+static void set_vcom(int value) {
+  vcom = value;
 }
 
 const EpdBoardDefinition epd_board_v6 = {
@@ -300,9 +278,7 @@ const EpdBoardDefinition epd_board_v6 = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-
-  .temperature_init = NULL,
-  .ambient_temperature = epd_board_ambient_temperature,
+  .get_temperature = epd_board_ambient_temperature,
+  .set_vcom = set_vcom,
 };
 
-#endif

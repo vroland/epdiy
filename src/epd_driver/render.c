@@ -13,7 +13,6 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
-#include "board/epd_temperature.h"
 #include "include/epd_board.h"
 #include "output_common/render_context.h"
 #include "output_common/render_method.h"
@@ -151,7 +150,9 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 }
 
 
-void IRAM_ATTR feed_display(int thread_id) {
+static void IRAM_ATTR render_thread(void* arg) {
+    int thread_id = (int)arg;
+
     while (true) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
@@ -190,28 +191,13 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
     }
 }
 
-void epd_init(enum EpdInitOptions options) {
-#if defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
-    epd_set_board(&epd_board_lilygo_t5_47);
-#elif defined(CONFIG_EPD_BOARD_REVISION_V2_V3)
-    epd_set_board(&epd_board_v2_v3);
-#elif defined(CONFIG_EPD_BOARD_REVISION_V4)
-    epd_set_board(&epd_board_v4);
-#elif defined(CONFIG_EPD_BOARD_REVISION_V5)
-    epd_set_board(&epd_board_v5);
-#elif defined(CONFIG_EPD_BOARD_REVISION_V6)
-    epd_set_board(&epd_board_v6);
-#elif defined(CONFIG_EPD_BOARD_S3_PROTOTYPE)
-    epd_set_board(&epd_board_s3_prototype);
-#else
+void epd_renderer_init(enum EpdInitOptions options) {
     // Either the board should be set in menuconfig or the epd_set_board() must
     // be called before epd_init()
-    assert(epd_board != NULL);
-#endif
+    assert(epd_current_board() != NULL);
 
     epd_current_board()->init(EPD_WIDTH);
     epd_control_reg_init();
-    epd_temperature_init();
 
     size_t lut_size = 0;
     if (options & EPD_LUT_1K) {
@@ -223,7 +209,6 @@ void epd_init(enum EpdInitOptions options) {
         return;
     }
 
-    // gpio_set_level(15, 1);
     ESP_LOGE("epd", "lut size: %d", lut_size);
     render_context.conversion_lut = (uint8_t *)heap_caps_malloc(
         lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
@@ -261,7 +246,7 @@ void epd_init(enum EpdInitOptions options) {
         render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(
             queue_len * queue_elem_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            (void (*)(void *))feed_display, "epd_prep", 1 << 15, (void *)i,
+            render_thread, "epd_prep", 1 << 15, (void *)i,
             10 | portPRIVILEGE_BIT, &render_context.feed_tasks[i], i));
         if (render_context.line_queues[i].buf == NULL) {
             ESP_LOGE("epd", "could not allocate line queue!");
@@ -271,7 +256,7 @@ void epd_init(enum EpdInitOptions options) {
 }
 
 
-void epd_deinit() {
+void epd_renderer_deinit() {
     const EpdBoardDefinition* epd_board = epd_current_board();
 
     epd_board->poweroff(epd_ctrl_state());
@@ -287,8 +272,13 @@ void epd_deinit() {
     }
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
+        free(render_context.line_queues[i].buf);
+        vSemaphoreDelete(render_context.feed_done_smphr[i]);
         vTaskDelete(render_context.feed_tasks[i]);
     }
+
+    free(render_context.conversion_lut);
+    vSemaphoreDelete(render_context.frame_done);
 }
 
 EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,

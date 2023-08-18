@@ -193,14 +193,21 @@ typedef struct {
 } EpdFontProperties;
 
 /** Initialize the ePaper display */
-void epd_init(enum EpdInitOptions options);
+void epd_init(const EpdBoardDefinition* board, enum EpdInitOptions options);
 
 /**
- * Set the board hardware definition. This must be called before epd_init()
+ * Set the display common voltage if supported.
  *
- * The implementation of this method is in board/epd_board.c.
- **/
-void epd_set_board(const EpdBoardDefinition *board);
+ * Voltage is set as absolute value in millivolts.
+ * Although VCOM is negative, this function takes a positive (absolute) value.
+ */
+void epd_set_vcom(uint16_t vcom);
+
+/**
+ * Get the current ambient temperature in °C,
+ * if the board has a sensor.
+ */
+float epd_ambient_temperature();
 
 /** Get the display rotation value */
 enum EpdRotation epd_get_rotation();

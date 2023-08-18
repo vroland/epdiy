@@ -1,7 +1,4 @@
 #include "epd_board.h"
-#include "sdkconfig.h"
-
-#ifdef CONFIG_IDF_TARGET_ESP32
 
 #include "epd_board_common.h"
 
@@ -9,6 +6,14 @@
 #include "../output_i2s/i2s_data_bus.h"
 #include "../output_i2s/rmt_pulse.h"
 #include "../output_i2s/render_i2s.h"
+
+// Make this compile on the S3 to avoid long ifdefs
+#ifndef GPIO_NUM_22
+#define GPIO_NUM_22 0
+#define GPIO_NUM_23 0
+#define GPIO_NUM_24 0
+#define GPIO_NUM_25 0
+#endif
 
 #define CFG_DATA GPIO_NUM_33
 #define CFG_CLK GPIO_NUM_32
@@ -85,6 +90,8 @@ static void epd_board_init(uint32_t epd_row_width) {
   i2s_bus_init( &i2s_config, epd_row_width + 32 );
 
   rmt_pulse_init(CKV);
+
+  epd_board_temperature_init_v2();
 }
 
 static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t * const mask) {
@@ -181,9 +188,6 @@ const EpdBoardDefinition epd_board_v5 = {
   .set_ctrl = epd_board_set_ctrl,
   .poweron = epd_board_poweron,
   .poweroff = epd_board_poweroff,
-
-  .temperature_init = epd_board_temperature_init_v2,
-  .ambient_temperature = epd_board_ambient_temperature_v2,
+  .get_temperature = epd_board_ambient_temperature_v2,
+  .set_vcom = NULL,
 };
-
-#endif

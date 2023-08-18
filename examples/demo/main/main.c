@@ -5,10 +5,12 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 
+
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_types.h"
+#include "esp_sleep.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
@@ -33,7 +35,9 @@
 #include "img_beach.h"
 #include "img_board.h"
 
-#define WAVEFORM EPD_BUILTIN_WAVEFORM
+#include "ED097TC2.h"
+
+#define WAVEFORM &ed097tc2
 
 #ifndef ARDUINO_ARCH_ESP32
 void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
@@ -106,7 +110,7 @@ void idf_loop() {
   err = epd_hl_update_screen(&hl, MODE_GL16, temperature);
   t2 = millis();
   epd_poweroff();
-  printf("EPD update %"PRIu32"ms. err: %u\n", t2 - t1, err);
+  //printf("EPD update %dms. err: %d\n", t2 - t1, err);
 
   for (int i=0; i < 6; i++) {
     epd_poweron();
@@ -236,15 +240,23 @@ void idf_loop() {
   err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
-  epd_fullclear(&hl, temperature);
-  delay(10000);
+  printf("going to sleep...\n");
+  epd_deinit();
+  esp_deep_sleep_start();
+  //epd_fullclear(&hl, temperature);
+  //delay(10000);
 }
 
 void idf_setup() {
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 
-  epd_init(EPD_LUT_1K);
+  epd_init(&epd_board_v7, EPD_LUT_64K);
+  // Set VCOM for boards that allow to set this in software (in mV).
+  // This will print an error if unsupported. In this case,
+  // set VCOM using the hardware potentiometer and delete this line.
+  epd_set_vcom(1560);
+
   hl = epd_hl_init(WAVEFORM);
 
   // Default orientation is EPD_ROT_LANDSCAPE
