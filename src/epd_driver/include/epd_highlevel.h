@@ -66,6 +66,8 @@ extern "C" {
 #include "epd_driver.h"
 #include <stdint.h>
 
+#define EPD_BUILTIN_WAVEFORM NULL
+
 /// Holds the internal state of the high-level API.
 typedef struct {
   /// The "front" framebuffer object.

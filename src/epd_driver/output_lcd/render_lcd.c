@@ -17,23 +17,23 @@
 #include "../output_common/lut.h"
 #include "../output_common/render_context.h"
 
-static bool IRAM_ATTR fill_line_noop(RenderContext_t* _ctx, uint8_t *line) {
-    memset(line, 0x00, EPD_LINE_BYTES);
+static bool IRAM_ATTR fill_line_noop(RenderContext_t* ctx, uint8_t *line) {
+    memset(line, 0x00, ctx->display_width / 4);
     return false;
 }
 
-static bool IRAM_ATTR fill_line_white(RenderContext_t* _ctx, uint8_t *line) {
-    memset(line, CLEAR_BYTE, EPD_LINE_BYTES);
+static bool IRAM_ATTR fill_line_white(RenderContext_t* ctx, uint8_t *line) {
+    memset(line, CLEAR_BYTE, ctx->display_width / 4);
     return false;
 }
 
-static bool IRAM_ATTR fill_line_black(RenderContext_t* _ctx, uint8_t *line) {
-    memset(line, DARK_BYTE, EPD_LINE_BYTES);
+static bool IRAM_ATTR fill_line_black(RenderContext_t* ctx, uint8_t *line) {
+    memset(line, DARK_BYTE, ctx->display_width / 4);
     return false;
 }
 
 static bool IRAM_ATTR retrieve_line_isr(RenderContext_t* ctx, uint8_t *buf) {
-    if (ctx->lines_consumed >= FRAME_LINES) {
+    if (ctx->lines_consumed >= ctx->lines_total) {
         return false;
     }
     int thread = ctx->line_threads[ctx->lines_consumed];
@@ -45,11 +45,11 @@ static bool IRAM_ATTR retrieve_line_isr(RenderContext_t* ctx, uint8_t *buf) {
 
     if (lq_read(lq, buf) != 0) {
         ctx->error |= EPD_DRAW_EMPTY_LINE_QUEUE;
-        memset(buf, 0x00, EPD_LINE_BYTES);
+        memset(buf, 0x00, ctx->display_width / 4);
     }
 
-    if (ctx->lines_consumed >= EPD_HEIGHT) {
-        memset(buf, 0x00, EPD_LINE_BYTES);
+    if (ctx->lines_consumed >= ctx->display_height) {
+        memset(buf, 0x00, ctx->display_width / 4);
     }
     ctx->lines_consumed += 1;
     return awoken;
@@ -116,7 +116,7 @@ void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
 
 #define int_min(a, b) (((a) < (b)) ? (a) : (b))
 void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
-    uint8_t input_line[EPD_WIDTH];
+    uint8_t input_line[ctx->display_width];
     LineQueue_t *lq = &ctx->line_queues[thread_id];
     int l = 0;
 
@@ -129,7 +129,7 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
     }
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
-    memset(input_line, 0x00, EPD_WIDTH);
+    memset(input_line, 0x00, ctx->display_width);
 
 
     EpdRect area = ctx->area;
@@ -139,13 +139,12 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
 
     lut_func_t input_calc_func = get_lut_function(ctx);
 
-    assert(area.width == EPD_WIDTH && area.x == 0 && !ctx->error);
+    assert(area.width == ctx->display_width && area.x == 0 && !ctx->error);
 
     // index of the line that triggers the frame output when processed
     int trigger_line = int_min(31, max_y - min_y);
 
-    while (l = atomic_fetch_add(&ctx->lines_prepared, 1),
-           l < FRAME_LINES) {
+    while (l = atomic_fetch_add(&ctx->lines_prepared, 1), l < ctx->lines_total) {
 
         ctx->line_threads[l] = thread_id;
 
@@ -177,7 +176,7 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
         uint32_t *lp = (uint32_t *)input_line;
         const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
 
-        Cache_Start_DCache_Preload((uint32_t)ptr, EPD_WIDTH, 0);
+        Cache_Start_DCache_Preload((uint32_t)ptr, ctx->display_width, 0);
 
         lp = (uint32_t *)ptr;
 
@@ -192,7 +191,7 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
             buf = lq_current(lq);
         }
 
-        (*input_calc_func)(lp, buf, ctx->conversion_lut, EPD_WIDTH);
+        (*input_calc_func)(lp, buf, ctx->conversion_lut, ctx->display_width);
 
         lq_commit(lq);
     }

@@ -1,16 +1,19 @@
 #include "epd_board.h"
+#include "epd_driver.h"
 #include <stdint.h>
 
 #include "esp_log.h"
 #include "../output_lcd/lcd_driver.h"
+#include "../output_common/render_method.h"
 #include "tps65185.h"
 #include "pca9555.h"
 
+#include <sdkconfig.h>
 #include <driver/gpio.h>
 #include <driver/i2c.h>
 
 // Make this compile von the ESP32 without ifdefing the whole file
-#ifdef GPIO_NUM_22
+#ifndef CONFIG_IDF_TARGET_ESP32S3
 #define GPIO_NUM_40 -1
 #define GPIO_NUM_41 -1
 #define GPIO_NUM_42 -1
@@ -140,15 +143,17 @@ static void epd_board_init(uint32_t epd_row_width) {
     // set all epdiy lines to output except TPS interrupt + PWR good
     ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 
+    const EpdDisplay_t* display = epd_get_display();
+
     LcdEpdConfig_t config = {
-        .pixel_clock = 23 * 1000 * 1000,
+        .pixel_clock = display->bus_speed * 1000 * 1000,
         .ckv_high_time = 60,
         .line_front_porch = 4,
         .le_high_time = 4,
-        .bus_width = 8,
+        .bus_width = display->bus_width,
         .bus = lcd_config,
     };
-    epd_lcd_init(&config);
+    epd_lcd_init(&config, display->width, display->height);
 }
 
 static void epd_board_deinit() {

@@ -1,4 +1,6 @@
 #include "lcd_driver.h"
+#include "epd_driver.h"
+
 #include "../output_common/render_method.h"
 
 #ifdef RENDER_METHOD_LCD
@@ -40,7 +42,7 @@
 
 #include "../output_common/lut.h"
 
-#define TAG "epdiy_s3"
+#define TAG "epdiy"
 
 static inline int min(int x, int y) { return x < y ? x : y; }
 static inline int max(int x, int y) { return x > y ? x : y; }
@@ -48,9 +50,6 @@ static inline int max(int x, int y) { return x > y ? x : y; }
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 //#define S3_LCD_PIN_NUM_MODE           4
 
-// The pixel number in horizontal and vertical
-#define LINE_BYTES                     (EPD_WIDTH / 4)
-#define S3_LCD_RES_V                   (((EPD_HEIGHT  + 7) / 8) * 8)
 #define LINE_BATCH                     1000
 #define BOUNCE_BUF_LINES               4
 
@@ -97,6 +96,9 @@ typedef struct {
 
 static s3_lcd_t lcd;
 
+/// The number of bytes in a horizontal display register line.
+static int line_bytes = 0;
+static int vertical_lines = 0;
 
 void epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
     lcd.line_source_cb = line_source;
@@ -112,13 +114,13 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     bool task_awoken = false;
 
     // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
-    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - LINE_BYTES;
+    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - line_bytes;
 
     for (int i=0; i < BOUNCE_BUF_LINES; i++) {
         if (lcd.line_source_cb != NULL)  {
-            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (LINE_BYTES + dummy_bytes) + dummy_bytes]);
+            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (line_bytes + dummy_bytes) + dummy_bytes]);
         } else {
-            memset(&buffer[i * LINE_BYTES], 0x00, LINE_BYTES);
+            memset(&buffer[i * line_bytes], 0x00, line_bytes);
         }
     }
     return task_awoken;
@@ -130,7 +132,7 @@ static void IRAM_ATTR rmt_interrupt_handler(void *args) {
     rmt_ll_clear_interrupt_status(&RMT, intr_status);
 }
 
-void start_ckv_cycles(int cycles) {
+static void start_ckv_cycles(int cycles) {
 
     rmt_ll_tx_enable_loop_count(&RMT, RMT_CKV_CHAN, true);
     rmt_ll_tx_enable_loop_autostop(&RMT, RMT_CKV_CHAN, true);
@@ -140,9 +142,9 @@ void start_ckv_cycles(int cycles) {
 }
 
 void epd_lcd_start_frame() {
-    int initial_lines = min(LINE_BATCH, S3_LCD_RES_V);
+    int initial_lines = min(LINE_BATCH, vertical_lines);
 
-    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - LINE_BYTES;
+    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - line_bytes;
 
     // hsync: pulse with, back porch, active width, front porch
     int end_line = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
@@ -187,7 +189,7 @@ void epd_lcd_start_frame() {
 }
 
 
-void init_ckv_rmt() {
+static void init_ckv_rmt() {
   periph_module_reset(rmt_periph_signals.groups[0].module);
   periph_module_enable(rmt_periph_signals.groups[0].module);
 
@@ -231,7 +233,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
     lcd_ll_clear_interrupt_status(lcd.hal.dev, intr_status);
 
     if (intr_status & LCD_LL_EVENT_VSYNC_END) {
-        int batches_needed = S3_LCD_RES_V / LINE_BATCH ;
+        int batches_needed = vertical_lines / LINE_BATCH ;
         if (lcd.batches >= batches_needed) {
             lcd_ll_stop(lcd.hal.dev);
             //rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
@@ -245,8 +247,8 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             // last batch
             if (lcd.batches == batches_needed - 1) {
                 lcd_ll_enable_auto_next_frame(lcd.hal.dev, false);
-                lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, S3_LCD_RES_V % LINE_BATCH, 10);
-                ckv_cycles = S3_LCD_RES_V % LINE_BATCH + 10;
+                lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, vertical_lines % LINE_BATCH, 10);
+                ckv_cycles = vertical_lines % LINE_BATCH + 10;
             } else {
                 lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, LINE_BATCH, 1);
                 ckv_cycles = LINE_BATCH + 1;
@@ -277,32 +279,6 @@ static IRAM_ATTR bool lcd_rgb_panel_eof_handler(gdma_channel_handle_t dma_chan, 
     bool need_yield = fill_bounce_buffer(lcd.bounce_buffer[bb]);
 
     return need_yield;
-}
-
-void lcd_com_mount_dma_data(dma_descriptor_t *desc_head, const void *buffer, size_t len)
-{
-    size_t prepared_length = 0;
-    uint8_t *data = (uint8_t *)buffer;
-    dma_descriptor_t *desc = desc_head;
-    while (len > DMA_DESCRIPTOR_BUFFER_MAX_SIZE) {
-        desc->dw0.suc_eof = 0; // not the end of the transaction
-        desc->dw0.size = DMA_DESCRIPTOR_BUFFER_MAX_SIZE;
-        desc->dw0.length = DMA_DESCRIPTOR_BUFFER_MAX_SIZE;
-        desc->dw0.owner = DMA_DESCRIPTOR_BUFFER_OWNER_DMA;
-        desc->buffer = &data[prepared_length];
-        desc = desc->next; // move to next descriptor
-        prepared_length += DMA_DESCRIPTOR_BUFFER_MAX_SIZE;
-        len -= DMA_DESCRIPTOR_BUFFER_MAX_SIZE;
-    }
-    if (len) {
-        desc->dw0.suc_eof = 1; // end of the transaction
-        desc->dw0.size = len;
-        desc->dw0.length = len;
-        desc->dw0.owner = DMA_DESCRIPTOR_BUFFER_OWNER_DMA;
-        desc->buffer = &data[prepared_length];
-        desc = desc->next; // move to next descriptor
-        prepared_length += len;
-    }
 }
 
 static esp_err_t init_dma_trans_link() {
@@ -398,13 +374,17 @@ static esp_err_t s3_lcd_configure_gpio()
     return ESP_OK;
 }
 
-void epd_lcd_init(const LcdEpdConfig_t* config) {
+void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
+    // assign globals
+    line_bytes = display_width / 4;
+    // Make sure the bounce buffers divide the display height evenly.
+    vertical_lines = (((display_height  + 7) / 8) * 8);
 
     esp_err_t ret = ESP_OK;
 
     memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
 
-    lcd.lcd_res_h = EPD_WIDTH / 4 / (lcd.config.bus_width / 8);
+    lcd.lcd_res_h = line_bytes / (lcd.config.bus_width / 8);
 
     gpio_config_t vsync_gpio_conf = {
       .mode = GPIO_MODE_OUTPUT,
@@ -416,19 +396,13 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
       .pin_bit_mask = 1ull << DEBUG_PIN,
     };
 
-    //gpio_config_t mode_gpio_conf = {
-    //  .mode = GPIO_MODE_OUTPUT,
-    //  .pin_bit_mask = 1ull << S3_LCD_PIN_NUM_MODE,
-    //};
-
     gpio_config(&vsync_gpio_conf);
     gpio_config(&debug_gpio_conf);
-    //gpio_config(&mode_gpio_conf);
 
     gpio_set_level(lcd.config.bus.stv, 1);
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
-    ESP_LOGI(TAG, "using resolution %dx%d", lcd.lcd_res_h, S3_LCD_RES_V);
+    ESP_LOGI(TAG, "using resolution %dx%d", lcd.lcd_res_h, vertical_lines);
 
     // enable APB to access LCD registers
     periph_module_enable(lcd_periph_signals.panels[0].module);
@@ -442,8 +416,8 @@ void epd_lcd_init(const LcdEpdConfig_t* config) {
     // https://blog.adafruit.com/2022/06/14/esp32uesday-hacking-the-esp32-s3-lcd-peripheral/
     int dummy_bytes = (lcd.config.bus_width == 8);
 
-    lcd.bb_size = BOUNCE_BUF_LINES * (LINE_BYTES + dummy_bytes);
-    //assert(lcd.bb_size % (LINE_BYTES) == 1);
+    lcd.bb_size = BOUNCE_BUF_LINES * (line_bytes + dummy_bytes);
+    //assert(lcd.bb_size % (line_bytes) == 1);
     size_t num_dma_nodes = (lcd.bb_size + DMA_DESCRIPTOR_BUFFER_MAX_SIZE - 1) / DMA_DESCRIPTOR_BUFFER_MAX_SIZE;
     ESP_LOGI(TAG, "num dma nodes: %u", num_dma_nodes);
     lcd.dma_nodes = heap_caps_calloc(1, num_dma_nodes * sizeof(dma_descriptor_t) * 2, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
@@ -534,6 +508,13 @@ err:
     // do some deconstruction
     ESP_LOGI(TAG, "LCD initialization failed!");
     abort();
+}
+
+#else
+
+/// Dummy implementation to link on the old ESP32
+void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
+    assert(false);
 }
 
 #endif // S3 Target

@@ -14,6 +14,7 @@
 #include <freertos/task.h>
 
 #include "include/epd_board.h"
+#include "include/epd_driver.h"
 #include "output_common/render_context.h"
 #include "output_common/render_method.h"
 #include "output_lcd/render_lcd.h"
@@ -75,7 +76,10 @@ static int get_waveform_index(const EpdWaveform *waveform,
 
 /////////////////////////////  API Procedures //////////////////////////////////
 
-
+/// Rounded up display height for even division into multi-line buffers.
+static inline int rounded_display_height() {
+    return (((epd_height() + 7) / 8) * 8);
+}
 
 // FIXME: fix misleading naming:
 //  area -> buffer dimensions
@@ -128,6 +132,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 
     render_context.lines_prepared = 0;
     render_context.lines_consumed = 0;
+    render_context.lines_total = rounded_display_height();
     render_context.current_frame = 0;
     render_context.cycle_frames = frame_count;
     render_context.phase_times = NULL;
@@ -196,8 +201,11 @@ void epd_renderer_init(enum EpdInitOptions options) {
     // be called before epd_init()
     assert(epd_current_board() != NULL);
 
-    epd_current_board()->init(EPD_WIDTH);
+    epd_current_board()->init(epd_width());
     epd_control_reg_init();
+
+    render_context.display_width = epd_width();
+    render_context.display_height = epd_height();
 
     size_t lut_size = 0;
     if (options & EPD_LUT_1K) {
@@ -224,6 +232,10 @@ void epd_renderer_init(enum EpdInitOptions options) {
         render_context.feed_done_smphr[i] = xSemaphoreCreateBinary();
     }
 
+    // When using the LCD peripheral, we may need padding lines to
+    // satisfy the bounce buffer size requirements
+    render_context.line_threads = (uint8_t *)heap_caps_malloc(
+        rounded_display_height(), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 
     int queue_len = 32;
     if (options & EPD_FEED_QUEUE_32) {
@@ -233,9 +245,9 @@ void epd_renderer_init(enum EpdInitOptions options) {
     }
 
 #ifdef RENDER_METHOD_LCD
-    size_t queue_elem_size = EPD_LINE_BYTES;
+    size_t queue_elem_size = epd_width() / 4;
 #elif defined(RENDER_METHOD_I2S)
-    size_t queue_elem_size = EPD_WIDTH;
+    size_t queue_elem_size = epd_width();
 #endif
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
@@ -278,6 +290,7 @@ void epd_renderer_deinit() {
     }
 
     free(render_context.conversion_lut);
+    free(render_context.line_threads);
     vSemaphoreDelete(render_context.frame_done);
 }
 
@@ -292,7 +305,9 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
     // AND over all pixels of the "from"-image
     *from_and = 0x0F;
 
-    uint8_t dirty_cols[EPD_WIDTH] = {0};
+    uint8_t* dirty_cols = calloc(epd_width(), 1);
+    assert (dirty_cols != NULL);
+
     int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
 
@@ -334,6 +349,8 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
         .width = max(max_x - min_x + 1, 0),
         .height = max(max_y - min_y + 1, 0),
     };
+
+    free(dirty_cols);
     return crop_rect;
 }
 
@@ -341,8 +358,8 @@ EpdRect epd_difference_image(const uint8_t *to, const uint8_t *from,
                              uint8_t *interlaced, bool *dirty_lines) {
     uint8_t from_or = 0;
     uint8_t from_and = 0;
-    return epd_difference_image_base(to, from, epd_full_screen(), EPD_WIDTH,
-                                     EPD_HEIGHT, interlaced, dirty_lines,
+    return epd_difference_image_base(to, from, epd_full_screen(), epd_width(),
+                                     epd_height(), interlaced, dirty_lines,
                                      &from_or, &from_and);
 }
 
@@ -354,7 +371,7 @@ EpdRect epd_difference_image_cropped(const uint8_t *to, const uint8_t *from,
     uint8_t from_or, from_and;
 
     EpdRect result =
-        epd_difference_image_base(to, from, crop_to, EPD_WIDTH, EPD_HEIGHT,
+        epd_difference_image_base(to, from, crop_to, epd_width(), epd_height(),
                                   interlaced, dirty_lines, &from_or, &from_and);
 
     if (previously_white != NULL)

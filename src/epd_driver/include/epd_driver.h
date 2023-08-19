@@ -2,6 +2,7 @@
  * @file epd_driver.h
  * A driver library for drawing to an EPD.
  */
+#include "epd_display.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -13,6 +14,7 @@ extern "C" {
 
 #include "epd_internals.h"
 #include "epd_board.h"
+#include "epd_display.h"
 
 /** Display software rotation.
  *  Sets the rotation for the purposes of the drawing and font functions
@@ -193,7 +195,22 @@ typedef struct {
 } EpdFontProperties;
 
 /** Initialize the ePaper display */
-void epd_init(const EpdBoardDefinition* board, enum EpdInitOptions options);
+void epd_init(const EpdBoardDefinition* board, const EpdDisplay_t* display, enum EpdInitOptions options);
+
+/**
+ * Get the configured display.
+ */
+const EpdDisplay_t* epd_get_display();
+
+/**
+ * Get the EPD display's witdth.
+ */
+int epd_width();
+
+/**
+ * Get the EPD display's height.
+ */
+int epd_height();
 
 /**
  * Set the display common voltage if supported.
@@ -263,7 +280,7 @@ EpdRect epd_full_screen();
  * values. Pixel data is packed (two pixels per byte). A byte cannot wrap over
  * multiple rows, images of uneven width must add a padding nibble per line.
  * @param framebuffer: The framebuffer object,
- *   which must be `EPD_WIDTH / 2 * EPD_HEIGHT` large.
+ *   which must be `epd_width() / 2 * epd_height()` large.
  */
 void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
                              uint8_t *framebuffer);
@@ -286,7 +303,7 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
  * @param length: Length of the line in pixels.
  * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
- *  which must be `EPD_WIDTH / 2 * EPD_HEIGHT` bytes large.
+ *  which must be `epd_width() / 2 * epd_height()` bytes large.
  */
 void epd_draw_hline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);
@@ -299,7 +316,7 @@ void epd_draw_hline(int x, int y, int length, uint8_t color,
  * @param length: Length of the line in pixels.
  * @param color: The gray value of the line (see [Colors](#Colors));
  * @param framebuffer: The framebuffer to draw to,
- *  which must be `EPD_WIDTH / 2 * EPD_HEIGHT` bytes large.
+ *  which must be `epd_width() / 2 * epd_height()` bytes large.
  */
 void epd_draw_vline(int x, int y, int length, uint8_t color,
                     uint8_t *framebuffer);
@@ -489,7 +506,7 @@ enum EpdDrawError epd_draw_base(EpdRect area,
  * @param crop_to: Only calculate the difference for a crop of the input framebuffers.
  *      The `interlaced` will not be modified outside the crop area.
  * @param interlaced: The resulting difference image in `MODE_PACKING_1PPB_DIFFERENCE` format.
- * @param dirty_lines: An array of at least `EPD_HEIGHT`.
+ * @param dirty_lines: An array of at least `epd_height()`.
  *      The positions corresponding to lines where `to` and `from` differ
  *      are set to `true`, otherwise to `false`.
  * @param previously_white: If not NULL, it is set to `true`

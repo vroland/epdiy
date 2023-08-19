@@ -14,51 +14,10 @@
 
 /// minimal draw time in ms for a frame layer,
 /// which will allow all particles to set properly.
-#ifndef MINIMUM_FRAME_TIME
 #define MINIMUM_FRAME_TIME 12
-#endif
 
 /// Frame draw time for monochrome mode in 1/10 us.
 #define MONOCHROME_FRAME_TIME 120
-
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 1200
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 825
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-#define EPD_WIDTH 1600
-#define EPD_HEIGHT 1200
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 800
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 600
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SCT)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 800
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 600
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060XC3)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 1024
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 758
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1) || defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC2)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 960
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 540
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED078KC1)
-/// Width of the display area in pixels.
-#define EPD_WIDTH 1872
-/// Height of the display area in pixels.
-#define EPD_HEIGHT 1404
-#else
-#error "no display type defined!"
-#endif
 
 
 typedef struct {
@@ -88,38 +47,15 @@ typedef struct {
   EpdWaveformTempInterval const *temp_intervals;
 } EpdWaveform;
 
-
-
-
-
 extern const EpdWaveform epdiy_ED060SC4;
 extern const EpdWaveform epdiy_ED097OC4;
 extern const EpdWaveform epdiy_ED047TC1;
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC2)
-  extern const EpdWaveform epdiy_ED047TC2;
-#endif
+extern const EpdWaveform epdiy_ED047TC2;
 extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
 extern const EpdWaveform epdiy_ED060SCT;
 extern const EpdWaveform epdiy_ED133UT2;
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED047TC1
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC2)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED047TC2
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED060SC4
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060XC3)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED060XC3
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SCT)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED060SCT
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4) || defined(CONFIG_EPD_DISPLAY_TYPE_ED097OC4_LQ)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED097OC4
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED097TC2
-#elif defined (CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-#define EPD_BUILTIN_WAVEFORM &epdiy_ED133UT2
-#endif
 
 /// Font data stored PER GLYPH
 typedef struct {

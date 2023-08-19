@@ -55,12 +55,11 @@ static void IRAM_ATTR i2s_output_row(uint32_t output_time_dus) {
     mask.ep_latch_enable = true;
     epd_board->set_ctrl(ctrl_state, &mask);
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) ||                               \
-    defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-    pulse_ckv_ticks(output_time_dus, 1, false);
-#else
-    pulse_ckv_ticks(output_time_dus, 50, false);
-#endif
+    if (epd_get_display()->display_type == DISPLAY_TYPE_ED097TC2) {
+        pulse_ckv_ticks(output_time_dus, 1, false);
+    } else {
+        pulse_ckv_ticks(output_time_dus, 50, false);
+    }
 
     i2s_start_line_output();
     i2s_switch_buffer();
@@ -75,17 +74,18 @@ static void IRAM_ATTR i2s_write_row(RenderContext_t *ctx, uint32_t output_time_d
 /** Skip a row without writing to it. */
 static void IRAM_ATTR i2s_skip_row(RenderContext_t *ctx,
                             uint8_t pipeline_finish_time) {
+    int line_bytes = ctx->display_width / 4;
     // output previously loaded row, fill buffer with no-ops.
     if (ctx->skipping < 2) {
-        memset((void*)i2s_get_current_buffer(), 0x00, EPD_LINE_BYTES);
+        memset((void*)i2s_get_current_buffer(), 0x00, line_bytes);
         i2s_output_row(pipeline_finish_time);
     } else {
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED097TC2) || defined(CONFIG_EPD_DISPLAY_TYPE_ED133UT2)
-        pulse_ckv_ticks(5, 5, false);
-#else
-  // According to the spec, the OC4 maximum CKV frequency is 200kHz.
-        pulse_ckv_ticks(45, 5, false);
-#endif
+        if (epd_get_display()->display_type == DISPLAY_TYPE_ED097TC2) {
+            pulse_ckv_ticks(5, 5, false);
+        } else {
+            // According to the spec, the OC4 maximum CKV frequency is 200kHz.
+            pulse_ckv_ticks(45, 5, false);
+        }
     }
     ctx->skipping++;
 }
@@ -187,7 +187,9 @@ void i2s_do_update(RenderContext_t *ctx) {
 
 void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short time, int color) {
 
-    uint8_t row[EPD_LINE_BYTES] = {0};
+    int line_bytes = ctx->display_width / 4;
+    uint8_t row[line_bytes];
+    memset(row, 0, line_bytes);
 
     const uint8_t color_choice[4] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
     for (uint32_t i = 0; i < area.width; i++) {
@@ -196,20 +198,20 @@ void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short tim
             color_choice[color] & (0b00000011 << (2 * (position % 4)));
         row[area.x / 4 + position / 4] |= mask;
     }
-    reorder_line_buffer((uint32_t *)row);
+    reorder_line_buffer((uint32_t *)row, line_bytes);
 
     i2s_start_frame();
 
-    for (int i = 0; i < EPD_HEIGHT; i++) {
+    for (int i = 0; i < ctx->display_height; i++) {
         // before are of interest: skip
         if (i < area.y) {
             i2s_skip_row(ctx, time);
             // start area of interest: set row data
         } else if (i == area.y) {
             i2s_switch_buffer();
-            memcpy((void*)i2s_get_current_buffer(), row, EPD_LINE_BYTES);
+            memcpy((void*)i2s_get_current_buffer(), row, line_bytes);
             i2s_switch_buffer();
-            memcpy((void*)i2s_get_current_buffer(), row, EPD_LINE_BYTES);
+            memcpy((void*)i2s_get_current_buffer(), row, line_bytes);
 
             i2s_write_row(ctx, time * 10);
             // load nop row if done with area
@@ -228,7 +230,7 @@ void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short tim
 
 
 void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
-    uint8_t line_buf[EPD_WIDTH];
+    uint8_t line_buf[ctx->display_width];
 
     ctx->skipping = 0;
     EpdRect area = ctx->area;
@@ -237,10 +239,10 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
     lut_func_t input_calc_func = get_lut_function(ctx);
 
     i2s_start_frame();
-    for (int i = 0; i < EPD_HEIGHT; i++) {
+    for (int i = 0; i < ctx->display_height; i++) {
         LineQueue_t *lq = &ctx->line_queues[0];
 
-        memset(line_buf, 0, EPD_WIDTH);
+        memset(line_buf, 0, ctx->display_width);
         while (lq_read(lq, line_buf) < 0) {
         };
 
@@ -252,7 +254,7 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
         }
 
         (*input_calc_func)((uint32_t*)line_buf, (uint8_t*)i2s_get_current_buffer(),
-                           ctx->conversion_lut, EPD_WIDTH);
+                           ctx->conversion_lut, ctx->display_width);
         i2s_write_row(ctx, frame_time);
     }
     if (!ctx->skipping) {
@@ -270,11 +272,13 @@ static inline int min(int x, int y) { return x < y ? x : y; }
 static inline int max(int x, int y) { return x > y ? x : y; }
 
 void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
-    uint8_t line_buf[EPD_LINE_BYTES];
-    uint8_t input_line[EPD_WIDTH];
+    int line_bytes = ctx->display_width / 4;
+
+    uint8_t line_buf[line_bytes];
+    uint8_t input_line[ctx->display_width];
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
-    memset(input_line, 0x00, EPD_WIDTH);
+    memset(input_line, 0x00, ctx->display_width);
 
     LineQueue_t *lq = &ctx->line_queues[thread_id];
 
@@ -293,11 +297,11 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
     // FIXME: only lookup needed parts
     int line_start_x = area.x + (horizontally_cropped ? crop_to.x : 0);
     int line_end_x = line_start_x + (horizontally_cropped ? crop_to.width : area.width);
-    line_start_x = min(max(line_start_x, 0), EPD_WIDTH);
-    line_end_x = min(max(line_end_x, 0), EPD_WIDTH);
+    line_start_x = min(max(line_start_x, 0), ctx->display_width);
+    line_end_x = min(max(line_end_x, 0), ctx->display_width);
 
     int l = 0;
-    while (l = atomic_fetch_add(&ctx->lines_prepared, 1), l < EPD_HEIGHT) {
+    while (l = atomic_fetch_add(&ctx->lines_prepared, 1), l < ctx->display_height) {
         // if (thread_id) gpio_set_level(15, 0);
         ctx->line_threads[l] = thread_id;
 
@@ -316,7 +320,7 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
         bool shifted = false;
         const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
 
-        if (area.width == EPD_WIDTH && area.x == 0 && !ctx->error) {
+        if (area.width == ctx->display_width && area.x == 0 && !ctx->error) {
             lp = (uint32_t *)ptr;
         } else if (!ctx->error) {
             uint8_t *buf_start = (uint8_t *)input_line;
@@ -331,7 +335,7 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
                 line_bytes += min_x / pixels_per_byte;
             }
             line_bytes =
-                min(line_bytes, EPD_WIDTH / pixels_per_byte - (uint32_t)(buf_start - input_line));
+                min(line_bytes, ctx->display_width / pixels_per_byte - (uint32_t)(buf_start - input_line));
 
             memcpy(buf_start, ptr, line_bytes);
 
@@ -340,13 +344,12 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
             if (pixels_per_byte == 2) {
                 // mask last nibble for uneven width
                 if (cropped_width % 2 == 1 &&
-                    min_x / 2 + cropped_width / 2 + 1 < EPD_WIDTH) {
+                    min_x / 2 + cropped_width / 2 + 1 < ctx->display_width) {
                     *(buf_start + line_bytes - 1) |= 0xF0;
                 }
-                if (area.x % 2 == 1 && !(crop_x % 2 == 1) &&
-                    min_x < EPD_WIDTH) {
+                if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < ctx->display_width) {
                     shifted = true;
-                    uint32_t remaining = (uint32_t)input_line + EPD_WIDTH / 2 -
+                    uint32_t remaining = (uint32_t)input_line + ctx->display_width / 2 -
                                          (uint32_t)buf_start;
                     uint32_t to_shift = min(line_bytes + 1, remaining);
                     // shift one nibble to right
@@ -355,7 +358,7 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
                 // consider bit shifts in bit buffers
             } else if (pixels_per_byte == 8) {
                 // mask last n bits if width is not divisible by 8
-                if (cropped_width % 8 != 0 && bytes_per_line + 1 < EPD_WIDTH) {
+                if (cropped_width % 8 != 0 && bytes_per_line + 1 < ctx->display_width) {
                     uint8_t mask = 0;
                     for (int s = 0; s < cropped_width % 8; s++) {
                         mask = (mask << 1) | 1;
@@ -363,10 +366,10 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
                     *(buf_start + line_bytes - 1) |= ~mask;
                 }
 
-                if (min_x % 8 != 0 && min_x < EPD_WIDTH) {
+                if (min_x % 8 != 0 && min_x < ctx->display_width) {
                     // shift to right
                     shifted = true;
-                    uint32_t remaining = (uint32_t)input_line + EPD_WIDTH / 8 -
+                    uint32_t remaining = (uint32_t)input_line + ctx->display_width / 8 -
                                          (uint32_t)buf_start;
                     uint32_t to_shift = min(line_bytes + 1, remaining);
                     bit_shift_buffer_right(buf_start, to_shift, min_x % 8);
@@ -381,14 +384,14 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
 
         memcpy(buf, lp, lq->element_size);
 
-        if (line_start_x > 0 || line_end_x < EPD_WIDTH) {
-            mask_line_buffer(line_buf, line_start_x, line_end_x);
+        if (line_start_x > 0 || line_end_x < ctx->display_width) {
+            //mask_line_buffer(line_buf, line_bytes, line_start_x, line_end_x);
         }
 
         lq_commit(lq);
 
         if (shifted) {
-            memset(input_line, 255, EPD_WIDTH / pixels_per_byte);
+            memset(input_line, 255, ctx->display_width / pixels_per_byte);
         }
     }
 }

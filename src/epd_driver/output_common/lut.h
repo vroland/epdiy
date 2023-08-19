@@ -17,7 +17,7 @@
 /*
  * Reorder the output buffer to account for I2S FIFO order.
  */
-void reorder_line_buffer(uint32_t *line_data);
+void reorder_line_buffer(uint32_t *line_data, int buf_len);
 
 typedef struct {
   int thread_id;
@@ -56,7 +56,7 @@ typedef struct {
 
 
 void bit_shift_buffer_right(uint8_t *buf, uint32_t len, int shift);
-void mask_line_buffer(uint8_t* lb, int xmin, int xmax);
+void mask_line_buffer(uint8_t* lb, int line_buf_len, int xmin, int xmax);
 void nibble_shift_buffer_right(uint8_t *buf, uint32_t len);
 
 void calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint32_t epd_width);

@@ -9,12 +9,6 @@
 #include "line_queue.h"
 
 #define NUM_RENDER_THREADS 2
-// When using the LCD peripheral, we may need padding lines to
-// satisfy the bounce buffer size requirements
-#define FRAME_LINES (((EPD_HEIGHT + 7) / 8) * 8)
-
-// number of bytes needed for one line of EPD pixel data.
-#define EPD_LINE_BYTES EPD_WIDTH / 4
 
 typedef struct {
     EpdRect area;
@@ -22,9 +16,15 @@ typedef struct {
     const bool *drawn_lines;
     const uint8_t *data_ptr;
 
+    /// The display width for quick access.
+    int display_width;
+    /// The display height for quick access.
+    int display_height;
+
     /// index of the next line of data to process
     atomic_int lines_prepared;
     volatile int lines_consumed;
+    int lines_total;
 
     /// frame currently in the current update cycle
     int current_frame;
@@ -59,7 +59,7 @@ typedef struct {
     /// Queue of lines prepared for output to the display,
     /// one for each thread.
     LineQueue_t line_queues[NUM_RENDER_THREADS];
-    uint8_t line_threads[FRAME_LINES];
+    uint8_t* line_threads;
 
     /// track line skipping when working in old i2s mode
     int skipping;

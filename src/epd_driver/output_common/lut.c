@@ -64,8 +64,8 @@ uint32_t skipping;
 
 
 __attribute__((optimize("O3")))
-void IRAM_ATTR reorder_line_buffer(uint32_t *line_data) {
-  for (uint32_t i = 0; i < EPD_LINE_BYTES / 4; i++) {
+void IRAM_ATTR reorder_line_buffer(uint32_t *line_data, int buf_len) {
+  for (uint32_t i = 0; i < buf_len / 4; i++) {
     uint32_t val = *line_data;
     *(line_data++) = val >> 16 | ((val & 0x0000FFFF) << 16);
   }
@@ -427,14 +427,14 @@ static void IRAM_ATTR waveform_lut_static_from(
  * Set all pixels not in [xmin,xmax) to nop in the current line buffer.
  */
 __attribute__((optimize("O3")))
-void mask_line_buffer(uint8_t* lb, int xmin, int xmax) {
+void mask_line_buffer(uint8_t* lb, int line_buf_len, int xmin, int xmax) {
   // lower bound to where byte order is not an issue.
   int memset_start = (xmin / 16) * 4;
-  int memset_end = min(((xmax + 15) / 16) * 4, EPD_LINE_BYTES);
+  int memset_end = min(((xmax + 15) / 16) * 4, line_buf_len);
 
   // memset the areas where order is not an issue
   memset(lb, 0, memset_start);
-  memset(lb + memset_end, 0, EPD_LINE_BYTES - memset_end);
+  memset(lb + memset_end, 0, line_buf_len - memset_end);
 
   const int offset_table[4] = {2, 3, 0, 1};
 

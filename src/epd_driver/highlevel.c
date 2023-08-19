@@ -3,6 +3,7 @@
  */
 
 #include "epd_highlevel.h"
+#include "include/epd_driver.h"
 #include <assert.h>
 #include <esp_types.h>
 #include <string.h>
@@ -21,11 +22,13 @@
 
 static bool already_initialized = 0;
 
-const static int fb_size = EPD_WIDTH / 2 * EPD_HEIGHT;
-
 EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(!already_initialized);
-  assert(waveform != NULL);
+  if (waveform == NULL) {
+      waveform = epd_get_display()->default_waveform;
+  }
+
+  int fb_size = epd_width() / 2 * epd_height();
 
   #if !(defined(CONFIG_ESP32_SPIRAM_SUPPORT) || defined(CONFIG_ESP32S3_SPIRAM_SUPPORT))
     ESP_LOGW("EPDiy", "Please enable PSRAM for the ESP32 (menuconfig→ Component config→ ESP32-specific)");
@@ -37,7 +40,7 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(state.front_fb != NULL);
   state.difference_fb = heap_caps_malloc(2 * fb_size, MALLOC_CAP_SPIRAM);
   assert(state.difference_fb != NULL);
-  state.dirty_lines = malloc(EPD_HEIGHT * sizeof(bool));
+  state.dirty_lines = malloc(epd_height() * sizeof(bool));
   assert(state.dirty_lines != NULL);
   state.waveform = waveform;
 
@@ -60,7 +63,7 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
 
 EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
   // If partial update uses full screen do not rotate anything
-  if (!(x == 0 && y == 0 && EPD_WIDTH == w && EPD_HEIGHT == h)) {
+  if (!(x == 0 && y == 0 && epd_width() == w && epd_height() == h)) {
     // invert the current display rotation
     switch (epd_get_rotation())
     {
@@ -71,20 +74,20 @@ EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
       case EPD_ROT_PORTRAIT:
         _swap_int(x, y);
         _swap_int(w, h);
-        x = EPD_WIDTH - x - w;
+        x = epd_width() - x - w;
         break;
 
       case EPD_ROT_INVERTED_LANDSCAPE:
         // 3 180°
-        x = EPD_WIDTH - x - w;
-        y = EPD_HEIGHT - y - h;
+        x = epd_width() - x - w;
+        y = epd_height() - y - h;
         break;
 
       case EPD_ROT_INVERTED_PORTRAIT:
         // 3 270 °
         _swap_int(x, y);
         _swap_int(w, h);
-        y = EPD_HEIGHT - y - h;
+        y = epd_height() - y - h;
         break;
     }
   }
@@ -133,8 +136,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
   diff_area.x = 0;
   diff_area.y = 0;
-  diff_area.width = EPD_WIDTH;
-  diff_area.height = EPD_HEIGHT;
+  diff_area.width = epd_width();
+  diff_area.height = epd_height();
 
   enum EpdDrawError err;
   if (previously_white) {
@@ -151,8 +154,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
 	if (state->dirty_lines[l] > 0) {
-      uint8_t* lfb = state->front_fb + EPD_WIDTH / 2 * l;
-      uint8_t* lbb = state->back_fb + EPD_WIDTH / 2 * l;
+      uint8_t* lfb = state->front_fb + epd_width() / 2 * l;
+      uint8_t* lbb = state->back_fb + epd_width() / 2 * l;
 
       for (int x=diff_area.x; x < diff_area.x + diff_area.width; x++) {
           if (x % 2) {
@@ -169,6 +172,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
 void epd_hl_set_all_white(EpdiyHighlevelState* state) {
   assert(state != NULL);
+  int fb_size = epd_width() / 2 * epd_height();
   memset(state->front_fb, 0xFF, fb_size);
 }
 

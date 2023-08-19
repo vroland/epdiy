@@ -1,11 +1,12 @@
 #include "epd_board.h"
 
+#include <sdkconfig.h>
 #include "../output_i2s/i2s_data_bus.h"
 #include "../output_i2s/rmt_pulse.h"
 #include "../output_i2s/render_i2s.h"
 
 // Make this compile on the S3 to avoid long ifdefs
-#ifndef GPIO_NUM_22
+#ifndef CONFIG_IDF_TARGET_ESP32
 #define GPIO_NUM_22 0
 #define GPIO_NUM_23 0
 #define GPIO_NUM_24 0
