@@ -1,10 +1,10 @@
-#!python3 
+#!python3
 import sys
 
 # inclusive unicode code point intervals
 # must not overlap and be in ascending order
 # modify intervals here
-# however if the "string" command line argument is used these are ignored 
+# however if the "string" command line argument is used these are ignored
 
 intervals = [
     (32, 126),
@@ -42,7 +42,7 @@ import re
 import math
 import argparse
 from collections import namedtuple
-#see https://freetype-py.readthedocs.io/en/latest/ for documentation 
+#see https://freetype-py.readthedocs.io/en/latest/ for documentation
 parser = argparse.ArgumentParser(description="Generate a header file from a font to be used with epdiy.")
 parser.add_argument("name", action="store", help="name of the font.")
 parser.add_argument("size", type=int, help="font size to use.")
@@ -78,16 +78,16 @@ for face in font_stack:
     face.set_char_size(size << 6, size << 6, 150, 150)
 
 
-# assign intervals from argument parrameters  ie. handle the string arg 
+# assign intervals from argument parrameters  ie. handle the string arg
 
 if args.string != None:
     font_file =  font_files[face_index]
     string = " " + args.string # always add space to the string it is easily forgotten
     chars = sorted(set(string))
     #make array of code pointscode_ponts.append(ord(char))
-    code_points = list() 
-    intervals = []   # empty the intevals array NB. if you want to allways add default characters comment out this line 
-    # go through the sorted characters and make the intervals  
+    code_points = list()
+    intervals = []   # empty the intevals array NB. if you want to allways add default characters comment out this line
+    # go through the sorted characters and make the intervals
     for char in chars:
         if( face.get_char_index(ord(char)) != 0 ):
             # this character is in the font file so add it to the new string.
@@ -95,21 +95,21 @@ if args.string != None:
         else:
             print("The character ", char, " is not available in ", font_file, file=sys.stderr)
     lower = code_points[0]
-    len_x = len(code_points) 
+    len_x = len(code_points)
     x = 0
     while x < len_x:
         # ~ print ("loop value x = ", x , file=sys.stderr)
         a =  code_points[x];
         b = a;
-        if( x < len_x - 1): 
+        if( x < len_x - 1):
             b = code_points[x + 1];
-            
+
         if( a == b - 1 ):
-            # ~ print("sequential", a, b, file=sys.stderr) 
+            # ~ print("sequential", a, b, file=sys.stderr)
             if( lower == -1):
                 lower = a
         else:
-            # ~ print("non sequential", a, b , file=sys.stderr) 
+            # ~ print("non sequential", a, b , file=sys.stderr)
             if( lower == -1):
                 # ~ print("single character")
                 interval = (a , a)
@@ -117,7 +117,7 @@ if args.string != None:
                 interval = (lower, a)
             # ~ print("interval", interval , file=sys.stderr)
             intervals.append(interval)
-            lower = -1 
+            lower = -1
         x = x + 1
 
 
@@ -150,7 +150,7 @@ total_size = 0
 total_packed = 0
 all_glyphs = []
 
-# new globals 
+# new globals
 total_chars = 0
 ascender = 0
 descender = 100
@@ -181,7 +181,7 @@ def load_glyph(code_point):
         face_index += 1
         # this needs work
         # this needs to be handled better to show failed character and continue not just die a questionable death
-        # this appears to have been designed to combine several font files 
+        # this appears to have been designed to combine several font files
         # but that is not clear to the end user and this then looks like a bug
         print (f"falling back to font {face_index} for {chr(code_point)}.", file=sys.stderr)
     raise ValueError(f"code point {code_point} not found in font stack!")
@@ -246,17 +246,17 @@ print("total", total_packed, file=sys.stderr)
 print("compressed", total_size, file=sys.stderr)
 
 print("#pragma once")
-print("#include \"epd_driver.h\"")
+print("#include \"epdiy.h\"")
 
 # add font file origin and characters at the head of the output file
-print("/*") 
+print("/*")
 print ( "Created with")
 print(command_line)
 print(f"As '{font_name}' with available {total_chars} characters")
 for i, g in enumerate(glyph_props):
     print (f"{chr(g.code_point)}", end ="" )
-print("") 
-print("*/") 
+print("")
+print("*/")
 
 print(f"const uint8_t {font_name}_Bitmaps[{len(glyph_data)}] = {{")
 for c in chunks(glyph_data, 16):
@@ -288,12 +288,12 @@ print(f"    {norm_ceil(ascender)}, // ascender Maximal height of a glyph above t
 print(f"    {norm_floor(descender)}, // descender Maximal height of a glyph below the base line")
 print("};")
 print("/*")
-print("Included intervals")  
+print("Included intervals")
 for i_start, i_end in intervals:
     print (f"    ( {i_start}, {i_end}), ie. '{chr(i_start)}' -  '{chr(i_end)}'")
-print("Included intervals", file=sys.stderr)  
+print("Included intervals", file=sys.stderr)
 for i_start, i_end in intervals:
     print (f"    ( {i_start}, {i_end}), ie. '{chr(i_start)}' -  '{chr(i_end)}'", file=sys.stderr)
-print("") 
-print("*/") 
+print("")
+print("*/")
 

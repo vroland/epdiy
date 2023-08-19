@@ -1,5 +1,5 @@
 #include "lcd_driver.h"
-#include "epd_driver.h"
+#include "epdiy.h"
 
 #include "../output_common/render_method.h"
 

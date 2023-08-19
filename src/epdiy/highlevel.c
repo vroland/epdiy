@@ -3,7 +3,7 @@
  */
 
 #include "epd_highlevel.h"
-#include "include/epd_driver.h"
+#include "include/epdiy.h"
 #include <assert.h>
 #include <esp_types.h>
 #include <string.h>

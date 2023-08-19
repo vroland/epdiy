@@ -4,7 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_highlevel.h"
 #include "dragon.h"
 

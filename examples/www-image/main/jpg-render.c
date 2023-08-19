@@ -34,7 +34,7 @@
 #include <math.h> // round + pow
 #include <inttypes.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_highlevel.h"
 EpdiyHighlevelState hl;
 

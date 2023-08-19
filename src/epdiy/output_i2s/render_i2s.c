@@ -8,7 +8,7 @@
 
 #include <esp_log.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_internals.h"
 
 // output a row to the display.

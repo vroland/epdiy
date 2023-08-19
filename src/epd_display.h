@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#include "epdiy/include/epd_highlevel.h"
+#include "epdiy/include/epd_display.h"
 
 #ifdef __cplusplus
 }

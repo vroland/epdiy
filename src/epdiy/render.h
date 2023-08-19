@@ -1,6 +1,6 @@
 #pragma once
 
-#include "epd_driver.h"
+#include "epdiy.h"
 /**
  * Initialize the EPD renderer and its render context.
  */

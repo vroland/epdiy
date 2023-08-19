@@ -10,7 +10,7 @@
 
 #include "render_lcd.h"
 #include "epd_board.h"
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_internals.h"
 #include "lcd_driver.h"
 #include "../output_common/line_queue.h"

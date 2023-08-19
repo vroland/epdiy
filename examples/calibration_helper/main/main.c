@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 
 void enable_vcom() {
   epd_init(EPD_OPTIONS_DEFAULT);

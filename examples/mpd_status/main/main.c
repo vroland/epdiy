@@ -19,7 +19,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_highlevel.h"
 #include "firasans_16.h"
 #include "firasans_16_bold.h"

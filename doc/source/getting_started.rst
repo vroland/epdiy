@@ -105,12 +105,12 @@ You should now see the demo output on your display.
 Use with esp-idf
 ----------------
 
-The neccessary functionality for driving an EPD display is encapsulated in the :code:`components/epd_driver` IDF component.
-To use it in you own project, simply copy the :code:`epd_driver` folder to your project-local :code:`components` directory.
+The neccessary functionality for driving an EPD display is encapsulated in the :code:`components/epdiy` IDF component.
+To use it in you own project, simply copy the :code:`epdiy` folder to your project-local :code:`components` directory.
 The component sould be automatically detected by the framework, you can now use
 ::
 
-    #include "epd_driver.h"
+    #include "epdiy.h"
 
 to use the EPD driver's :ref:`pub_api`.
 
@@ -135,7 +135,7 @@ to make your code portable.
 
 Enable SPI RAM
 ~~~~~~~~~~~~~~~~~~~~~~~~
-The ESP32-WROVER-B comes with an additional 8MB external PSRAM, where the :code:`epd_driver` is going to store ~2MB for its internal frame buffers. 
+The ESP32-WROVER-B comes with an additional 8MB external PSRAM, where the :code:`epdiy` is going to store ~2MB for its internal frame buffers. 
 Since it is dynamically allocated from the heap, and the built-in SRAM of ~160KB is insufficient, we need to enable external SPI RAM first.
 
 Open the :code:`menuconfig` again (see above) and navigate to :code:`Component config -> ESP32-Specific -> Support for external, SPI-connected RAM` and enable it.

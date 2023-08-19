@@ -1,5 +1,5 @@
 /**
- * @file epd_driver.h
+ * @file epdiy.h
  * A driver library for drawing to an EPD.
  */
 #include "epd_display.h"
@@ -13,20 +13,6 @@ extern "C" {
 #include <esp_attr.h>
 
 #include "epd_internals.h"
-#include "epd_board.h"
-#include "epd_display.h"
-
-/** Display software rotation.
- *  Sets the rotation for the purposes of the drawing and font functions
- *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
- *  Use epd_get_rotation() in case you need to read this value
- */
-enum EpdRotation {
-    EPD_ROT_LANDSCAPE = 0,
-    EPD_ROT_PORTRAIT = 1,
-    EPD_ROT_INVERTED_LANDSCAPE = 2,
-    EPD_ROT_INVERTED_PORTRAIT = 3,
-};
 
 /// An area on the display.
 typedef struct {
@@ -39,45 +25,6 @@ typedef struct {
   /// Area / image height, must be positive.
   int height;
 } EpdRect;
-
-/// Possible failures when drawing.
-enum EpdDrawError {
-  EPD_DRAW_SUCCESS = 0x0,
-  /// No valid framebuffer packing mode was specified.
-  EPD_DRAW_INVALID_PACKING_MODE = 0x1,
-
-  /// No lookup table implementation for this mode / packing.
-  EPD_DRAW_LOOKUP_NOT_IMPLEMENTED = 0x2,
-
-  /// The string to draw is invalid.
-  EPD_DRAW_STRING_INVALID = 0x4,
-
-  /// The string was not empty, but no characters where drawable.
-  EPD_DRAW_NO_DRAWABLE_CHARACTERS = 0x8,
-
-  /// Allocation failed
-  EPD_DRAW_FAILED_ALLOC = 0x10,
-
-  /// A glyph could not be drawn, and not fallback was present.
-  EPD_DRAW_GLYPH_FALLBACK_FAILED = 0x20,
-
-  /// The specified crop area is invalid.
-  EPD_DRAW_INVALID_CROP = 0x40,
-
-  /// No such mode is available with the current waveform.
-  EPD_DRAW_MODE_NOT_FOUND = 0x80,
-
-  /// The waveform info file contains no applicable temperature range.
-  EPD_DRAW_NO_PHASES_AVAILABLE = 0x100,
-
-  /// An invalid combination of font flags was used.
-  EPD_DRAW_INVALID_FONT_FLAGS = 0x200,
-
-  /// The waveform lookup could not keep up with the display output.
-  ///
-  /// Reduce the display clock speed.
-  EPD_DRAW_EMPTY_LINE_QUEUE = 0x400,
-};
 
 /// Global EPD driver options.
 enum EpdInitOptions {
@@ -161,6 +108,62 @@ enum EpdDrawMode {
   /// See `PREVIOUSLY_WHITE`.
   /// Draw on a black background
   PREVIOUSLY_BLACK = 0x400,
+};
+
+#include "epd_board.h"
+#include "epd_display.h"
+#include "epd_highlevel.h"
+#include "epd_board_specific.h"
+
+/** Display software rotation.
+ *  Sets the rotation for the purposes of the drawing and font functions
+ *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
+ *  Use epd_get_rotation() in case you need to read this value
+ */
+enum EpdRotation {
+    EPD_ROT_LANDSCAPE = 0,
+    EPD_ROT_PORTRAIT = 1,
+    EPD_ROT_INVERTED_LANDSCAPE = 2,
+    EPD_ROT_INVERTED_PORTRAIT = 3,
+};
+
+/// Possible failures when drawing.
+enum EpdDrawError {
+  EPD_DRAW_SUCCESS = 0x0,
+  /// No valid framebuffer packing mode was specified.
+  EPD_DRAW_INVALID_PACKING_MODE = 0x1,
+
+  /// No lookup table implementation for this mode / packing.
+  EPD_DRAW_LOOKUP_NOT_IMPLEMENTED = 0x2,
+
+  /// The string to draw is invalid.
+  EPD_DRAW_STRING_INVALID = 0x4,
+
+  /// The string was not empty, but no characters where drawable.
+  EPD_DRAW_NO_DRAWABLE_CHARACTERS = 0x8,
+
+  /// Allocation failed
+  EPD_DRAW_FAILED_ALLOC = 0x10,
+
+  /// A glyph could not be drawn, and not fallback was present.
+  EPD_DRAW_GLYPH_FALLBACK_FAILED = 0x20,
+
+  /// The specified crop area is invalid.
+  EPD_DRAW_INVALID_CROP = 0x40,
+
+  /// No such mode is available with the current waveform.
+  EPD_DRAW_MODE_NOT_FOUND = 0x80,
+
+  /// The waveform info file contains no applicable temperature range.
+  EPD_DRAW_NO_PHASES_AVAILABLE = 0x100,
+
+  /// An invalid combination of font flags was used.
+  EPD_DRAW_INVALID_FONT_FLAGS = 0x200,
+
+  /// The waveform lookup could not keep up with the display output.
+  ///
+  /// Reduce the display clock speed.
+  EPD_DRAW_EMPTY_LINE_QUEUE = 0x400,
 };
 
 /// The default draw mode (non-flashy refresh, whith previously white screen).

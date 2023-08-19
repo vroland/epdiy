@@ -26,7 +26,7 @@
     ]
   },
   "build": {
-    "includeDir": "src/epd_driver/include",
-    "srcDir": "src/epd_driver"
+    "includeDir": "src/epdiy/include",
+    "srcDir": "src/epdiy"
   }
 }

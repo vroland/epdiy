@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#include "epd_driver/include/epd_driver.h"
+#include "epdiy/include/epdiy.h"
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 
-set(app_sources "epd_driver.c"
+set(app_sources "epdiy.c"
                 "render.c"
                 "output_lcd/render_lcd.c"
                 "output_lcd/lcd_driver.c"

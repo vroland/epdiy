@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 
 #include "Arduino.h"
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1

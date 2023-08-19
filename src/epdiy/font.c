@@ -1,4 +1,4 @@
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"

@@ -5,7 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
-#include "epd_driver.h"
+#include "epdiy.h"
 
 // Make a block of 4 pixels lighter on the EPD.
 #define CLEAR_BYTE 0B10101010

@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <esp_log.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 
 
 /**

@@ -10,7 +10,7 @@
 #include "sdkconfig.h"
 #include <string.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_highlevel.h"
 
 #define WAVEFORM EPD_BUILTIN_WAVEFORM

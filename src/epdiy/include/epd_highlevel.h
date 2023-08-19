@@ -15,7 +15,7 @@
  * 		hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
  *
  * 3. Now, we can draw to the allocated framebuffer,
- *    using the draw and text functions defined in `epd_driver.h`.
+ *    using the draw and text functions defined in `epdiy.h`.
  *    This will not yet update the display, but only its representation in memory.
  *
  * 		// A reference to the framebuffer
@@ -43,7 +43,7 @@
  *
  * 	That's it! For many application, this will be enough.
  * 	For special applications and requirements, have a
- * 	closer look at the `epd_driver.h` header.
+ * 	closer look at the `epdiy.h` header.
  *
  *  Colors
  *  ======
@@ -63,7 +63,7 @@ extern "C" {
 
 #endif
 #pragma once
-#include "epd_driver.h"
+#include "epdiy.h"
 #include <stdint.h>
 
 #define EPD_BUILTIN_WAVEFORM NULL

@@ -18,7 +18,7 @@
 #include "freertos/task.h"
 #include <string.h>
 
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "st.h"
 
 #define USB_TXD  (GPIO_NUM_1)

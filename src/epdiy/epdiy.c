@@ -1,6 +1,6 @@
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "include/epd_board.h"
-#include "include/epd_driver.h"
+#include "include/epdiy.h"
 #include "include/epd_display.h"
 #include "render.h"
 

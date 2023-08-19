@@ -41,7 +41,7 @@ idf_component_register(SRCS ${srcs}
 #include <string.h>
 #include <math.h> // round + pow
 extern "C" {
-  #include "epd_driver.h"
+  #include "epdiy.h"
   #include "epd_highlevel.h"
 }
 EpdiyHighlevelState hl;

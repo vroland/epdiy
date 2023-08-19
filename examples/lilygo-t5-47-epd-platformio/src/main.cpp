@@ -5,7 +5,7 @@
 #include "esp_log.h"
 
 // epd
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "epd_highlevel.h"
 
 // battery

@@ -18,7 +18,7 @@
 #include <wchar.h>
 
 #include "driver/uart.h"
-#include "epd_driver.h"
+#include "epdiy.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"

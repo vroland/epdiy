@@ -1,4 +1,4 @@
-#include "epd_driver.h"
+#include "epdiy.h"
 
 #include <driver/gpio.h>
 #include <esp_system.h>
