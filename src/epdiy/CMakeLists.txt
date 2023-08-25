@@ -31,7 +31,9 @@ set(app_sources "epdiy.c"
 if (${IDF_VERSION_MAJOR} GREATER 4)
     idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES driver esp_timer esp_adc esp_lcd)
 else()
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES esp_adc_cal esp_timer)
+    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" REQUIRES esp_adc_cal esp_timer esp_lcd)
 endif()
 
+# formatting specifiers maybe incompatible between idf versions because of different int definitions
+component_compile_options(-Wno-error=format= -Wno-format)
 set_source_files_properties("lut.c" PROPERTIES COMPILE_OPTIONS -mno-fix-esp32-psram-cache-issue)

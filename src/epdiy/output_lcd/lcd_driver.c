@@ -12,22 +12,33 @@
 #include <string.h>
 #include <soc/rmt_periph.h>
 #include <soc/lcd_periph.h>
+#include <esp_log.h>
+#include <esp_idf_version.h>
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/rmt_types.h>
 #include <driver/rmt_types_legacy.h>
 #include <hal/rmt_types.h>
-#include <sdkconfig.h>
+#include <driver/rmt_tx.h>
+#include <esp_private/periph_ctrl.h>
+#else
+#include <soc/rmt_struct.h>
+#include <driver/periph_ctrl.h>
+#include <driver/rmt.h>
+#include <esp_rom_gpio.h>
+#include "idf-4-backports.h"
+#endif
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 #include <esp_timer.h>
-#include <driver/rmt_tx.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_rgb.h>
 #include <driver/gpio.h>
 #include <hal/gpio_hal.h>
 #include <esp_check.h>
 #include <esp_err.h>
-#include <esp_log.h>
 #include <soc/rmt_struct.h>
 #include <hal/rmt_ll.h>
 #include <hal/lcd_ll.h>
@@ -38,7 +49,6 @@
 #include <esp_private/gdma.h>
 #include <hal/gdma_ll.h>
 #include <rom/cache.h>
-#include <esp_private/periph_ctrl.h>
 
 #include "../output_common/lut.h"
 
@@ -462,7 +472,7 @@ void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_h
     // set pclk
     int flags = 0;
     uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
-    ESP_LOGI(TAG, "pclk freq: %lu Hz", freq);
+    ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
     // pixel clock phase and polarity
     lcd_ll_set_clock_idle_level(lcd.hal.dev, false);
     lcd_ll_set_pixel_clock_edge(lcd.hal.dev, false);

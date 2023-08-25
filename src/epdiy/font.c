@@ -1,8 +1,11 @@
+#include <esp_assert.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
+#include <esp_idf_version.h>
+
 #include "epdiy.h"
-#include "esp_assert.h"
-#include "esp_heap_caps.h"
-#include "esp_log.h"
-#if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "rom/miniz.h"
 #else
 #include <miniz.h>
