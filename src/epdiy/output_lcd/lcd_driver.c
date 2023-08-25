@@ -136,12 +136,6 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     return task_awoken;
 }
 
-
-static void IRAM_ATTR rmt_interrupt_handler(void *args) {
-    uint32_t intr_status = rmt_ll_tx_get_interrupt_status(&RMT, RMT_CKV_CHAN);
-    rmt_ll_clear_interrupt_status(&RMT, intr_status);
-}
-
 static void start_ckv_cycles(int cycles) {
 
     rmt_ll_tx_enable_loop_count(&RMT, RMT_CKV_CHAN, true);
@@ -204,7 +198,13 @@ static void init_ckv_rmt() {
   periph_module_enable(rmt_periph_signals.groups[0].module);
 
   rmt_ll_enable_periph_clock(&RMT, true);
+
+// idf >= 5.0 calculates the clock divider differently
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 1, 0, 0);
+#else
+  rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0);
+#endif
   rmt_ll_tx_set_channel_clock_div(&RMT, RMT_CKV_CHAN, 8);
   rmt_ll_tx_set_mem_blocks(&RMT, RMT_CKV_CHAN, 2);
   rmt_ll_enable_mem_access_nonfifo(&RMT, true);
@@ -228,10 +228,6 @@ static void init_ckv_rmt() {
   gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.ckv], PIN_FUNC_GPIO);
   gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
   esp_rom_gpio_connect_out_signal(lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0);
-  rmt_ll_enable_interrupt(&RMT, RMT_LL_EVENT_TX_LOOP_END(RMT_CKV_CHAN), true);
-  intr_handle_t rmt_intr_handle;
-  ESP_ERROR_CHECK(esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_SHARED | ESP_INTR_FLAG_IRAM,
-                 rmt_interrupt_handler, NULL, &rmt_intr_handle));
 
 }
 
