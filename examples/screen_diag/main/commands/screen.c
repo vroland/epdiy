@@ -290,7 +290,11 @@ static int full_clear_screen_cmd(int argc, char* argv[])
 
 static int get_temp(int argc, char* argv[])
 {
-    printf("%.2f\r\n", epd_ambient_temperature());
+    epd_poweron();
+    const float temp = epd_ambient_temperature();
+    epd_poweroff();
+
+    printf("%.2f\r\n", temp);
     return 0;
 }
 

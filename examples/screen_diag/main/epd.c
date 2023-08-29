@@ -16,7 +16,9 @@ void initialize_screen(void)
 
     epd_set_rotation(EPD_ROT_PORTRAIT);
 
+    epd_poweron();
     s_temperature = (int)epd_ambient_temperature();
+    epd_poweroff();
 }
 
 void update_screen(void)
