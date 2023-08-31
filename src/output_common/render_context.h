@@ -5,7 +5,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
-#include "../include/epdiy.h"
+#include "../epdiy.h"
 #include "line_queue.h"
 
 #define NUM_RENDER_THREADS 2

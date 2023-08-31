@@ -1,6 +1,6 @@
 #include "render_context.h"
 
-#include "../include/epdiy.h"
+#include "../epdiy.h"
 #include "lut.h"
 
 /// For waveforms without timing and the I2S diving method,
