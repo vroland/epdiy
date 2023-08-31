@@ -1,7 +1,6 @@
 #include "epdiy.h"
-#include "include/epd_board.h"
-#include "include/epdiy.h"
-#include "include/epd_display.h"
+#include "epd_board.h"
+#include "epd_display.h"
 #include "render.h"
 
 #include <esp_assert.h>

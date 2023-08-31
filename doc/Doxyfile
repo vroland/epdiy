@@ -116,7 +116,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = ../src/epdiy/include/
+INPUT                  = ../include/
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
                          *.h

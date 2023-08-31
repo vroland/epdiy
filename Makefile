@@ -10,25 +10,25 @@ EXPORT_TEMPERATURE_RANGE ?= 15,35
 
 # the default headers that should come with the distribution
 default: \
-	$(patsubst %,src/epdiy/waveforms/epdiy_%.h,$(SUPPORTRED_DISPLAYS))
+	$(patsubst %,src/waveforms/epdiy_%.h,$(SUPPORTRED_DISPLAYS))
 
 clean:
-	rm src/epdiy/waveforms/epdiy_*.h
-	rm src/epdiy/waveforms/eink_*.h
+	rm src/waveforms/epdiy_*.h
+	rm src/waveforms/eink_*.h
 
-src/epdiy/waveforms/epdiy_%.h: src/epdiy/waveforms/epdiy_%.json
+src/waveforms/epdiy_%.h: src/waveforms/epdiy_%.json
 	python3 scripts/waveform_hdrgen.py \
 		--export-modes $(EXPORTED_MODES) \
 		--temperature-range $(EXPORT_TEMPERATURE_RANGE) \
 		epdiy_$* < $< > $@
 
-src/epdiy/waveforms/eink_%.h: src/epdiy/waveforms/eink_%.json
+src/waveforms/eink_%.h: src/waveforms/eink_%.json
 	python3 scripts/waveform_hdrgen.py \
 		--export-modes $(EXPORTED_MODES) \
 		--temperature-range $(EXPORT_TEMPERATURE_RANGE) \
 		eink_$* < $< > $@
 
-src/epdiy/waveforms/epdiy_%.json:
+src/waveforms/epdiy_%.json:
 	python3 scripts/epdiy_waveform_gen.py $* > $@
 
 .PHONY: default

@@ -1,4 +1,4 @@
-#include "include/epd_display.h"
+#include "epd_display.h"
 
 const EpdDisplay_t ED060SCT = {
     .width = 800,

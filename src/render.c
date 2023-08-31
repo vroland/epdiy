@@ -2,7 +2,7 @@
 
 #include "epdiy.h"
 #include "epd_board.h"
-#include "include/epd_internals.h"
+#include "epd_internals.h"
 
 #include <stdalign.h>
 #include <stdint.h>
@@ -13,8 +13,6 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
-#include "include/epd_board.h"
-#include "include/epdiy.h"
 #include "output_common/render_context.h"
 #include "output_common/render_method.h"
 #include "output_lcd/render_lcd.h"
