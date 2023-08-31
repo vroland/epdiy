@@ -1,10 +1,6 @@
 name: ESP-IDF
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -14,7 +10,6 @@ jobs:
       matrix:
         version:
           - release-v4.4
-          - release-v5.0
           - release-v5.1
         example:
           - calibration_helper
