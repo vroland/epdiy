@@ -2,7 +2,7 @@
 
 #include "epdiy.h"
 #include "epd_board.h"
-#include "epd_internals.h"
+#include "include/epd_internals.h"
 
 #include <stdalign.h>
 #include <stdint.h>
@@ -258,8 +258,8 @@ void epd_renderer_init(enum EpdInitOptions options) {
         render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(
             queue_len * queue_elem_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 15, (void *)i,
-            10 | portPRIVILEGE_BIT, &render_context.feed_tasks[i], i));
+            render_thread, "epd_prep", 1 << 14, (void *)i,
+            configMAX_PRIORITIES, &render_context.feed_tasks[i], i));
         if (render_context.line_queues[i].buf == NULL) {
             ESP_LOGE("epd", "could not allocate line queue!");
             abort();

@@ -110,12 +110,12 @@ static s3_lcd_t lcd;
 static int line_bytes = 0;
 static int vertical_lines = 0;
 
-void epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
+void IRAM_ATTR epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
     lcd.line_source_cb = line_source;
     lcd.line_cb_payload = payload;
 }
 
-void epd_lcd_frame_done_cb(frame_done_func_t cb, void* payload) {
+void IRAM_ATTR epd_lcd_frame_done_cb(frame_done_func_t cb, void* payload) {
     lcd.frame_done_cb = cb;
     lcd.frame_cb_payload = payload;
 }
@@ -145,7 +145,7 @@ static void start_ckv_cycles(int cycles) {
     rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
 }
 
-void epd_lcd_start_frame() {
+void IRAM_ATTR epd_lcd_start_frame() {
     int initial_lines = min(LINE_BATCH, vertical_lines);
 
     int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - line_bytes;
@@ -231,6 +231,7 @@ static void init_ckv_rmt() {
 
 }
 
+__attribute__((optimize("O3")))
 IRAM_ATTR static void lcd_isr_vsync(void *args)
 {
     bool need_yield = false;

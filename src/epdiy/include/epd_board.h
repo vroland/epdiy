@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include <xtensa/core-macros.h>
+#include <esp_err.h>
 
 /**
  * State of display control pins.
@@ -25,39 +26,56 @@ typedef struct {
  * Operations available on an epdiy board.
  */
 typedef struct {
-  /**
-   * Initialize the board.
-   */
-  void (*init)(uint32_t epd_row_width);
-  /**
-   * Clean up resources and peripherals used by the board.
-   */
-  void (*deinit)(void);
-  /**
-   * Set display line state
-   */
-  void (*set_ctrl)(epd_ctrl_state_t *, const epd_ctrl_state_t * const);
-  /**
-   * Enable power to the display.
-   */
-  void (*poweron)(epd_ctrl_state_t *);
-  /**
-   * Disable power to the display.
-   */
-  void (*poweroff)(epd_ctrl_state_t *);
+    /**
+    * Initialize the board.
+    */
+    void (*init)(uint32_t epd_row_width);
+    /**
+    * Clean up resources and peripherals used by the board.
+    */
+    void (*deinit)(void);
+    /**
+    * Set display line state
+    */
+    void (*set_ctrl)(epd_ctrl_state_t *, const epd_ctrl_state_t * const);
+    /**
+    * Enable power to the display.
+    */
+    void (*poweron)(epd_ctrl_state_t *);
+    /**
+    * Disable power to the display.
+    */
+    void (*poweroff)(epd_ctrl_state_t *);
 
-  /**
-   * Set the display common voltage if supported.
-   *
-   * Voltage is set as absolute value in millivolts.
-   * Although VCOM is negative, this function takes a positive (absolute) value.
-   */
-  void (*set_vcom)(int);
+    /**
+    * Set the display common voltage if supported.
+    *
+    * Voltage is set as absolute value in millivolts.
+    * Although VCOM is negative, this function takes a positive (absolute) value.
+    */
+    void (*set_vcom)(int);
 
-  /**
-   * Get the current temperature if supported by the board.
-   */
-  float (*get_temperature)(void);
+    /**
+    * Get the current temperature if supported by the board.
+    */
+    float (*get_temperature)(void);
+
+    /**
+    * Set GPIO direction of the broken-out GPIO extender port,
+    * if available.
+    * Setting `make_input` to `1` corresponds to input, `0` corresponds to output.
+    */
+    esp_err_t (*gpio_set_direction)(int pin, bool make_input);
+
+    /**
+     * Get the input level of a GPIO extender pin, if available.
+     */
+    bool (*gpio_read)(int pin);
+
+    /**
+    * Set the output level of a GPIO extender, if available.
+    */
+    esp_err_t (*gpio_write)(int pin, bool value);
 } EpdBoardDefinition;
 
 /**

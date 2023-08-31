@@ -11,7 +11,7 @@
 #include "render_lcd.h"
 #include "epd_board.h"
 #include "epdiy.h"
-#include "epd_internals.h"
+#include "../include/epd_internals.h"
 #include "lcd_driver.h"
 #include "../output_common/line_queue.h"
 #include "../output_common/lut.h"
@@ -32,6 +32,7 @@ static bool IRAM_ATTR fill_line_black(RenderContext_t* ctx, uint8_t *line) {
     return false;
 }
 
+__attribute__((optimize("O3")))
 static bool IRAM_ATTR retrieve_line_isr(RenderContext_t* ctx, uint8_t *buf) {
     if (ctx->lines_consumed >= ctx->lines_total) {
         return false;
@@ -67,6 +68,7 @@ static void IRAM_ATTR handle_lcd_frame_done(RenderContext_t *ctx) {
 }
 
 void lcd_do_update(RenderContext_t *ctx) {
+
     epd_set_mode(1);
 
     for (uint8_t k = 0; k < ctx->cycle_frames; k++) {
@@ -87,9 +89,7 @@ void lcd_do_update(RenderContext_t *ctx) {
         ctx->current_frame++;
 
         // make the watchdog happy.
-        if (k % 10 == 0) {
-            vTaskDelay(0);
-        }
+        vTaskDelay(0);
     }
 
     epd_lcd_line_source_cb(NULL, NULL);
@@ -115,6 +115,7 @@ void epd_push_pixels_lcd(RenderContext_t *ctx, short time, int color) {
 }
 
 #define int_min(a, b) (((a) < (b)) ? (a) : (b))
+__attribute__((optimize("O3")))
 void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
     uint8_t input_line[ctx->display_width];
     LineQueue_t *lq = &ctx->line_queues[thread_id];
@@ -142,7 +143,7 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
     assert(area.width == ctx->display_width && area.x == 0 && !ctx->error);
 
     // index of the line that triggers the frame output when processed
-    int trigger_line = int_min(31, max_y - min_y);
+    int trigger_line = int_min(63, max_y - min_y);
 
     while (l = atomic_fetch_add(&ctx->lines_prepared, 1), l < ctx->lines_total) {
 
@@ -162,6 +163,7 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
             while (buf == NULL) {
                 // break in case of errors
                 if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
+                    printf("on err 1: %d %d\n", ctx->lines_prepared, ctx->lines_consumed);
                     lq_reset(lq);
                     return;
                 };
@@ -185,6 +187,7 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
             // break in case of errors
             if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
                 lq_reset(lq);
+                printf("on err 2: %d %d\n", ctx->lines_prepared, ctx->lines_consumed);
                 return;
             };
 

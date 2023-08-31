@@ -1,8 +1,9 @@
 #include <string.h>
+#include <esp_attr.h>
 
 #include "line_queue.h"
 
-uint8_t* lq_current(LineQueue_t* queue) {
+uint8_t* IRAM_ATTR lq_current(LineQueue_t* queue) {
     int current = atomic_load_explicit(&queue->current, memory_order_acquire);
     int last = atomic_load_explicit(&queue->last, memory_order_acquire);
 
@@ -12,7 +13,7 @@ uint8_t* lq_current(LineQueue_t* queue) {
     return &queue->buf[current * queue->element_size];
 }
 
-void lq_commit(LineQueue_t* queue) {
+void IRAM_ATTR lq_commit(LineQueue_t* queue) {
 
     int current = atomic_load_explicit(&queue->current, memory_order_acquire);
     if (current == queue->size - 1) {
@@ -22,7 +23,7 @@ void lq_commit(LineQueue_t* queue) {
     }
 }
 
-int lq_read(LineQueue_t* queue, uint8_t* dst) {
+int IRAM_ATTR lq_read(LineQueue_t* queue, uint8_t* dst) {
     int current = atomic_load_explicit(&queue->current, memory_order_acquire);
     int last = atomic_load_explicit(&queue->last, memory_order_acquire);
 
@@ -41,7 +42,7 @@ int lq_read(LineQueue_t* queue, uint8_t* dst) {
 }
 
 
-void lq_reset(LineQueue_t* queue) {
+void IRAM_ATTR lq_reset(LineQueue_t* queue) {
     queue->current = 0;
     queue->last = 0;
 }

@@ -258,29 +258,6 @@ static float epd_board_ambient_temperature() {
   return 20;
 }
 
-/**
- * Set GPIO direction of the broken-out GPIO extender port.
- * Each pin corresponds to a bit in `direction`.
- * `1` corresponds to input, `0` corresponds to output.
- */
-esp_err_t epd_gpio_set_direction_v6(uint8_t direction) {
-    return 0;
-}
-
-/**
- * Get the input level of the broken-out GPIO extender port.
- */
-uint8_t epd_gpio_get_level_v6() {
-    return 0;
-}
-
-/**
- * Get the input level of the broken-out GPIO extender port.
- */
-esp_err_t epd_gpio_set_value_v6(uint8_t value) {
-    return 0;
-}
-
 static void set_vcom(int value) {
   vcom = value;
 }
@@ -294,5 +271,10 @@ const EpdBoardDefinition epd_board_v7 = {
 
   .get_temperature = epd_board_ambient_temperature,
   .set_vcom = set_vcom,
+
+  // unimplemented for now, but shares v6 implementation
+  .gpio_set_direction = NULL,
+  .gpio_read = NULL,
+  .gpio_write = NULL,
 };
 

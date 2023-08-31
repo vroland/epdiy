@@ -2,6 +2,7 @@
 
 #include <esp_log.h>
 #include <sdkconfig.h>
+#include <stdint.h>
 #include "../output_i2s/rmt_pulse.h"
 #include "../output_i2s/i2s_data_bus.h"
 #include "../output_i2s/render_i2s.h"
@@ -246,27 +247,32 @@ static float epd_board_ambient_temperature() {
   return tps_read_thermistor(EPDIY_I2C_PORT);
 }
 
-/**
- * Set GPIO direction of the broken-out GPIO extender port.
- * Each pin corresponds to a bit in `direction`.
- * `1` corresponds to input, `0` corresponds to output.
- */
-esp_err_t epd_gpio_set_direction_v6(uint8_t direction) {
+
+static esp_err_t gpio_set_direction_v6(int pin, bool make_input) {
+
+    static uint8_t direction = 0;
+    uint8_t mask = ~(1 << pin);
+    direction = (direction & mask) | (make_input << pin);
+
     return pca9555_set_config(EPDIY_I2C_PORT, direction, 0);
 }
 
 /**
  * Get the input level of the broken-out GPIO extender port.
  */
-uint8_t epd_gpio_get_level_v6() {
-    return pca9555_read_input(EPDIY_I2C_PORT, 0);
+static bool gpio_get_level_v6(int pin) {
+    return (pca9555_read_input(EPDIY_I2C_PORT, 0) >> pin) & 1;
 }
 
 /**
  * Get the input level of the broken-out GPIO extender port.
  */
-esp_err_t epd_gpio_set_value_v6(uint8_t value) {
-    return pca9555_set_value(EPDIY_I2C_PORT, value, 0);
+static esp_err_t gpio_set_value_v6(int pin, bool value) {
+    static uint8_t state = 0;
+    uint8_t mask = ~(1 << pin);
+    state = (state & mask) | (value << pin);
+
+    return pca9555_set_value(EPDIY_I2C_PORT, state, 0);
 }
 
 static void set_vcom(int value) {
@@ -281,5 +287,9 @@ const EpdBoardDefinition epd_board_v6 = {
   .poweroff = epd_board_poweroff,
   .get_temperature = epd_board_ambient_temperature,
   .set_vcom = set_vcom,
+
+  .gpio_set_direction = gpio_set_direction_v6,
+  .gpio_read = gpio_get_level_v6,
+  .gpio_write = gpio_set_value_v6,
 };
 
