@@ -2,6 +2,7 @@
 .vscode
 build/
 sdkconfig.old
+sdkconfig
 **/build/
 .ccls-cache
 doc/source/xml/

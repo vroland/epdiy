@@ -19,25 +19,47 @@
 
 #include <epdiy.h>
 
+#include "sdkconfig.h"
+
 #include "firasans_12.h"
 #include "firasans_20.h"
-#include "img_giraffe.h"
 #include "img_zebra.h"
 #include "img_beach.h"
 #include "img_board.h"
 
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 
-#ifndef ARDUINO_ARCH_ESP32
-void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
-
-uint32_t millis() { return esp_timer_get_time() / 1000; }
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
 #endif
 
-uint32_t t1, t2;
 
-int temperature;
 EpdiyHighlevelState hl;
+
+void idf_setup() {
+  epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+  // Set VCOM for boards that allow to set this in software (in mV).
+  // This will print an error if unsupported. In this case,
+  // set VCOM using the hardware potentiometer and delete this line.
+  epd_set_vcom(1560);
+
+  hl = epd_hl_init(WAVEFORM);
+
+  // Default orientation is EPD_ROT_LANDSCAPE
+  epd_set_rotation(EPD_ROT_LANDSCAPE);
+
+  printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
+
+  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
+}
+
+#ifndef ARDUINO_ARCH_ESP32
+void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
+#endif
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -67,11 +89,10 @@ void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
 
   epd_fill_rect(bar, black, fb);
 
-  checkError(epd_hl_update_area(&hl, MODE_DU, temperature, border));
+  checkError(epd_hl_update_area(&hl, MODE_DU, epd_ambient_temperature(), border));
 }
 
 void idf_loop() {
-
     // select the font based on display width
     const EpdFont* font;
     if (epd_width() < 1000) {
@@ -84,7 +105,7 @@ void idf_loop() {
 
     epd_poweron();
     epd_clear();
-    temperature = epd_ambient_temperature();
+    int temperature = epd_ambient_temperature();
     epd_poweroff();
 
     printf("current temperature: %d\n", temperature);
@@ -105,19 +126,13 @@ void idf_loop() {
     int bar_y = epd_rotated_display_height() / 2;
 
     epd_poweron();
-    vTaskDelay(100);
-    t1 = millis();
     checkError(epd_hl_update_screen(&hl, MODE_GL16, temperature));
-    t2 = millis();
     epd_poweroff();
-    //printf("EPD update %dms. err: %d\n", t2 - t1, err);
 
     for (int i=0; i < 6; i++) {
         epd_poweron();
-        vTaskDelay(100);
         draw_progress_bar(bar_x, bar_y, 400, i * 10, fb);
         epd_poweroff();
-        vTaskDelay(1);
     }
 
     cursor_x = epd_rotated_display_width() / 2;
@@ -125,7 +140,6 @@ void idf_loop() {
 
     epd_write_string(font, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
     epd_poweron();
-    vTaskDelay(100);
     checkError(epd_hl_update_screen(&hl, MODE_GL16, temperature));
     epd_poweroff();
 
@@ -155,22 +169,6 @@ void idf_loop() {
 
     delay(1000);
 
-    epd_hl_set_all_white(&hl);
-
-    EpdRect giraffe_area = {
-        .x = epd_rotated_display_width() / 2 - img_giraffe_width / 2,
-        .y = 25,
-        .width = img_giraffe_width,
-        .height = img_giraffe_height,
-    };
-
-    epd_draw_rotated_image(giraffe_area, img_giraffe_data, fb);
-
-    epd_poweron();
-    checkError(epd_hl_update_screen(&hl, MODE_GC16, temperature));
-    epd_poweroff();
-
-    delay(5000);
     epd_hl_set_all_white(&hl);
 
     EpdRect zebra_area = {
@@ -243,26 +241,6 @@ void idf_loop() {
     printf("going to sleep...\n");
     epd_deinit();
     esp_deep_sleep_start();
-    //epd_fullclear(&hl, temperature);
-    //delay(10000);
-}
-
-void idf_setup() {
-  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
-
-  epd_init(&epd_board_v6, &ED060XC3, EPD_LUT_64K);
-  // Set VCOM for boards that allow to set this in software (in mV).
-  // This will print an error if unsupported. In this case,
-  // set VCOM using the hardware potentiometer and delete this line.
-  epd_set_vcom(1560);
-
-  hl = epd_hl_init(WAVEFORM);
-
-  // Default orientation is EPD_ROT_LANDSCAPE
-  epd_set_rotation(EPD_ROT_LANDSCAPE);
-
-  printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
 }
 
 #ifndef ARDUINO_ARCH_ESP32

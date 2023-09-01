@@ -272,9 +272,7 @@ static inline int min(int x, int y) { return x < y ? x : y; }
 static inline int max(int x, int y) { return x > y ? x : y; }
 
 void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
-    int line_bytes = ctx->display_width / 4;
 
-    uint8_t line_buf[line_bytes];
     uint8_t input_line[ctx->display_width];
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data

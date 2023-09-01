@@ -381,7 +381,17 @@ static esp_err_t s3_lcd_configure_gpio()
     return ESP_OK;
 }
 
-void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
+void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
+
+    if (CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE < 64) {
+        ESP_LOGE("epdiy", "cache line size is set to %d (< 64B)! Overriding cache configuration, which may break things...");
+        // fixme: this would be nice, but doesn't work :(
+        //uint32_t d_autoload = Cache_Suspend_DCache();
+        ///Cache_Set_DCache_Mode(CACHE_SIZE_FULL, CACHE_4WAYS_ASSOC, CACHE_LINE_SIZE_32B);
+        //Cache_Invalidate_DCache_All();
+        //Cache_Resume_DCache(d_autoload);
+    }
+
     // assign globals
     line_bytes = display_width / 4;
     // Make sure the bounce buffers divide the display height evenly.
