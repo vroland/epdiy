@@ -37,6 +37,13 @@
 #include "tcpip_adapter.h"
 #endif
 
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
 const int queue_x_start = 900;
 const int album_cover_x = 100;
 const int album_cover_y = 100;
@@ -103,7 +110,11 @@ void handle_error(struct mpd_connection** c) {
 }
 
 void epd_task() {
-    epd_init(EPD_LUT_1K);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_1K);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
 
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
