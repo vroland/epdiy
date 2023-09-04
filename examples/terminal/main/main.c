@@ -20,6 +20,13 @@
 #include "epdiy.h"
 #include "st.h"
 
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
 #define USB_TXD (GPIO_NUM_1)
 #define SERIAL_RXD (GPIO_NUM_3)
 
@@ -67,7 +74,12 @@ void read_task() {
 }
 
 void app_main() {
-    epd_init(EPD_OPTIONS_DEFAULT);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
+
     delay(300);
     epd_poweron();
     epd_clear();
