@@ -4,6 +4,7 @@
  * Use this to calibrate grayscale timings for new displays or test alternative waveforms.
  */
 
+#include <stdint.h>
 #include <string.h>
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -25,20 +26,21 @@
 EpdiyHighlevelState hl;
 
 void write_grayscale_pattern(bool direction, uint8_t* fb) {
-    static uint8_t grayscale_line[EPD_WIDTH / 2];
+    int ep_width = epd_width();
+    uint8_t grayscale_line[ep_width / 2];
     if (direction) {
-        for (uint32_t i = 0; i < EPD_WIDTH / 2; i++) {
-            uint8_t segment = i / (EPD_WIDTH / 16 / 2);
+        for (uint32_t i = 0; i < ep_width / 2; i++) {
+            uint8_t segment = i / (ep_width / 16 / 2);
             grayscale_line[i] = (segment << 4) | segment;
         }
     } else {
-        for (uint32_t i = 0; i < EPD_WIDTH / 2; i++) {
-            uint8_t segment = (EPD_WIDTH / 2 - i - 1) / (EPD_WIDTH / 16 / 2);
+        for (uint32_t i = 0; i < ep_width / 2; i++) {
+            uint8_t segment = (ep_width / 2 - i - 1) / (ep_width / 16 / 2);
             grayscale_line[i] = (segment << 4) | segment;
         }
     }
-    for (uint32_t y = 0; y < EPD_HEIGHT; y++) {
-        memcpy(fb + EPD_WIDTH / 2 * y, grayscale_line, EPD_WIDTH / 2);
+    for (uint32_t y = 0; y < epd_height(); y++) {
+        memcpy(fb + ep_width / 2 * y, grayscale_line, ep_width / 2);
     }
 }
 
