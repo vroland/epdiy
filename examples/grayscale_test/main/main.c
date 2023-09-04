@@ -13,6 +13,13 @@
 #include "epd_highlevel.h"
 #include "epdiy.h"
 
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 
 EpdiyHighlevelState hl;
@@ -62,7 +69,7 @@ void loop() {
 }
 
 void IRAM_ATTR app_main() {
-    epd_init(EPD_OPTIONS_DEFAULT);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
     hl = epd_hl_init(WAVEFORM);
 
     while (1) {
