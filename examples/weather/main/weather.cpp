@@ -32,8 +32,15 @@
 #include "forecast_record.h"
 #include "lang.h"
 
-#define SCREEN_WIDTH EPD_WIDTH
-#define SCREEN_HEIGHT EPD_HEIGHT
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
+#define SCREEN_WIDTH (epd_width())
+#define SCREEN_HEIGHT (epd_height())
 
 // ################  VERSION  ##################################################
 String version = "1.0 / 9.7in";  // Programme version, see change log at end
@@ -322,12 +329,16 @@ void setup() {
 }
 
 void epd_task(void* pvParameters) {
-    epd_init(EPD_LUT_1K);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_1K);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
 
     ESP_LOGW("main", "allocating...\n");
 
-    fb = (uint8_t*)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 2, MALLOC_CAP_SPIRAM);
-    memset(fb, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
+    fb = (uint8_t*)heap_caps_malloc(epd_width() * epd_height() / 2, MALLOC_CAP_SPIRAM);
+    memset(fb, 0xFF, epd_width() * epd_height() / 2);
 
     while (1) {
         loop();
@@ -512,7 +523,7 @@ bool decodeImage(WiFiClient& json) {
     // convert it to a JsonObject
     JsonArray array = doc.as<JsonArray>();
     Serial.println("IMG Decoding ...");
-    uint8_t img_data[EPD_WIDTH * EPD_HEIGHT / 2];
+    uint8_t img_data[epd_width() * epd_height() / 2];
     int i = 0;
     for (JsonVariant v : array) {
         img_data[i] = v.as<uint16_t>();
