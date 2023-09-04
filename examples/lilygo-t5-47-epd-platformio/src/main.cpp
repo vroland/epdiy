@@ -207,7 +207,9 @@ void setup() {
     correct_adc_reference();
 
     // First setup epd to use later
-    epd_init(EPD_OPTIONS_DEFAULT);
+
+    epd_init(&epd_board_lilygo_t5_47, &ED097TC2, EPD_LUT_64K);
+    epd_set_vcom(1560);
     hl = epd_hl_init(WAVEFORM);
     epd_set_rotation(orientation);
     fb = epd_hl_get_framebuffer(&hl);
