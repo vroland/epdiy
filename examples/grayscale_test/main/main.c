@@ -70,6 +70,7 @@ void loop() {
 
 void IRAM_ATTR app_main() {
     epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    epd_set_vcom(1560);
     hl = epd_hl_init(WAVEFORM);
 
     while (1) {
