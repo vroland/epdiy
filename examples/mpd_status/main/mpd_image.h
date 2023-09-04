@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <mpd/client.h>
+#include <stdint.h>
 
 typedef struct {
     uint8_t* data;
@@ -11,6 +11,6 @@ typedef struct {
     char* identifier;
 } album_cover_t;
 
-album_cover_t* readpicture(struct mpd_connection *c, char *uri, char* identifier);
+album_cover_t* readpicture(struct mpd_connection* c, char* uri, char* identifier);
 
 void free_album_cover(album_cover_t*);

@@ -1,5 +1,5 @@
 // WiFi configuration:
-#define ESP_WIFI_SSID     ""
+#define ESP_WIFI_SSID ""
 #define ESP_WIFI_PASSWORD ""
 
 // Affects the gamma to calculate gray (lower is darker/higher contrast)
@@ -21,18 +21,20 @@ double gamma_value = 0.7;
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
-#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
+#define IMG_URL ("https://loremflickr.com/" STR(EPD_WIDTH) "/" STR(EPD_HEIGHT))
 
 // idf >= 4.3 needs VALIDATE_SSL_CERTIFICATE set to true for https URLs
 // Please check the README to understand how to use an SSL Certificate
 // Note: This makes a sntp time sync query for cert validation  (It's slower)
-// IMPORTANT: idf updated and now when you use Internet requests you need to server cert verification
-//            heading ESP-TLS in https://newreleases.io/project/github/espressif/esp-idf/release/v4.3-beta1
+// IMPORTANT: idf updated and now when you use Internet requests you need to server cert
+// verification
+//            heading ESP-TLS in
+//            https://newreleases.io/project/github/espressif/esp-idf/release/v4.3-beta1
 #define VALIDATE_SSL_CERTIFICATE true
 // To make an insecure request please check Readme
 
 // Alternative non-https URL:
-//#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
+// #define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
 
 // Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
 #define JPG_DITHERING true

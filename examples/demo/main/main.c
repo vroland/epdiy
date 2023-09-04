@@ -5,17 +5,16 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 
-
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_sleep.h>
 #include <esp_timer.h>
 #include <esp_types.h>
-#include <esp_sleep.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
-#include <inttypes.h>
 
 #include <epdiy.h>
 
@@ -23,9 +22,9 @@
 
 #include "firasans_12.h"
 #include "firasans_20.h"
-#include "img_zebra.h"
 #include "img_beach.h"
 #include "img_board.h"
+#include "img_zebra.h"
 
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
 
@@ -36,29 +35,33 @@
 #define DEMO_BOARD epd_board_v7
 #endif
 
-
 EpdiyHighlevelState hl;
 
 void idf_setup() {
-  epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
-  // Set VCOM for boards that allow to set this in software (in mV).
-  // This will print an error if unsupported. In this case,
-  // set VCOM using the hardware potentiometer and delete this line.
-  epd_set_vcom(1560);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
 
-  hl = epd_hl_init(WAVEFORM);
+    hl = epd_hl_init(WAVEFORM);
 
-  // Default orientation is EPD_ROT_LANDSCAPE
-  epd_set_rotation(EPD_ROT_LANDSCAPE);
+    // Default orientation is EPD_ROT_LANDSCAPE
+    epd_set_rotation(EPD_ROT_LANDSCAPE);
 
-  printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
+    printf(
+        "Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(),
+        epd_rotated_display_height()
+    );
 
-  heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-  heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
+    heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+    heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 }
 
 #ifndef ARDUINO_ARCH_ESP32
-void delay(uint32_t millis) { vTaskDelay(millis / portTICK_PERIOD_MS); }
+void delay(uint32_t millis) {
+    vTaskDelay(millis / portTICK_PERIOD_MS);
+}
 #endif
 
 static inline void checkError(enum EpdDrawError err) {
@@ -68,28 +71,28 @@ static inline void checkError(enum EpdDrawError err) {
 }
 
 void draw_progress_bar(int x, int y, int width, int percent, uint8_t* fb) {
-  const uint8_t white = 0xFF;
-  const uint8_t black = 0x0;
+    const uint8_t white = 0xFF;
+    const uint8_t black = 0x0;
 
-  EpdRect border = {
-    .x = x,
-    .y = y,
-    .width = width,
-    .height = 20,
-  };
-  epd_fill_rect(border, white, fb);
-  epd_draw_rect(border, black, fb);
+    EpdRect border = {
+        .x = x,
+        .y = y,
+        .width = width,
+        .height = 20,
+    };
+    epd_fill_rect(border, white, fb);
+    epd_draw_rect(border, black, fb);
 
-  EpdRect bar = {
-    .x = x + 5,
-    .y = y + 5,
-    .width = (width - 10) * percent / 100,
-    .height = 10,
-  };
+    EpdRect bar = {
+        .x = x + 5,
+        .y = y + 5,
+        .width = (width - 10) * percent / 100,
+        .height = 10,
+    };
 
-  epd_fill_rect(bar, black, fb);
+    epd_fill_rect(bar, black, fb);
 
-  checkError(epd_hl_update_area(&hl, MODE_DU, epd_ambient_temperature(), border));
+    checkError(epd_hl_update_area(&hl, MODE_DU, epd_ambient_temperature(), border));
 }
 
 void idf_loop() {
@@ -110,7 +113,7 @@ void idf_loop() {
 
     printf("current temperature: %d\n", temperature);
 
-    epd_fill_circle(30,30,15,0,fb);
+    epd_fill_circle(30, 30, 15, 0, fb);
     int cursor_x = epd_rotated_display_width() / 2;
     int cursor_y = epd_rotated_display_height() / 2 - 100;
 
@@ -129,7 +132,7 @@ void idf_loop() {
     checkError(epd_hl_update_screen(&hl, MODE_GL16, temperature));
     epd_poweroff();
 
-    for (int i=0; i < 6; i++) {
+    for (int i = 0; i < 6; i++) {
         epd_poweron();
         draw_progress_bar(bar_x, bar_y, 400, i * 10, fb);
         epd_poweroff();
@@ -138,12 +141,14 @@ void idf_loop() {
     cursor_x = epd_rotated_display_width() / 2;
     cursor_y = epd_rotated_display_height() / 2 + 100;
 
-    epd_write_string(font, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props);
+    epd_write_string(
+        font, "Just kidding,\n this is a demo animation 😉", &cursor_x, &cursor_y, fb, &font_props
+    );
     epd_poweron();
     checkError(epd_hl_update_screen(&hl, MODE_GL16, temperature));
     epd_poweroff();
 
-    for (int i=0; i < 6; i++) {
+    for (int i = 0; i < 6; i++) {
         epd_poweron();
         draw_progress_bar(bar_x, bar_y, 400, 50 - i * 10, fb);
         epd_poweroff();
@@ -162,7 +167,9 @@ void idf_loop() {
 
     epd_fill_rect(clear_area, 0xFF, fb);
 
-    epd_write_string(font, "Now let's look at some pictures.", &cursor_x, &cursor_y, fb, &font_props);
+    epd_write_string(
+        font, "Now let's look at some pictures.", &cursor_x, &cursor_y, fb, &font_props
+    );
     epd_poweron();
     checkError(epd_hl_update_screen(&hl, MODE_GL16, temperature));
     epd_poweroff();
@@ -209,21 +216,22 @@ void idf_loop() {
         .x = 20,
         .y = 20,
         .width = epd_rotated_display_width() - 40,
-        .height = epd_rotated_display_height() - 40
-    };
+        .height = epd_rotated_display_height() - 40};
     epd_draw_rect(border_rect, 0, fb);
 
     cursor_x = 50;
     cursor_y = 100;
 
-    epd_write_default(font,
+    epd_write_default(
+        font,
         "➸ 16 color grayscale\n"
         "➸ ~250ms - 1700ms for full frame draw 🚀\n"
         "➸ Use with 6\" or 9.7\" EPDs\n"
         "➸ High-quality font rendering ✎🙋\n"
         "➸ Partial update\n"
         "➸ Arbitrary transitions with vendor waveforms",
-    &cursor_x, &cursor_y, fb);
+        &cursor_x, &cursor_y, fb
+    );
 
     EpdRect img_beach_area = {
         .x = 0,
@@ -245,10 +253,10 @@ void idf_loop() {
 
 #ifndef ARDUINO_ARCH_ESP32
 void app_main() {
-  idf_setup();
+    idf_setup();
 
-  while (1) {
-    idf_loop();
-  };
+    while (1) {
+        idf_loop();
+    };
 }
 #endif

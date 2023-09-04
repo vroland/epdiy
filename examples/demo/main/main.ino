@@ -10,16 +10,15 @@
  */
 
 // Important: These are C functions, so they must be declared with C linkage!
-extern "C"
-{
-    void idf_setup();
-    void idf_loop();
+extern "C" {
+void idf_setup();
+void idf_loop();
 }
 
 void setup() {
-    if(psramInit()){
+    if (psramInit()) {
         Serial.println("\nThe PSRAM is correctly initialized");
-    } else{
+    } else {
         Serial.println("\nPSRAM does not work");
     }
 

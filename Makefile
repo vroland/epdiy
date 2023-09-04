@@ -16,6 +16,11 @@ clean:
 	rm src/waveforms/epdiy_*.h
 	rm src/waveforms/eink_*.h
 
+format: 
+	clang-format -i $(shell find ./examples -regex '.*main.*\.\(c\|cpp\|h\|ino\)$$' \
+		-not -regex '.*/\(.ccls-cache\|waveforms\|\components\|build\)/.*' \
+		-not -regex '.*E[DS][0-9]*[A-Za-z]*[0-9].h')
+
 src/waveforms/epdiy_%.h: src/waveforms/epdiy_%.json
 	python3 scripts/waveform_hdrgen.py \
 		--export-modes $(EXPORTED_MODES) \
@@ -31,4 +36,4 @@ src/waveforms/eink_%.h: src/waveforms/eink_%.json
 src/waveforms/epdiy_%.json:
 	python3 scripts/epdiy_waveform_gen.py $* > $@
 
-.PHONY: default
+.PHONY: default format

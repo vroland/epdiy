@@ -5,8 +5,8 @@
 #include "esp_log.h"
 
 // epd
-#include "epdiy.h"
 #include "epd_highlevel.h"
+#include "epdiy.h"
 
 // battery
 #include <driver/adc.h>
@@ -31,7 +31,7 @@ gpio_num_t FIRST_BTN_PIN = GPIO_NUM_39;
 EpdiyHighlevelState hl;
 // ambient temperature around device
 int temperature = 20;
-uint8_t *fb;
+uint8_t* fb;
 enum EpdDrawError err;
 
 // CHOOSE HERE YOU IF YOU WANT PORTRAIT OR LANDSCAPE
@@ -44,7 +44,7 @@ int vref = 1100;
 /**
  * RTC Memory var to get number of wakeups via wakeup source button
  * For demo purposes of rtc data attr
-**/
+ **/
 RTC_DATA_ATTR int pressed_wakeup_btn_index;
 
 /**
@@ -52,9 +52,7 @@ RTC_DATA_ATTR int pressed_wakeup_btn_index;
  */
 int64_t maxTimeRunning = 30000000;
 
-
-double_t get_battery_percentage()
-{
+double_t get_battery_percentage() {
     // When reading the battery voltage, POWER_EN must be turned on
     epd_poweron();
     delay(50);
@@ -76,7 +74,8 @@ double_t get_battery_percentage()
         percent_experiment = 100;
     }
 
-    String voltage = "Battery Voltage :" + String(battery_voltage) + "V which is around " + String(percent_experiment) + "%";
+    String voltage = "Battery Voltage :" + String(battery_voltage) + "V which is around " +
+                     String(percent_experiment) + "%";
     Serial.println(voltage);
 
     epd_poweroff();
@@ -135,7 +134,10 @@ void display_full_screen_left_aligned_text(const char* text) {
     battery_font_props.flags = EPD_DRAW_ALIGN_RIGHT;
     String battery_text = String(get_battery_percentage());
     battery_text.concat("% Battery");
-    epd_write_string(&FiraSans_12, battery_text.c_str(), &battery_cursor_x, &battery_cursor_y, fb, &battery_font_props);
+    epd_write_string(
+        &FiraSans_12, battery_text.c_str(), &battery_cursor_x, &battery_cursor_y, fb,
+        &battery_font_props
+    );
     /********************************************************/
 
     epd_poweron();
@@ -148,8 +150,7 @@ void display_full_screen_left_aligned_text(const char* text) {
 /**
  * Powers off everything into deepsleep so device and display.
  */
-void start_deep_sleep_with_wakeup_sources()
-{
+void start_deep_sleep_with_wakeup_sources() {
     epd_poweroff();
     delay(400);
     esp_sleep_enable_ext0_wakeup(FIRST_BTN_PIN, 0);
@@ -158,30 +159,42 @@ void start_deep_sleep_with_wakeup_sources()
     esp_deep_sleep_start();
 }
 
-
 /**
  * Function that prints the reason by which ESP32 has been awaken from sleep
  */
-void print_wakeup_reason(){
-	esp_sleep_wakeup_cause_t wakeup_reason;
-	wakeup_reason = esp_sleep_get_wakeup_cause();
-    switch(wakeup_reason){
-        case ESP_SLEEP_WAKEUP_EXT0 : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
-        case ESP_SLEEP_WAKEUP_EXT1 : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
-        case ESP_SLEEP_WAKEUP_TIMER : Serial.println("Wakeup caused by timer"); break;
-        case ESP_SLEEP_WAKEUP_TOUCHPAD : Serial.println("Wakeup caused by touchpad"); break;
-        case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup caused by ULP program"); break;
-        default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
+void print_wakeup_reason() {
+    esp_sleep_wakeup_cause_t wakeup_reason;
+    wakeup_reason = esp_sleep_get_wakeup_cause();
+    switch (wakeup_reason) {
+        case ESP_SLEEP_WAKEUP_EXT0:
+            Serial.println("Wakeup caused by external signal using RTC_IO");
+            break;
+        case ESP_SLEEP_WAKEUP_EXT1:
+            Serial.println("Wakeup caused by external signal using RTC_CNTL");
+            break;
+        case ESP_SLEEP_WAKEUP_TIMER:
+            Serial.println("Wakeup caused by timer");
+            break;
+        case ESP_SLEEP_WAKEUP_TOUCHPAD:
+            Serial.println("Wakeup caused by touchpad");
+            break;
+        case ESP_SLEEP_WAKEUP_ULP:
+            Serial.println("Wakeup caused by ULP program");
+            break;
+        default:
+            Serial.printf("Wakeup was not caused by deep sleep: %d\n", wakeup_reason);
+            break;
     }
 }
 
 /**
- * Correct the ADC reference voltage. Was in example of lilygo epd47 repository to calc battery percentage
-*/
-void correct_adc_reference()
-{
+ * Correct the ADC reference voltage. Was in example of lilygo epd47 repository to calc battery
+ * percentage
+ */
+void correct_adc_reference() {
     esp_adc_cal_characteristics_t adc_chars;
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    esp_adc_cal_value_t val_type =
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
         Serial.printf("eFuse Vref:%u mV", adc_chars.vref);
         vref = adc_chars.vref;
@@ -201,7 +214,7 @@ void setup() {
     epd_clear();
 
     print_wakeup_reason();
-    
+
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0) {
         Serial.println("Woken up by wakeup source button");
@@ -218,15 +231,16 @@ void setup() {
     }
 }
 
-void loop()
-{
-    /* 
-    * Shutdown device after 30s always to conserve battery.
-    * Basically almost no battery usage then until next wakeup.
-    */
+void loop() {
+    /*
+     * Shutdown device after 30s always to conserve battery.
+     * Basically almost no battery usage then until next wakeup.
+     */
     if (esp_timer_get_time() > maxTimeRunning) {
         Serial.println("Max runtime of 30s reached. Forcing deepsleep now to save energy");
-        display_center_message("Sleeping now.\nWake me up from deepsleep again\nwith the first button on my side");
+        display_center_message(
+            "Sleeping now.\nWake me up from deepsleep again\nwith the first button on my side"
+        );
         delay(1500);
 
         start_deep_sleep_with_wakeup_sources();

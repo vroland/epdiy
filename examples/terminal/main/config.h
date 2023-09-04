@@ -17,17 +17,8 @@ static int clear_cycle_length = 12;
 
 static unsigned int fallback_glyph = '?';
 static FontSet fontsets[] = {
-    {
-        .regular = &FiraCode,
-        .bold = &FiraCode_Bold,
-        .name = "FiraCode"
-    },
-    {
-        .regular = &FiraSans,
-        .bold = &FiraSans_Bold,
-        .name = "FiraSans"
-    }
-};
+    {.regular = &FiraCode, .bold = &FiraCode_Bold, .name = "FiraCode"},
+    {.regular = &FiraSans, .bold = &FiraSans_Bold, .name = "FiraSans"}};
 bool allow_clipboard_paste = false;
 
 /*
@@ -35,8 +26,8 @@ bool allow_clipboard_paste = false;
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-//static char *font = "Fira Mono:pixelsize=14:antialias=true:autohint=true";
-//static int borderpx = 0;
+// static char *font = "Fira Mono:pixelsize=14:antialias=true:autohint=true";
+// static int borderpx = 0;
 
 /*
  * What program is execed by st depends of these precedence rules:
@@ -46,54 +37,54 @@ bool allow_clipboard_paste = false;
  * 4: value of shell in /etc/passwd
  * 5: value of shell in config.h
  */
-//static char *shell = "/bin/sh";
-char *utmp = NULL;
-char *stty_args = "stty raw pass8 nl -echo -iexten -cstopb 38400";
+// static char *shell = "/bin/sh";
+char* utmp = NULL;
+char* stty_args = "stty raw pass8 nl -echo -iexten -cstopb 38400";
 
 /* identification sequence returned in DA and DECID */
-char *vtiden = "\033[?6c";
+char* vtiden = "\033[?6c";
 
 /* Kerning / character bounding-box multipliers */
-//static float cwscale = 1.0;
-//static float chscale = 1.0;
+// static float cwscale = 1.0;
+// static float chscale = 1.0;
 
 /*
  * word delimiter string
  *
  * More advanced example: L" `'\"()[]{}"
  */
-wchar_t *worddelimiters = L" ";
+wchar_t* worddelimiters = L" ";
 
 /* selection timeouts (in milliseconds) */
-//static unsigned int doubleclicktimeout = 300;
-//static unsigned int tripleclicktimeout = 600;
+// static unsigned int doubleclicktimeout = 300;
+// static unsigned int tripleclicktimeout = 600;
 
 /* alt screens */
 int allowaltscreen = 1;
 
 /* frames per second st should at maximum draw to the screen */
-//static unsigned int xfps = 120;
-//static unsigned int actionfps = 30;
+// static unsigned int xfps = 120;
+// static unsigned int actionfps = 30;
 
 /*
  * blinking timeout (set to 0 to disable blinking) for the terminal blinking
  * attribute.
  */
-//static unsigned int blinktimeout = 800;
+// static unsigned int blinktimeout = 800;
 
 /*
  * thickness of underline and bar cursors
  */
-//static unsigned int cursorthickness = 2;
+// static unsigned int cursorthickness = 2;
 
 /*
  * bell volume. It must be a value between -100 and 100. Use 0 for disabling
  * it
  */
-//static int bellvolume = 0;
+// static int bellvolume = 0;
 
 /* default TERM value */
-char *termname = "st-256color";
+char* termname = "st-256color";
 
 /*
  * spaces per tab
@@ -113,267 +104,267 @@ char *termname = "st-256color";
 unsigned int tabspaces = 8;
 
 const uint8_t colorscheme[256] = {
-  // 3 bit colors
-  0x0, // black
-  0x2, // read
-  0x3, // green
-  0x4, // yellow
-  0x5, // blue
-  0x6, // magenta
-  0x7, // cyan
-  0xF, // white
+    // 3 bit colors
+    0x0,  // black
+    0x2,  // read
+    0x3,  // green
+    0x4,  // yellow
+    0x5,  // blue
+    0x6,  // magenta
+    0x7,  // cyan
+    0xF,  // white
 
-  // 4 bit colors
-  0x6, // bright black
-  0x5, // bright red
-  0x7, // bright green
-  0x8, // bright yellow
-  0x9, // bright blue
-  0xA, // bright magenta
-  0xB, // bright cyan
-  0xF, // bright white
+    // 4 bit colors
+    0x6,  // bright black
+    0x5,  // bright red
+    0x7,  // bright green
+    0x8,  // bright yellow
+    0x9,  // bright blue
+    0xA,  // bright magenta
+    0xB,  // bright cyan
+    0xF,  // bright white
 
-  // 8 bit colors
-  0,  //16
-  0,  //17
-  0,  //18
-  1,  //19
-  1,  //20
-  1,  //21
-  3,  //22
-  4,  //23
-  4,  //24
-  4,  //25
-  4,  //26
-  5,  //27
-  4,  //28
-  5,  //29
-  5,  //30
-  6,  //31
-  6,  //32
-  6,  //33
-  6,  //34
-  7,  //35
-  7,  //36
-  7,  //37
-  7,  //38
-  8,  //39
-  7,  //40
-  8,  //41
-  8,  //42
-  9,  //43
-  9,  //44
-  9,  //45
-  9,  //46
-  10,  //47
-  10,  //48
-  10,  //49
-  10,  //50
-  11,  //51
-  1,  //52
-  2,  //53
-  2,  //54
-  2,  //55
-  3,  //56
-  3,  //57
-  5,  //58
-  5,  //59
-  6,  //60
-  6,  //61
-  6,  //62
-  7,  //63
-  6,  //64
-  7,  //65
-  7,  //66
-  7,  //67
-  8,  //68
-  8,  //69
-  8,  //70
-  8,  //71
-  9,  //72
-  9,  //73
-  9,  //74
-  9,  //75
-  9,  //76
-  10,  //77
-  10,  //78
-  10,  //79
-  11,  //80
-  11,  //81
-  11,  //82
-  11,  //83
-  12,  //84
-  12,  //85
-  12,  //86
-  12,  //87
-  2,  //88
-  3,  //89
-  3,  //90
-  3,  //91
-  4,  //92
-  4,  //93
-  6,  //94
-  6,  //95
-  6,  //96
-  7,  //97
-  7,  //98
-  7,  //99
-  7,  //100
-  8,  //101
-  8,  //102
-  8,  //103
-  8,  //104
-  9,  //105
-  8,  //106
-  9,  //107
-  9,  //108
-  10,  //109
-  10,  //110
-  10,  //111
-  10,  //112
-  11,  //113
-  11,  //114
-  11,  //115
-  11,  //116
-  12,  //117
-  11,  //118
-  12,  //119
-  12,  //120
-  13,  //121
-  13,  //122
-  13,  //123
-  3,  //124
-  3,  //125
-  4,  //126
-  4,  //127
-  4,  //128
-  5,  //129
-  6,  //130
-  7,  //131
-  7,  //132
-  7,  //133
-  8,  //134
-  8,  //135
-  8,  //136
-  8,  //137
-  9,  //138
-  9,  //139
-  9,  //140
-  10,  //141
-  9,  //142
-  10,  //143
-  10,  //144
-  10,  //145
-  11,  //146
-  11,  //147
-  11,  //148
-  11,  //149
-  12,  //150
-  12,  //151
-  12,  //152
-  12,  //153
-  12,  //154
-  13,  //155
-  13,  //156
-  13,  //157
-  14,  //158
-  14,  //159
-  4,  //160
-  4,  //161
-  4,  //162
-  5,  //163
-  5,  //164
-  5,  //165
-  7,  //166
-  8,  //167
-  8,  //168
-  8,  //169
-  9,  //170
-  9,  //171
-  9,  //172
-  9,  //173
-  9,  //174
-  10,  //175
-  10,  //176
-  10,  //177
-  10,  //178
-  11,  //179
-  11,  //180
-  11,  //181
-  11,  //182
-  12,  //183
-  11,  //184
-  12,  //185
-  12,  //186
-  13,  //187
-  13,  //188
-  13,  //189
-  13,  //190
-  14,  //191
-  14,  //192
-  14,  //193
-  14,  //194
-  15,  //195
-  4,  //196
-  5,  //197
-  5,  //198
-  5,  //199
-  6,  //200
-  6,  //201
-  8,  //202
-  8,  //203
-  9,  //204
-  9,  //205
-  9,  //206
-  10,  //207
-  9,  //208
-  10,  //209
-  10,  //210
-  10,  //211
-  11,  //212
-  11,  //213
-  11,  //214
-  11,  //215
-  12,  //216
-  12,  //217
-  12,  //218
-  12,  //219
-  12,  //220
-  13,  //221
-  13,  //222
-  13,  //223
-  14,  //224
-  14,  //225
-  14,  //226
-  14,  //227
-  15,  //228
-  15,  //229
-  15,  //230
-  15,  //231
-  0,  //232
-  1,  //233
-  1,  //234
-  2,  //235
-  3,  //236
-  3,  //237
-  4,  //238
-  4,  //239
-  5,  //240
-  6,  //241
-  6,  //242
-  7,  //243
-  8,  //244
-  8,  //245
-  9,  //246
-  9,  //247
-  10,  //248
-  11,  //249
-  11,  //250
-  12,  //251
-  13,  //252
-  13,  //253
-  14,  //254
-  14,  //255
+    // 8 bit colors
+    0,   // 16
+    0,   // 17
+    0,   // 18
+    1,   // 19
+    1,   // 20
+    1,   // 21
+    3,   // 22
+    4,   // 23
+    4,   // 24
+    4,   // 25
+    4,   // 26
+    5,   // 27
+    4,   // 28
+    5,   // 29
+    5,   // 30
+    6,   // 31
+    6,   // 32
+    6,   // 33
+    6,   // 34
+    7,   // 35
+    7,   // 36
+    7,   // 37
+    7,   // 38
+    8,   // 39
+    7,   // 40
+    8,   // 41
+    8,   // 42
+    9,   // 43
+    9,   // 44
+    9,   // 45
+    9,   // 46
+    10,  // 47
+    10,  // 48
+    10,  // 49
+    10,  // 50
+    11,  // 51
+    1,   // 52
+    2,   // 53
+    2,   // 54
+    2,   // 55
+    3,   // 56
+    3,   // 57
+    5,   // 58
+    5,   // 59
+    6,   // 60
+    6,   // 61
+    6,   // 62
+    7,   // 63
+    6,   // 64
+    7,   // 65
+    7,   // 66
+    7,   // 67
+    8,   // 68
+    8,   // 69
+    8,   // 70
+    8,   // 71
+    9,   // 72
+    9,   // 73
+    9,   // 74
+    9,   // 75
+    9,   // 76
+    10,  // 77
+    10,  // 78
+    10,  // 79
+    11,  // 80
+    11,  // 81
+    11,  // 82
+    11,  // 83
+    12,  // 84
+    12,  // 85
+    12,  // 86
+    12,  // 87
+    2,   // 88
+    3,   // 89
+    3,   // 90
+    3,   // 91
+    4,   // 92
+    4,   // 93
+    6,   // 94
+    6,   // 95
+    6,   // 96
+    7,   // 97
+    7,   // 98
+    7,   // 99
+    7,   // 100
+    8,   // 101
+    8,   // 102
+    8,   // 103
+    8,   // 104
+    9,   // 105
+    8,   // 106
+    9,   // 107
+    9,   // 108
+    10,  // 109
+    10,  // 110
+    10,  // 111
+    10,  // 112
+    11,  // 113
+    11,  // 114
+    11,  // 115
+    11,  // 116
+    12,  // 117
+    11,  // 118
+    12,  // 119
+    12,  // 120
+    13,  // 121
+    13,  // 122
+    13,  // 123
+    3,   // 124
+    3,   // 125
+    4,   // 126
+    4,   // 127
+    4,   // 128
+    5,   // 129
+    6,   // 130
+    7,   // 131
+    7,   // 132
+    7,   // 133
+    8,   // 134
+    8,   // 135
+    8,   // 136
+    8,   // 137
+    9,   // 138
+    9,   // 139
+    9,   // 140
+    10,  // 141
+    9,   // 142
+    10,  // 143
+    10,  // 144
+    10,  // 145
+    11,  // 146
+    11,  // 147
+    11,  // 148
+    11,  // 149
+    12,  // 150
+    12,  // 151
+    12,  // 152
+    12,  // 153
+    12,  // 154
+    13,  // 155
+    13,  // 156
+    13,  // 157
+    14,  // 158
+    14,  // 159
+    4,   // 160
+    4,   // 161
+    4,   // 162
+    5,   // 163
+    5,   // 164
+    5,   // 165
+    7,   // 166
+    8,   // 167
+    8,   // 168
+    8,   // 169
+    9,   // 170
+    9,   // 171
+    9,   // 172
+    9,   // 173
+    9,   // 174
+    10,  // 175
+    10,  // 176
+    10,  // 177
+    10,  // 178
+    11,  // 179
+    11,  // 180
+    11,  // 181
+    11,  // 182
+    12,  // 183
+    11,  // 184
+    12,  // 185
+    12,  // 186
+    13,  // 187
+    13,  // 188
+    13,  // 189
+    13,  // 190
+    14,  // 191
+    14,  // 192
+    14,  // 193
+    14,  // 194
+    15,  // 195
+    4,   // 196
+    5,   // 197
+    5,   // 198
+    5,   // 199
+    6,   // 200
+    6,   // 201
+    8,   // 202
+    8,   // 203
+    9,   // 204
+    9,   // 205
+    9,   // 206
+    10,  // 207
+    9,   // 208
+    10,  // 209
+    10,  // 210
+    10,  // 211
+    11,  // 212
+    11,  // 213
+    11,  // 214
+    11,  // 215
+    12,  // 216
+    12,  // 217
+    12,  // 218
+    12,  // 219
+    12,  // 220
+    13,  // 221
+    13,  // 222
+    13,  // 223
+    14,  // 224
+    14,  // 225
+    14,  // 226
+    14,  // 227
+    15,  // 228
+    15,  // 229
+    15,  // 230
+    15,  // 231
+    0,   // 232
+    1,   // 233
+    1,   // 234
+    2,   // 235
+    3,   // 236
+    3,   // 237
+    4,   // 238
+    4,   // 239
+    5,   // 240
+    6,   // 241
+    6,   // 242
+    7,   // 243
+    8,   // 244
+    8,   // 245
+    9,   // 246
+    9,   // 247
+    10,  // 248
+    11,  // 249
+    11,  // 250
+    12,  // 251
+    13,  // 252
+    13,  // 253
+    14,  // 254
+    14,  // 255
 };
 
 /*
@@ -382,8 +373,8 @@ const uint8_t colorscheme[256] = {
  */
 unsigned int defaultfg = 0;
 unsigned int defaultbg = 7;
-//static unsigned int defaultcs = 256;
-//static unsigned int defaultrcs = 257;
+// static unsigned int defaultcs = 256;
+// static unsigned int defaultrcs = 257;
 
 /*
  * Default shape of cursor
@@ -392,7 +383,7 @@ unsigned int defaultbg = 7;
  * 6: Bar ("|")
  * 7: Snowman ("☃")
  */
-//static unsigned int cursorshape = 2;
+// static unsigned int cursorshape = 2;
 
 /*
  * Default columns and rows numbers
@@ -404,15 +395,15 @@ unsigned int rows = 38;
 /*
  * Default colour and shape of the mouse cursor
  */
-//static unsigned int mouseshape = XC_xterm;
-//static unsigned int mousefg = 7;
-//static unsigned int mousebg = 0;
+// static unsigned int mouseshape = XC_xterm;
+// static unsigned int mousefg = 7;
+// static unsigned int mousebg = 0;
 
 /*
  * Color used to display font attributes when fontconfig selected a font which
  * doesn't match the ones requested.
  */
-//static unsigned int defaultattr = 11;
+// static unsigned int defaultattr = 11;
 
 /*
  * Force mouse select/shortcuts while mask is active (when MODE_MOUSE is set).
