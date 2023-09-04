@@ -36,6 +36,14 @@
 
 #include "epd_highlevel.h"
 #include "epdiy.h"
+
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
 EpdiyHighlevelState hl;
 
 // Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
@@ -68,8 +76,6 @@ static const char* jd_errors[] = {
     "Right format but not supported",
     "Not supported JPEG standard"};
 
-const uint16_t ep_width = EPD_WIDTH;
-const uint16_t ep_height = EPD_HEIGHT;
 uint8_t gamme_curve[256];
 
 static const char* TAG = "EPDiy";
@@ -130,6 +136,8 @@ uint8_t find_closest_palette_color(uint8_t oldpixel) {
 //   Decode and paint onto the Epaper screen
 //====================================================================================
 void jpegRender(int xpos, int ypos, int width, int height) {
+    uint16_t ep_width = epd_width();
+    uint16_t ep_height = epd_height();
 #if JPG_DITHERING
     unsigned long pixel = 0;
     for (uint16_t by = 0; by < ep_height; by++) {
@@ -486,18 +494,23 @@ void wifi_init_sta(void) {
 }
 
 void app_main() {
-    epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K | EPD_FEED_QUEUE_8);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
+
     hl = epd_hl_init(WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
     epd_set_rotation(DISPLAY_ROTATION);
-    decoded_image = (uint8_t*)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    decoded_image = (uint8_t*)heap_caps_malloc(epd_width() * epd_height(), MALLOC_CAP_SPIRAM);
     if (decoded_image == NULL) {
         ESP_LOGE("main", "Initial alloc back_buf failed!");
     }
-    memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT);
+    memset(decoded_image, 255, epd_width() * epd_height());
 
     // Should be big enough to allocate the JPEG file size
-    source_buf = (uint8_t*)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    source_buf = (uint8_t*)heap_caps_malloc(epd_width() * epd_height(), MALLOC_CAP_SPIRAM);
     if (source_buf == NULL) {
         ESP_LOGE("main", "Initial alloc source_buf failed!");
     }
@@ -526,15 +539,15 @@ void app_main() {
     epd_poweron();
     epd_fullclear(&hl, 25);
 
-    /* printf("EPD w: %d h: %d\n\n", EPD_WIDTH, EPD_HEIGHT);
-    for (uint32_t x = 0; x < EPD_WIDTH; x++) {
+    /* printf("EPD w: %d h: %d\n\n", epd_width(), epd_height());
+    for (uint32_t x = 0; x < epd_width(); x++) {
         epd_draw_pixel(x, 0, 0, fb);
 
-        epd_draw_pixel(x, EPD_HEIGHT-10, 80, fb);
-        epd_draw_pixel(x, EPD_HEIGHT-3, 60, fb);
+        epd_draw_pixel(x, epd_height()-10, 80, fb);
+        epd_draw_pixel(x, epd_height()-3, 60, fb);
         // This 2 lines are not written
-        epd_draw_pixel(x, EPD_HEIGHT-2, 0, fb);
-        epd_draw_pixel(x, EPD_HEIGHT-1, 0, fb);
+        epd_draw_pixel(x, epd_height()-2, 0, fb);
+        epd_draw_pixel(x, epd_height()-1, 0, fb);
     }
     epd_hl_update_screen(&hl, MODE_GC16, 25); */
 
