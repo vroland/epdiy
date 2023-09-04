@@ -356,7 +356,7 @@ void epd_task() {
             EpdRect upper_update = epd_full_screen();
             upper_update.height = album_cover_y + album_height;
             EpdRect lower_update = epd_full_screen();
-            lower_update.height = EPD_HEIGHT - upper_update.height;
+            lower_update.height = epd_height() - upper_update.height;
             lower_update.y = upper_update.height;
             show_status(
                 playback_info->status, playback_info->current_song, album_cover_y + album_height
