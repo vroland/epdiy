@@ -10,6 +10,13 @@
 
 EpdiyHighlevelState hl;
 
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
 void idf_loop() {
     EpdRect dragon_area = {.x = 0, .y = 0, .width = dragon_width, .height = dragon_height};
 
@@ -27,7 +34,7 @@ void idf_loop() {
 }
 
 void idf_setup() {
-    epd_init(EPD_OPTIONS_DEFAULT);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
 }
 
