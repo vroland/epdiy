@@ -21,3 +21,5 @@ sdkconfig
 managed_components/
 epaper-breakout-backups/
 dependencies.lock
+ED*.h
+ES*.h
