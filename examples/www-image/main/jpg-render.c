@@ -1,4 +1,7 @@
 // Open settings to set WiFi and other configurations for both examples:
+#include <stdlib.h>
+#include <sys/types.h>
+#include "epd_display.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
@@ -57,7 +60,7 @@ JRESULT rc;
 
 // Buffers
 uint8_t* fb;                      // EPD 2bpp buffer
-uint8_t* source_buf;              // JPG download buffer
+uint8_t* source_buf = NULL;       // JPG download buffer
 uint8_t* decoded_image;           // RAW decoded image
 static uint8_t tjpgd_work[3096];  // tjpgd 3096 is the minimum size
 
@@ -212,7 +215,7 @@ static uint32_t tjd_output(
     void* bitmap, /* Bitmap data to be output */
     JRECT* rect   /* Rectangular region to output */
 ) {
-    esp_task_wdt_reset();
+    vTaskDelay(0);
 
     uint32_t w = rect->right - rect->left + 1;
     uint32_t h = rect->bottom - rect->top + 1;
@@ -293,6 +296,20 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
                 TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value
             );
 #endif
+            if (strncmp(evt->header_key, "Content-Length", 14) == 0) {
+                // Should be big enough to hold the JPEG file size
+                size_t content_len = atol(evt->header_value);
+                ESP_LOGI("epdiy", "Allocating content buffer of length %X", content_len);
+
+                source_buf = (uint8_t*)heap_caps_malloc(content_len, MALLOC_CAP_SPIRAM);
+
+                if (source_buf == NULL) {
+                    ESP_LOGE("main", "Initial alloc source_buf failed!");
+                }
+
+                printf("Free heap after buffers allocation: %X\n", xPortGetFreeHeapSize());
+            }
+
             break;
         case HTTP_EVENT_ON_DATA:
             ++countDataEventCalls;
@@ -302,6 +319,9 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
             }
 #endif
             dataLenTotal += evt->data_len;
+
+            // should be allocated after the Content-Length header was received.
+            assert(source_buf != NULL);
 
             if (countDataEventCalls == 1)
                 startTime = esp_timer_get_time();
@@ -359,7 +379,7 @@ static void http_post(void) {
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
 #if DEBUG_VERBOSE
-    printf("Free heap before HTTP download: %" PRIu32 "\n", xPortGetFreeHeapSize());
+    printf("Free heap before HTTP download: %X\n", xPortGetFreeHeapSize());
     if (esp_http_client_get_transport_type(client) == HTTP_TRANSPORT_OVER_SSL && config.cert_pem) {
         printf("SSL CERT:\n%s\n\n", (char*)server_cert_pem_start);
     }
@@ -369,15 +389,9 @@ static void http_post(void) {
     if (err == ESP_OK) {
         // esp_http_client_get_content_length returns a uint64_t in esp-idf v5, so it needs a %lld
         // format specifier
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
         ESP_LOGI(
-            TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %lld\n",
-#else
-        ESP_LOGI(
-            TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n",
-#endif
-            IMG_URL, esp_http_client_get_status_code(client),
-            esp_http_client_get_content_length(client)
+            TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n", IMG_URL,
+            esp_http_client_get_status_code(client), (int)esp_http_client_get_content_length(client)
         );
     } else {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
@@ -494,7 +508,13 @@ void wifi_init_sta(void) {
 }
 
 void app_main() {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K | EPD_FEED_QUEUE_8);
+    enum EpdInitOptions init_options = EPD_LUT_64K;
+    // For V6 and below, try to use less memory. V7 queue uses less anyway.
+#ifdef CONFIG_IDF_TARGET_ESP32
+    init_options |= EPD_FEED_QUEUE_8;
+#endif
+
+    epd_init(&DEMO_BOARD, &ED097TC2, init_options);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.
@@ -508,13 +528,6 @@ void app_main() {
         ESP_LOGE("main", "Initial alloc back_buf failed!");
     }
     memset(decoded_image, 255, epd_width() * epd_height());
-
-    // Should be big enough to allocate the JPEG file size
-    source_buf = (uint8_t*)heap_caps_malloc(epd_width() * epd_height(), MALLOC_CAP_SPIRAM);
-    if (source_buf == NULL) {
-        ESP_LOGE("main", "Initial alloc source_buf failed!");
-    }
-    printf("Free heap after buffers allocation: %" PRIu32 "\n", xPortGetFreeHeapSize());
 
     double gammaCorrection = 1.0 / gamma_value;
     for (int gray_value = 0; gray_value < 256; gray_value++)

@@ -18,10 +18,7 @@ double gamma_value = 0.7;
 
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
 // Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-
-#define IMG_URL ("https://loremflickr.com/" STR(EPD_WIDTH) "/" STR(EPD_HEIGHT))
+#define IMG_URL ("https://loremflickr.com/1024/768")
 
 // idf >= 4.3 needs VALIDATE_SSL_CERTIFICATE set to true for https URLs
 // Please check the README to understand how to use an SSL Certificate
