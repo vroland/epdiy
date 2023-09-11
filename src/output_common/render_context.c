@@ -7,6 +7,8 @@
 /// the default hold time for each line is 12us
 const static int DEFAULT_FRAME_TIME = 120;
 
+static inline int min(int x, int y) { return x < y ? x : y; }
+
 lut_func_t get_lut_function(RenderContext_t* ctx) {
     const enum EpdDrawMode mode = ctx->mode;
     if (mode & MODE_PACKING_2PPB) {
@@ -36,8 +38,6 @@ lut_func_t get_lut_function(RenderContext_t* ctx) {
     }
     return NULL;
 }
-
-inline int min(int x, int y) { return x < y ? x : y; }
 
 void get_buffer_params(RenderContext_t *ctx, int *bytes_per_line, const uint8_t** start_ptr, int* min_y, int* max_y, int* pixels_per_byte) {
     EpdRect area = ctx->area;

@@ -18,8 +18,8 @@
 #include "output_lcd/render_lcd.h"
 #include "output_i2s/render_i2s.h"
 
-inline int min(int x, int y) { return x < y ? x : y; }
-inline int max(int x, int y) { return x > y ? x : y; }
+static inline int min(int x, int y) { return x < y ? x : y; }
+static inline int max(int x, int y) { return x > y ? x : y; }
 
 const int clear_cycle_time = 12;
 
