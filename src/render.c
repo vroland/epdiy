@@ -255,8 +255,11 @@ void epd_renderer_init(enum EpdInitOptions options) {
         render_context.line_queues[i].last = 0;
         render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(
             queue_len * queue_elem_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+        assert(render_context.line_queues[i].buf != NULL);
+        render_context.feed_line_buffers[i] = (uint8_t *)heap_caps_malloc(render_context.display_width, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+        assert(render_context.feed_line_buffers[i] != NULL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 14, (void *)i,
+            render_thread, "epd_prep", 1 << 10, (void *)i,
             configMAX_PRIORITIES, &render_context.feed_tasks[i], i));
         if (render_context.line_queues[i].buf == NULL) {
             ESP_LOGE("epd", "could not allocate line queue!");
@@ -283,6 +286,7 @@ void epd_renderer_deinit() {
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         free(render_context.line_queues[i].buf);
+        free(render_context.feed_line_buffers[i]);
         vSemaphoreDelete(render_context.feed_done_smphr[i]);
         vTaskDelete(render_context.feed_tasks[i]);
     }

@@ -230,7 +230,7 @@ void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short tim
 
 
 void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
-    uint8_t line_buf[ctx->display_width];
+    uint8_t* line_buf = ctx->feed_line_buffers[thread_id];
 
     ctx->skipping = 0;
     EpdRect area = ctx->area;
@@ -273,7 +273,7 @@ static inline int max(int x, int y) { return x > y ? x : y; }
 
 void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
 
-    uint8_t input_line[ctx->display_width];
+    uint8_t* input_line = ctx->feed_line_buffers[thread_id];
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
     memset(input_line, 0x00, ctx->display_width);

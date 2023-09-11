@@ -34,6 +34,8 @@ typedef struct {
     TaskHandle_t feed_tasks[NUM_RENDER_THREADS];
     SemaphoreHandle_t feed_done_smphr[NUM_RENDER_THREADS];
     SemaphoreHandle_t frame_done;
+    /// Line buffers for feed tasks
+    uint8_t* feed_line_buffers[NUM_RENDER_THREADS];
 
     /// index of the waveform mode when using vendor waveforms.
     /// This is not necessarily the mode number if the waveform header
