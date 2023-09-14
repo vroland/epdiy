@@ -50,6 +50,8 @@ const int album_cover_y = 100;
 const int queue_x_end = 1500;
 const int queue_y_start = 100;
 
+#define MPD_IP "192.168.69.90"
+
 EpdiyHighlevelState hl;
 
 static bool got_ip = false;
@@ -110,7 +112,7 @@ void handle_error(struct mpd_connection** c) {
 }
 
 void epd_task() {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_1K);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.
@@ -179,7 +181,7 @@ void epd_task() {
     while (true) {
         // connect / reconnect
         if (mpd_conn == NULL) {
-            mpd_conn = mpd_connection_new("192.168.42.50", 6600, 3000);
+            mpd_conn = mpd_connection_new(MPD_IP, 6600, 3000);
             handle_error(&mpd_conn);
             int i;
             printf("mpd server version: ");
