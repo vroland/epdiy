@@ -2767,8 +2767,7 @@ static void draw_mask(EpdRect area, uint8_t* mask, bool* dirtyness) {
     enum EpdDrawMode mode = MODE_PACKING_8PPB | MODE_EPDIY_MONOCHROME | PREVIOUSLY_WHITE;
 
     enum EpdDrawError err = epd_draw_base(
-        epd_full_screen(), mask, area, mode,
-        temperature, dirtyness, EPD_BUILTIN_WAVEFORM
+        epd_full_screen(), mask, area, mode, temperature, dirtyness, EPD_BUILTIN_WAVEFORM
     );
     if (err != EPD_DRAW_SUCCESS) {
         die("EPD draw error: %X\n", err);
@@ -2852,7 +2851,6 @@ void epd_render(void) {
         drawn_lines++;
         term.dirty[y] = 0;
     }
-
 
     // wait for rendering completion
     for (int li = 0; li < drawn_lines; li++) {

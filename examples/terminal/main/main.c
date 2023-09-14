@@ -18,7 +18,6 @@
 #include "freertos/task.h"
 
 #include "epdiy.h"
-#include "soc/clk_tree_defs.h"
 #include "st.h"
 
 // choose the default demo board depending on the architecture
