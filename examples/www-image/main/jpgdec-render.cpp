@@ -45,6 +45,13 @@ extern "C" {
 #include "epd_highlevel.h"
 #include "epdiy.h"
 }
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEMO_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define DEMO_BOARD epd_board_v7
+#endif
+
 EpdiyHighlevelState hl;
 // JPG decoder from @bitbank2
 #include "JPEGDEC.h"
@@ -140,7 +147,7 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
     for (uint16_t yy = 0; yy < pDraw->iHeight; yy++) {
         // Copy directly horizontal MCU pixels in EPD fb
         memcpy(
-            &fb[(pDraw->y + yy) * EPD_WIDTH / 2 + pDraw->x / 2],
+            &fb[(pDraw->y + yy) * epd_width() / 2 + pDraw->x / 2],
             &pDraw->pPixels[(yy * pDraw->iWidth) >> 2], pDraw->iWidth
         );
     }
@@ -188,8 +195,8 @@ int decodeJpeg(uint8_t* source_buf, int xpos, int ypos) {
         if (jpeg.decodeDither(dither_space, 0)) {
             time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
             ESP_LOGI(
-                "decode", "%d ms - %dx%d image MCUs:%d", time_decomp, jpeg.getWidth(),
-                jpeg.getHeight(), mcu_count
+                "decode", "%ld ms - %dx%d image MCUs:%d", time_decomp, (int)jpeg.getWidth(),
+                (int)jpeg.getHeight(), mcu_count
             );
         } else {
             ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
@@ -220,6 +227,18 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
             ESP_LOGI(
                 TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value
             );
+            if (strncmp(evt->header_key, "Content-Length", 14) == 0) {
+                // Should be big enough to hold the JPEG file size
+                size_t content_len = atol(evt->header_value);
+                ESP_LOGI("epdiy", "Allocating content buffer of length %X", content_len);
+
+                source_buf = (uint8_t*)heap_caps_malloc(content_len, MALLOC_CAP_SPIRAM);
+
+                if (source_buf == NULL) {
+                    ESP_LOGE("main", "Initial alloc source_buf failed!");
+                }
+            }
+
 #endif
             break;
         case HTTP_EVENT_ON_DATA:
@@ -240,21 +259,21 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
         case HTTP_EVENT_ON_FINISH:
             // Do not draw if it's a redirect (302)
             if (esp_http_client_get_status_code(evt->client) == 200) {
-                printf("%d bytes read from %s\n", img_buf_pos, IMG_URL);
+                printf("%d bytes read from %s\n", (int)img_buf_pos, IMG_URL);
                 time_download = (esp_timer_get_time() - startTime) / 1000;
 
                 decodeJpeg(source_buf, 0, 0);
 
-                ESP_LOGI("www-dw", "%d ms - download", time_download);
+                ESP_LOGI("www-dw", "%ld ms - download", time_download);
                 ESP_LOGI(
-                    "render", "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render,
+                    "render", "%ld ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render,
                     JPEG_CPY_FRAMEBUFFER
                 );
                 // Refresh display
                 epd_hl_update_screen(&hl, MODE_GC16, 25);
 
                 ESP_LOGI(
-                    "total", "%d ms - total time spent\n", time_download + time_decomp + time_render
+                    "total", "%ld ms - total time spent\n", time_download + time_decomp + time_render
                 );
             } else {
                 printf(
@@ -266,6 +285,8 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
 
         case HTTP_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED\n");
+            break;
+        default:
             break;
     }
     return ESP_OK;
@@ -300,7 +321,7 @@ static void http_post(void) {
     if (err == ESP_OK) {
         ESP_LOGI(
             TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n", IMG_URL,
-            esp_http_client_get_status_code(client), esp_http_client_get_content_length(client)
+            esp_http_client_get_status_code(client), (int)esp_http_client_get_content_length(client)
         );
     } else {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
@@ -410,22 +431,21 @@ void wifi_init_sta(void) {
 }
 
 void app_main() {
-    epd_init(EPD_OPTIONS_DEFAULT);
+    enum EpdInitOptions init_options = EPD_LUT_64K;
+
+    epd_init(&DEMO_BOARD, &ED097TC2, init_options);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
     hl = epd_hl_init(WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
 
     printf("JPGDEC version @bitbank2\n");
-    dither_space = (uint8_t*)heap_caps_malloc(EPD_WIDTH * 16, MALLOC_CAP_SPIRAM);
+    dither_space = (uint8_t*)heap_caps_malloc(epd_width() * 16, MALLOC_CAP_SPIRAM);
     if (dither_space == NULL) {
         ESP_LOGE("main", "Initial alloc ditherSpace failed!");
     }
-
-    // Should be big enough to allocate the JPEG file size, width * height should suffice
-    source_buf = (uint8_t*)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
-    if (source_buf == NULL) {
-        ESP_LOGE("main", "Initial alloc source_buf failed!");
-    }
-    printf("Free heap after buffers allocation: %d\n", xPortGetFreeHeapSize());
 
     double gammaCorrection = 1.0 / gamma_value;
     for (int gray_value = 0; gray_value < 256; gray_value++)

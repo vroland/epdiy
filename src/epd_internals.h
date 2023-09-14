@@ -55,6 +55,7 @@ extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
 extern const EpdWaveform epdiy_ED060SCT;
 extern const EpdWaveform epdiy_ED133UT2;
+extern const EpdWaveform epdiy_GDEW101C01;
 
 
 /// Font data stored PER GLYPH

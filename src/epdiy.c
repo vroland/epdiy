@@ -3,10 +3,11 @@
 #include "epd_display.h"
 #include "render.h"
 
-#include <esp_assert.h>
-#include <esp_heap_caps.h>
-#include <esp_log.h>
-#include <esp_types.h>
+#include "esp_assert.h"
+#include "esp_heap_caps.h"
+#include "esp_log.h"
+#include "esp_types.h"
+#include <math.h> // round + pow
 
 // Simple x and y coordinate
 typedef struct {
@@ -14,6 +15,7 @@ typedef struct {
     uint16_t y;
 } Coord_xy;
 
+static uint8_t gamme_curve[256];
 static const EpdDisplay_t* display = NULL;
 
 // Display rotation. Can be updated using epd_set_rotation(enum EpdRotation)
@@ -86,6 +88,47 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer) {
   if (y < 0 || y >= epd_height()) {
     return;
   }
+
+  uint8_t *buf_ptr = &framebuffer[y * epd_width() / 2 + x / 2];
+  if (x % 2) {
+    *buf_ptr = (*buf_ptr & 0x0F) | (color & 0xF0);
+  } else {
+    *buf_ptr = (*buf_ptr & 0xF0) | (color >> 4);
+  }
+}
+
+// What Color is on top of the DES Color Filter
+// This applies only to DES Good-Display epapers. Not tested in any other model 
+// Please do not forget to call epd_set_gamma_curve(double gamma_value) if you work with COLOR!
+uint8_t epd_get_panel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+    uint8_t c = (x + (epd_height() - y)) % 3;
+    switch (c)
+    {
+      case 0:
+        return gamme_curve[r]; // R
+        break;
+      case 1:
+        return gamme_curve[b]; // B
+        break;
+      default:
+        return gamme_curve[g];
+    }
+}
+
+// Pass the x, y and color. It will then let the background under color filter get the right grayscale (WHITE shows color)
+void epd_draw_cpixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t *framebuffer) {
+  // Check rotation and move pixel around if necessary
+  Coord_xy coord = _rotate(x, y);
+  x = coord.x;
+  y = coord.y;
+
+  if (x < 0 || x >= epd_width()) {
+    return;
+  }
+  if (y < 0 || y >= epd_height()) {
+    return;
+  }
+  uint8_t color = epd_get_panel_color(x, y, r, g, b);
 
   uint8_t *buf_ptr = &framebuffer[y * epd_width() / 2 + x / 2];
   if (x % 2) {
@@ -384,7 +427,14 @@ enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWav
 }
 
 void epd_set_rotation(enum EpdRotation rotation) {
-      display_rotation = rotation;
+    display_rotation = rotation;
+}
+
+void epd_set_gamma_curve(double gamma_value) {
+    double gammaCorrection = 1.0 / gamma_value;
+    for (int gray_value =0; gray_value<256;gray_value++) {
+      gamme_curve[gray_value]= round (255*pow(gray_value/255.0, gammaCorrection));
+    }
 }
 
 enum EpdRotation epd_get_rotation() {

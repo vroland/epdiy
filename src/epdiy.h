@@ -110,24 +110,8 @@ enum EpdDrawMode {
   PREVIOUSLY_BLACK = 0x400,
 };
 
-#include "epd_board.h"
-#include "epd_display.h"
-#include "epd_highlevel.h"
-#include "epd_board_specific.h"
-
-/** Display software rotation.
- *  Sets the rotation for the purposes of the drawing and font functions
- *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
- *  Use epd_get_rotation() in case you need to read this value
- */
-enum EpdRotation {
-    EPD_ROT_LANDSCAPE = 0,
-    EPD_ROT_PORTRAIT = 1,
-    EPD_ROT_INVERTED_LANDSCAPE = 2,
-    EPD_ROT_INVERTED_PORTRAIT = 3,
-};
-
 /// Possible failures when drawing.
+// Note: In CPP this is giving an error since highlevel API is included before the definition
 enum EpdDrawError {
   EPD_DRAW_SUCCESS = 0x0,
   /// No valid framebuffer packing mode was specified.
@@ -164,6 +148,23 @@ enum EpdDrawError {
   ///
   /// Reduce the display clock speed.
   EPD_DRAW_EMPTY_LINE_QUEUE = 0x400,
+};
+
+#include "epd_board.h"
+#include "epd_display.h"
+#include "epd_highlevel.h"
+#include "epd_board_specific.h"
+
+/** Display software rotation.
+ *  Sets the rotation for the purposes of the drawing and font functions
+ *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
+ *  Use epd_get_rotation() in case you need to read this value
+ */
+enum EpdRotation {
+    EPD_ROT_LANDSCAPE = 0,
+    EPD_ROT_PORTRAIT = 1,
+    EPD_ROT_INVERTED_LANDSCAPE = 2,
+    EPD_ROT_INVERTED_PORTRAIT = 3,
 };
 
 /// The default draw mode (non-flashy refresh, whith previously white screen).
@@ -297,6 +298,31 @@ void epd_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data,
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
+
+/**
+ * @brief What color is on that x & y coordinates. Receives RGB and returns the grayscale for X:Y on that pixel
+ * @return uint8_t 
+ */
+uint8_t epd_get_panel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b);
+
+/**
+ * @brief This draws a pixel begin aware of what color filter is on top (RGB for DES displays)
+ * 
+ * @param x 
+ * @param y 
+ * @param r 
+ * @param g 
+ * @param b 
+ * @param framebuffer 
+ */
+void epd_draw_cpixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t *framebuffer);
+
+/**
+ * @brief Assign gamma curve values: <1 darken 0.9  |  >1 brighten 1.2 1.4 higher and is too bright
+ * 
+ * @param gamma_value 
+ */
+void epd_set_gamma_curve(double gamma_value);
 
 /**
  * Draw a horizontal line to a given framebuffer.

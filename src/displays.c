@@ -31,7 +31,7 @@ const EpdDisplay_t ED097TC2 = {
     .width = 1200,
     .height = 825,
     .bus_width = 8,
-    .bus_speed = 22,
+    .bus_speed = 18, // 22 works
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_ED097TC2,
 };
@@ -40,8 +40,8 @@ const EpdDisplay_t ED133UT2 = {
     .width = 1600,
     .height = 1200,
     .bus_width = 8,
-    .bus_speed = 20,
-    .default_waveform = &epdiy_ED097TC2,
+    .bus_speed = 16,
+    .default_waveform = &epdiy_ED133UT2,
     .display_type = DISPLAY_TYPE_ED097TC2,
 };
 
@@ -69,5 +69,14 @@ const EpdDisplay_t ED078KC1 = {
     .bus_width = 16,
     .bus_speed = 11,
     .default_waveform = &epdiy_ED047TC2,
+    .display_type = DISPLAY_TYPE_GENERIC,
+};
+
+const EpdDisplay_t GDEW101C01 = {
+    .width = 2232,
+    .height = 1680,
+    .bus_width = 16,
+    .bus_speed = 8,
+    .default_waveform = &epdiy_GDEW101C01,
     .display_type = DISPLAY_TYPE_GENERIC,
 };

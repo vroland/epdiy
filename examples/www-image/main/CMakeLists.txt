@@ -1,6 +1,7 @@
 set(        
-    app_sources "jpg-render.c"
+    #app_sources "jpg-render.c"
     #app_sources "jpgdec-render.cpp"
+    app_sources "jpg-render-color.c"
     )
 
 idf_component_register(SRCS ${app_sources} 
