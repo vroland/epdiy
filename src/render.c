@@ -6,6 +6,7 @@
 
 #include <stdalign.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <esp_log.h>
 #include <esp_types.h>
@@ -85,6 +86,9 @@ static inline int rounded_display_height() {
 enum EpdDrawError IRAM_ATTR epd_draw_base(
     EpdRect area, const uint8_t *data, EpdRect crop_to, enum EpdDrawMode mode,
     int temperature, const bool *drawn_lines, const EpdWaveform *waveform) {
+    if (waveform == NULL) {
+        return EPD_DRAW_NO_PHASES_AVAILABLE;
+    }
     int waveform_range = waveform_temp_range_index(waveform, temperature);
     if (waveform_range < 0) {
         return EPD_DRAW_NO_PHASES_AVAILABLE;
@@ -259,7 +263,7 @@ void epd_renderer_init(enum EpdInitOptions options) {
         render_context.feed_line_buffers[i] = (uint8_t *)heap_caps_malloc(render_context.display_width, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
         assert(render_context.feed_line_buffers[i] != NULL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 10, (void *)i,
+            render_thread, "epd_prep", 1 << 11, (void *)i,
             configMAX_PRIORITIES, &render_context.feed_tasks[i], i));
         if (render_context.line_queues[i].buf == NULL) {
             ESP_LOGE("epd", "could not allocate line queue!");

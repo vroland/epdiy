@@ -122,13 +122,18 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
     LineQueue_t *lq = &ctx->line_queues[thread_id];
     int l = 0;
 
+    lut_func_t input_calc_func = get_lut_function(ctx);
+
     // if there is an error, start the frame but don't feed data.
     if (ctx->error) {
+        memset(ctx->line_threads, 0, ctx->lines_total);
         epd_lcd_line_source_cb((line_cb_func_t)&retrieve_line_isr, ctx);
         epd_lcd_start_frame();
         ESP_LOGW("epd_lcd", "draw frame draw initiated, but an error flag is set: %X", ctx->error);
         return;
     }
+
+    assert(input_calc_func != NULL);
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
     memset(input_line, 0x00, ctx->display_width);
@@ -138,8 +143,6 @@ void IRAM_ATTR lcd_calculate_frame(RenderContext_t *ctx, int thread_id) {
     int min_y, max_y, bytes_per_line, _ppB;
     const uint8_t *ptr_start;
     get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y, &_ppB);
-
-    lut_func_t input_calc_func = get_lut_function(ctx);
 
     assert(area.width == ctx->display_width && area.x == 0 && !ctx->error);
 
