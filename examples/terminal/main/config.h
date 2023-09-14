@@ -6,6 +6,8 @@
 #include "firasans.h"
 #include "firasans_bold.h"
 
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED097TC2
+
 typedef struct {
     const EpdFont* regular;
     const EpdFont* bold;

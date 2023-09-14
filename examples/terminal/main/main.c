@@ -18,6 +18,7 @@
 #include "freertos/task.h"
 
 #include "epdiy.h"
+#include "soc/clk_tree_defs.h"
 #include "st.h"
 
 // choose the default demo board depending on the architecture
@@ -94,7 +95,7 @@ void app_main() {
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-        .source_clk = UART_SCLK_REF_TICK
+        .source_clk = UART_SCLK_DEFAULT
 #else
         .use_ref_tick = true
 #endif

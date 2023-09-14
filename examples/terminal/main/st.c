@@ -1,4 +1,5 @@
 /* See LICENSE for license details. */
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -235,7 +236,7 @@ static QueueHandle_t line_render_queue = NULL;
 /// Semaphore to signal how many lines have been processed
 static SemaphoreHandle_t render_lines_done_smphr = NULL;
 
-static uint32_t line_dirtyness[EPD_HEIGHT] = {0};
+static uint32_t* line_dirtyness = NULL;
 
 static int screen_tainted = 0;
 static char* clipboard = NULL;
@@ -1022,9 +1023,9 @@ void treset(void) {
     term.mode = MODE_WRAP | MODE_UTF8;
     memset(term.trantbl, CS_USA, sizeof(term.trantbl));
     term.charset = 0;
-    memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
+    memset(render_fb_front, 255, epd_width() / 2 * epd_height());
+    memset(render_fb_back, 255, epd_width() / 2 * epd_height());
+    memset(render_mask, 255, epd_width() / 8 * epd_height());
 
     for (i = 0; i < 2; i++) {
         tmoveto(0, 0);
@@ -1433,7 +1434,7 @@ void tsetmode(int priv, int set, int* args, int narg) {
         if (priv) {
             switch (*args) {
                 case 1: /* DECCKM -- Cursor key */
-                        // TODO: Cursor rendering
+                    // TODO: Cursor rendering
                     // xsetmode(set, MODE_APPCURSOR);
                     break;
                 case 5: /* DECSCNM -- Reverse video */
@@ -1465,7 +1466,7 @@ void tsetmode(int priv, int set, int* args, int narg) {
                     // xsetmode(!set, MODE_HIDE);
                     break;
                 case 9: /* X10 mouse compatibility mode */
-                        // TODO: Some kind of mouse input
+                    // TODO: Some kind of mouse input
                     // xsetpointermotion(0);
                     // xsetmode(0, MODE_MOUSE);
                     // xsetmode(set, MODE_MOUSEX10);
@@ -2441,20 +2442,20 @@ void tresize(int col, int row) {
     }
 
     if (render_fb_front == NULL) {
-        render_fb_front = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+        render_fb_front = heap_caps_malloc(epd_width() / 2 * epd_height(), MALLOC_CAP_SPIRAM);
     }
     if (render_fb_back == NULL) {
-        render_fb_back = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+        render_fb_back = heap_caps_malloc(epd_width() / 2 * epd_height(), MALLOC_CAP_SPIRAM);
     }
     if (render_mask == NULL) {
-        render_mask = heap_caps_malloc(EPD_WIDTH / 8 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+        render_mask = heap_caps_malloc(epd_width() / 8 * epd_height(), MALLOC_CAP_SPIRAM);
     }
     if (render_masked_buf == NULL) {
-        render_masked_buf = heap_caps_malloc(EPD_WIDTH / 2 * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+        render_masked_buf = heap_caps_malloc(epd_width() / 2 * epd_height(), MALLOC_CAP_SPIRAM);
     }
-    memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
+    memset(render_fb_front, 255, epd_width() / 2 * epd_height());
+    memset(render_fb_back, 255, epd_width() / 2 * epd_height());
+    memset(render_mask, 255, epd_width() / 8 * epd_height());
 
     /*
      * slide screen to keep cursor where we expect it -
@@ -2614,7 +2615,7 @@ void IRAM_ATTR calculate_dirty_buffer(
     uint32_t* p1 = (uint32_t*)delete_buffer;
     uint32_t* p2 = (uint32_t*)write_buffer;
     for (int l = 0; l < lines; l++) {
-        for (int i = 0; i < EPD_WIDTH / 8; i++) {
+        for (int i = 0; i < epd_width() / 8; i++) {
             uint32_t c = ((*p1++) ^ (*p2++));
             dirty_lines[l] |= c;
             uint8_t d = 0;
@@ -2674,7 +2675,7 @@ static const DRAM_ATTR uint32_t mask_lut[256] = {
 };
 
 void IRAM_ATTR mask_buffer(uint8_t* mask, uint32_t* input, uint32_t* output, int lines) {
-    for (int i = 0; i < EPD_WIDTH / 8 * lines; i++) {
+    for (int i = 0; i < epd_width() / 8 * lines; i++) {
         output[i] = input[i] & mask_lut[0xFF ^ mask[i]];
     }
 }
@@ -2686,14 +2687,14 @@ static void render_line() {
             die("term: failed to receive line to render");
         }
         Glyph* glyphs = term.line[line];
-        int min_y_px = EPD_HEIGHT + 1;
+        int min_y_px = epd_height() + 1;
         int max_y_px = -1;
 
         const EpdFont* font = get_font(glyphs[0]);
         int line_y = pixel_start_y + font->advance_y * line - font->ascender;
         int line_height = font->ascender - font->descender;
 
-        memset(render_fb_front + line_y * EPD_WIDTH / 2, 255, EPD_WIDTH / 2 * line_height);
+        memset(render_fb_front + line_y * epd_width() / 2, 255, epd_width() / 2 * line_height);
 
         char data[4 * term.col + 1];
         int idx = 0;
@@ -2742,11 +2743,11 @@ static void render_line() {
 
         int height = max_y_px - min_y_px;
         if (height > 0) {
-            height = MIN(height, EPD_HEIGHT - min_y_px);
-            int y_offset = EPD_WIDTH / 2 * min_y_px;
+            height = MIN(height, epd_height() - min_y_px);
+            int y_offset = epd_width() / 2 * min_y_px;
             uint8_t* start_ptr = render_fb_front + y_offset;
 
-            uint8_t* mask_start = render_mask + (min_y_px * EPD_WIDTH / 8);
+            uint8_t* mask_start = render_mask + (min_y_px * epd_width() / 8);
 
             calculate_dirty_buffer(
                 mask_start, render_fb_back + y_offset, start_ptr, height, &line_dirtyness[min_y_px]
@@ -2763,10 +2764,15 @@ static void draw_mask(EpdRect area, uint8_t* mask, bool* dirtyness) {
     uint64_t start = esp_timer_get_time();
     int temperature = 25;
 
+    enum EpdDrawMode mode = MODE_PACKING_8PPB | MODE_EPDIY_MONOCHROME | PREVIOUSLY_WHITE;
+
     enum EpdDrawError err = epd_draw_base(
-        epd_full_screen(), mask, area, MODE_PACKING_8PPB | MODE_EPDIY_MONOCHROME | PREVIOUSLY_WHITE,
+        epd_full_screen(), mask, area, mode,
         temperature, dirtyness, EPD_BUILTIN_WAVEFORM
     );
+    if (err != EPD_DRAW_SUCCESS) {
+        die("EPD draw error: %X\n", err);
+    }
     uint64_t time_ms = (esp_timer_get_time() - start) / 1000;
     // The particles must be given ~20ms to follow the applied charge.
     if (time_ms < MINIMUM_FRAME_TIME) {
@@ -2793,7 +2799,7 @@ const uint8_t nibble_inversion_lut[256] = {
     0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
 
 static void invert_framebuffer(uint8_t* fb) {
-    for (int i = 0; i < EPD_WIDTH / 2 * EPD_HEIGHT; i++) {
+    for (int i = 0; i < epd_width() / 2 * epd_height(); i++) {
         fb[i] ^= 0xFF;
     }
 }
@@ -2816,16 +2822,17 @@ static void full_refresh() {
     epd_poweroff();
     tfulldirt();
     screen_tainted = 0;
-    memset(render_fb_front, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_fb_back, 255, EPD_WIDTH / 2 * EPD_HEIGHT);
-    memset(render_mask, 255, EPD_WIDTH / 8 * EPD_HEIGHT);
+    memset(render_fb_front, 255, epd_width() / 2 * epd_height());
+    memset(render_fb_back, 255, epd_width() / 2 * epd_height());
+    memset(render_mask, 255, epd_width() / 8 * epd_height());
 }
 
 void epd_render(void) {
     /// use a fixed temperature of 25°C.
     int temperature = 25;
 
-    memset(line_dirtyness, 0, sizeof(line_dirtyness));
+    line_dirtyness = calloc(epd_height(), 1);
+    assert(line_dirtyness != NULL);
 
     bool is_full_clear = false;
 
@@ -2839,11 +2846,13 @@ void epd_render(void) {
 
         if (xQueueSend(line_render_queue, (void*)&y, 10) != pdPASS) {
             die("term: failed to post to line queue!");
+            free(line_dirtyness);
             return;
         }
         drawn_lines++;
         term.dirty[y] = 0;
     }
+
 
     // wait for rendering completion
     for (int li = 0; li < drawn_lines; li++) {
@@ -2856,19 +2865,21 @@ void epd_render(void) {
         epd_poweron();
         uint64_t t_poweron = esp_timer_get_time();
 
-        bool boolean_line_dirtyness[EPD_HEIGHT];
-        for (int i = 0; i < EPD_HEIGHT; i++) {
+        bool* boolean_line_dirtyness = malloc(epd_height());
+        assert(boolean_line_dirtyness != NULL);
+
+        for (int i = 0; i < epd_height(); i++) {
             boolean_line_dirtyness[i] = line_dirtyness[i] > 0;
         }
 
         int min_y = 0;
-        int max_y = EPD_HEIGHT - 1;
+        int max_y = epd_height() - 1;
         int height = max_y - min_y;
         if (height > 0) {
             EpdRect area = {
                 .x = 0,
                 .y = min_y,
-                .width = EPD_WIDTH,
+                .width = epd_width(),
                 .height = height,
             };
 
@@ -2894,16 +2905,19 @@ void epd_render(void) {
             if (err)
                 ESP_LOGI("term", "draw err: %d", err);
 
-            for (int i = 0; i < EPD_HEIGHT; i++) {
+            for (int i = 0; i < epd_height(); i++) {
                 if (boolean_line_dirtyness[i]) {
                     memcpy(
-                        render_fb_back + EPD_WIDTH / 2 * i, render_fb_front + EPD_WIDTH / 2 * i,
-                        EPD_WIDTH / 2
+                        render_fb_back + epd_width() / 2 * i, render_fb_front + epd_width() / 2 * i,
+                        epd_width() / 2
                     );
                 }
             }
         }
+        free(boolean_line_dirtyness);
     }
+
+    free(line_dirtyness);
 }
 
 void draw(void) {
