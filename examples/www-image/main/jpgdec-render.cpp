@@ -140,7 +140,7 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
     for (uint16_t yy = 0; yy < pDraw->iHeight; yy++) {
         // Copy directly horizontal MCU pixels in EPD fb
         memcpy(
-            &fb[(pDraw->y + yy) * EPD_WIDTH / 2 + pDraw->x / 2],
+            &fb[(pDraw->y + yy) * epd_width() / 2 + pDraw->x / 2],
             &pDraw->pPixels[(yy * pDraw->iWidth) >> 2], pDraw->iWidth
         );
     }
@@ -415,13 +415,13 @@ void app_main() {
     fb = epd_hl_get_framebuffer(&hl);
 
     printf("JPGDEC version @bitbank2\n");
-    dither_space = (uint8_t*)heap_caps_malloc(EPD_WIDTH * 16, MALLOC_CAP_SPIRAM);
+    dither_space = (uint8_t*)heap_caps_malloc(epd_width() * 16, MALLOC_CAP_SPIRAM);
     if (dither_space == NULL) {
         ESP_LOGE("main", "Initial alloc ditherSpace failed!");
     }
 
     // Should be big enough to allocate the JPEG file size, width * height should suffice
-    source_buf = (uint8_t*)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    source_buf = (uint8_t*)heap_caps_malloc(epd_width() * epd_height(), MALLOC_CAP_SPIRAM);
     if (source_buf == NULL) {
         ESP_LOGE("main", "Initial alloc source_buf failed!");
     }
