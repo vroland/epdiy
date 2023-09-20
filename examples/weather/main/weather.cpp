@@ -226,7 +226,7 @@ boolean SetupTime() {
     );                          //(gmtOffset_sec, daylightOffset_sec, ntpServer)
     setenv("TZ", Timezone, 1);  // setenv()adds the "TZ" variable to the environment with a value
                                 // TimeZone, only used if set to 1, 0 means no change
-    tzset();  // Set the TZ environment variable
+    tzset();                    // Set the TZ environment variable
     delay(100);
     bool TimeStatus = UpdateLocalTime();
     return TimeStatus;
@@ -276,8 +276,30 @@ void loop() {
 }
 
 void setup() {
+
+    ESP_LOGW("main", "Hello World!\n");
+
+    heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+    heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
+
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    // Set VCOM for boards that allow to set this in software (in mV).
+    // This will print an error if unsupported. In this case,
+    // set VCOM using the hardware potentiometer and delete this line.
+    epd_set_vcom(1560);
+
+    EpdiyHighlevelState hl;
+
+    hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
+
+    ESP_LOGW("main", "allocating...\n");
+
+    fb = epd_hl_get_framebuffer(&hl);
+
     StartTime = millis();
+
     Serial.begin(115200);
+
     if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
         // if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
         byte Attempts = 1;
@@ -307,19 +329,21 @@ void setup() {
             // drawImage(client);
             DisplayWeather();
             // DisplayTime();
+            //
+            printf("Buffer is prepared.\n");
 
             t1 = Millis();
             int temperature = epd_ambient_temperature();
             if (temperature <= 0)
                 temperature = 25;
-            enum EpdDrawMode mode =
-                (enum EpdDrawMode)(MODE_GC16 | MODE_PACKING_2PPB | PREVIOUSLY_WHITE);
-            epd_draw_base(
-                epd_full_screen(), fb, epd_full_screen(), mode, temperature, NULL,
-                EPD_BUILTIN_WAVEFORM
-            );
+
+            enum EpdDrawError err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
             t2 = Millis();
             epd_poweroff();
+
+            if (err != EPD_DRAW_SUCCESS) {
+                printf("EPD Draw error %X!\n", err);
+            }
 
             // display.display(false); // Full screen update mode
         }
@@ -328,36 +352,19 @@ void setup() {
     BeginSleep();
 }
 
-void epd_task(void* pvParameters) {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_1K);
-    // Set VCOM for boards that allow to set this in software (in mV).
-    // This will print an error if unsupported. In this case,
-    // set VCOM using the hardware potentiometer and delete this line.
-    epd_set_vcom(1560);
+#ifndef ARDUINO
+extern "C" {
+void app_main() {
 
-    ESP_LOGW("main", "allocating...\n");
-
-    fb = (uint8_t*)heap_caps_malloc(epd_width() * epd_height() / 2, MALLOC_CAP_SPIRAM);
-    memset(fb, 0xFF, epd_width() * epd_height() / 2);
+    initArduino();
+    setup();
 
     while (1) {
         loop();
     };
 }
-
-extern "C" {
-void app_main() {
-    ESP_LOGW("main", "Hello World!\n");
-
-    heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-    heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
-
-    xTaskCreatePinnedToCore(&epd_task, "epd task", 10000, NULL, 2, NULL, 1);
-
-    initArduino();
-    setup();
 }
-}
+#endif
 
 void drawImage(WiFiClient& client) {
     getRandomImage(client);
