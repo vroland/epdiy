@@ -110,11 +110,6 @@ enum EpdDrawMode {
   PREVIOUSLY_BLACK = 0x400,
 };
 
-#include "epd_board.h"
-#include "epd_display.h"
-#include "epd_highlevel.h"
-#include "epd_board_specific.h"
-
 /** Display software rotation.
  *  Sets the rotation for the purposes of the drawing and font functions
  *  Use epd_set_rotation(EPD_ROT_*) to set it using one of the options below
@@ -196,6 +191,11 @@ typedef struct {
   /// Additional flags, reserved for future use
   enum EpdFontFlags flags;
 } EpdFontProperties;
+
+#include "epd_board.h"
+#include "epd_display.h"
+#include "epd_highlevel.h"
+#include "epd_board_specific.h"
 
 /** Initialize the ePaper display */
 void epd_init(const EpdBoardDefinition* board, const EpdDisplay_t* display, enum EpdInitOptions options);
