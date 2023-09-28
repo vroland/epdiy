@@ -1,4 +1,5 @@
-// Open settings.h to set WiFi and other configurations for both examples:
+// Open settings.h to set WiFi and other configurations
+// jpeg-render-color is deprecated. Please use jpegdec-render.cpp example and set the right DISPLAY_COLOR_TYPE (NONE for non Color-filter)
 #include "settings.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -176,7 +177,8 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
        then it will be no need to keep a huge raw buffer (But will loose dither) */
     epd_draw_cpixel(xx, yy, r, g, b, hl.front_fb);
   }
-
+  
+  vTaskDelay(0);
   return 1;
 }
 
@@ -470,7 +472,7 @@ void app_main() {
   esp_log_level_set("wifi", ESP_LOG_ERROR);
   epd_init(&epd_board_v7, &GDEW101C01, EPD_LUT_64K);
   // Set VCOM for boards that allow to set this in software (in mV).
-  epd_set_vcom(1560);
+  epd_set_vcom(2000);
   
   wifi_init_sta();
 

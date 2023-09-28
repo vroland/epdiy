@@ -191,6 +191,8 @@ int JPEGDrawRGB(JPEGDRAW* pDraw) {
             //printf("r:%d g:%d b:%d\n", r, g, b);  // debug
         }
     }
+    mcu_count++;
+    time_render += (esp_timer_get_time() - render_start) / 1000;
     return 1;
 }
 
