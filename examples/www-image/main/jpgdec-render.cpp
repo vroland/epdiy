@@ -60,7 +60,8 @@ JPEGDEC jpeg;
 // EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
 // On true it looses rotation. Experimental, does not work alright yet. Hint:
 // Check if an uint16_t buffer can be copied in a uint8_t buffer directly
-#define JPEG_CPY_FRAMEBUFFER true
+// NO COLOR SUPPORT on true!
+#define JPEG_CPY_FRAMEBUFFER false
 
 // Dither space allocation
 uint8_t* dither_space;
@@ -157,7 +158,6 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
     for (int16_t xx = 0; xx < pDraw->iWidth; xx += 4) {
         for (int16_t yy = 0; yy < pDraw->iHeight; yy++) {
             uint16_t col = pDraw->pPixels[(xx + (yy * pDraw->iWidth)) >> 2];
-
             uint8_t col1 = col & 0xf;
             uint8_t col2 = (col >> 4) & 0xf;
             uint8_t col3 = (col >> 8) & 0xf;
@@ -166,7 +166,6 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
             epd_draw_pixel(pDraw->x + xx + 1, pDraw->y + yy, gamme_curve[col2 * 16], fb);
             epd_draw_pixel(pDraw->x + xx + 2, pDraw->y + yy, gamme_curve[col3 * 16], fb);
             epd_draw_pixel(pDraw->x + xx + 3, pDraw->y + yy, gamme_curve[col4 * 16], fb);
-
             /* if (yy==0 && mcu_count==0) {
               printf("1.%d %d %d %d ",col1,col2,col3,col4);
             } */
@@ -179,6 +178,23 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
     return 1;
 }
 
+int JPEGDrawRGB(JPEGDRAW* pDraw) {
+    // pDraw->iWidth, pDraw->iHeight Usually dw:128 dh:16 OR dw:64 dh:16
+    uint32_t render_start = esp_timer_get_time();
+    for (int16_t xx = 0; xx < pDraw->iWidth; xx++) {
+        for (int16_t yy = 0; yy < pDraw->iHeight; yy++) {
+            uint16_t rgb565_pix = pDraw->pPixels[(xx + (yy * pDraw->iWidth))];
+            uint8_t r = (rgb565_pix & 0xF800) >> 8; // rrrrr... ........ -> rrrrr000
+            uint8_t g = (rgb565_pix & 0x07E0) >> 3; // .....ggg ggg..... -> gggggg00
+            uint8_t b = (rgb565_pix & 0x1F) << 3;   // ............bbbbb -> bbbbb000
+            epd_draw_cpixel(pDraw->x + xx, pDraw->y + yy, r, g, b, fb);
+            //printf("r:%d g:%d b:%d\n", r, g, b);  // debug
+        }
+    }
+    return 1;
+}
+
+
 void deepsleep() {
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
@@ -189,21 +205,40 @@ void deepsleep() {
 int decodeJpeg(uint8_t* source_buf, int xpos, int ypos) {
     uint32_t decode_start = esp_timer_get_time();
 
-    if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDraw4Bits)) {
-        jpeg.setPixelType(FOUR_BIT_DITHERED);
+    if (strcmp(DISPLAY_COLOR_TYPE, (char*)"NONE") == 0) {
+        if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDraw4Bits)) {
+            jpeg.setPixelType(FOUR_BIT_DITHERED);
 
-        if (jpeg.decodeDither(dither_space, 0)) {
-            time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
-            ESP_LOGI(
-                "decode", "%ld ms - %dx%d image MCUs:%d", time_decomp, (int)jpeg.getWidth(),
-                (int)jpeg.getHeight(), mcu_count
-            );
+            if (jpeg.decodeDither(dither_space, 0)) {
+                time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
+                ESP_LOGI(
+                    "decode", "%ld ms - %dx%d image MCUs:%d", time_decomp, (int)jpeg.getWidth(),
+                    (int)jpeg.getHeight(), mcu_count
+                );
+            } else {
+                ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
+            }
+
         } else {
-            ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
+            ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
         }
+    } else if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
+        if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDrawRGB)) {
+            jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
 
-    } else {
-        ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
+            if (jpeg.decode(0, 0, 0)) {
+                time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
+                ESP_LOGI(
+                    "decode", "%ld ms - %dx%d image MCUs:%d", time_decomp, (int)jpeg.getWidth(),
+                    (int)jpeg.getHeight(), mcu_count
+                );
+            } else {
+                ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
+            }
+
+        } else {
+            ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
+        }
     }
     jpeg.close();
 
@@ -433,13 +468,18 @@ void wifi_init_sta(void) {
 void app_main() {
     enum EpdInitOptions init_options = EPD_LUT_64K;
 
-    epd_init(&DEMO_BOARD, &ED097TC2, init_options);
+    epd_init(&epd_board_v7, &GDEW101C01, EPD_LUT_64K);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.
-    epd_set_vcom(1560);
+    epd_set_vcom(2560);
     hl = epd_hl_init(WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
+
+    // For color we use the epdiy built-in gamma_curve:
+    if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
+      epd_set_gamma_curve(gamma_value);
+    }
 
     printf("JPGDEC version @bitbank2\n");
     dither_space = (uint8_t*)heap_caps_malloc(epd_width() * 16, MALLOC_CAP_SPIRAM);
