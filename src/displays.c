@@ -76,7 +76,7 @@ const EpdDisplay_t GDEW101C01 = {
     .width = 2232,
     .height = 1680,
     .bus_width = 16,
-    .bus_speed = 8,
+    .bus_speed = 10,
     .default_waveform = &epdiy_GDEW101C01,
     .display_type = DISPLAY_TYPE_GENERIC,
 };

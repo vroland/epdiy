@@ -46,7 +46,7 @@ Do not forget to update your WiFi credentials and point it to a proper URL that 
 #define ESP_WIFI_SSID     "WIFI NAME"
 #define ESP_WIFI_PASSWORD ""
 // www URL of the JPG image. As default:
-#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
+#define IMG_URL ("https://loremflickr.com/800/600")
 ```
 
 Progressive JPG images are not supported.

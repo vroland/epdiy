@@ -198,6 +198,11 @@ typedef struct {
   enum EpdFontFlags flags;
 } EpdFontProperties;
 
+#include "epd_board.h"
+#include "epd_display.h"
+#include "epd_highlevel.h"
+#include "epd_board_specific.h"
+
 /** Initialize the ePaper display */
 void epd_init(const EpdBoardDefinition* board, const EpdDisplay_t* display, enum EpdInitOptions options);
 
