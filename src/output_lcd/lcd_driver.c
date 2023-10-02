@@ -192,6 +192,20 @@ void IRAM_ATTR epd_lcd_start_frame() {
     lcd_ll_start(lcd.hal.dev);
 }
 
+/**
+ * Build the RMT signal according to the timing set in the lcd object.
+ */
+static void ckv_rmt_build_signal() {
+  int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
+  volatile rmt_item32_t *rmt_mem_ptr =
+      &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
+    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
+    rmt_mem_ptr->level0 = 1;
+    rmt_mem_ptr->duration1 = low_time;
+    rmt_mem_ptr->level1 = 0;
+  //rmt_mem_ptr[1] = rmt_mem_ptr[0];
+  rmt_mem_ptr[1].val = 0;
+}
 
 static void init_ckv_rmt() {
   periph_module_reset(rmt_periph_signals.groups[0].module);
@@ -199,7 +213,8 @@ static void init_ckv_rmt() {
 
   rmt_ll_enable_periph_clock(&RMT, true);
 
-// idf >= 5.0 calculates the clock divider differently
+  // Divide 80MHz APB Clock by 8 -> .1us resolution delay
+  // idf >= 5.0 calculates the clock divider differently
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 1, 0, 0);
 #else
@@ -213,22 +228,11 @@ static void init_ckv_rmt() {
 
   rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
 
-  int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
-  volatile rmt_item32_t *rmt_mem_ptr =
-      &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
-    rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration1 = low_time;
-    rmt_mem_ptr->level1 = 0;
-  //rmt_mem_ptr[1] = rmt_mem_ptr[0];
-  rmt_mem_ptr[1].val = 0;
-
-  // Divide 80MHz APB Clock by 8 -> .1us resolution delay
-
   gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.ckv], PIN_FUNC_GPIO);
   gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
   esp_rom_gpio_connect_out_signal(lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0);
 
+  ckv_rmt_build_signal();
 }
 
 __attribute__((optimize("O3")))
@@ -383,8 +387,15 @@ static esp_err_t s3_lcd_configure_gpio()
 
 void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
 
+    memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
+
     if (CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE < 64) {
-        ESP_LOGE("epdiy", "cache line size is set to %d (< 64B)! Overriding cache configuration, which may break things...");
+        ESP_LOGE("epdiy", "cache line size is set to %d (< 64B)! This will degrade performance, please update this option in menuconfig.");
+        ESP_LOGE("epdiy", "If you are on arduino, you can't set this option yourself, you'll need to use a lower speed.");
+        ESP_LOGE("epdiy", "Reducing the pixel clock from %d to %d for now!", config->pixel_clock / 1000 / 1000, config->pixel_clock / 1000 / 1000 / 2);
+        lcd.config.pixel_clock = lcd.config.pixel_clock / 2;
+
+
         // fixme: this would be nice, but doesn't work :(
         //uint32_t d_autoload = Cache_Suspend_DCache();
         ///Cache_Set_DCache_Mode(CACHE_SIZE_FULL, CACHE_4WAYS_ASSOC, CACHE_LINE_SIZE_32B);
@@ -398,8 +409,6 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     vertical_lines = (((display_height  + 7) / 8) * 8);
 
     esp_err_t ret = ESP_OK;
-
-    memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
 
     lcd.lcd_res_h = line_bytes / (lcd.config.bus_width / 8);
 
@@ -475,11 +484,6 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     ret = s3_lcd_configure_gpio();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "configure GPIO failed");
 
-
-    // set pclk
-    int flags = 0;
-    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
-    ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
     // pixel clock phase and polarity
     lcd_ll_set_clock_idle_level(lcd.hal.dev, false);
     lcd_ll_set_pixel_clock_edge(lcd.hal.dev, false);
@@ -510,11 +514,9 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     esp_intr_enable(lcd.vsync_intr);
     esp_intr_enable(lcd.done_intr);
 
-    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 / lcd.config.pixel_clock + 1;
-    lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
-    ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
-
     init_ckv_rmt();
+
+    epd_lcd_set_pixel_clock_MHz(lcd.config.pixel_clock / 1000 / 1000);
 
     epd_lcd_line_source_cb(NULL, NULL);
 
@@ -525,6 +527,21 @@ err:
     // do some deconstruction
     ESP_LOGI(TAG, "LCD initialization failed!");
     abort();
+}
+
+
+void epd_lcd_set_pixel_clock_MHz(int frequency) {
+    lcd.config.pixel_clock = frequency * 1000 * 1000;
+
+    // set pclk
+    int flags = 0;
+    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
+    ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
+    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 / lcd.config.pixel_clock + 1;
+    lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
+    ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
+
+    ckv_rmt_build_signal();
 }
 
 #else
