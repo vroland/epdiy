@@ -80,3 +80,12 @@ const EpdDisplay_t GDEW101C01 = {
     .default_waveform = &epdiy_GDEW101C01,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
+
+const EpdDisplay_t WAVE103 = {
+    .width = 1872,
+    .height = 1404,
+    .bus_width = 16,
+    .bus_speed = 10, // Could be higher, just try
+    .default_waveform = &epdiy_ED097TC2,
+    .display_type = DISPLAY_TYPE_ED097TC2,
+};
