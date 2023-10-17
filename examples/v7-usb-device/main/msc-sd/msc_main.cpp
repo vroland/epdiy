@@ -308,6 +308,8 @@ void read_file(char * filename) {
         } else {
 
         int bytes_read = fread(source_buf, 1, file_size, file);
+        ESP_LOG_BUFFER_HEXDUMP(TAG, source_buf, 1024, ESP_LOG_INFO);
+
         printf("READ %d from %d\n", bytes_read, file_size);  
         
         decodeJpeg(source_buf, file_size, 0, 0);
@@ -500,13 +502,13 @@ static esp_err_t storage_init_sdmmc(sdmmc_card_t **card)
 
     // On chips where the GPIOs used for SD card can be configured, set the user defined values
 #ifdef CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
-    slot_config.clk = CONFIG_EXAMPLE_PIN_CLK;
-    slot_config.cmd = CONFIG_EXAMPLE_PIN_CMD;
-    slot_config.d0 = CONFIG_EXAMPLE_PIN_D0;
+    slot_config.clk = (gpio_num_t)CONFIG_EXAMPLE_PIN_CLK;
+    slot_config.cmd = (gpio_num_t)CONFIG_EXAMPLE_PIN_CMD;
+    slot_config.d0 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D0;
 #ifdef CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
-    slot_config.d1 = CONFIG_EXAMPLE_PIN_D1;
-    slot_config.d2 = CONFIG_EXAMPLE_PIN_D2;
-    slot_config.d3 = CONFIG_EXAMPLE_PIN_D3;
+    slot_config.d1 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D1;
+    slot_config.d2 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D2;
+    slot_config.d3 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D3;
 #endif  // CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
 
 #endif  // CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
@@ -555,6 +557,8 @@ clean:
 
 void app_main(void)
 {
+    vTaskDelay(pdMS_TO_TICKS(1500));
+
     epd_init(&epd_board_v7, &ED097TC2, EPD_LUT_64K);
     epd_set_vcom(1760);
     // For color we use the epdiy built-in gamma_curve:
