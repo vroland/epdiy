@@ -3,6 +3,11 @@
  * Adapted to open images and render them with epdiy displays: Fasani Corp.
  * Please check original Readme in their tinyusb examples for MSC:
  * https://github.com/espressif/esp-idf/tree/master/examples/peripherals/usb/device/tusb_msc
+ * 
+ * 
+ * IMPORTANT: Using flash SPI to save / read files is slow and it's actually not working correctly in this
+ *            example. I can see only the first 20Kb or so from the image rendered.
+ *            An SD Card should be used to get the proper speed IMHO.
  */
 
 /* DESCRIPTION:
@@ -10,10 +15,14 @@
  * It either allows the embedded application i.e. example to access the partition or Host PC accesses the partition over USB MSC.
  * They can't be allowed to access the partition at the same time.
  * For different scenarios and behaviour, Refer to README of this example.
+ * This example does not use a decoded buffer hence leaves more external RAM free
+ * and it uses a JPEG decoder from Larry Bank
  */
+#define DISPLAY_COLOR_TYPE "NONE"
 
 #include <errno.h>
 #include <dirent.h>
+#include "esp_timer.h"
 #include "esp_console.h"
 #include "esp_check.h"
 #include "driver/gpio.h"
@@ -23,10 +32,14 @@
 #include "diskio_impl.h"
 #include "diskio_sdmmc.h"
 #endif
+#include <math.h>  // round + pow
 
 // epdiy
-#include "epd_highlevel.h"
-#include "epdiy.h"
+extern "C" {
+    #include "epd_highlevel.h"
+    #include "epdiy.h"
+    void app_main();
+}
 #include "firasans_20.h"
 int temperature = 25;
 EpdFontProperties font_props;
@@ -34,6 +47,25 @@ int cursor_x = 10;
 int cursor_y = 30;
 uint8_t* fb;
 EpdiyHighlevelState hl;
+// Image handling
+uint8_t* source_buf;              // IMG file buffer
+uint8_t* decoded_image;           // RAW decoded image
+double gamma_value = 0.9; // Lower: Darker Higher: Brigther
+
+// JPG decoder from @bitbank2
+#include "JPEGDEC.h"
+JPEGDEC jpeg;
+
+// EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
+// On true it looses rotation. Experimental, does not work alright yet. Hint:
+// Check if an uint16_t buffer can be copied in a uint8_t buffer directly
+// NO COLOR SUPPORT on true!
+#define JPEG_CPY_FRAMEBUFFER false
+// Dither space allocation
+uint8_t* dither_space;
+
+uint32_t time_decomp = 0;
+uint32_t time_render = 0;
 
 static const char *TAG = "MSC example";
 
@@ -135,6 +167,164 @@ const esp_console_cmd_t cmds[] = {
     }
 };
 
+// JPG decoding functions
+//====================================================================================
+// This sketch contains support functions to render the Jpeg images
+//
+// Created by Bitbank
+// Refactored by @martinberlin for EPDiy as a Jpeg download and render example
+//====================================================================================
+
+/*
+ * Used with jpeg.setPixelType(FOUR_BIT_DITHERED)
+ */
+uint16_t mcu_count = 0;
+int JPEGDraw4Bits(JPEGDRAW* pDraw) {
+    uint32_t render_start = esp_timer_get_time();
+
+#if JPEG_CPY_FRAMEBUFFER
+    // Highly experimental: Does not support rotation and gamma correction
+    // Can be washed out compared to JPEG_CPY_FRAMEBUFFER false
+    for (uint16_t yy = 0; yy < pDraw->iHeight; yy++) {
+        // Copy directly horizontal MCU pixels in EPD fb
+        memcpy(
+            &fb[(pDraw->y + yy) * epd_width() / 2 + pDraw->x / 2],
+            &pDraw->pPixels[(yy * pDraw->iWidth) >> 2], pDraw->iWidth
+        );
+    }
+
+#else
+    // Rotation aware
+    for (int16_t xx = 0; xx < pDraw->iWidth; xx += 4) {
+        for (int16_t yy = 0; yy < pDraw->iHeight; yy++) {
+            uint16_t col = pDraw->pPixels[(xx + (yy * pDraw->iWidth)) >> 2];
+            uint8_t col1 = col & 0xf;
+            uint8_t col2 = (col >> 4) & 0xf;
+            uint8_t col3 = (col >> 8) & 0xf;
+            uint8_t col4 = (col >> 12) & 0xf;
+            epd_draw_pixel(pDraw->x + xx, pDraw->y + yy, col1 * 16, fb);
+            epd_draw_pixel(pDraw->x + xx + 1, pDraw->y + yy, col2 * 16, fb);
+            epd_draw_pixel(pDraw->x + xx + 2, pDraw->y + yy, col3 * 16, fb);
+            epd_draw_pixel(pDraw->x + xx + 3, pDraw->y + yy, col4 * 16, fb);
+            /* if (yy==0 && mcu_count==0) {
+              printf("1.%d %d %d %d ",col1,col2,col3,col4);
+            } */
+        }
+    }
+#endif
+
+    mcu_count++;
+    time_render += (esp_timer_get_time() - render_start) / 1000;
+    return 1;
+}
+
+int JPEGDrawRGB(JPEGDRAW* pDraw) {
+    // pDraw->iWidth, pDraw->iHeight Usually dw:128 dh:16 OR dw:64 dh:16
+    uint32_t render_start = esp_timer_get_time();
+    for (int16_t xx = 0; xx < pDraw->iWidth; xx++) {
+        for (int16_t yy = 0; yy < pDraw->iHeight; yy++) {
+            uint16_t rgb565_pix = pDraw->pPixels[(xx + (yy * pDraw->iWidth))];
+            uint8_t r = (rgb565_pix & 0xF800) >> 8; // rrrrr... ........ -> rrrrr000
+            uint8_t g = (rgb565_pix & 0x07E0) >> 3; // .....ggg ggg..... -> gggggg00
+            uint8_t b = (rgb565_pix & 0x1F) << 3;   // ............bbbbb -> bbbbb000
+            epd_draw_cpixel(pDraw->x + xx, pDraw->y + yy, r, g, b, fb);
+            //printf("r:%d g:%d b:%d\n", r, g, b);  // debug
+        }
+    }
+    mcu_count++;
+    time_render += (esp_timer_get_time() - render_start) / 1000;
+    return 1;
+}
+
+//====================================================================================
+//   This function opens source_buf Jpeg image file and primes the decoder
+//====================================================================================
+int decodeJpeg(uint8_t* source_buf, int file_size, int xpos, int ypos) {
+    uint32_t decode_start = esp_timer_get_time();
+
+    if (strcmp(DISPLAY_COLOR_TYPE, (char*)"NONE") == 0) {
+        if (jpeg.openRAM(source_buf, file_size, JPEGDraw4Bits)) {
+            jpeg.setPixelType(FOUR_BIT_DITHERED);
+
+            if (jpeg.decodeDither(dither_space, 0)) {
+                time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
+                ESP_LOGI(
+                    "decode", "%ld ms - %dx%d image MCUs:%d", time_decomp, (int)jpeg.getWidth(),
+                    (int)jpeg.getHeight(), mcu_count
+                );
+            } else {
+                ESP_LOGE("jpeg.decode", "Failed with error: %d img_w: %d h: %d", jpeg.getLastError(), (int)jpeg.getWidth(),
+                    (int)jpeg.getHeight());
+            }
+
+        } else {
+            ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
+        }
+    } else if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
+        if (jpeg.openRAM(source_buf, file_size, JPEGDrawRGB)) {
+            jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
+
+            if (jpeg.decode(0, 0, 0)) {
+                time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
+                ESP_LOGI(
+                    "decode", "%ld ms - %dx%d image MCUs:%d", time_decomp, (int)jpeg.getWidth(),
+                    (int)jpeg.getHeight(), mcu_count
+                );
+            } else {
+                ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
+            }
+
+        } else {
+            ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
+        }
+    }
+    jpeg.close();
+
+    return 1;
+}
+
+void read_file(char * filename) {
+    char filepath[150];
+    sprintf(filepath, "%s/%s", BASE_PATH, filename);
+    
+    
+    ESP_LOGI(TAG, "Opening file: %s", filepath);
+
+    FILE* file = fopen(filepath, "r");
+    
+    fseek(file, 0, SEEK_END);
+    int file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if (file == NULL) {
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        return;
+    } else {
+        ESP_LOGI(TAG, "File opened, size:%d", file_size);
+        source_buf = (uint8_t*)heap_caps_malloc(file_size, MALLOC_CAP_SPIRAM);
+
+        if (source_buf == NULL) {
+            ESP_LOGE("main", "Alloc from image buffer source_buf failed!");
+        } else {
+
+        int bytes_read = fread(source_buf, 1, file_size, file);
+        printf("READ %d from %d\n", bytes_read, file_size);  
+        
+        decodeJpeg(source_buf, file_size, 0, 0);
+        fclose(file);
+
+        ESP_LOGI(
+                    "render", "%ld ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render,
+                    JPEG_CPY_FRAMEBUFFER
+                );
+        // Refresh display
+        epd_poweron();
+        epd_hl_update_screen(&hl, MODE_GC16, 25);
+        epd_poweroff();
+        }
+    }
+}
+
 // mount the partition and show all the files in BASE_PATH
 static void _mount(void)
 {
@@ -161,8 +351,16 @@ static void _mount(void)
     char strbuf[257];
     epd_write_string(&FiraSans_20, "Directory listing:", &cursor_x, &cursor_y, fb, &font_props);
     cursor_x = 10;
+    int file_cnt = 0;
+    char selected_file[256];
     //While the next entry is not readable we will print directory files
     while ((d = readdir(dh)) != NULL) {
+        file_cnt++;
+
+        if (file_cnt == 1) {
+            strcpy(selected_file, d->d_name);
+            printf("Opening: %s\n", selected_file);
+        }
         printf("%s\n", d->d_name);
         sprintf(strbuf, "%s", d->d_name);
         epd_write_string(&FiraSans_20, strbuf, &cursor_x, &cursor_y, fb, &font_props);
@@ -170,6 +368,11 @@ static void _mount(void)
     }
     epd_hl_update_screen(&hl, MODE_DU, temperature);
     epd_poweroff();
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    epd_clear();
+
+    read_file(selected_file);
+
     return;
 }
 
@@ -354,13 +557,28 @@ void app_main(void)
 {
     epd_init(&epd_board_v7, &ED097TC2, EPD_LUT_64K);
     epd_set_vcom(1760);
+    // For color we use the epdiy built-in gamma_curve:
+    if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
+      epd_set_gamma_curve(gamma_value);
+    }
+
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
     font_props = epd_font_properties_default();
     epd_poweron();
     epd_fullclear(&hl, temperature);
     epd_poweroff();
-    
+    // Alloc buffers to contain decoded image and dithering space
+    decoded_image = (uint8_t*)heap_caps_malloc(epd_width() * epd_height(), MALLOC_CAP_SPIRAM);
+    if (decoded_image == NULL) {
+        ESP_LOGE("main", "Initial alloc back_buf failed!");
+    }
+    memset(decoded_image, 255, epd_width() * epd_height());
+    dither_space = (uint8_t*)heap_caps_malloc(epd_width() * 16, MALLOC_CAP_DMA);
+    if (dither_space == NULL) {
+        ESP_LOGE("main", "Initial alloc ditherSpace failed!");
+    }
+
     ESP_LOGI(TAG, "Initializing storage...");
 
 #ifdef CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
