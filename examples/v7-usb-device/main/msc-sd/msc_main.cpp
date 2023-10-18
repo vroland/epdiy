@@ -50,7 +50,7 @@ EpdiyHighlevelState hl;
 // Image handling
 uint8_t* source_buf;              // IMG file buffer
 uint8_t* decoded_image;           // RAW decoded image
-double gamma_value = 0.9; // Lower: Darker Higher: Brigther
+double gamma_value = 0.7; // Lower: Darker Higher: Brigther
 
 // JPG decoder from @bitbank2
 #include "JPEGDEC.h"
@@ -286,8 +286,6 @@ int decodeJpeg(uint8_t* source_buf, int file_size, int xpos, int ypos) {
 void read_file(char * filename) {
     char filepath[150];
     sprintf(filepath, "%s/%s", BASE_PATH, filename);
-    
-    
     ESP_LOGI(TAG, "Opening file: %s", filepath);
 
     FILE* file = fopen(filepath, "r");
@@ -357,13 +355,14 @@ static void _mount(void)
     char selected_file[256];
     //While the next entry is not readable we will print directory files
     while ((d = readdir(dh)) != NULL) {
-        file_cnt++;
-
-        if (file_cnt == 1) {
+        if (file_cnt == 1 && strncmp(d->d_name, ".", 1) > 0 ) {
             strcpy(selected_file, d->d_name);
             printf("Opening: %s\n", selected_file);
+        } else {
+            file_cnt++;
+            printf("%s\n", d->d_name);
+            continue;
         }
-        printf("%s\n", d->d_name);
         sprintf(strbuf, "%s", d->d_name);
         epd_write_string(&FiraSans_20, strbuf, &cursor_x, &cursor_y, fb, &font_props);
         cursor_x = 10;

@@ -4,4 +4,6 @@ url: "https://github.com/vroland/epdiy"
 license: LGPLv3
 
 dependencies:
-  espressif/esp_tinyusb: "*"
+  espressif/esp_tinyusb: 
+    version: "~1.0.0"
+    targets: esp32s3
