@@ -5,7 +5,7 @@ license: LGPLv3
 
 dependencies:
   espressif/esp_tinyusb: 
-    version: "~1.0.0"
+    version: "*"
     rules:
       - if: "idf_version >= 5.0"
       - if: "target in [esp32s3]"

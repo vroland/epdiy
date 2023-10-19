@@ -15,10 +15,17 @@
  * It either allows the embedded application i.e. example to access the partition or Host PC accesses the partition over USB MSC.
  * They can't be allowed to access the partition at the same time.
  * For different scenarios and behaviour, Refer to README of this example.
- * This example does not use a decoded buffer hence leaves more external RAM free
- * and it uses a JPEG decoder from Larry Bank
+ * All images should be placed in the root of SDCard and be valid, non-progressive, JPG images
+ * This example uses a JPEG decoder from Larry Bank
  */
 #define DISPLAY_COLOR_TYPE "NONE"
+
+// Gallery mode will loop through all JPG images in the SDCard
+#define GALLERY_MODE true
+// Seconds wait till reading next picture
+#define GALLERY_WAIT_SEC 10
+// Clean mode will do a full clean refresh before loading a new image (slower)
+#define GALLERY_CLEAN_MODE false
 
 #include <errno.h>
 #include <dirent.h>
@@ -50,11 +57,12 @@ EpdiyHighlevelState hl;
 // Image handling
 uint8_t* source_buf;              // IMG file buffer
 uint8_t* decoded_image;           // RAW decoded image
-double gamma_value = 0.7; // Lower: Darker Higher: Brigther
+double gamma_value = 1; // Lower: Darker Higher: Brighter
 
 // JPG decoder from @bitbank2
 #include "JPEGDEC.h"
 JPEGDEC jpeg;
+#define DEBUG_JPG_PAYLOAD false
 
 // EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
 // On true it looses rotation. Experimental, does not work alright yet. Hint:
@@ -306,9 +314,10 @@ void read_file(char * filename) {
         } else {
 
         int bytes_read = fread(source_buf, 1, file_size, file);
-        ESP_LOG_BUFFER_HEXDUMP(TAG, source_buf, 1024, ESP_LOG_INFO);
-
-        printf("READ %d from %d\n", bytes_read, file_size);  
+        if (DEBUG_JPG_PAYLOAD) {
+          ESP_LOG_BUFFER_HEXDUMP(TAG, source_buf, 1024, ESP_LOG_INFO);
+        }
+        printf("Reading %d bytes from %s\n", bytes_read, filename);  
         
         decodeJpeg(source_buf, file_size, 0, 0);
         fclose(file);
@@ -321,6 +330,8 @@ void read_file(char * filename) {
         epd_poweron();
         epd_hl_update_screen(&hl, MODE_GC16, 25);
         epd_poweroff();
+
+        heap_caps_free(source_buf);
         }
     }
 }
@@ -351,30 +362,68 @@ static void _mount(void)
     char strbuf[257];
     epd_write_string(&FiraSans_20, "Directory listing:", &cursor_x, &cursor_y, fb, &font_props);
     cursor_x = 10;
+
     int file_cnt = 0;
     char selected_file[256];
     //While the next entry is not readable we will print directory files
     while ((d = readdir(dh)) != NULL) {
-        if (file_cnt == 1 && strncmp(d->d_name, ".", 1) > 0 ) {
-            strcpy(selected_file, d->d_name);
-            printf("Opening: %s\n", selected_file);
-        } else {
-            file_cnt++;
-            printf("%s\n", d->d_name);
+        if (strncmp(d->d_name, ".", 1) == 0) {
+            printf("%s not image, discarded\n", d->d_name);
             continue;
         }
+        file_cnt++;
+        if (file_cnt == 1) {
+            strcpy(selected_file, d->d_name);
+            printf("Opening: %s\n", selected_file);
+        }
+        
         sprintf(strbuf, "%s", d->d_name);
         epd_write_string(&FiraSans_20, strbuf, &cursor_x, &cursor_y, fb, &font_props);
         cursor_x = 10;
     }
+    
+    // Read single file
     epd_hl_update_screen(&hl, MODE_DU, temperature);
     epd_poweroff();
+
     vTaskDelay(pdMS_TO_TICKS(1500));
     epd_clear();
+    if (!GALLERY_MODE) {
+        read_file(selected_file);
+    }
+}
 
-    read_file(selected_file);
-
-    return;
+void gallery_mode() {
+    struct dirent *d;
+    //While the next entry is not readable we will read each image
+    while(true) {
+        DIR *dh = opendir(BASE_PATH);
+        if (!dh) {
+            if (errno == ENOENT) {
+                ESP_LOGE(TAG, "Directory doesn't exist %s", BASE_PATH);
+            } else {
+                //If the directory is not readable then throw error and exit
+                ESP_LOGE(TAG, "Unable to read directory %s", BASE_PATH);
+            }
+            return;
+        }
+        // Loop through each image
+        while ((d = readdir(dh)) != NULL) {
+            if (strncmp(d->d_name, ".", 1) == 0) {
+                printf("%s not image, discarded\n", d->d_name);
+                continue;
+            }
+            if (GALLERY_CLEAN_MODE) {
+                epd_poweron();
+                epd_fullclear(&hl, temperature);
+                epd_poweroff();
+            } else {
+                epd_fullclear(&hl, temperature);
+            }
+            read_file(d->d_name);
+            vTaskDelay(pdMS_TO_TICKS(GALLERY_WAIT_SEC *1000));
+        }
+    }
 }
 
 // unmount storage
@@ -564,7 +613,7 @@ void app_main(void)
     if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
       epd_set_gamma_curve(gamma_value);
     }
-
+    temperature = epd_ambient_temperature();
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
     font_props = epd_font_properties_default();
@@ -602,8 +651,10 @@ void app_main(void)
     ESP_ERROR_CHECK(tinyusb_msc_storage_init_sdmmc(&config_sdmmc));
 #endif  // CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
 
-    //mounted in the app by default
     _mount();
+    if (GALLERY_MODE) {
+        gallery_mode();
+    }
 
     ESP_LOGI(TAG, "USB MSC initialization");
     const tinyusb_config_t tusb_cfg = {
