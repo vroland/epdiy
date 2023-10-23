@@ -73,7 +73,7 @@
       (psnegative false)
       (psa4output false)
       (plotreference true)
-      (plotvalue false)
+      (plotvalue true)
       (plotinvisibletext false)
       (sketchpadsonfab false)
       (subtractmaskfromsilk true)
