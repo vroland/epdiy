@@ -5,7 +5,6 @@
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
 
-
 #include <stdio.h>
 #include <string.h>
 #include "esp_heap_caps.h"
@@ -17,7 +16,6 @@
 #include "sdkconfig.h"
 
 #include "epdiy.h"
-
 
 #include "Arduino.h"
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
@@ -277,7 +275,6 @@ void loop() {
 }
 
 void setup() {
-
     ESP_LOGW("main", "Hello World!\n");
 
     heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
@@ -355,7 +352,6 @@ void setup() {
 
 extern "C" {
 void app_main() {
-
     initArduino();
     setup();
 
