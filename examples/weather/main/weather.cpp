@@ -4,7 +4,7 @@
  * for 4 bits color (16 colors - well, greys.) MSB first.  At 80 MHz, screen
  * clears execute in 1.075 seconds and images are drawn in 1.531 seconds.
  */
-#define ESP32
+
 
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +17,7 @@
 #include "sdkconfig.h"
 
 #include "epdiy.h"
+
 
 #include "Arduino.h"
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
@@ -352,7 +353,6 @@ void setup() {
     BeginSleep();
 }
 
-#ifndef ARDUINO
 extern "C" {
 void app_main() {
 
@@ -364,7 +364,6 @@ void app_main() {
     };
 }
 }
-#endif
 
 void drawImage(WiFiClient& client) {
     getRandomImage(client);
