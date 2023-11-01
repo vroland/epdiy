@@ -2,6 +2,7 @@
 .vscode
 build/
 sdkconfig.old
+sdkconfig
 **/build/
 .ccls-cache
 doc/source/xml/
@@ -18,3 +19,8 @@ __pycache__
 examples/weather/components
 sdkconfig
 managed_components/
+epaper-breakout-backups/
+dependencies.lock
+ED*.h
+ES*.h
+examples/private_*/

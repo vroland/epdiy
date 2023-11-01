@@ -34,9 +34,8 @@ Adding a New Display
 
 This section is work-in-progress.
 
-- Add Menuconfig options
+- Add display definitions in :code:`displays.c` and :code:`epd_display.h`.
 - Include waveform in :code:`bulitin_waveforms.c`
-- Add external waveform declaration and display resolution in `epd_internal.h`
 - Calibrate timing curve in :code:`scripts/generate_epdiy_waveforms.py`.
 - Add to the list of displays to build waveforms for in :code:`Makefile`
 - Document

@@ -1,0 +1,6 @@
+(fp_lib_table
+  (lib (name "epaper-breakout")(type "KiCad")(uri "${KIPRJMOD}/epaper-breakout.pretty")(options "")(descr ""))
+  (lib (name "esp32-wrover")(type "KiCad")(uri "${KIPRJMOD}/esp32-wrover-kicad/esp32-wrover.pretty")(options "")(descr ""))
+  (lib (name "tps65185")(type "KiCad")(uri "${KIPRJMOD}/footprints.pretty")(options "")(descr ""))
+  (lib (name "Espressif")(type "KiCad")(uri "${KIPRJMOD}/kicad-libraries/footprints/Espressif.pretty")(options "")(descr ""))
+)

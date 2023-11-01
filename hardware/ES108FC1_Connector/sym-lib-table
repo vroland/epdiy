@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "epdiy")(type "KiCad")(uri "${KIPRJMOD}/../epdiy-v7/epdiy.kicad_sym")(options "")(descr ""))
+)

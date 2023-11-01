@@ -1,10 +1,6 @@
 name: ESP-IDF
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -13,9 +9,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - release-v4.3
           - release-v4.4
-          - release-v5.0
+          - release-v5.1
         example:
           - calibration_helper
           - demo
@@ -28,7 +23,7 @@ jobs:
     continue-on-error: ${{ matrix.version == 'latest' }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - uses: 'espressif/esp-idf-ci-action@main'
@@ -49,14 +44,14 @@ jobs:
           - weather
         include:
           - version: release-v4.4
-            arduino-esp32: 2.0.3
+            arduino-esp32: 2.0.11
 
     steps:
       - name: Install latest git
         run: |
           apt update -qq && apt install -y -qq git
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Install Arduino ESP
         run: |
           cd examples/${{ matrix.example }}

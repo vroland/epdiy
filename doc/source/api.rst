@@ -9,7 +9,7 @@ Highlevel API
 
 Complete API
 ------------
-.. doxygenfile:: epd_driver.h
+.. doxygenfile:: epdiy.h
 
 Internals
 ----------

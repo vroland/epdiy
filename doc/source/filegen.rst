@@ -14,12 +14,12 @@ Generating Font Files
 Fonts can only be used by the driver in  a special header format 
 (inspired by the Adafruit GFX library), which need to be generated from TTF fonts.
 For this purpose, the :code:`scripts/fontconvert.py` utility is provided.
-::
+.. code-block::
 
     fontconvert.py [-h] [--compress] [--additional-intervals ADDITIONAL_INTERVALS] name size fontstack [fontstack ...]
 
 The following example generates a header file for Fira Code at size 10, where glyphs that are not found in Fira Code will be taken from Symbola:
-::
+.. code-block::
 
     ./fontconvert.py FiraCode 10 /usr/share/fonts/TTF/FiraCode-Regular.ttf /usr/share/fonts/TTF/Symbola.ttf > ../examples/terminal/main/firacode.h
 
@@ -27,7 +27,7 @@ You can change which unicode character codes are to be exported by specifying ad
 ranges of unicode code points with :code:`--additional-intervals`.
 Intervals are written as :code:`min,max`. 
 To add multiple intervals, you can specify the :code:`--additional-intervals` option multiple times.
-::
+.. code-block::
 
     ./fontconvert.py ... --additional-intervals 0xE0A0,0xE0A2 --additional-intervals 0xE0B0,0xE0B3 ...
 
@@ -43,7 +43,7 @@ Generating Images
 
 The process for converting images is very similar to converting fonts.
 Run the :code:`scripts/imgconvert.py` script with an input image, an image name and an output image.
-::
+.. code-block::
 
     imgconvert.py [-h] -i INPUTFILE -n NAME -o OUTPUTFILE [-maxw MAX_WIDTH] [-maxh MAX_HEIGHT]
 
@@ -58,6 +58,12 @@ For accurate grayscale it is advisable to color-grade and scale the image with a
 
 Converting Waveforms
 --------------------
+
+
+.. note:: Waveform Timings and V7
+
+    Epdiy builtin waveforms currently use variable frame timings to reduce the number
+    of update cycles required. This is currently not implemented in V7. Hence, for best results it is recommended to use Vendor waveforms where available, which use constant frame timings.
 
 In comercial applications, displays are driven with information in so-called `Waveform Files`.
 These specify how which pulses to apply to the pixel to transition from one gray tone to another.

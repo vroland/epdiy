@@ -1,0 +1,4 @@
+Comment,Designator,Footprint,LCSC
+"Conn_02x03_Odd_Even","J1","Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical",""
+"ES108FC1","J2","epaper-breakout:ES108FC1","C2880696"
+"ED078KH6","U1","epaper-breakout:Hirose_FH12-40S-0.5SH_mirrored","C202114"

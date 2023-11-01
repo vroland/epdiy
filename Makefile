@@ -10,25 +10,30 @@ EXPORT_TEMPERATURE_RANGE ?= 15,35
 
 # the default headers that should come with the distribution
 default: \
-	$(patsubst %,src/epd_driver/waveforms/epdiy_%.h,$(SUPPORTRED_DISPLAYS))
+	$(patsubst %,src/waveforms/epdiy_%.h,$(SUPPORTRED_DISPLAYS))
 
 clean:
-	rm src/epd_driver/waveforms/epdiy_*.h
-	rm src/epd_driver/waveforms/eink_*.h
+	rm src/waveforms/epdiy_*.h
+	rm src/waveforms/eink_*.h
 
-src/epd_driver/waveforms/epdiy_%.h: src/epd_driver/waveforms/epdiy_%.json
+format: 
+	clang-format -i $(shell find ./examples -regex '.*main.*\.\(c\|cpp\|h\|ino\)$$' \
+		-not -regex '.*/\(.ccls-cache\|waveforms\|\components\|build\)/.*' \
+		-not -regex '.*E[DS][0-9]*[A-Za-z]*[0-9].h')
+
+src/waveforms/epdiy_%.h: src/waveforms/epdiy_%.json
 	python3 scripts/waveform_hdrgen.py \
 		--export-modes $(EXPORTED_MODES) \
 		--temperature-range $(EXPORT_TEMPERATURE_RANGE) \
 		epdiy_$* < $< > $@
 
-src/epd_driver/waveforms/eink_%.h: src/epd_driver/waveforms/eink_%.json
+src/waveforms/eink_%.h: src/waveforms/eink_%.json
 	python3 scripts/waveform_hdrgen.py \
 		--export-modes $(EXPORTED_MODES) \
 		--temperature-range $(EXPORT_TEMPERATURE_RANGE) \
 		eink_$* < $< > $@
 
-src/epd_driver/waveforms/epdiy_%.json:
+src/waveforms/epdiy_%.json:
 	python3 scripts/epdiy_waveform_gen.py $* > $@
 
-.PHONY: default
+.PHONY: default format
