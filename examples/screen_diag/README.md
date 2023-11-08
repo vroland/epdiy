@@ -6,7 +6,7 @@ There are also pre-programmed algorithms (e.g. `render_stairs`, `render_grid`) w
 The `screen_diag` examples requires ESP-IDF v5.x or newer.
 
 ## Setup
-Don't forget to set your display type for the  _epd driver_ in `menuconfig`!
+Don't forget to set your display type in `epd_init` in `epd.c`!
 
 First you need to flash the firmware:
 ```sh

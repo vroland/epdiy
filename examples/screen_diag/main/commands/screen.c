@@ -198,15 +198,15 @@ static struct coords map_to_screen(int x, int y) {
             break;
         case EPD_ROT_PORTRAIT:
             swap(&x, &y);
-            x = EPD_WIDTH - x - 1;
+            x = epd_width() - x - 1;
             break;
         case EPD_ROT_INVERTED_LANDSCAPE:
-            x = EPD_WIDTH - x - 1;
-            y = EPD_HEIGHT - y - 1;
+            x = epd_width() - x - 1;
+            y = epd_height() - y - 1;
             break;
         case EPD_ROT_INVERTED_PORTRAIT:
             swap(&x, &y);
-            y = EPD_HEIGHT - y - 1;
+            y = epd_height() - y - 1;
             break;
     }
 
@@ -220,13 +220,13 @@ static int get_pixel_color(int x, int y)
 {
     const struct coords adjusted = map_to_screen(x, y);
 
-    if (adjusted.x < 0 || adjusted.x >= EPD_WIDTH || adjusted.y < 0 || adjusted.y >= EPD_HEIGHT)
+    if (adjusted.x < 0 || adjusted.x >= epd_width() || adjusted.y < 0 || adjusted.y >= epd_height())
     {
-        printf("Invalid coordinates (%d,%d): Must be withing the screen size (%d,%d).\r\n", adjusted.x, adjusted.y, EPD_WIDTH, EPD_HEIGHT);
+        printf("Invalid coordinates (%d,%d): Must be withing the screen size (%d,%d).\r\n", adjusted.x, adjusted.y, epd_width(), epd_height());
         return -1;
     }
 
-    uint8_t pixel = g_framebuffer[adjusted.y * EPD_WIDTH / 2 + adjusted.x / 2];
+    uint8_t pixel = g_framebuffer[adjusted.y * epd_width() / 2 + adjusted.x / 2];
     uint8_t color = (adjusted.x % 2) ? (pixel & 0xF0) : (pixel & 0x0F);
 
     // repeat color pattern

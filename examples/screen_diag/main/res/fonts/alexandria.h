@@ -1,5 +1,5 @@
 #pragma once
-#include "epd_driver.h"
+#include "epdiy.h"
 
 /*
  * Alexandria-v1-latin-regular.ttf: Copyright 2022 The Alexandria Project Authors (https://github.com/Gue3bara/Alexandria)

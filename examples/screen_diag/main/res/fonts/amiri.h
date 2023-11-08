@@ -1,5 +1,5 @@
 #pragma once
-#include "epd_driver.h"
+#include "epdiy.h"
 
 /*
  * Amiri-Regular.ttf: Copyright 2010-2022 The Amiri Project Authors (https://github.com/aliftype/amiri).

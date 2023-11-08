@@ -30,7 +30,6 @@ static struct {
 static int system_restart(int argc, char* argv[]);
 static int system_get_free_heap_size(int argc, char* argv[]);
 static int system_dump_heaps_info(int argc, char* argv[]);
-static int system_dump_tasks(int argc, char* argv[]);
 static int system_dump_chip_info(int argc, char* argv[]);
 static int system_dump_firmware_info(int argc, char* argv[]);
 static int system_get_time(int argc, char* argv[]);
@@ -64,12 +63,6 @@ void register_system_commands(void)
             .hint = NULL,
             .func = &system_dump_heaps_info,
             .argtable = &dump_heaps_args
-        },
-        {
-            .command = "dump_tasks",
-            .help = "Dumps all tasks with their names, current state and stack usage.",
-            .hint = NULL,
-            .func = &system_dump_tasks
         },
         {
             .command = "chip_info",
@@ -124,27 +117,6 @@ static int system_dump_heaps_info(int argc, char* argv[])
 
     heap_caps_print_heap_info(caps);
 
-    return 0;
-}
-
-static int system_dump_tasks(int argc, char* argv[])
-{
-    const unsigned num_tasks = uxTaskGetNumberOfTasks();
-    char* buffer = calloc(num_tasks, 40); // approx. 40 bytes per task.
-
-    puts("Name          State   Priority  Stack   Num\r\n"
-         "-------------------------------------------");
-
-    vTaskList(buffer);
-    puts(buffer);
-
-    puts("Legend:\r\n"
-         "\tB: Blocked\r\n"
-         "\tR: Ready\r\n"
-         "\tD: Deleted (waiting clean up)\r\n"
-         "\tS: Suspended, or Blocked without a timeout");
-
-    free(buffer);
     return 0;
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <epd_driver.h>
+#include <epdiy.h>
 
 #ifdef DEFINE_FONTS
 #include "alexandria.h"
