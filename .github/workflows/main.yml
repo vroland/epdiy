@@ -20,7 +20,7 @@ jobs:
           - terminal
           - www-image
         include:
-          - version: release-v5.0
+          - version: release-v5.1
             example: screen_diag
 
     continue-on-error: ${{ matrix.version == 'latest' }}
