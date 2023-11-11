@@ -13,10 +13,7 @@ that will manufacture boards for a low price.
 
 To use one of those services, upload the "Gerber files", usually provided as a zip file,
 to the service.
-Please consult the README of the epdiy repository for a link to the gerber files for the current revision.
-Some services also offer automated assembly for all or a subset of components.
-Usually, you will have to upload a bill of materials (BOM) and a placement file.
-Both are provided in the `hardware/epdiy-v7` directory.
+You can find all the available hardware listed on the `Hardware Page <https://vroland.github.io/epdiy-hardware/>`_.
 
 Choosing and Finding Parts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

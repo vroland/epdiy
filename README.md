@@ -23,25 +23,39 @@ This project supports a driver for the ESP-IDF and Arduino. For installation ins
 Note that for epdiy V7, update speeds are significantly lower when using the Arduino IDE, because it does not allow to change
 the sub-optimal cache configuration.
 
+Get Inspired
+------------
+
+The `examples` directory contains some example applications like a weather station or a screen diagnostic test. 
+If you want to build something more useful though, how about:
+
+- A serial terminal for connecting to a raspberry pi: [video](https://cdn.hackaday.io/files/1681937195969312/terminal_demo.mp4) [repository](https://github.com/vroland/epdiy-terminal)]
+- A Music Player Daemon (MPD) dashboard: [repository](https://github.com/vroland/epdiy-mpd)]
+- An e-Paper picture frame: [video](https://www.youtube.com/watch?v=r7AcNQsSZUw)
+- And more to come!
+
 Building It
 -----------
 
-If you want to build a board right now, there are two possible routes:
+On the [EPDiy Hardware Page](https://vroland.github.io/epdiy-hardware/), you'll find a list of all boards and variants, adapters, and helpers.
+Next to each board, there are manufacturing files (gerbers), Bill of Materials (BoM), part placement files,
+and 3D models ready to use!
 
- - Use the new v6 PCB (`hardware/epdiy-v7/gerbers.zip`). 
-   It is the fastest and most flexible controller revision, featuring support
-   for high-resolution 16-bit parallel displays.
-   The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
-   Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
-   Please double check the part positioning and Rotation with your assembly service!
-   Additionally, you may want to consider part alternatives for connectors depending on 
-   availability and price.
-   More information on the order process and where to find parts is in the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
+![demo image](doc/source/img/hardware_page.png)
+
+For ordering from JLCPCB for example, ordering is as easy as downloading the zipped gerbers, BoM, and placement file
+and uploading them. The process is very similar for other manufacturers, check your vendor's documentation for details.
+Don't forget to oder adapters if the board doesn't have connectors for your specific display.
+
+The current latest version is epdiy V7, beased on the ESP32S3. 
+Older versions are also available on the hardware page.
+
+
+#### Contributing Hardware
+
+Want to contribute your own board variant or adapter? 
+Check out the [epdiy-hardware repository](https://github.com/vroland/epdiy-hardware) for instructions.
  
- 
- - Use the old V6 PCB (`hardware/epaper-breakout/gerbers_v6.zip`).  
-   You may want to consider this option if you require connectors that are missing on V7.
-   Keep in mind that display updates will be slower than V7.
 
 Gettings Started
 ----------------
