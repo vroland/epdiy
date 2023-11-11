@@ -16,8 +16,6 @@ jobs:
           - demo
           - dragon
           - grayscale_test
-          - mpd_status
-          - terminal
           - www-image
         include:
           - version: release-v5.1
