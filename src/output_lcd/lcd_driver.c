@@ -60,7 +60,7 @@ static inline int max(int x, int y) { return x > y ? x : y; }
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 //#define S3_LCD_PIN_NUM_MODE           4
 
-#define LINE_BATCH                     500
+#define LINE_BATCH                     1000
 #define BOUNCE_BUF_LINES               4
 
 #define RMT_CKV_CHAN                   RMT_CHANNEL_1
@@ -154,7 +154,7 @@ void IRAM_ATTR epd_lcd_start_frame() {
     int end_line = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(lcd.hal.dev,
             lcd.config.le_high_time,
-            lcd.config.line_front_porch,
+            lcd.config.line_front_porch - (dummy_bytes > 0),
             // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
             lcd.lcd_res_h + (dummy_bytes > 0),
             end_line
@@ -176,20 +176,24 @@ void IRAM_ATTR epd_lcd_start_frame() {
     fill_bounce_buffer(lcd.bounce_buffer[0]);
     fill_bounce_buffer(lcd.bounce_buffer[1]);
 
+
     // the start of DMA should be prior to the start of LCD engine
     gdma_start(lcd.dma_chan, (intptr_t)&lcd.dma_nodes[0]);
     // delay 1us is sufficient for DMA to pass data to LCD FIFO
     // in fact, this is only needed when LCD pixel clock is set too high
     gpio_set_level(lcd.config.bus.stv, 0);
-    esp_rom_delay_us(1);
-    // start LCD engine
-    start_ckv_cycles(initial_lines + 6);
-    esp_rom_delay_us(1);
-    gpio_set_level(lcd.config.bus.stv, 1);
+    //esp_rom_delay_us(1);
     // for picture clarity, it seems to be important to start CKV at a "good"
     // time, seemingly start or towards end of line.
-    esp_rom_delay_us(lcd.line_length_us - lcd.config.ckv_high_time / 10 - 1);
+    start_ckv_cycles(initial_lines + 5);
+    esp_rom_delay_us(lcd.line_length_us);
+    gpio_set_level(lcd.config.bus.stv, 1);
+    esp_rom_delay_us(lcd.line_length_us);
+    esp_rom_delay_us(lcd.config.ckv_high_time / 10);
+
+    // start LCD engine
     lcd_ll_start(lcd.hal.dev);
+
 }
 
 /**
@@ -254,6 +258,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
         } else {
+            gpio_set_level(DEBUG_PIN, 1);
             int ckv_cycles = 0;
             // last batch
             if (lcd.batches == batches_needed - 1) {
@@ -266,9 +271,13 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             }
             // apparently, this is needed for the new timing to take effect.
             lcd_ll_start(lcd.hal.dev);
-            // ensure we skip "vsync" with CKV, so we don't skip a line.
-            esp_rom_delay_us(lcd.config.ckv_high_time / 10);
+            esp_rom_delay_us(lcd.line_length_us);
+            //esp_rom_delay_us(lcd.config.ckv_high_time / 10);
+
+            // ensure we don't skip first hsync
             start_ckv_cycles(ckv_cycles);
+
+            gpio_set_level(DEBUG_PIN, 0);
         }
 
         lcd.batches += 1;
@@ -426,6 +435,7 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     gpio_config(&debug_gpio_conf);
 
     gpio_set_level(lcd.config.bus.stv, 1);
+    gpio_set_level(DEBUG_PIN, 0);
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
 
     ESP_LOGI(TAG, "using resolution %dx%d", lcd.lcd_res_h, vertical_lines);
