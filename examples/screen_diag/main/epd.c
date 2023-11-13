@@ -17,7 +17,7 @@ static int s_temperature;
 
 void initialize_screen(void)
 {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    epd_init(&DEMO_BOARD, &ED060XC3, EPD_LUT_64K);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.

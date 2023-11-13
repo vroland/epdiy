@@ -3,7 +3,7 @@
 
 #include "../output_common/render_method.h"
 
-#ifdef RENDER_METHOD_LCD
+//#ifdef RENDER_METHOD_LCD
 
 #include <assert.h>
 #include <stddef.h>
@@ -60,7 +60,7 @@ static inline int max(int x, int y) { return x > y ? x : y; }
 #define S3_LCD_PIN_NUM_BK_LIGHT       -1
 //#define S3_LCD_PIN_NUM_MODE           4
 
-#define LINE_BATCH                     1000
+#define LINE_BATCH                     500
 #define BOUNCE_BUF_LINES               4
 
 #define RMT_CKV_CHAN                   RMT_CHANNEL_1
@@ -267,7 +267,7 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             // apparently, this is needed for the new timing to take effect.
             lcd_ll_start(lcd.hal.dev);
             // ensure we skip "vsync" with CKV, so we don't skip a line.
-            esp_rom_delay_us(lcd.line_length_us);
+            esp_rom_delay_us(lcd.config.ckv_high_time / 10);
             start_ckv_cycles(ckv_cycles);
         }
 
@@ -544,11 +544,11 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
     ckv_rmt_build_signal();
 }
 
-#else
+// #else
 
-/// Dummy implementation to link on the old ESP32
-void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
-    assert(false);
-}
+// /// Dummy implementation to link on the old ESP32
+// void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
+//     assert(false);
+// }
 
-#endif // S3 Target
+//#endif // S3 Target
