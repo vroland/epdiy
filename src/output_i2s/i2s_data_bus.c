@@ -243,7 +243,7 @@ void i2s_bus_init(i2s_bus_config *cfg, uint32_t epd_row_width) {
 
   // Stop after transmission complete
   dev->conf1.val = 0;
-  dev->conf1.tx_stop_en = 1;
+  dev->conf1.tx_stop_en = 0;
   dev->conf1.tx_pcm_bypass = 1;
 
   // Configure TX channel

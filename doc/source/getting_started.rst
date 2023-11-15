@@ -13,10 +13,7 @@ that will manufacture boards for a low price.
 
 To use one of those services, upload the "Gerber files", usually provided as a zip file,
 to the service.
-Please consult the README of the epdiy repository for a link to the gerber files for the current revision.
-Some services also offer automated assembly for all or a subset of components.
-Usually, you will have to upload a bill of materials (BOM) and a placement file.
-Both are provided in the `hardware/epaper-breakout` directory.
+You can find all the available hardware listed on the `Hardware Page <https://vroland.github.io/epdiy-hardware/>`_.
 
 Choosing and Finding Parts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -37,6 +34,11 @@ Tips:
 
 Calibrate VCOM
 --------------
+
+.. note:: Only for old boards
+
+   This is only needed with boards prior to revision 6.
+   From revision 6 onwards, VCOM can be set in software via :code:`epd_set_vcom(..)`.
 
 EPaper displays use electrical fields to drive colored particles.
 One of the required voltages, VCOM (Common Voltage) is display-dependent
@@ -114,24 +116,10 @@ The component sould be automatically detected by the framework, you can now use
 
 to use the EPD driver's :ref:`pub_api`.
 
-Selecting a Display Type
-~~~~~~~~~~~~~~~~~~~~~~~~
+Selecting a Board and Display Type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To select the display type you want to use for the project (see :ref:`display_types`), run
-::
-
-    idf.py menuconfig
-
-And navigate to :code:`Component config -> E-Paper driver -> Display Type`, select the appropriate option and save the configuration. You can use the defines
-::
-
-    EPD_WIDTH
-    EPD_HEIGHT
-    CONFIG_EPD_DISPLAY_TYPE_ED097OC4
-    CONFIG_EPD_DISPLAY_TYPE_ED060SC4
-    CONFIG_EPD_DISPLAY_TYPE_...
-
-to make your code portable.
+With epdiy 2.0.0, the display type and board are set via :code:`epd_init()`.
 
 Enable SPI RAM
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,22 +132,9 @@ Use with Arduino
 ----------------
 
 Epdiy can be used as an Arduino library. Additionally, epdiy comes with board definitions for its supported boards, which must be installed separately. 
-To install epdiy to work with the Arduino IDE (>= 1.8), follow the steps below:
-
-1. Download / Clone the epdiy repository into your arduino libraries folder.
-2. Install the `arduino-esp32 core <https://github.com/espressif/arduino-esp32#installation-instructions>`_. 
-3. Due to a limitation in the arduino-esp32 core, the epdiy board definitions must be installed manually. To do that, copy the :code:`boards.local.txt` file that comes with epdiy to the directory you installed the esp32 core in.
-
-    * On Linux, this will be somewhere in :code:`~/Arduino/hardware/esp32/esp32`.
-    * On Windows, this will look something like :code:`C:/Users/<username>/Documents/Arduino/hardware/espressif/esp32` or a similar path in AppData.
-
-   You can also search the Arduino logs to find the arduino-esp32 install directory.
-
-   If you have the correct directory, there should be a :code:`boards.txt` file in it. Copy the :code:`boards.local.txt` in this directory.
-4. Re-start the Arduino IDE. The Epdiy boards should now show up among the other ESP32 boards.
-5. Select your epdiy-compatible board. You can now select your display from the board menu.
-6. Try out an example sketch! Some of them are not very Arduino-Style yet, but they should help getting you started. 
+To install epdiy to work with the Arduino IDE (>= 1.8), place the downloaded repository into your Arduino libraries folder.
 
 Alternatively, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
 which allows you to use the Arduino ecosystem (Except for a different build process).
+This gives you full access to ESP-IDF options.
 

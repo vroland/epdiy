@@ -61,3 +61,7 @@ void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_h
 void epd_lcd_frame_done_cb(frame_done_func_t, void* payload);
 void epd_lcd_line_source_cb(line_cb_func_t, void* payload);
 void epd_lcd_start_frame();
+/**
+ * Set the LCD pixel clock frequency in MHz.
+ */
+void epd_lcd_set_pixel_clock_MHz(int frequency);

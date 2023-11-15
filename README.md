@@ -9,32 +9,53 @@ EPDiy is a driver board which talks to affordable E-Paper (or E-Ink) screens, wh
 * No power consumption when not updating
 * Sunlight-readable
 
-Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support are currently quite expensive. This project uses Kindle replacement screens, which are available for 20$ (small) / 30$ (large) on ebay!
+Ready-made DIY modules for this size and with 4bpp (16 Grayscale) color support are currently quite expensive and / or slow.
+The EPDiy controller can drive the bare display modules, e.g. from old e-Readers, which are available for 20$ (small) / 30$ (large) on ebay!
+Additionally, since it is based on the ESP32S3 (V7) / ESP32 (V2-V6) microcontroller, it features WiFi and Bluetooth connectivity.
 
-The EPDiy driver board targets multiple E-Paper displays. As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB v5 features 33pin, 34pin and a 39pin connectors, which allow to drive the following display types: ED097OC4, ED060SC4, ED097TC2, ED060SC7. For the full list of supported displays, refer to the table below.
+The EPDiy driver board targets a range of E-Paper displays, as shown in the table below.
+As the driving method for all matrix-based E-ink displays is more or less the same, only the right connector and timings are needed.
+The current V7 board has three different display connectors, other display will require an adapter board.
 
-Revision 5 of the board is optimized for the use with LiPo batteries, featuring a LiPo charger and ultra-low deep sleep current.
+The controller is optimized for the use with LiPo batteries, featuring a LiPo charger and ultra-low deep sleep current.
 
 This project supports a driver for the ESP-IDF and Arduino. For installation instructions, please refer to the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
+Note that for epdiy V7, update speeds are significantly lower when using the Arduino IDE, because it does not allow to change
+the sub-optimal cache configuration.
+
+Get Inspired
+------------
+
+The `examples` directory contains some example applications like a weather station or a screen diagnostic test. 
+If you want to build something more useful though, how about:
+
+- A serial terminal for connecting to a raspberry pi: [video](https://cdn.hackaday.io/files/1681937195969312/terminal_demo.mp4) [repository](https://github.com/vroland/epdiy-terminal)]
+- A Music Player Daemon (MPD) dashboard: [repository](https://github.com/vroland/epdiy-mpd)]
+- An e-Paper picture frame: [video](https://www.youtube.com/watch?v=r7AcNQsSZUw)
+- And more to come!
 
 Building It
 -----------
 
-If you want to build a board right now, there are two possible routes:
+On the [EPDiy Hardware Page](https://vroland.github.io/epdiy-hardware/), you'll find a list of all boards and variants, adapters, and helpers.
+Next to each board, there are manufacturing files (gerbers), Bill of Materials (BoM), part placement files,
+and 3D models ready to use!
 
- - Use the new v6 PCB (`hardware/epaper-breakout/gerbers_v6.zip`). 
-   **So far, I only tested a prototype of it. The gerbers only contain fixes for powering from battery, but have not yet been ordered with.**
-   **If you have tested them, please let me know!**
-   The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
-   Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
-   Please double check the part positioning and Rotation with your assembly service!
-   More information on the order process and where to find parts is in the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
+![demo image](doc/source/img/hardware_page.png)
+
+For ordering from JLCPCB for example, ordering is as easy as downloading the zipped gerbers, BoM, and placement file
+and uploading them. The process is very similar for other manufacturers, check your vendor's documentation for details.
+Don't forget to oder adapters if the board doesn't have connectors for your specific display.
+
+The current latest version is epdiy V7, beased on the ESP32S3. 
+Older versions are also available on the hardware page.
+
+
+#### Contributing Hardware
+
+Want to contribute your own board variant or adapter? 
+Check out the [epdiy-hardware repository](https://github.com/vroland/epdiy-hardware) for instructions.
  
-   Make sure to select the `V6` board revision in `idf.py menuconfig` when building the examples.
- 
- - Use the old v5 PCB (`hardware/epaper-breakout/gerbers_v5.zip`).  
-   This is the last board using the LT1945 booster.
-   Make sure to select the `V5` board revision in `idf.py menuconfig` when building the examples.
 
 Gettings Started
 ----------------
@@ -46,36 +67,37 @@ Join the Discussion
 
  - [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Join%20Matrix)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) Matrix Community: +epdiy:matrix.vroland.de
  - Slack: See badge
+
 Displays
 --------
 
-|Name|Size|Resolution|Compatible|Connector|Pin count|Compatible since pcb version|Notes
-| --:      | --:   | --:         | --: | --: | --:                  |--: |--: |
-|ED060SC4|6"|800 x 600|yes, tested|FH26W-39S-0.3SHW(60)|39|v2|
-|ED097OC4|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|V2|Cheap, inferior contrast
-|ED097TC2|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|V2|Slightly higher price, better contrast
-|ED097OC1|9.7"|1200 x 825|yes (should work)|XF2M-3315-1A|33|V2|Cheap, inferior performance
+|Name      |Size |Resolution|Compatible|Connector|Pin count|Compatible since pcb version|Notes
+| --:      | --: | --:       | --:         | --:                  | --: | --: | --: |
+| ED060SC4 | 6"  | 800 x 600 | yes, tested | FH26W-39S-0.3SHW(60) | 39  | v2  |     |
+|ED097OC4|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|v2|Cheap, inferior contrast
+|ED097TC2|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|v2|Slightly higher price, better contrast
+|ED097OC1|9.7"|1200 x 825|yes (should work)|XF2M-3315-1A|33|v2|Cheap, inferior performance
 |ED047TC1|4.7"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
-|ED052TC2|5.2"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
-| ED050SC5 | 5" | 600 x 800 | yes, tested       | THD0510-33CL-GF | 33 | v5 | 
-| ED050SC3 | 5" | 600 x 800 | yes (should work)       | THD0510-33CL-GF | 33 | v5 | 
-|ED133UT2|13.3"|1600 x 1200|yes, tested|adapter board|39|V2|Adapter Board required, also PENG133D
-|ED060XC3|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|Cheapest, good contrast and resolution
-|ED060XD4|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|
-|ED060XC5|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
-|ED060XD6|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
-|ED060XH2|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
-|ED060XC9|6"|758 x 1024|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
-|ED060KD1|6"|1072 x 1448|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
-|ED060KC1|6"|1072 x 1448|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|
-|ED060SCF|6"|600 x 800|yes, tested|THD0515-34CL-SN|34|V5|Different flex cable shape
-|ED060SCN|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
-|ED060SCP|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
-| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
-| ED060SCG | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
-| ED060SCE | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
-| ED060SCM | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
-| ED060SCT | 6" | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 |connector dropped in v6
+| ED050SC5 | 5" | 600 x 800 | yes, tested       | THD0510-33CL-GF | 33 | v5 |
+| ED050SC3 | 5" | 600 x 800 | yes (should work) | THD0510-33CL-GF | 33 | v5 |
+| ED133UT2 | 13.3" | 1600 x 1200 | yes, tested | adapter board | 39 | v2 | Adapter Board required, also PENG133D
+| ED060XC3 | 6" | 758 x 1024 | yes, tested | THD0515-34CL-SN | 34 | v5 | Cheapest, good contrast and resolution
+| ED060XD4 | 6"  | 758 x 1024 | yes, tested | THD0515-34CL-SN | 34 | v5 |
+| ED060XC5 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060XD6 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060XH2 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060XC9 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060KD1 | 6"  | 1072 x 1448 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060KC1 | 6"  | 1072 x 1448 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060SCF | 6" | 600 x 800 | yes, tested | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
+| ED060SCN | 6" | 600 x 800 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
+| ED060SCP | 6" | 600 x 800 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
+| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCG | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCE | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCM | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCT | 6"  | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 | connector dropped in v6
+| ED078KC1 | 6"  | 1872 x 1404 | yes, tested     | FH12-40S-0.5SH | 40 | v7 | 16 data lines
 
 
 Troubleshooting

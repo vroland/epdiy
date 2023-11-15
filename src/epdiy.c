@@ -2,12 +2,14 @@
 #include "epd_board.h"
 #include "epd_display.h"
 #include "render.h"
+#include "output_common/render_method.h"
 
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_types.h"
 #include <math.h> // round + pow
+
 
 // Simple x and y coordinate
 typedef struct {
@@ -581,4 +583,13 @@ int epd_width() {
 
 int epd_height() {
     return display->height;
+}
+
+void epd_set_lcd_pixel_clock_MHz(int frequency) {
+#ifdef RENDER_METHOD_LCD
+    void epd_lcd_set_pixel_clock_MHz(int frequency);
+    epd_lcd_set_pixel_clock_MHz(frequency);
+#else
+    ESP_LOGW("epdiy", "called set_lcd_pixel_clock_MHz, but LCD driver is not used!");
+#endif
 }

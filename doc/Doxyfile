@@ -116,7 +116,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = ../include/
+INPUT                  = ../src/
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
                          *.h
@@ -287,7 +287,6 @@ SEARCH_INCLUDES        = YES
 INCLUDE_PATH           =
 INCLUDE_FILE_PATTERNS  =
 PREDEFINED             = IRAM_ATTR= \
-                         CONFIG_EPD_BOARD_REVISION_V6= \
 
 EXPAND_AS_DEFINED      =
 SKIP_FUNCTION_MACROS   = YES

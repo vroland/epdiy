@@ -586,6 +586,16 @@ void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uin
  */
 void epd_draw_rotated_transparent_image(EpdRect image_area, const uint8_t *image_buffer, uint8_t *framebuffer, uint8_t transparent_color) ;
 
+
+/**
+ * Override the pixel clock when using the LCD driver for display output (Epdiy V7+).
+ * This may result in draws failing if it's set too high!
+ *
+ * This method can be used to tune your application for maximum refresh speed,
+ * if you can guarantee the driver can keep up.
+ */
+void epd_set_lcd_pixel_clock_MHz(int frequency);
+
 #ifdef __cplusplus
 }
 #endif

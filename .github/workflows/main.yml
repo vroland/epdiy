@@ -16,14 +16,15 @@ jobs:
           - demo
           - dragon
           - grayscale_test
-          - mpd_status
-          - terminal
           - www-image
+        include:
+          - version: release-v5.1
+            example: screen_diag
 
     continue-on-error: ${{ matrix.version == 'latest' }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - uses: 'espressif/esp-idf-ci-action@main'
@@ -51,7 +52,7 @@ jobs:
         run: |
           apt update -qq && apt install -y -qq git
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Install Arduino ESP
         run: |
           cd examples/${{ matrix.example }}

@@ -1,11 +1,10 @@
 version: "2.0.0"
 description: "Drive parallel e-Paper displays with epdiy-based boards."
 url: "https://github.com/vroland/epdiy"
-license: LGPLv3
-
 dependencies:
   espressif/esp_tinyusb: 
     version: "*"
     rules:
       - if: "idf_version >= 5.0"
       - if: "target in [esp32s3]"
+license: LGPL-3.0-or-later

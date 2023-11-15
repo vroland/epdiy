@@ -9,7 +9,7 @@ Display Types
 -------------
 
 The EPDiy driver board targets multiple E-Paper displays.
-As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed. The EPDiy PCB features a 33pin, 34pin and a 39pin connector, which allow to drive a number of displays.
+As the driving method for all matrix-based E-ink displays seems to be more or less the same, only the right connector and timings are needed.
 A table of supported displays is mainained in the :code:`README.md` file.
 
 Some of the supported displays are showcased below.

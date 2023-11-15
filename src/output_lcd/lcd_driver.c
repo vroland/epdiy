@@ -73,7 +73,8 @@ typedef rmt_mem_t rmt_block_mem_t ;
 extern rmt_block_mem_t RMTMEM;
 #endif
 
-#define DEBUG_PIN GPIO_NUM_46
+// spinlock for protecting the critical section at frame start
+static portMUX_TYPE frame_start_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 typedef struct {
     lcd_hal_context_t hal;
@@ -128,7 +129,9 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
 
     for (int i=0; i < BOUNCE_BUF_LINES; i++) {
         if (lcd.line_source_cb != NULL)  {
-            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (line_bytes + dummy_bytes) + dummy_bytes]);
+            // this is strange, with 16 bit need a dummy cycle. But still, the first byte in the FIFO is correct.
+            // So we only need a true dummy byte in the FIFO in the 8 bit configuration.
+            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (line_bytes + dummy_bytes) + (dummy_bytes % 2)]);
         } else {
             memset(&buffer[i * line_bytes], 0x00, line_bytes);
         }
@@ -153,7 +156,7 @@ void IRAM_ATTR epd_lcd_start_frame() {
     // hsync: pulse with, back porch, active width, front porch
     int end_line = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(lcd.hal.dev,
-            lcd.config.le_high_time,
+            lcd.config.le_high_time - (dummy_bytes > 0),
             lcd.config.line_front_porch,
             // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
             lcd.lcd_res_h + (dummy_bytes > 0),
@@ -176,22 +179,45 @@ void IRAM_ATTR epd_lcd_start_frame() {
     fill_bounce_buffer(lcd.bounce_buffer[0]);
     fill_bounce_buffer(lcd.bounce_buffer[1]);
 
+
     // the start of DMA should be prior to the start of LCD engine
     gdma_start(lcd.dma_chan, (intptr_t)&lcd.dma_nodes[0]);
+
+    // enter a critical section to ensure the frame start timing is correct
+    taskENTER_CRITICAL(&frame_start_spinlock);
+
     // delay 1us is sufficient for DMA to pass data to LCD FIFO
     // in fact, this is only needed when LCD pixel clock is set too high
     gpio_set_level(lcd.config.bus.stv, 0);
-    esp_rom_delay_us(1);
-    // start LCD engine
-    start_ckv_cycles(initial_lines + 6);
-    esp_rom_delay_us(1);
-    gpio_set_level(lcd.config.bus.stv, 1);
+    //esp_rom_delay_us(1);
     // for picture clarity, it seems to be important to start CKV at a "good"
     // time, seemingly start or towards end of line.
-    esp_rom_delay_us(lcd.line_length_us - lcd.config.ckv_high_time / 10 - 1);
+    start_ckv_cycles(initial_lines + 5);
+    esp_rom_delay_us(lcd.line_length_us);
+    gpio_set_level(lcd.config.bus.stv, 1);
+    esp_rom_delay_us(lcd.line_length_us);
+    esp_rom_delay_us(lcd.config.ckv_high_time / 10);
+
+    // start LCD engine
     lcd_ll_start(lcd.hal.dev);
+
+    taskEXIT_CRITICAL(&frame_start_spinlock);
 }
 
+/**
+ * Build the RMT signal according to the timing set in the lcd object.
+ */
+static void ckv_rmt_build_signal() {
+  int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
+  volatile rmt_item32_t *rmt_mem_ptr =
+      &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
+    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
+    rmt_mem_ptr->level0 = 1;
+    rmt_mem_ptr->duration1 = low_time;
+    rmt_mem_ptr->level1 = 0;
+  //rmt_mem_ptr[1] = rmt_mem_ptr[0];
+  rmt_mem_ptr[1].val = 0;
+}
 
 static void init_ckv_rmt() {
   periph_module_reset(rmt_periph_signals.groups[0].module);
@@ -199,7 +225,8 @@ static void init_ckv_rmt() {
 
   rmt_ll_enable_periph_clock(&RMT, true);
 
-// idf >= 5.0 calculates the clock divider differently
+  // Divide 80MHz APB Clock by 8 -> .1us resolution delay
+  // idf >= 5.0 calculates the clock divider differently
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 1, 0, 0);
 #else
@@ -213,22 +240,11 @@ static void init_ckv_rmt() {
 
   rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
 
-  int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
-  volatile rmt_item32_t *rmt_mem_ptr =
-      &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
-    rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration1 = low_time;
-    rmt_mem_ptr->level1 = 0;
-  //rmt_mem_ptr[1] = rmt_mem_ptr[0];
-  rmt_mem_ptr[1].val = 0;
-
-  // Divide 80MHz APB Clock by 8 -> .1us resolution delay
-
   gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.ckv], PIN_FUNC_GPIO);
   gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
   esp_rom_gpio_connect_out_signal(lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0);
 
+  ckv_rmt_build_signal();
 }
 
 __attribute__((optimize("O3")))
@@ -262,8 +278,10 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             }
             // apparently, this is needed for the new timing to take effect.
             lcd_ll_start(lcd.hal.dev);
-            // ensure we skip "vsync" with CKV, so we don't skip a line.
+
+            // skip the LCD front porch line, which is not actual data
             esp_rom_delay_us(lcd.line_length_us);
+
             start_ckv_cycles(ckv_cycles);
         }
 
@@ -383,8 +401,15 @@ static esp_err_t s3_lcd_configure_gpio()
 
 void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
 
+    memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
+
     if (CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE < 64) {
-        ESP_LOGE("epdiy", "cache line size is set to %d (< 64B)! Overriding cache configuration, which may break things...");
+        ESP_LOGE("epdiy", "cache line size is set to %d (< 64B)! This will degrade performance, please update this option in menuconfig.");
+        ESP_LOGE("epdiy", "If you are on arduino, you can't set this option yourself, you'll need to use a lower speed.");
+        ESP_LOGE("epdiy", "Reducing the pixel clock from %d to %d for now!", config->pixel_clock / 1000 / 1000, config->pixel_clock / 1000 / 1000 / 2);
+        lcd.config.pixel_clock = lcd.config.pixel_clock / 2;
+
+
         // fixme: this would be nice, but doesn't work :(
         //uint32_t d_autoload = Cache_Suspend_DCache();
         ///Cache_Set_DCache_Mode(CACHE_SIZE_FULL, CACHE_4WAYS_ASSOC, CACHE_LINE_SIZE_32B);
@@ -399,8 +424,6 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
 
     esp_err_t ret = ESP_OK;
 
-    memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
-
     lcd.lcd_res_h = line_bytes / (lcd.config.bus_width / 8);
 
     gpio_config_t vsync_gpio_conf = {
@@ -408,13 +431,7 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
       .pin_bit_mask = 1ull << lcd.config.bus.stv,
     };
 
-    gpio_config_t debug_gpio_conf = {
-      .mode = GPIO_MODE_OUTPUT,
-      .pin_bit_mask = 1ull << DEBUG_PIN,
-    };
-
     gpio_config(&vsync_gpio_conf);
-    gpio_config(&debug_gpio_conf);
 
     gpio_set_level(lcd.config.bus.stv, 1);
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
@@ -431,7 +448,7 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     // because the LCD peripheral behaves weirdly.
     // Also see:
     // https://blog.adafruit.com/2022/06/14/esp32uesday-hacking-the-esp32-s3-lcd-peripheral/
-    int dummy_bytes = (lcd.config.bus_width == 8);
+    int dummy_bytes = lcd.config.bus_width / 8;
 
     lcd.bb_size = BOUNCE_BUF_LINES * (line_bytes + dummy_bytes);
     //assert(lcd.bb_size % (line_bytes) == 1);
@@ -475,11 +492,6 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     ret = s3_lcd_configure_gpio();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "configure GPIO failed");
 
-
-    // set pclk
-    int flags = 0;
-    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
-    ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
     // pixel clock phase and polarity
     lcd_ll_set_clock_idle_level(lcd.hal.dev, false);
     lcd_ll_set_pixel_clock_edge(lcd.hal.dev, false);
@@ -510,11 +522,9 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     esp_intr_enable(lcd.vsync_intr);
     esp_intr_enable(lcd.done_intr);
 
-    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 / lcd.config.pixel_clock + 1;
-    lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
-    ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
-
     init_ckv_rmt();
+
+    epd_lcd_set_pixel_clock_MHz(lcd.config.pixel_clock / 1000 / 1000);
 
     epd_lcd_line_source_cb(NULL, NULL);
 
@@ -525,6 +535,21 @@ err:
     // do some deconstruction
     ESP_LOGI(TAG, "LCD initialization failed!");
     abort();
+}
+
+
+void epd_lcd_set_pixel_clock_MHz(int frequency) {
+    lcd.config.pixel_clock = frequency * 1000 * 1000;
+
+    // set pclk
+    int flags = 0;
+    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
+    ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
+    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 / lcd.config.pixel_clock + 1;
+    lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
+    ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
+
+    ckv_rmt_build_signal();
 }
 
 #else
