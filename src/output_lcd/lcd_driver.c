@@ -73,7 +73,8 @@ typedef rmt_mem_t rmt_block_mem_t ;
 extern rmt_block_mem_t RMTMEM;
 #endif
 
-#define DEBUG_PIN GPIO_NUM_46
+// spinlock for protecting the critical section at frame start
+static portMUX_TYPE frame_start_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 typedef struct {
     lcd_hal_context_t hal;
@@ -128,7 +129,9 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
 
     for (int i=0; i < BOUNCE_BUF_LINES; i++) {
         if (lcd.line_source_cb != NULL)  {
-            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (line_bytes + dummy_bytes) + dummy_bytes]);
+            // this is strange, with 16 bit need a dummy cycle. But still, the first byte in the FIFO is correct.
+            // So we only need a true dummy byte in the FIFO in the 8 bit configuration.
+            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[i * (line_bytes + dummy_bytes) + (dummy_bytes % 2)]);
         } else {
             memset(&buffer[i * line_bytes], 0x00, line_bytes);
         }
@@ -153,7 +156,7 @@ void IRAM_ATTR epd_lcd_start_frame() {
     // hsync: pulse with, back porch, active width, front porch
     int end_line = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(lcd.hal.dev,
-            lcd.config.le_high_time,
+            lcd.config.le_high_time - (dummy_bytes > 0),
             lcd.config.line_front_porch,
             // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
             lcd.lcd_res_h + (dummy_bytes > 0),
@@ -176,20 +179,29 @@ void IRAM_ATTR epd_lcd_start_frame() {
     fill_bounce_buffer(lcd.bounce_buffer[0]);
     fill_bounce_buffer(lcd.bounce_buffer[1]);
 
+
     // the start of DMA should be prior to the start of LCD engine
     gdma_start(lcd.dma_chan, (intptr_t)&lcd.dma_nodes[0]);
+
+    // enter a critical section to ensure the frame start timing is correct
+    taskENTER_CRITICAL(&frame_start_spinlock);
+
     // delay 1us is sufficient for DMA to pass data to LCD FIFO
     // in fact, this is only needed when LCD pixel clock is set too high
     gpio_set_level(lcd.config.bus.stv, 0);
-    esp_rom_delay_us(1);
-    // start LCD engine
-    start_ckv_cycles(initial_lines + 6);
-    esp_rom_delay_us(1);
-    gpio_set_level(lcd.config.bus.stv, 1);
+    //esp_rom_delay_us(1);
     // for picture clarity, it seems to be important to start CKV at a "good"
     // time, seemingly start or towards end of line.
-    esp_rom_delay_us(lcd.line_length_us - lcd.config.ckv_high_time / 10 - 1);
+    start_ckv_cycles(initial_lines + 5);
+    esp_rom_delay_us(lcd.line_length_us);
+    gpio_set_level(lcd.config.bus.stv, 1);
+    esp_rom_delay_us(lcd.line_length_us);
+    esp_rom_delay_us(lcd.config.ckv_high_time / 10);
+
+    // start LCD engine
     lcd_ll_start(lcd.hal.dev);
+
+    taskEXIT_CRITICAL(&frame_start_spinlock);
 }
 
 /**
@@ -266,8 +278,10 @@ IRAM_ATTR static void lcd_isr_vsync(void *args)
             }
             // apparently, this is needed for the new timing to take effect.
             lcd_ll_start(lcd.hal.dev);
-            // ensure we skip "vsync" with CKV, so we don't skip a line.
+
+            // skip the LCD front porch line, which is not actual data
             esp_rom_delay_us(lcd.line_length_us);
+
             start_ckv_cycles(ckv_cycles);
         }
 
@@ -417,13 +431,7 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
       .pin_bit_mask = 1ull << lcd.config.bus.stv,
     };
 
-    gpio_config_t debug_gpio_conf = {
-      .mode = GPIO_MODE_OUTPUT,
-      .pin_bit_mask = 1ull << DEBUG_PIN,
-    };
-
     gpio_config(&vsync_gpio_conf);
-    gpio_config(&debug_gpio_conf);
 
     gpio_set_level(lcd.config.bus.stv, 1);
     //gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
@@ -440,7 +448,7 @@ void IRAM_ATTR epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int
     // because the LCD peripheral behaves weirdly.
     // Also see:
     // https://blog.adafruit.com/2022/06/14/esp32uesday-hacking-the-esp32-s3-lcd-peripheral/
-    int dummy_bytes = (lcd.config.bus_width == 8);
+    int dummy_bytes = lcd.config.bus_width / 8;
 
     lcd.bb_size = BOUNCE_BUF_LINES * (line_bytes + dummy_bytes);
     //assert(lcd.bb_size % (line_bytes) == 1);
