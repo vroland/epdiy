@@ -107,13 +107,13 @@ uint8_t epd_get_panel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     switch (c)
     {
       case 0:
-        return gamme_curve[r]; // R
+        return gamme_curve[g]; // Green
         break;
       case 1:
-        return gamme_curve[b]; // B
+        return gamme_curve[r]; // Red
         break;
       default:
-        return gamme_curve[g];
+        return gamme_curve[b];
     }
 }
 
