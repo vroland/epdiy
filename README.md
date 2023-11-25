@@ -108,6 +108,7 @@ The following list is compiled from past experiences and GitHub issues:
  * **The existing image fades / darkens when updating a partial screen region.** Make sure the VCOM voltage is [calibrated](https://epdiy.readthedocs.io/en/latest/getting_started.html#calibrate-vcom) for your specific display.
  * **The second third of the image is replaced with the last third.** This seems to be a timing issue we could not yet quite figure out the reason for. For a workarround or suggestions please [join the discussion](https://github.com/vroland/epdiy/issues/15).
  * **The ESP does not boot correctly when external periperals are connected.** Make sure not to pull GPIO12 high during boot, as it is a strapping pin internal voltage selection (https://github.com/vroland/epdiy/issues/17).
+ * **The ESP power consumption in deep sleep is too high.** Add `rtc_gpio_isolate(GPIO_NUM_12);` to your solution. See also [Configuring IOs (Deep-sleep Only)](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/sleep_modes.html?highlight=rtc_gpio_isolate#configuring-ios-deep-sleep-only).
 
 LilyGo Boards
 ---------------
