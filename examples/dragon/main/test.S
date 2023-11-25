@@ -26,33 +26,35 @@ calc_epd_input_1ppB_64k_ve:
 // len      - a5
 
     entry	a1, 32
+
+    // divide by 16 and do one loop lesss,
+    // because the last loop is special
     srli a5, a5, 4
+    addi.n a5, a5, -1
 
 
     // bitmasks for bit shift by multiplication
-    movi a10, 0x40001000
+    movi.n a10, 0x40001000
     EE.MOVI.32.Q q4,a10,0
-    movi a10, 0x04000100
+    movi.n a10, 0x04000100
     EE.MOVI.32.Q q4,a10,1
-    movi a10, 0x00400010
+    movi.n a10, 0x00400010
     EE.MOVI.32.Q q4,a10,2
     movi a10, 0x00040001
     EE.MOVI.32.Q q4,a10,3
 
-    // have zero in a10
-    movi a10, 0
-
-    // TODO: can be moved out
     EE.ZERO.Q q0
 
     EE.VLD.128.IP q1, a2, 16
 
+    // Instructions sometimes are in an unexpected order
+    // for best pipeline utilization
     loopnez a5, .loop_end_lut_lookup
 
         // q1, q0 contain the input bytes, zero-extended to 16 bytes
         EE.VZIP.8 q1, q0
 
-        // load 32-bit LUT results into q2, q3
+        // load 32-bit LUT results
         EE.LDXQ.32 q2, q0, a4, 0, 6
         EE.LDXQ.32 q2, q0, a4, 1, 7
         EE.LDXQ.32 q2, q0, a4, 2, 4
@@ -67,11 +69,10 @@ calc_epd_input_1ppB_64k_ve:
         // zip to have 16bit LUT results in q2, q3 zeroes
         EE.VUNZIP.16 q2, q3
 
+        // combine results with using multiply-add as shift-or
         EE.VMULAS.U16.ACCX q2,q4
 
-        // load 32-bit LUT results into q3, q0
-        // We interleave the data loading with retrieving the result
-        // from the accumulator, to have better pipeline utilization
+        // load 32-bit LUT results
         EE.LDXQ.32 q2, q1, a4, 0, 6
         EE.LDXQ.32 q2, q1, a4, 1, 7
         EE.LDXQ.32 q2, q1, a4, 2, 4
@@ -81,29 +82,60 @@ calc_epd_input_1ppB_64k_ve:
         EE.LDXQ.32 q0, q1, a4, 2, 0
         EE.LDXQ.32 q0, q1, a4, 3, 1
 
-        // shift result by zero and store in a6
-        EE.SRS.ACCX a6, a10, 0
+        // store multiplication result in a6
+        RUR.ACCX_0 a6
+        s16i a6, a3, 2
 
         EE.ZERO.ACCX
-        
-        // zip to have 16bit LUT results in q2, a0 zeroes
+ 
+        // zip to have 16bit LUT results in q2, q0 zeroes
         EE.VUNZIP.16 q2, q0
 
-        slli a6, a6, 16
-
-        // FIXME: Loads beyond bounds
+        // Combine second set of results and load the next data
         EE.VMULAS.U16.ACCX.LD.IP q1, a2, 16, q2, q4
 
-        // shift result by zero and store in a7
-        EE.SRS.ACCX a7, a10, 0
+        // store result in a6
+        RUR.ACCX_0 a6
+        s16i a6, a3, 0
 
-        // combine results
-        or a6, a6, a7
-        s32i      a6, a3, 0
         addi.n a3, a3, 4
-
-
 .loop_end_lut_lookup:
+
+    // Same as above, but in the last iteration
+    // we do not load to not access out of bounds.
+    EE.VZIP.8 q1, q0
+
+    EE.LDXQ.32 q2, q0, a4, 0, 6
+    EE.LDXQ.32 q2, q0, a4, 1, 7
+    EE.LDXQ.32 q2, q0, a4, 2, 4
+    EE.LDXQ.32 q2, q0, a4, 3, 5
+    EE.LDXQ.32 q3, q0, a4, 0, 2
+    EE.LDXQ.32 q3, q0, a4, 1, 3
+    EE.LDXQ.32 q3, q0, a4, 2, 0
+    EE.LDXQ.32 q3, q0, a4, 3, 1
+
+    EE.ZERO.ACCX    
+    EE.VUNZIP.16 q2, q3
+    EE.VMULAS.U16.ACCX q2,q4
+
+    EE.LDXQ.32 q2, q1, a4, 0, 6
+    EE.LDXQ.32 q2, q1, a4, 1, 7
+    EE.LDXQ.32 q2, q1, a4, 2, 4
+    EE.LDXQ.32 q2, q1, a4, 3, 5
+    EE.LDXQ.32 q0, q1, a4, 0, 2
+    EE.LDXQ.32 q0, q1, a4, 1, 3
+    EE.LDXQ.32 q0, q1, a4, 2, 0
+    EE.LDXQ.32 q0, q1, a4, 3, 1
+
+    RUR.ACCX_0 a6
+    s16i a6, a3, 2
+    EE.ZERO.ACCX
+    
+    EE.VUNZIP.16 q2, q0
+    EE.VMULAS.U16.ACCX q2, q4
+    RUR.ACCX_0 a6
+    s16i a6, a3, 0
+
     movi.n	a2, 0 // return status ESP_OK
     retw.n
 
