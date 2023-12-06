@@ -1,7 +1,10 @@
 #include "render_context.h"
 
+#include "esp_log.h"
+
 #include "../epdiy.h"
 #include "lut.h"
+#include "render_method.h"
 
 /// For waveforms without timing and the I2S diving method,
 /// the default hold time for each line is 12us
@@ -26,6 +29,10 @@ lut_func_t get_lut_function(RenderContext_t* ctx) {
             ctx->error |= EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
         }
     } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+#ifdef RENDER_METHOD_LCD
+        return &calc_epd_input_1ppB_1k_S3_VE;
+#endif
+
         if (ctx->conversion_lut_size == 1024) {
             return &calc_epd_input_1ppB;
         } else {

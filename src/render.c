@@ -122,6 +122,14 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         return EPD_DRAW_INVALID_CROP;
     }
 
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE && render_context.conversion_lut_size > 1 << 10) {
+        ESP_LOGI(
+            "epdiy",
+            "Using optimized vector implementation on the ESP32-S3, only 1k of %d LUT in use!",
+            render_context.conversion_lut_size
+        );
+    }
+
     render_context.area = area;
     render_context.crop_to = crop_to;
     render_context.waveform_range = waveform_range;

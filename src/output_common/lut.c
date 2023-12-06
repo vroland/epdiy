@@ -223,7 +223,6 @@ void IRAM_ATTR calc_epd_input_1ppB_64k(
 #endif
 }
 
-
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
  */
@@ -374,6 +373,29 @@ static void IRAM_ATTR waveform_lut_64k(
 }
 
 /**
+ * A 32bit aligned lookup table for lookup using the ESP32-S3 vector extensions.
+ */
+__attribute__((optimize("O3")))
+static void IRAM_ATTR waveform_lut_S3_VE(
+    uint8_t *lut,
+    const EpdWaveformPhases *phases,
+    int frame
+) {
+  uint32_t* lut32 = (uint32_t*) lut;
+  const uint8_t *p_lut = phases->luts + (16 * 4 * frame);
+  for (uint8_t to = 0; to < 16; to++) {
+    for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
+      uint8_t index = (to << 4) | (from_packed * 4);
+      uint8_t packed = *(p_lut++);
+      lut32[index] = (packed >> 6) & 3;
+      lut32[index + 1] = (packed >> 4) & 3;
+      lut32[index + 2] = (packed >> 2) & 3;
+      lut32[index + 3] = (packed >> 0) & 3;
+    }
+  }
+}
+
+/**
  * Build a 16-bit LUT from the waveform if the previous color is
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
@@ -478,6 +500,13 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
 ) {
 
   enum EpdDrawMode selected_mode = mode & 0x3F;
+
+#ifdef RENDER_METHOD_LCD
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+        waveform_lut_S3_VE(lut, phases, frame);
+        return EPD_DRAW_SUCCESS;
+    }
+#endif
 
   // two pixel per byte packing with only target color
   if (lut_size == (1 << 16)) {
