@@ -72,6 +72,16 @@ const EpdDisplay_t ED078KC1 = {
     .display_type = DISPLAY_TYPE_GENERIC,
 };
 
+const EpdDisplay_t WAVE103 = {
+    .width = 1872,
+    .height = 1404,
+    .bus_width = 16,
+    .bus_speed = 10, // Could be higher, just try
+    .default_waveform = &epdiy_ED097TC2,
+    .display_type = DISPLAY_TYPE_ED097TC2,
+};
+
+// This display is produced by https://en.wf-tech.com and sold by Good-Display
 const EpdDisplay_t GDEW101C01 = {
     .width = 2232,
     .height = 1680,
@@ -80,12 +90,13 @@ const EpdDisplay_t GDEW101C01 = {
     .default_waveform = &epdiy_GDEW101C01,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
-
-const EpdDisplay_t WAVE103 = {
-    .width = 1872,
-    .height = 1404,
-    .bus_width = 16,
-    .bus_speed = 10, // Could be higher, just try
-    .default_waveform = &epdiy_ED097TC2,
-    .display_type = DISPLAY_TYPE_ED097TC2,
+// EINK Kaleido display
+// epdiy_ED047TC2 is the one that gets more grays, but is not right
+const EpdDisplay_t EC060KH3 = {
+    .width = 1448,
+    .height = 1072,
+    .bus_width = 8,
+    .bus_speed = 20,
+    .default_waveform = &epdiy_ED047TC2,
+    .display_type = DISPLAY_TYPE_GENERIC,
 };
