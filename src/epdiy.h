@@ -311,6 +311,12 @@ void epd_draw_pixel(int x, int y, uint8_t color, uint8_t *framebuffer);
 uint8_t epd_get_panel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b);
 
 /**
+ * @brief What color is on top of Kaleido x & y coordinates. Receives RGB and returns the grayscale for X:Y on that pixel
+ * @return uint8_t 
+ */
+uint8_t epd_get_kpanel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b);
+
+/**
  * @brief This draws a pixel begin aware of what color filter is on top (RGB for DES displays)
  * 
  * @param x 

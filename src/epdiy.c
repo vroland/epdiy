@@ -117,6 +117,21 @@ uint8_t epd_get_panel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     }
 }
 
+uint8_t epd_get_kpanel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+    uint8_t c = (x + y) % 3;
+    switch (c)
+    {
+      case 0:
+        return gamme_curve[b]; 
+        break;
+      case 1:
+        return gamme_curve[g];
+        break;
+      default:
+        return gamme_curve[r];
+    }
+}
+
 // Pass the x, y and color. It will then let the background under color filter get the right grayscale (WHITE shows color)
 void epd_draw_cpixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t *framebuffer) {
   // Check rotation and move pixel around if necessary
@@ -130,6 +145,7 @@ void epd_draw_cpixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t *fra
   if (y < 0 || y >= epd_height()) {
     return;
   }
+  // Need to discriminate here display CFA type or in only one get_color function
   uint8_t color = epd_get_panel_color(x, y, r, g, b);
 
   uint8_t *buf_ptr = &framebuffer[y * epd_width() / 2 + x / 2];

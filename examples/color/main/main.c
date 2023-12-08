@@ -17,11 +17,11 @@ int color_test() {
   EpdRect epd_area = {
       .x = 0,
       .y = 0,
-      .width = epd_width()/2,
+      .width = epd_width(),
       .height = epd_height()
   };
 
-  uint8_t color_of = 0;
+  uint8_t color_of = 255;
   /**
    * @brief PATTERN
    * pix1     2    3  X
@@ -29,19 +29,20 @@ int color_test() {
    *    G     R    B  row:2
    *    R     B    G  row:3
    */
-  for (uint16_t y=1; y<epd_area.height; y++) {
+  for (uint16_t y=1; y<601; y++) {
     for (uint16_t x=1; x<epd_area.width; x++) {
       // x, y, r, g, b
-      if (y < 560) {
-        epd_draw_cpixel(x, y, x/10, color_of, color_of, hl.front_fb);
-      } else if (y >= 560 && y < 1120) {
-        epd_draw_cpixel(x, y, color_of, x/10, color_of, hl.front_fb);
+      if (y < 200) {
+        epd_draw_cpixel(x, y, x/6, color_of, color_of, hl.front_fb);
+      } else if (y >= 200 && y < 400) {
+        epd_draw_cpixel(x, y, color_of, x/6, color_of, hl.front_fb);
       } else {
-        epd_draw_cpixel(x, y, color_of, color_of, x/10, hl.front_fb);
+        epd_draw_cpixel(x, y, color_of, color_of, x/6, hl.front_fb);
       }
     }
-    vTaskDelay(1);
+    //vTaskDelay(1);
   }
+  
 
   enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
@@ -61,7 +62,8 @@ int getFreePsram(){
 void app_main() {
   printf("before epd_init() Free PSRAM: %d\n", getFreePsram());
 
-  epd_init(&epd_board_v7, &epdiy_GDEW101C01, EPD_LUT_64K);
+  epd_init(&epd_board_v7, &EC060KH3, EPD_LUT_64K);
+  //epd_set_rotation(EPD_ROT_PORTRAIT);
   // Set VCOM for boards that allow to set this in software (in mV).
   epd_set_vcom(1560);
   hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
@@ -69,7 +71,11 @@ void app_main() {
   printf("after epd_hl_init() Free PSRAM: %d\n", getFreePsram());
 
 
-  epd_poweron();  
+  epd_poweron();
+  epd_set_gamma_curve(0.4);
+  epd_fullclear(&hl, 25);
+
+
   color_test();
   printf("color example\n");
 
