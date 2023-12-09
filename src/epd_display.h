@@ -14,6 +14,19 @@ enum EpdDisplayType {
     DISPLAY_TYPE_ED097TC2,
 };
 
+/**
+ * Display Color filter type
+ * This applies only to those epapers with CFA on top
+ */
+enum EpdColorFilterType {
+    /// No color filter, the default for all grayscale epapers
+    DISPLAY_CFA_NONE,
+    /// Eink.com Kaleido
+    DISPLAY_CFA_KALEIDO,
+    /// https://en.wf-tech.com called DES color and sold by Good-Display
+    DISPLAY_CFA_DES,
+};
+
 typedef struct {
     /// Width of the display in pixels.
     int width;
@@ -30,6 +43,8 @@ typedef struct {
     const EpdWaveform* default_waveform;
     /// Display type
     enum EpdDisplayType display_type;
+    /// Display Color filter type (CFA)
+    enum EpdColorFilterType display_color_filter;
 } EpdDisplay_t;
 
 extern const EpdDisplay_t ED060SCT;

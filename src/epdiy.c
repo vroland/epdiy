@@ -117,6 +117,7 @@ uint8_t epd_get_panel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     }
 }
 
+// Kaleido test, getting right color on top of the pixel. Thanks to https://github.com/koreader/koreader/issues/6479
 uint8_t epd_get_kpanel_color(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     uint8_t c = (x + y) % 3;
     switch (c)
@@ -145,8 +146,13 @@ void epd_draw_cpixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t *fra
   if (y < 0 || y >= epd_height()) {
     return;
   }
+  uint8_t color = 255;
   // Need to discriminate here display CFA type or in only one get_color function
-  uint8_t color = epd_get_panel_color(x, y, r, g, b);
+  if (epd_get_display()->display_color_filter == DISPLAY_CFA_DES) {
+    color = epd_get_panel_color(x, y, r, g, b);
+  } else if (epd_get_display()->display_color_filter == DISPLAY_CFA_KALEIDO) {
+    color = epd_get_kpanel_color(x, y, r, g, b);
+  }
 
   uint8_t *buf_ptr = &framebuffer[y * epd_width() / 2 + x / 2];
   if (x % 2) {

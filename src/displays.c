@@ -7,6 +7,7 @@ const EpdDisplay_t ED060SCT = {
     .bus_speed = 20,
     .default_waveform = &epdiy_ED060SCT,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED060XC3 = {
@@ -16,6 +17,7 @@ const EpdDisplay_t ED060XC3 = {
     .bus_speed = 20,
     .default_waveform = &epdiy_ED060XC3,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED097OC4 = {
@@ -25,6 +27,7 @@ const EpdDisplay_t ED097OC4 = {
     .bus_speed = 15,
     .default_waveform = &epdiy_ED097OC4,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED097TC2 = {
@@ -34,6 +37,7 @@ const EpdDisplay_t ED097TC2 = {
     .bus_speed = 18, // 22 works
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_ED097TC2,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED133UT2 = {
@@ -43,6 +47,7 @@ const EpdDisplay_t ED133UT2 = {
     .bus_speed = 16,
     .default_waveform = &epdiy_ED133UT2,
     .display_type = DISPLAY_TYPE_ED097TC2,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED047TC1 = {
@@ -52,6 +57,7 @@ const EpdDisplay_t ED047TC1 = {
     .bus_speed = 20,
     .default_waveform = &epdiy_ED047TC1,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED047TC2 = {
@@ -61,6 +67,7 @@ const EpdDisplay_t ED047TC2 = {
     .bus_speed = 20,
     .default_waveform = &epdiy_ED047TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t ED078KC1 = {
@@ -70,6 +77,7 @@ const EpdDisplay_t ED078KC1 = {
     .bus_speed = 11,
     .default_waveform = &epdiy_ED047TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 const EpdDisplay_t WAVE103 = {
@@ -79,6 +87,7 @@ const EpdDisplay_t WAVE103 = {
     .bus_speed = 10, // Could be higher, just try
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_ED097TC2,
+    .display_color_filter = DISPLAY_CFA_NONE
 };
 
 // This display is produced by https://en.wf-tech.com and sold by Good-Display
@@ -89,6 +98,7 @@ const EpdDisplay_t GDEW101C01 = {
     .bus_speed = 10,
     .default_waveform = &epdiy_GDEW101C01,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_DES
 };
 // EINK Kaleido display
 // epdiy_ED047TC2 is the one that gets more grays, but is not right
@@ -99,4 +109,5 @@ const EpdDisplay_t EC060KH3 = {
     .bus_speed = 20,
     .default_waveform = &epdiy_ED047TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
+    .display_color_filter = DISPLAY_CFA_KALEIDO
 };
