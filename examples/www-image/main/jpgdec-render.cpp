@@ -45,6 +45,8 @@ extern "C" {
 #include "epd_highlevel.h"
 #include "epdiy.h"
 }
+
+int color_filter_type = 0;
 // choose the default demo board depending on the architecture
 #ifdef CONFIG_IDF_TARGET_ESP32
 #define DEMO_BOARD epd_board_v6
@@ -207,7 +209,7 @@ void deepsleep() {
 int decodeJpeg(uint8_t* source_buf, int xpos, int ypos) {
     uint32_t decode_start = esp_timer_get_time();
 
-    if (strcmp(DISPLAY_COLOR_TYPE, (char*)"NONE") == 0) {
+    if (color_filter_type == 0) {
         if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDraw4Bits)) {
             jpeg.setPixelType(FOUR_BIT_DITHERED);
 
@@ -224,7 +226,7 @@ int decodeJpeg(uint8_t* source_buf, int xpos, int ypos) {
         } else {
             ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
         }
-    } else if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
+    } else {
         if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDrawRGB)) {
             jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
 
@@ -308,7 +310,8 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
                 );
                 // Refresh display
                 epd_hl_update_screen(&hl, MODE_GC16, 25);
-
+               
+                epd_poweroff();
                 ESP_LOGI(
                     "total", "%ld ms - total time spent\n", time_download + time_decomp + time_render
                 );
@@ -470,16 +473,17 @@ void wifi_init_sta(void) {
 void app_main() {
     enum EpdInitOptions init_options = EPD_LUT_64K;
 
-    epd_init(&epd_board_v7, &GDEW101C01, init_options);
+    epd_init(&epd_board_v7, &ED133UT2, init_options);
+    color_filter_type = epd_get_display()->display_color_filter;
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.
-    epd_set_vcom(2560);
+    epd_set_vcom(1560);
     hl = epd_hl_init(WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
 
     // For color we use the epdiy built-in gamma_curve:
-    if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
+    if (color_filter_type != 0) {
       epd_set_gamma_curve(gamma_value);
     }
 
