@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include "esp_log.h"
-#include "../output_lcd/lcd_driver_lilygo.h"
+#include "../output_lcd/lcd_driver.h"
 #include "../output_common/render_method.h"
 #include "tps65185.h"
 #include "pca9555.h"
