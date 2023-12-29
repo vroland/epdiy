@@ -512,10 +512,6 @@ enum EpdDrawError epd_draw_base(EpdRect area,
  * @param dirty_lines: An array of at least `epd_height()`.
  *      The positions corresponding to lines where `to` and `from` differ
  *      are set to `true`, otherwise to `false`.
- * @param previously_white: If not NULL, it is set to `true`
- *      if the considered crop of the `from`-image is completely white.
- * @param previously_black: If not NULL, it is set to `true`
- *      if the considered crop of the `from`-image is completely black.
  * @returns The smallest rectangle containing all changed pixels.
  */
 EpdRect epd_difference_image_cropped(
@@ -523,9 +519,7 @@ EpdRect epd_difference_image_cropped(
     const uint8_t* from,
     EpdRect crop_to,
     uint8_t* interlaced,
-    bool* dirty_lines,
-    bool* previously_white,
-    bool* previously_black
+    bool* dirty_lines
 );
 
 /**

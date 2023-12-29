@@ -34,11 +34,11 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
     ESP_LOGW("EPDiy", "Please enable PSRAM for the ESP32 (menuconfig→ Component config→ ESP32-specific)");
   #endif
   EpdiyHighlevelState state;
-  state.back_fb = heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
+  state.back_fb = heap_caps_aligned_alloc(16, fb_size, MALLOC_CAP_SPIRAM);
   assert(state.back_fb != NULL);
-  state.front_fb = heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
+  state.front_fb = heap_caps_aligned_alloc(16, fb_size, MALLOC_CAP_SPIRAM);
   assert(state.front_fb != NULL);
-  state.difference_fb = heap_caps_malloc(2 * fb_size, MALLOC_CAP_SPIRAM);
+  state.difference_fb = heap_caps_aligned_alloc(16, 2 * fb_size, MALLOC_CAP_SPIRAM);
   assert(state.difference_fb != NULL);
   state.dirty_lines = malloc(epd_height() * sizeof(bool));
   assert(state.dirty_lines != NULL);
@@ -102,14 +102,15 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   assert(state != NULL);
   // Not right to rotate here since this copies part of buffer directly
 
-  bool previously_white = false;
-  bool previously_black = false;
   // Check rotation FIX
   EpdRect rotated_area = _inverse_rotated_area(area.x, area.y, area.width, area.height);
   area.x = rotated_area.x;
   area.y = rotated_area.y;
   area.width = rotated_area.width;
   area.height = rotated_area.height;
+
+
+  uint32_t ts = esp_timer_get_time() / 1000;
 
   ESP_LOGI("epdiy", "calculating diff..");
   //FIXME: use crop information here, if available
@@ -118,9 +119,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 	  state->back_fb,
 	  area,
 	  state->difference_fb,
-	  state->dirty_lines,
-      &previously_white,
-      &previously_black
+	  state->dirty_lines
   );
 
   ESP_LOGI("epdiy", "highlevel diff area: x: %d, y: %d, w: %d, h: %d", diff_area.x, diff_area.y, diff_area.width, diff_area.height);
@@ -131,31 +130,26 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
   uint32_t t1 = esp_timer_get_time() / 1000;
 
-  previously_white = false;
-  previously_black = false;
-
   diff_area.x = 0;
   diff_area.y = 0;
   diff_area.width = epd_width();
   diff_area.height = epd_height();
 
   enum EpdDrawError err;
-  if (previously_white) {
-      err = epd_draw_base(epd_full_screen(), state->front_fb, diff_area, MODE_PACKING_2PPB | PREVIOUSLY_WHITE | mode, temperature, state->dirty_lines, state->waveform);
-  } else if (previously_black) {
-      err = epd_draw_base(epd_full_screen(), state->front_fb, diff_area, MODE_PACKING_2PPB | PREVIOUSLY_BLACK | mode, temperature, state->dirty_lines, state->waveform);
-  } else {
-      err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->waveform);
-  }
+  err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->waveform);
 
 
   uint32_t t2 = esp_timer_get_time() / 1000;
   printf("actual draw took %dms.\n", t2 - t1);
 
+  t1 = esp_timer_get_time() / 1000;
+
+  int buf_width = epd_width();
+
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
 	if (state->dirty_lines[l] > 0) {
-      uint8_t* lfb = state->front_fb + epd_width() / 2 * l;
-      uint8_t* lbb = state->back_fb + epd_width() / 2 * l;
+      uint8_t* lfb = state->front_fb + buf_width / 2 * l;
+      uint8_t* lbb = state->back_fb + buf_width / 2 * l;
 
       for (int x=diff_area.x; x < diff_area.x + diff_area.width; x++) {
           if (x % 2) {
@@ -166,6 +160,12 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       }
 	}
   }
+
+  t2 = esp_timer_get_time() / 1000;
+  printf("buffer update took %dms.\n", t2 - t1);
+  uint32_t te = esp_timer_get_time() / 1000;
+  printf("full update took %dms.\n", te - ts);
+
   return err;
 }
 

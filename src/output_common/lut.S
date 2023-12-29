@@ -51,7 +51,7 @@ calc_epd_input_1ppB_1k_S3_VE:
     // for best pipeline utilization
     loopnez a5, .loop_end_lut_lookup
 
-        // q1, q0 contain the input bytes, zero-extended to 16 bytes
+        // q1, q0 contain the input bytes, zero-extended to bits bytes
         EE.VZIP.8 q1, q0
 
         // load 32-bit LUT results

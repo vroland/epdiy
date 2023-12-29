@@ -4,12 +4,14 @@
 #include "epd_board.h"
 #include "epd_internals.h"
 
+#include <assert.h>
 #include <stdalign.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <esp_log.h>
 #include <esp_types.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -308,90 +310,137 @@ void epd_renderer_deinit() {
     vSemaphoreDelete(render_context.frame_done);
 }
 
+#ifdef RENDER_METHOD_LCD
+bool epd_interlace_4bpp_line_VE(
+    const uint8_t *to,
+    const uint8_t *from,
+    uint8_t *interlaced,
+    int* min_dirty_x,
+    int* max_dirty_x,
+    int fb_width
+);
+#endif
+
+/**
+ * Interlaces the lines at `to`, `from` into `interlaced`.
+ * returns `1` if there are differences, `0` otherwise.
+ */
+static bool interlace_line(
+    const uint8_t *to,
+    const uint8_t *from,
+    uint8_t *interlaced,
+    int* min_dirty_x,
+    int* max_dirty_x,
+    int fb_width
+) {
+    int dirty=0;
+    uint32_t to_addr = (uint32_t)to;
+
+    int unaligned_start;
+    int unaligned_len;
+    // since display horizontal resolutions should be divisible by 16,
+    // only one end should be unaligned by 8 bytes (16 pixels)
+    if (to_addr % 16 > 0) {
+        unaligned_start = 0;
+        unaligned_len = (16 - (to_addr % 16)) * 2;
+    } else {
+        unaligned_start = fb_width & (~0x1F);
+        unaligned_len = (16 - (to_addr + fb_width / 2) % 16) * 2;
+    }
+
+    epd_interlace_4bpp_line_VE(
+        to + (to_addr % 16),
+        from + (to_addr % 16),
+        interlaced + (to_addr % 16) * 2,
+        min_dirty_x,
+        max_dirty_x,
+        fb_width
+    );
+
+    for (int x = unaligned_start; x < unaligned_start + unaligned_len; x ++) {
+        uint8_t t = *(to + x / 2);
+        t = (x % 2) ? (t >> 4) : (t & 0x0f);
+        uint8_t f = *(from + x / 2);
+        f = (x % 2) ? (f >> 4) : (f & 0x0f);
+        dirty |= (t ^ f);
+        if (t ^ f) {
+            *min_dirty_x = min(x, *min_dirty_x);
+            *max_dirty_x = max(x, *max_dirty_x);
+        }
+        interlaced[x] = (t << 4) | f;
+    }
+
+    *min_dirty_x = 0;
+    *max_dirty_x = fb_width;
+    return dirty;
+}
+
 EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
                                   EpdRect crop_to, int fb_width, int fb_height,
-                                  uint8_t *interlaced, bool *dirty_lines,
-                                  uint8_t *from_or, uint8_t *from_and) {
-    assert(from_or != NULL);
-    assert(from_and != NULL);
-    // OR over all pixels of the "from"-image
-    *from_or = 0x00;
-    // AND over all pixels of the "from"-image
-    *from_and = 0x0F;
+                                  uint8_t *interlaced, bool *dirty_lines) {
 
-    uint8_t* dirty_cols = calloc(epd_width(), 1);
-    assert (dirty_cols != NULL);
+    assert((fb_width * fb_height) % 32 == 0);
 
-    int x_end = min(fb_width, crop_to.x + crop_to.width);
+    int min_x = fb_width;
+    int min_y = fb_height;
+    int max_x = 0;
+    int max_y = 0;
+
+    // int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
 
-    for (int y = crop_to.y; y < y_end; y++) {
-        uint8_t dirty = 0;
-        for (int x = crop_to.x; x < x_end; x++) {
-            uint8_t t = *(to + y * fb_width / 2 + x / 2);
-            t = (x % 2) ? (t >> 4) : (t & 0x0f);
-            uint8_t f = *(from + y * fb_width / 2 + x / 2);
-            f = (x % 2) ? (f >> 4) : (f & 0x0f);
-            *from_or |= f;
-            *from_and &= f;
-            dirty |= (t ^ f);
-            dirty_cols[x] |= (t ^ f);
-            interlaced[y * fb_width + x] = (t << 4) | f;
-        }
-        dirty_lines[y] = dirty > 0;
+    uint32_t t1 = esp_timer_get_time() / 1000;
+
+    for (int y = 0; y < fb_height; y++) {
+        uint32_t offset = y * fb_width / 2;
+        uint8_t dirty = interlace_line(
+            to + offset,
+            from + offset,
+            interlaced + offset * 2,
+            &min_x,
+            &max_x,
+            fb_width
+        );
+        dirty_lines[y] = 1;
     }
-    int min_x, min_y, max_x, max_y;
-    for (min_x = crop_to.x; min_x < x_end; min_x++) {
-        if (dirty_cols[min_x] != 0)
-            break;
-    }
-    for (max_x = x_end - 1; max_x >= crop_to.x; max_x--) {
-        if (dirty_cols[max_x] != 0)
-            break;
-    }
-    for (min_y = crop_to.y; min_y < y_end; min_y++) {
-        if (dirty_lines[min_y] != 0)
-            break;
-    }
-    for (max_y = y_end - 1; max_y >= crop_to.y; max_y--) {
-        if (dirty_lines[max_y] != 0)
-            break;
-    }
+
+    min_x = 0;
+    max_x = fb_width;
+    min_y = 0;
+    max_y = fb_height;
+
+    uint32_t t2 = esp_timer_get_time() / 1000;
+    printf("diff time: %dms.\n", t2 - t1);
+
+    min_x = min_x == fb_width ? 0 : min_x;
+    max_x = max_x;
+
+    min_y = min_y == fb_height ? 0 : min_y;
+    max_y = max_y;
+
     EpdRect crop_rect = {
         .x = min_x,
         .y = min_y,
-        .width = max(max_x - min_x + 1, 0),
-        .height = max(max_y - min_y + 1, 0),
+        .width = max(max_x - min_x, 0),
+        .height = max(max_y - min_y, 0),
     };
 
-    free(dirty_cols);
     return crop_rect;
 }
 
 EpdRect epd_difference_image(const uint8_t *to, const uint8_t *from,
                              uint8_t *interlaced, bool *dirty_lines) {
-    uint8_t from_or = 0;
-    uint8_t from_and = 0;
     return epd_difference_image_base(to, from, epd_full_screen(), epd_width(),
-                                     epd_height(), interlaced, dirty_lines,
-                                     &from_or, &from_and);
+                                     epd_height(), interlaced, dirty_lines);
 }
 
 EpdRect epd_difference_image_cropped(const uint8_t *to, const uint8_t *from,
                                      EpdRect crop_to, uint8_t *interlaced,
-                                     bool *dirty_lines, bool *previously_white,
-                                     bool *previously_black) {
-
-    uint8_t from_or, from_and;
+                                     bool *dirty_lines) {
 
     EpdRect result =
         epd_difference_image_base(to, from, crop_to, epd_width(), epd_height(),
-                                  interlaced, dirty_lines, &from_or, &from_and);
-
-    if (previously_white != NULL)
-        *previously_white = (from_and == 0x0F);
-    if (previously_black != NULL)
-        *previously_black = (from_or == 0x00);
+                                  interlaced, dirty_lines);
     return result;
 }
 
