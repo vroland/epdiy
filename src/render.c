@@ -315,6 +315,7 @@ uint32_t epd_interlace_4bpp_line_VE(
     const uint8_t *to,
     const uint8_t *from,
     uint8_t *interlaced,
+    uint8_t *col_dirtyness,
     int fb_width
 );
 #endif
@@ -327,6 +328,7 @@ static bool interlace_line(
     const uint8_t *to,
     const uint8_t *from,
     uint8_t *interlaced,
+    uint8_t *col_dirtyness,
     int fb_width
 ) {
     uint32_t dirty=0;
@@ -344,17 +346,20 @@ static bool interlace_line(
         unaligned_len = (16 - (to_addr + fb_width / 2) % 16) * 2;
     }
 
+    int alignment_offset = (to_addr % 16);
     dirty = epd_interlace_4bpp_line_VE(
-        to + (to_addr % 16),
-        from + (to_addr % 16),
-        interlaced + (to_addr % 16) * 2,
+        to + alignment_offset,
+        from + alignment_offset,
+        interlaced + alignment_offset * 2,
+        col_dirtyness + alignment_offset,
         fb_width
     );
 
     for (int x = unaligned_start; x < unaligned_start + unaligned_len; x ++) {
         uint8_t t = *(to + x / 2);
-        t = (x % 2) ? (t >> 4) : (t & 0x0f);
         uint8_t f = *(from + x / 2);
+        col_dirtyness[x / 2] |= (t ^ f);
+        t = (x % 2) ? (t >> 4) : (t & 0x0f);
         f = (x % 2) ? (f >> 4) : (f & 0x0f);
         dirty |= (t ^ f);
         interlaced[x] = (t << 4) | f;
@@ -369,11 +374,11 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
 
     assert((fb_width * fb_height) % 32 == 0);
 
-    int min_y = fb_height;
-    int max_x = 0;
-    int max_y = 0;
+    uint8_t* col_dirtyness = heap_caps_aligned_alloc(16, fb_width, MALLOC_CAP_INTERNAL);
+    assert(col_dirtyness != NULL);
+    memset(col_dirtyness, 0, fb_width);
 
-    // int x_end = min(fb_width, crop_to.x + crop_to.width);
+    int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
 
     uint32_t t1 = esp_timer_get_time() / 1000;
@@ -384,27 +389,43 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
             to + offset,
             from + offset,
             interlaced + offset * 2,
+            col_dirtyness,
             fb_width
         );
         dirty_lines[y] = dirty;
-        if (dirty) {
-            min_y = min(min_y, y);
-            max_y = max(max_y, y);
-        }
     }
+
+     int min_x, min_y, max_x, max_y;
+     for (min_x = crop_to.x; min_x < x_end; min_x++) {
+         uint8_t mask = min_x % 2 ? 0x0F : 0xF0;
+         if ((col_dirtyness[min_x / 2] & mask) != 0)
+             break;
+     }
+     for (max_x = x_end - 1; max_x >= crop_to.x; max_x--) {
+         uint8_t mask = min_x % 2 ? 0x0F : 0xF0;
+         if ((col_dirtyness[max_x / 2] & mask) != 0)
+             break;
+     }
+     for (min_y = crop_to.y; min_y < y_end; min_y++) {
+         if (dirty_lines[min_y] != 0)
+             break;
+     }
+     for (max_y = y_end - 1; max_y >= crop_to.y; max_y--) {
+         if (dirty_lines[max_y] != 0)
+             break;
+     }
 
     uint32_t t2 = esp_timer_get_time() / 1000;
     printf("diff time: %dms.\n", t2 - t1);
 
-    min_y = min_y == fb_height ? 0 : min_y;
-    max_y = max_y;
-
     EpdRect crop_rect = {
-        .x = 0,
+        .x = min_x,
         .y = min_y,
-        .width = fb_width, //max(max_x - min_x + 1, 0),
+        .width = max(max_x - min_x + 1, 0),
         .height = max(max_y - min_y + 1, 0),
     };
+
+    free(col_dirtyness);
 
     return crop_rect;
 }

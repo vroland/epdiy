@@ -16,6 +16,7 @@
 // bool interlace_line(
 //     const uint8_t *to,
 //     const uint8_t *from,
+//     uint8_t *col_dirtyness;
 //     uint8_t *interlaced,
 //     int fb_width
 // )
@@ -23,12 +24,13 @@ epd_interlace_4bpp_line_VE:
 // to   - a2
 // from   - a3
 // interlaced   - a4
-// fb_width      - a5
+// col_dirtyness  - a5
+// fb_width      - a6
 
     entry	a1, 32
 
     // divide by 32 for loop count
-    srli a11, a5, 5
+    srli a11, a6, 5
 
     movi.n a10, 0xF0F0F0F0;
     EE.MOVI.32.Q q6,a10,0
@@ -56,11 +58,19 @@ epd_interlace_4bpp_line_VE:
         EE.VLD.128.IP q0, a2, 16
         EE.VLD.128.IP q1, a3, 16
 
+        // load column dirtyness
+        EE.VLD.128.IP q3, a5, 0
+    
         // update dirtyness
-        //EE.VCMP.EQ.S8 q4, q0, q1
         EE.XORQ q4, q1, q0
-        //EE.NOTQ q4, q4
+
+        // line dirtyness accumulator
         EE.ORQ q5, q5, q4
+        // column dirtyness 
+        EE.ORQ q3, q3, q4
+
+        // store column dirtyness 
+        EE.VST.128.IP q3, a5, 16
 
         // mask out every second value
         EE.ANDQ q2, q0, q7
