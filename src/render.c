@@ -397,12 +397,12 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
 
      int min_x, min_y, max_x, max_y;
      for (min_x = crop_to.x; min_x < x_end; min_x++) {
-         uint8_t mask = min_x % 2 ? 0x0F : 0xF0;
+         uint8_t mask = min_x % 2 ? 0xF0 : 0x0F;
          if ((col_dirtyness[min_x / 2] & mask) != 0)
              break;
      }
      for (max_x = x_end - 1; max_x >= crop_to.x; max_x--) {
-         uint8_t mask = min_x % 2 ? 0x0F : 0xF0;
+         uint8_t mask = min_x % 2 ? 0xF0 : 0x0F;
          if ((col_dirtyness[max_x / 2] & mask) != 0)
              break;
      }

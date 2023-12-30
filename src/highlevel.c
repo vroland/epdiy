@@ -151,13 +151,20 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       uint8_t* lfb = state->front_fb + buf_width / 2 * l;
       uint8_t* lbb = state->back_fb + buf_width / 2 * l;
 
-      for (int x=diff_area.x; x < diff_area.x + diff_area.width; x++) {
-          if (x % 2) {
-            *(lbb + x / 2) = (*(lfb + x / 2) & 0xF0) | (*(lbb + x / 2) & 0x0F);
-          } else {
-            *(lbb + x / 2) = (*(lfb + x / 2) & 0x0F) | (*(lbb + x / 2) & 0xF0);
-          }
+      int x = diff_area.x;
+      int x_last = diff_area.x + diff_area.width - 1;
+
+      if (x % 2) {
+         *(lbb + x / 2) = (*(lfb + x / 2) & 0xF0) | (*(lbb + x / 2) & 0x0F);
+         x += 1;
       }
+
+      if (x_last % 2) {
+        *(lbb + x_last / 2) = (*(lfb + x_last / 2) & 0x0F) | (*(lbb + x_last / 2) & 0xF0);
+        x_last -= 1;
+      }
+
+      memcpy(lbb + (x / 2), lfb + (x / 2), (x_last - x) / 2);
 	}
   }
 
