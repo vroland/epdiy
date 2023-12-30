@@ -311,12 +311,10 @@ void epd_renderer_deinit() {
 }
 
 #ifdef RENDER_METHOD_LCD
-bool epd_interlace_4bpp_line_VE(
+uint32_t epd_interlace_4bpp_line_VE(
     const uint8_t *to,
     const uint8_t *from,
     uint8_t *interlaced,
-    int* min_dirty_x,
-    int* max_dirty_x,
     int fb_width
 );
 #endif
@@ -329,11 +327,9 @@ static bool interlace_line(
     const uint8_t *to,
     const uint8_t *from,
     uint8_t *interlaced,
-    int* min_dirty_x,
-    int* max_dirty_x,
     int fb_width
 ) {
-    int dirty=0;
+    uint32_t dirty=0;
     uint32_t to_addr = (uint32_t)to;
 
     int unaligned_start;
@@ -348,12 +344,10 @@ static bool interlace_line(
         unaligned_len = (16 - (to_addr + fb_width / 2) % 16) * 2;
     }
 
-    epd_interlace_4bpp_line_VE(
+    dirty = epd_interlace_4bpp_line_VE(
         to + (to_addr % 16),
         from + (to_addr % 16),
         interlaced + (to_addr % 16) * 2,
-        min_dirty_x,
-        max_dirty_x,
         fb_width
     );
 
@@ -363,16 +357,10 @@ static bool interlace_line(
         uint8_t f = *(from + x / 2);
         f = (x % 2) ? (f >> 4) : (f & 0x0f);
         dirty |= (t ^ f);
-        if (t ^ f) {
-            *min_dirty_x = min(x, *min_dirty_x);
-            *max_dirty_x = max(x, *max_dirty_x);
-        }
         interlaced[x] = (t << 4) | f;
     }
 
-    *min_dirty_x = 0;
-    *max_dirty_x = fb_width;
-    return dirty;
+    return dirty > 0;
 }
 
 EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
@@ -381,7 +369,6 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
 
     assert((fb_width * fb_height) % 32 == 0);
 
-    int min_x = fb_width;
     int min_y = fb_height;
     int max_x = 0;
     int max_y = 0;
@@ -391,38 +378,32 @@ EpdRect epd_difference_image_base(const uint8_t *to, const uint8_t *from,
 
     uint32_t t1 = esp_timer_get_time() / 1000;
 
-    for (int y = 0; y < fb_height; y++) {
+    for (int y = crop_to.y; y < y_end; y++) {
         uint32_t offset = y * fb_width / 2;
-        uint8_t dirty = interlace_line(
+        int dirty = interlace_line(
             to + offset,
             from + offset,
             interlaced + offset * 2,
-            &min_x,
-            &max_x,
             fb_width
         );
-        dirty_lines[y] = 1;
+        dirty_lines[y] = dirty;
+        if (dirty) {
+            min_y = min(min_y, y);
+            max_y = max(max_y, y);
+        }
     }
-
-    min_x = 0;
-    max_x = fb_width;
-    min_y = 0;
-    max_y = fb_height;
 
     uint32_t t2 = esp_timer_get_time() / 1000;
     printf("diff time: %dms.\n", t2 - t1);
-
-    min_x = min_x == fb_width ? 0 : min_x;
-    max_x = max_x;
 
     min_y = min_y == fb_height ? 0 : min_y;
     max_y = max_y;
 
     EpdRect crop_rect = {
-        .x = min_x,
+        .x = 0,
         .y = min_y,
-        .width = max(max_x - min_x, 0),
-        .height = max(max_y - min_y, 0),
+        .width = fb_width, //max(max_x - min_x + 1, 0),
+        .height = max(max_y - min_y + 1, 0),
     };
 
     return crop_rect;
