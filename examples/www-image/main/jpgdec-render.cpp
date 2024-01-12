@@ -364,7 +364,9 @@ static void http_post(void) {
             esp_http_client_get_status_code(client), (int)esp_http_client_get_content_length(client)
         );
     } else {
-        ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "\nHTTP GET request failed: %s\nSLEEP 2 minutes and restart", esp_err_to_name(err));
+        // Sleep 2 minutes and try again
+        esp_deep_sleep(1000000LL * 60 * 2);
     }
 
     esp_http_client_cleanup(client);
