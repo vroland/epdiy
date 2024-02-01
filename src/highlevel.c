@@ -144,6 +144,11 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 
   t1 = esp_timer_get_time() / 1000;
 
+  diff_area.x = 0;
+  diff_area.y = 0;
+  diff_area.width = epd_width();
+  diff_area.height = epd_height();
+
   int buf_width = epd_width();
 
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {

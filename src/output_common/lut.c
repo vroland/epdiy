@@ -450,6 +450,12 @@ static void IRAM_ATTR waveform_lut_static_from(
  */
 __attribute__((optimize("O3")))
 void mask_line_buffer(uint8_t* lb, int line_buf_len, int xmin, int xmax) {
+#ifdef RENDER_METHOD_I2S
+  const int offset_table[4] = {2, 3, 0, 1};
+#else
+  const int offset_table[4] = {0, 1, 2, 3};
+#endif
+
   // lower bound to where byte order is not an issue.
   int memset_start = (xmin / 16) * 4;
   int memset_end = min(((xmax + 15) / 16) * 4, line_buf_len);
@@ -458,7 +464,6 @@ void mask_line_buffer(uint8_t* lb, int line_buf_len, int xmin, int xmax) {
   memset(lb, 0, memset_start);
   memset(lb + memset_end, 0, line_buf_len - memset_end);
 
-  const int offset_table[4] = {2, 3, 0, 1};
 
   // mask unused pixels at the start of the output interval
   uint8_t line_start_mask = 0xFF << (2 * (xmin % 4));

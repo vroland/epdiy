@@ -16,6 +16,8 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#include "output_common/line_queue.h"
+#include "output_common/lut.h"
 #include "output_common/render_context.h"
 #include "output_common/render_method.h"
 #include "output_lcd/render_lcd.h"
@@ -157,8 +159,27 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 #ifdef RENDER_METHOD_I2S
     i2s_do_update(&render_context);
 #elif defined(RENDER_METHOD_LCD)
+    // int line_start_x = area.x + (horizontally_cropped ? crop_to.x : 0);
+    // int line_end_x = line_start_x + (horizontally_cropped ? crop_to.width : area.width);
+    // line_start_x = min(max(line_start_x, 0), ctx->display_width);
+    // line_end_x = min(max(line_end_x, 0), ctx->display_width);
+
+    for (int i=0; i < NUM_RENDER_THREADS; i++) {
+        LineQueue_t* queue = &render_context.line_queues[i];
+        memset(queue->mask_buffer, 0xFF, queue->mask_buffer_len);
+        mask_line_buffer(queue->mask_buffer, queue->mask_buffer_len, crop_to.x, crop_to.x + crop_to.width);
+        for (int i=0; i < queue->mask_buffer_len; i++) {
+            printf("%X", queue->mask_buffer[i]);
+        }
+        printf("\n");
+    }
+
     lcd_do_update(&render_context);
 #endif
+
+    if (render_context.error & EPD_DRAW_EMPTY_LINE_QUEUE) {
+        ESP_LOGE("epdiy", "line buffer underrun occurred!");
+    }
 
     if (render_context.error != EPD_DRAW_SUCCESS) {
         return render_context.error;
@@ -256,29 +277,28 @@ void epd_renderer_init(enum EpdInitOptions options) {
         queue_len = 8;
     }
 
+
+    if (render_context.conversion_lut == NULL) {
+        ESP_LOGE("epd", "could not allocate line mask!");
+        abort();
+    }
+
+
 #ifdef RENDER_METHOD_LCD
-    size_t queue_elem_size = epd_width() / 4;
+    size_t queue_elem_size = render_context.display_width / 4;
 #elif defined(RENDER_METHOD_I2S)
     size_t queue_elem_size = epd_width();
 #endif
 
+    ESP_LOGI("epdiy", "line bytes: %d", queue_elem_size);
+
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        render_context.line_queues[i].size = queue_len;
-        render_context.line_queues[i].element_size = queue_elem_size;
-        render_context.line_queues[i].current = 0;
-        render_context.line_queues[i].last = 0;
-        render_context.line_queues[i].buf = (uint8_t *)heap_caps_malloc(
-            queue_len * queue_elem_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-        assert(render_context.line_queues[i].buf != NULL);
+        render_context.line_queues[i] = lq_init(queue_len, queue_elem_size);
         render_context.feed_line_buffers[i] = (uint8_t *)heap_caps_malloc(render_context.display_width, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
         assert(render_context.feed_line_buffers[i] != NULL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 11, (void *)i,
+            render_thread, "epd_prep", 1 << 12, (void *)i,
             configMAX_PRIORITIES, &render_context.feed_tasks[i], i));
-        if (render_context.line_queues[i].buf == NULL) {
-            ESP_LOGE("epd", "could not allocate line queue!");
-            abort();
-        }
     }
 }
 
@@ -288,6 +308,12 @@ void epd_renderer_deinit() {
 
     epd_board->poweroff(epd_ctrl_state());
 
+    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
+        vTaskDelete(render_context.feed_tasks[i]);
+        lq_free(&render_context.line_queues[i]);
+        vSemaphoreDelete(render_context.feed_done_smphr[i]);
+    }
+
 #ifdef RENDER_METHOD_I2S
     i2s_deinit();
 #endif
@@ -296,13 +322,6 @@ void epd_renderer_deinit() {
 
     if (epd_board->deinit) {
         epd_board->deinit();
-    }
-
-    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        free(render_context.line_queues[i].buf);
-        free(render_context.feed_line_buffers[i]);
-        vSemaphoreDelete(render_context.feed_done_smphr[i]);
-        vTaskDelete(render_context.feed_tasks[i]);
     }
 
     free(render_context.conversion_lut);
