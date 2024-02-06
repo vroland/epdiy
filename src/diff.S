@@ -118,3 +118,37 @@ epd_interlace_4bpp_line_VE:
     //l8ui a10, a10, 0
 
     retw.n
+
+
+.global epd_apply_line_mask_VE
+.type   epd_apply_line_mask_VE,@function
+
+// void epd_apply_line_mask_VE(
+//     uint8_t *line,
+//     const uint8_t *mask,
+//     int mask_len
+// )
+epd_apply_line_mask_VE: 
+// line   - a2
+// mask   - a3
+// mask_len   - a4
+
+    entry	a1, 32
+
+    // divide by 16 for loop count
+    srli a4, a4, 4
+
+    // Instructions sometimes are in an unexpected order
+    // for best pipeline utilization
+    loopnez a4, .loop_end_mask
+
+        EE.VLD.128.IP q0, a2, 0
+        EE.VLD.128.IP q1, a3, 16
+
+        EE.ANDQ q0, q0, q1
+ 
+        EE.VST.128.IP q0, a2, 16
+
+.loop_end_mask:
+
+    retw.n

@@ -5,6 +5,7 @@
 #include <esp_heap_caps.h>
 
 #include "line_queue.h"
+#include "render_method.h"
 
 static inline int ceil_div(int x, int y) { return x / y + (x % y != 0); }
 
@@ -65,9 +66,14 @@ void IRAM_ATTR lq_commit(LineQueue_t* queue) {
         atomic_fetch_add(&queue->current, 1);
     }
 
+#ifdef RENDER_METHOD_LCD
+    void epd_apply_line_mask_VE(uint8_t *line, const uint8_t *mask, int mask_len);
+    epd_apply_line_mask_VE(queue->bufs[current], queue->mask_buffer, queue->mask_buffer_len);
+#else
     for (int i=0; i < queue->mask_buffer_len / 4; i++) {
         ((uint32_t*)(queue->bufs[current]))[i] &= ((uint32_t*)(queue->mask_buffer))[i];
     }
+#endif
 }
 
 int IRAM_ATTR lq_read(LineQueue_t* queue, uint8_t* dst) {
