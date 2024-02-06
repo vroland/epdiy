@@ -2,14 +2,15 @@
  * High-level API implementation for epdiy.
  */
 
-#include "epd_highlevel.h"
-#include "epdiy.h"
 #include <assert.h>
 #include <esp_types.h>
 #include <string.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
+
+#include "epd_highlevel.h"
+#include "epdiy.h"
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
@@ -42,6 +43,8 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(state.difference_fb != NULL);
   state.dirty_lines = malloc(epd_height() * sizeof(bool));
   assert(state.dirty_lines != NULL);
+  state.dirty_columns = heap_caps_aligned_alloc(16, epd_width() / 2, MALLOC_CAP_INTERNAL);
+  assert(state.dirty_columns != NULL);
   state.waveform = waveform;
 
   memset(state.front_fb, 0xFF, fb_size);
@@ -109,6 +112,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   area.width = rotated_area.width;
   area.height = rotated_area.height;
 
+  uint8_t* col_dirtyness = heap_caps_aligned_alloc(16, epd_width(), MALLOC_CAP_INTERNAL);
 
   uint32_t ts = esp_timer_get_time() / 1000;
 
@@ -119,7 +123,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 	  state->back_fb,
 	  area,
 	  state->difference_fb,
-	  state->dirty_lines
+	  state->dirty_lines,
+    state->dirty_columns
   );
 
   ESP_LOGI("epdiy", "highlevel diff area: x: %d, y: %d, w: %d, h: %d", diff_area.x, diff_area.y, diff_area.width, diff_area.height);
@@ -136,8 +141,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   diff_area.height = epd_height();
 
   enum EpdDrawError err;
-  err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->waveform);
-
+  err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->dirty_columns, state->waveform);
 
   uint32_t t2 = esp_timer_get_time() / 1000;
   printf("actual draw took %dms.\n", t2 - t1);

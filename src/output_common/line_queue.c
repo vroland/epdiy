@@ -35,12 +35,14 @@ LineQueue_t lq_init(int queue_len, int element_size) {
 
 /// Deinitialize the line queue and free memory.
 void lq_free(LineQueue_t* queue) {
-    heap_caps_free(queue->bufs);
-    heap_caps_free(queue->mask_buffer);
-
     for (int i=0; i<queue->size; i++) {
-        free(queue->bufs[i]);
+        heap_caps_free(queue->bufs[i]);
     }
+
+    if (queue->mask_buffer != NULL) {
+        heap_caps_free(queue->mask_buffer);
+    }
+    free(queue->bufs);
 }
 
 uint8_t* IRAM_ATTR lq_current(LineQueue_t* queue) {
