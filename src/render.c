@@ -178,7 +178,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         if (drawn_columns == NULL) {
             memset(queue->mask_buffer, 0xFF, queue->mask_buffer_len);
         } else {
-            for (int c=0; c<epd_width() / 2; c+=2) {
+            for (int c = 0; c < epd_width() / 2; c += 2) {
                 uint8_t mask = 0;
                 mask |= (drawn_columns[c + 1] & 0xF0) != 0 ? 0xC0 : 0x00;
                 mask |= (drawn_columns[c + 1] & 0x0F) != 0 ? 0x30 : 0x00;
@@ -257,14 +257,20 @@ void epd_renderer_init(enum EpdInitOptions options) {
     size_t lut_size = 0;
     if (options & EPD_LUT_1K) {
         lut_size = 1 << 10;
-    } else if ((options & EPD_LUT_64K) || (options == EPD_OPTIONS_DEFAULT)) {
+    } else if (options & EPD_LUT_64K) {
         lut_size = 1 << 16;
+    } else if (options == EPD_OPTIONS_DEFAULT) {
+#ifdef RENDER_METHOD_LCD
+        lut_size = 1 << 10;
+#else
+        lut_size = 1 << 16;
+#endif
     } else {
         ESP_LOGE("epd", "invalid init options: %d", options);
         return;
     }
 
-    ESP_LOGE("epd", "lut size: %d", lut_size);
+    ESP_LOGI("epd", "Space used for waveform LUT: %dK", lut_size / 1024);
     render_context.conversion_lut =
         (uint8_t*)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (render_context.conversion_lut == NULL) {
@@ -301,8 +307,6 @@ void epd_renderer_init(enum EpdInitOptions options) {
 #elif defined(RENDER_METHOD_I2S)
     size_t queue_elem_size = epd_width();
 #endif
-
-    ESP_LOGI("epdiy", "line bytes: %d", queue_elem_size);
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         render_context.line_queues[i] = lq_init(queue_len, queue_elem_size);

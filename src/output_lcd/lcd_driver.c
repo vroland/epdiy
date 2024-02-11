@@ -2,6 +2,10 @@
 #include "epdiy.h"
 
 #include "../output_common/render_method.h"
+#include "esp_heap_caps.h"
+#include "esp_intr_alloc.h"
+#include "hal/gpio_types.h"
+#include "soc/clk_tree_defs.h"
 
 #ifdef RENDER_METHOD_LCD
 
@@ -48,8 +52,6 @@
 #include <rom/cache.h>
 #include <soc/lcd_periph.h>
 #include <soc/rmt_struct.h>
-
-#include "../output_common/lut.h"
 
 #define TAG "epdiy"
 
@@ -122,7 +124,7 @@ typedef struct {
     int display_lines;
 } s3_lcd_t;
 
-static s3_lcd_t lcd;
+static s3_lcd_t lcd = {0};
 
 void IRAM_ATTR epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
     lcd.line_source_cb = line_source;
@@ -137,17 +139,13 @@ void IRAM_ATTR epd_lcd_frame_done_cb(frame_done_func_t cb, void* payload) {
 static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     bool task_awoken = false;
 
-    // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
-    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - lcd.line_bytes;
-
     for (int i = 0; i < BOUNCE_BUF_LINES; i++) {
         if (lcd.line_source_cb != NULL) {
             // this is strange, with 16 bit need a dummy cycle. But still, the first byte in the
             // FIFO is correct. So we only need a true dummy byte in the FIFO in the 8 bit
             // configuration.
-            task_awoken |= lcd.line_source_cb(
-                lcd.line_cb_payload, &buffer[i * (lcd.line_bytes + dummy_bytes) + (dummy_bytes % 2)]
-            );
+            int buffer_offset = i * (lcd.line_bytes + lcd.dummy_bytes) + (lcd.dummy_bytes % 2);
+            task_awoken |= lcd.line_source_cb(lcd.line_cb_payload, &buffer[buffer_offset]);
         } else {
             memset(&buffer[i * lcd.line_bytes], 0x00, lcd.line_bytes);
         }
@@ -173,10 +171,12 @@ static void ckv_rmt_build_signal() {
     rmt_mem_ptr->level0 = 1;
     rmt_mem_ptr->duration1 = low_time;
     rmt_mem_ptr->level1 = 0;
-    // rmt_mem_ptr[1] = rmt_mem_ptr[0];
     rmt_mem_ptr[1].val = 0;
 }
 
+/**
+ * Configure the RMT peripheral for use as the CKV clock.
+ */
 static void init_ckv_rmt() {
     periph_module_reset(rmt_periph_signals.groups[0].module);
     periph_module_enable(rmt_periph_signals.groups[0].module);
@@ -186,9 +186,7 @@ static void init_ckv_rmt() {
     // Divide 80MHz APB Clock by 8 -> .1us resolution delay
     // idf >= 5.0 calculates the clock divider differently
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    rmt_ll_set_group_clock_src(
-        &RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 1, 0, 0
-    );
+    rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
 #else
     rmt_ll_set_group_clock_src(
         &RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0
@@ -211,6 +209,16 @@ static void init_ckv_rmt() {
     ckv_rmt_build_signal();
 }
 
+/**
+ * Reset the CKV RMT configuration.
+ */
+static void deinit_ckv_rmt() {
+    periph_module_reset(rmt_periph_signals.groups[0].module);
+    periph_module_disable(rmt_periph_signals.groups[0].module);
+
+    gpio_reset_pin(lcd.config.bus.ckv);
+}
+
 __attribute__((optimize("O3"))) IRAM_ATTR static void lcd_isr_vsync(void* args) {
     bool need_yield = false;
 
@@ -221,12 +229,9 @@ __attribute__((optimize("O3"))) IRAM_ATTR static void lcd_isr_vsync(void* args) 
         int batches_needed = lcd.display_lines / LINE_BATCH;
         if (lcd.batches >= batches_needed) {
             lcd_ll_stop(lcd.hal.dev);
-            // rmt_ll_tx_stop(&RMT, RMT_CKV_CHAN);
             if (lcd.frame_done_cb != NULL) {
                 (*lcd.frame_done_cb)(lcd.frame_cb_payload);
             }
-            // gpio_set_level(S3_LCD_PIN_NUM_MODE, 0);
-
         } else {
             int ckv_cycles = 0;
             // last batch
@@ -243,7 +248,6 @@ __attribute__((optimize("O3"))) IRAM_ATTR static void lcd_isr_vsync(void* args) 
 
             // skip the LCD front porch line, which is not actual data
             esp_rom_delay_us(lcd.line_length_us);
-
             start_ckv_cycles(ckv_cycles);
         }
 
@@ -265,15 +269,10 @@ static IRAM_ATTR bool lcd_rgb_panel_eof_handler(
     // Figure out which bounce buffer to write to.
     // Note: what we receive is the *last* descriptor of this bounce buffer.
     int bb = (desc == &lcd.dma_nodes[0]) ? 0 : 1;
-
-    bool need_yield = fill_bounce_buffer(lcd.bounce_buffer[bb]);
-
-    return need_yield;
+    return fill_bounce_buffer(lcd.bounce_buffer[bb]);
 }
 
 static esp_err_t init_dma_trans_link() {
-    ESP_LOGI(TAG, "size: %d max: %d", lcd.bb_size, DMA_DESCRIPTOR_BUFFER_MAX_SIZE);
-
     lcd.dma_nodes[0].dw0.suc_eof = 1;
     lcd.dma_nodes[0].dw0.size = lcd.bb_size;
     lcd.dma_nodes[0].dw0.length = lcd.bb_size;
@@ -297,32 +296,41 @@ static esp_err_t init_dma_trans_link() {
     ESP_RETURN_ON_ERROR(
         gdma_new_channel(&dma_chan_config, &lcd.dma_chan), TAG, "alloc DMA channel failed"
     );
-    gdma_connect(lcd.dma_chan, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0));
+    gdma_trigger_t trigger = GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0);
+    ESP_RETURN_ON_ERROR(gdma_connect(lcd.dma_chan, trigger), TAG, "dma connect error");
     gdma_transfer_ability_t ability = {
         .psram_trans_align = 64,
         .sram_trans_align = 4,
     };
-    gdma_set_transfer_ability(lcd.dma_chan, &ability);
+    ESP_RETURN_ON_ERROR(gdma_set_transfer_ability(lcd.dma_chan, &ability), TAG, "dma setup error");
 
     gdma_tx_event_callbacks_t cbs = {
         .on_trans_eof = lcd_rgb_panel_eof_handler,
     };
-    gdma_register_tx_event_callbacks(lcd.dma_chan, &cbs, NULL);
+    ESP_RETURN_ON_ERROR(
+        gdma_register_tx_event_callbacks(lcd.dma_chan, &cbs, NULL), TAG, "dma setup error"
+    );
 
     return ESP_OK;
+}
+
+void deinit_dma_trans_link() {
+    gdma_reset(lcd.dma_chan);
+    gdma_disconnect(lcd.dma_chan);
+    gdma_del_channel(lcd.dma_chan);
 }
 
 /**
  * Configure LCD peripheral and auxiliary GPIOs
  */
-static esp_err_t s3_lcd_configure_gpio() {
+static esp_err_t init_bus_gpio() {
     const int DATA_LINES[16] = {
-        lcd.config.bus.data_14, lcd.config.bus.data_15, lcd.config.bus.data_12,
-        lcd.config.bus.data_13, lcd.config.bus.data_10, lcd.config.bus.data_11,
-        lcd.config.bus.data_8,  lcd.config.bus.data_9,  lcd.config.bus.data_6,
-        lcd.config.bus.data_7,  lcd.config.bus.data_4,  lcd.config.bus.data_5,
-        lcd.config.bus.data_2,  lcd.config.bus.data_3,  lcd.config.bus.data_0,
-        lcd.config.bus.data_1,
+        lcd.config.bus.data[14], lcd.config.bus.data[15], lcd.config.bus.data[12],
+        lcd.config.bus.data[13], lcd.config.bus.data[10], lcd.config.bus.data[11],
+        lcd.config.bus.data[8],  lcd.config.bus.data[9],  lcd.config.bus.data[6],
+        lcd.config.bus.data[7],  lcd.config.bus.data[4],  lcd.config.bus.data[5],
+        lcd.config.bus.data[2],  lcd.config.bus.data[3],  lcd.config.bus.data[0],
+        lcd.config.bus.data[1],
     };
 
     // connect peripheral signals via GPIO matrix
@@ -358,6 +366,20 @@ static esp_err_t s3_lcd_configure_gpio() {
     gpio_config(&vsync_gpio_conf);
     gpio_set_level(lcd.config.bus.stv, 1);
     return ESP_OK;
+}
+
+/**
+ * Reset bus GPIO pin functions.
+ */
+static void deinit_bus_gpio() {
+    for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
+        gpio_reset_pin(lcd.config.bus.data[i]);
+    }
+
+    gpio_reset_pin(lcd.config.bus.leh);
+    gpio_reset_pin(lcd.config.bus.clock);
+    gpio_reset_pin(lcd.config.bus.start_pulse);
+    gpio_reset_pin(lcd.config.bus.stv);
 }
 
 /**
@@ -425,30 +447,41 @@ static void assign_lcd_parameters_from_config(
  * Allocate buffers for LCD driver operation.
  */
 static esp_err_t allocate_lcd_buffers() {
-    esp_err_t ret = ESP_OK;
     uint32_t dma_flags = MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA;
 
     // allocate bounce buffers
     for (int i = 0; i < 2; i++) {
         lcd.bounce_buffer[i] = heap_caps_aligned_calloc(4, 1, lcd.bb_size, dma_flags);
-        ESP_GOTO_ON_ERROR(ret, err, TAG, "install interrupt failed");
+        ESP_RETURN_ON_FALSE(lcd.bounce_buffer[i], ESP_ERR_NO_MEM, TAG, "install interrupt failed");
     }
 
     // So far, I haven't seen any displays with > 4096 pixels per line,
     // so we only need one DMA node for now.
     assert(lcd.bb_size < DMA_DESCRIPTOR_BUFFER_MAX_SIZE);
     lcd.dma_nodes = heap_caps_calloc(1, sizeof(dma_descriptor_t) * 2, dma_flags);
-    ESP_GOTO_ON_FALSE(lcd.dma_nodes, ESP_ERR_NO_MEM, err, TAG, "no mem for dma nodes");
+    ESP_RETURN_ON_FALSE(lcd.dma_nodes, ESP_ERR_NO_MEM, TAG, "no mem for dma nodes");
+    return ESP_OK;
+}
 
-err:
-    ESP_LOGI(TAG, "LCD initialization / allocation failed!");
-    return ret;
+static void free_lcd_buffers() {
+    for (int i = 0; i < 2; i++) {
+        uint8_t* buf = lcd.bounce_buffer[i];
+        if (buf != NULL) {
+            heap_caps_free(buf);
+            lcd.bounce_buffer[i] = NULL;
+        }
+    }
+
+    if (lcd.dma_nodes != NULL) {
+        heap_caps_free(lcd.dma_nodes);
+        lcd.dma_nodes = NULL;
+    }
 }
 
 /**
  * Initialize the LCD peripheral itself and install interrupts.
  */
-static esp_err_t initialize_lcd_peripheral() {
+static esp_err_t init_lcd_peripheral() {
     esp_err_t ret = ESP_OK;
 
     // enable APB to access LCD registers
@@ -458,7 +491,7 @@ static esp_err_t initialize_lcd_peripheral() {
     lcd_hal_init(&lcd.hal, 0);
     lcd_ll_enable_clock(lcd.hal.dev, true);
     lcd_ll_select_clk_src(lcd.hal.dev, LCD_CLK_SRC_PLL240M);
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "set source clock failed");
+    ESP_RETURN_ON_ERROR(ret, TAG, "set source clock failed");
 
     // install interrupt service, (LCD peripheral shares the interrupt source with Camera by
     // different mask)
@@ -469,13 +502,13 @@ static esp_err_t initialize_lcd_peripheral() {
     ret = esp_intr_alloc_intrstatus(
         source, flags, status, LCD_LL_EVENT_VSYNC_END, lcd_isr_vsync, NULL, &lcd.vsync_intr
     );
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "install interrupt failed");
+    ESP_RETURN_ON_ERROR(ret, TAG, "install interrupt failed");
 
     status = (uint32_t)lcd_ll_get_interrupt_status_reg(lcd.hal.dev);
     ret = esp_intr_alloc_intrstatus(
         source, flags, status, LCD_LL_EVENT_TRANS_DONE, lcd_isr_vsync, NULL, &lcd.done_intr
     );
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "install interrupt failed");
+    ESP_RETURN_ON_ERROR(ret, TAG, "install interrupt failed");
 
     lcd_ll_fifo_reset(lcd.hal.dev);
     lcd_ll_reset(lcd.hal.dev);
@@ -509,8 +542,21 @@ static esp_err_t initialize_lcd_peripheral() {
     // enable intr
     esp_intr_enable(lcd.vsync_intr);
     esp_intr_enable(lcd.done_intr);
-err:
     return ret;
+}
+
+static void deinit_lcd_peripheral() {
+    // disable and free interrupts
+    esp_intr_disable(lcd.vsync_intr);
+    esp_intr_disable(lcd.done_intr);
+    esp_intr_free(lcd.vsync_intr);
+    esp_intr_free(lcd.done_intr);
+
+    lcd_ll_fifo_reset(lcd.hal.dev);
+    lcd_ll_reset(lcd.hal.dev);
+
+    periph_module_reset(lcd_periph_signals.panels[0].module);
+    periph_module_disable(lcd_periph_signals.panels[0].module);
 }
 
 /**
@@ -525,13 +571,13 @@ void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_h
     ret = allocate_lcd_buffers();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "lcd buffer allocation failed");
 
-    ret = initialize_lcd_peripheral();
+    ret = init_lcd_peripheral();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "lcd peripheral init failed");
 
     ret = init_dma_trans_link();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "install DMA failed");
 
-    ret = s3_lcd_configure_gpio();
+    ret = init_bus_gpio();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "configure GPIO failed");
 
     init_ckv_rmt();
@@ -543,8 +589,23 @@ void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_h
     ESP_LOGI(TAG, "LCD init done.");
     return;
 err:
-    ESP_LOGI(TAG, "LCD initialization failed!");
+    ESP_LOGE(TAG, "LCD initialization failed!");
     abort();
+}
+
+/**
+ * Deinitializue the LCD driver, i.e., free resources and peripherals.
+ */
+void epd_lcd_deinit() {
+    epd_lcd_line_source_cb(NULL, NULL);
+
+    deinit_bus_gpio();
+    deinit_lcd_peripheral();
+    deinit_dma_trans_link();
+    free_lcd_buffers();
+    deinit_ckv_rmt();
+
+    ESP_LOGI(TAG, "LCD deinitialized.");
 }
 
 void epd_lcd_set_pixel_clock_MHz(int frequency) {
@@ -566,15 +627,14 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
 
 void IRAM_ATTR epd_lcd_start_frame() {
     int initial_lines = min(LINE_BATCH, lcd.display_lines);
-    int dummy_bytes = lcd.bb_size / BOUNCE_BUF_LINES - lcd.line_bytes;
 
     // hsync: pulse with, back porch, active width, front porch
     int end_line =
         lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(
-        lcd.hal.dev, lcd.config.le_high_time - (dummy_bytes > 0), lcd.config.line_front_porch,
+        lcd.hal.dev, lcd.config.le_high_time - (lcd.dummy_bytes > 0), lcd.config.line_front_porch,
         // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
-        lcd.lcd_res_h + (dummy_bytes > 0), end_line
+        lcd.lcd_res_h + (lcd.dummy_bytes > 0), end_line
     );
     lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 1, initial_lines, 1);
 

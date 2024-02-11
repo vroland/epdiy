@@ -92,22 +92,22 @@ static lcd_bus_config_t lcd_config = {
     .leh = LEH,
     .start_pulse = STH,
     .stv = STV,
-    .data_0 = D0,
-    .data_1 = D1,
-    .data_2 = D2,
-    .data_3 = D3,
-    .data_4 = D4,
-    .data_5 = D5,
-    .data_6 = D6,
-    .data_7 = D7,
-    .data_8 = D8,
-    .data_9 = D9,
-    .data_10 = D10,
-    .data_11 = D11,
-    .data_12 = D12,
-    .data_13 = D13,
-    .data_14 = D14,
-    .data_15 = D15,
+    .data[0] = D0,
+    .data[1] = D1,
+    .data[2] = D2,
+    .data[3] = D3,
+    .data[4] = D4,
+    .data[5] = D5,
+    .data[6] = D6,
+    .data[7] = D7,
+    .data[8] = D8,
+    .data[9] = D9,
+    .data[10] = D10,
+    .data[11] = D11,
+    .data[12] = D12,
+    .data[13] = D13,
+    .data[14] = D14,
+    .data[15] = D15,
 };
 
 static void epd_board_init(uint32_t epd_row_width) {
@@ -157,6 +157,8 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_deinit() {
+
+  epd_lcd_deinit();
 
   ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
 

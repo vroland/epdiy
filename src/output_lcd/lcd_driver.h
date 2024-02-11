@@ -11,24 +11,7 @@
  */
 typedef struct {
   // GPIO numbers of the parallel bus pins.
-  gpio_num_t data_0;
-  gpio_num_t data_1;
-  gpio_num_t data_2;
-  gpio_num_t data_3;
-  gpio_num_t data_4;
-  gpio_num_t data_5;
-  gpio_num_t data_6;
-  gpio_num_t data_7;
-
-
-  gpio_num_t data_8;
-  gpio_num_t data_9;
-  gpio_num_t data_10;
-  gpio_num_t data_11;
-  gpio_num_t data_12;
-  gpio_num_t data_13;
-  gpio_num_t data_14;
-  gpio_num_t data_15;
+  gpio_num_t data[16];
 
   // horizontal clock pin.
   gpio_num_t clock;
