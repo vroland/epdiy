@@ -391,6 +391,7 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
 }
 
 void i2s_deinit() {
+    rmt_pulse_deinit();
     i2s_bus_deinit();
 }
 

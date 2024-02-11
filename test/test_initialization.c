@@ -6,15 +6,17 @@
 #include "epdiy.h"
 #include "epd_display.h"
 
-TEST_CASE("Mean of an empty array is zero", "[mean]")
-{
-    const int values[] = { 0 };
-    TEST_ASSERT_EQUAL(1, 1);
-}
 
-TEST_CASE("V7 initialization and deinitialization works", "[epdiy]")
+// choose the default demo board depending on the architecture
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define TEST_BOARD epd_board_v6
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define TEST_BOARD epd_board_v7
+#endif
+
+TEST_CASE("initialization and deinitialization works", "[epdiy]")
 {
-    epd_init(&epd_board_v7, &ED097TC2, EPD_OPTIONS_DEFAULT);
+    epd_init(&TEST_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
 
     epd_poweron();
     vTaskDelay(2);
@@ -23,9 +25,9 @@ TEST_CASE("V7 initialization and deinitialization works", "[epdiy]")
     epd_deinit();
 }
 
-TEST_CASE("V7 re-initialization works", "[epdiy]")
+TEST_CASE("re-initialization works", "[epdiy]")
 {
-    epd_init(&epd_board_v7, &ED097TC2, EPD_OPTIONS_DEFAULT);
+    epd_init(&TEST_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
 
     epd_poweron();
     vTaskDelay(2);
@@ -33,7 +35,7 @@ TEST_CASE("V7 re-initialization works", "[epdiy]")
 
     epd_deinit();
 
-    epd_init(&epd_board_v7, &ED097TC2, EPD_OPTIONS_DEFAULT);
+    epd_init(&TEST_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
  
     epd_poweron();
     vTaskDelay(2);
