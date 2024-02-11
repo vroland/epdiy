@@ -5,7 +5,6 @@
 #include "esp_heap_caps.h"
 #include "esp_intr_alloc.h"
 #include "hal/gpio_types.h"
-#include "soc/clk_tree_defs.h"
 
 #ifdef RENDER_METHOD_LCD
 
@@ -25,6 +24,7 @@
 #include <driver/rmt_types_legacy.h>
 #include <esp_private/periph_ctrl.h>
 #include <hal/rmt_types.h>
+#include <soc/clk_tree_defs.h>
 #else
 #include <driver/periph_ctrl.h>
 #include <driver/rmt.h>
