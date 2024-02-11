@@ -2,6 +2,7 @@
 
 #include <stdatomic.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 
@@ -22,7 +23,7 @@ typedef struct {
 } LineQueue_t;
 
 /// Initialize the line queue and allocate memory.
-LineQueue_t lq_init(int queue_len, int element_size);
+LineQueue_t lq_init(int queue_len, int element_size, bool use_mask);
 
 /// Deinitialize the line queue and free memory.
 void lq_free(LineQueue_t* queue);

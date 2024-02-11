@@ -1,5 +1,8 @@
 #include <xtensa/config/core-isa.h>
 #include <xtensa/config/core-matmap.h>
+#include "render_method.h"
+
+#ifdef RENDER_METHOD_LCD
 
 .text
 .align  4
@@ -139,3 +142,4 @@ calc_epd_input_1ppB_1k_S3_VE:
     movi.n	a2, 0 // return status ESP_OK
     retw.n
 
+#endif

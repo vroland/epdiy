@@ -10,7 +10,7 @@
 static inline int ceil_div(int x, int y) { return x / y + (x % y != 0); }
 
 /// Initialize the line queue and allocate memory.
-LineQueue_t lq_init(int queue_len, int element_size) {
+LineQueue_t lq_init(int queue_len, int element_size, bool use_mask) {
     LineQueue_t queue;
     queue.element_size = element_size;
     queue.size = queue_len;
@@ -27,9 +27,14 @@ LineQueue_t lq_init(int queue_len, int element_size) {
         assert(queue.bufs[i] != NULL);
     }
 
-    queue.mask_buffer_len = elem_buf_size;
-    queue.mask_buffer = heap_caps_aligned_alloc(16, elem_buf_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-    assert(queue.mask_buffer != NULL);
+    if (use_mask) {
+        queue.mask_buffer_len = elem_buf_size;
+        queue.mask_buffer = heap_caps_aligned_alloc(16, elem_buf_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+        assert(queue.mask_buffer != NULL);
+    } else {
+        queue.mask_buffer_len = 0;
+        queue.mask_buffer = NULL;
+    }
 
     return queue;
 }

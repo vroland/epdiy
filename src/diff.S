@@ -1,5 +1,8 @@
 #include <xtensa/config/core-isa.h>
 #include <xtensa/config/core-matmap.h>
+#include "output_common/render_method.h"
+
+#ifdef RENDER_METHOD_LCD
 
 .text
 .align  4
@@ -152,3 +155,5 @@ epd_apply_line_mask_VE:
 .loop_end_mask:
 
     retw.n
+
+#endif

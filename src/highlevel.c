@@ -43,7 +43,7 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(state.difference_fb != NULL);
   state.dirty_lines = malloc(epd_height() * sizeof(bool));
   assert(state.dirty_lines != NULL);
-  state.dirty_columns = heap_caps_aligned_alloc(16, epd_width() / 2, MALLOC_CAP_INTERNAL);
+  state.dirty_columns = heap_caps_aligned_alloc(16, epd_width() / 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
   assert(state.dirty_columns != NULL);
   state.waveform = waveform;
 
