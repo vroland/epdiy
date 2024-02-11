@@ -564,7 +564,7 @@ enum EpdDrawError epd_draw_base(
  *      The positions corresponding to lines where `to` and `from` differ
  *      are set to `true`, otherwise to `false`.
  * @param col_dirtyness: An array of at least `epd_width() / 2`.
- *      If a byte is set to non-zero, the pixel column is marked as changed, aka "dirty."
+ *      If a nibble is set to non-zero, the pixel column is marked as changed, aka "dirty."
  *      The buffer must be 16 byte aligned.
  * @returns The smallest rectangle containing all changed pixels.
  */

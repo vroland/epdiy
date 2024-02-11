@@ -112,12 +112,9 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   area.width = rotated_area.width;
   area.height = rotated_area.height;
 
-  uint8_t* col_dirtyness = heap_caps_aligned_alloc(16, epd_width(), MALLOC_CAP_INTERNAL);
-
   uint32_t ts = esp_timer_get_time() / 1000;
 
-  ESP_LOGI("epdiy", "calculating diff..");
-  //FIXME: use crop information here, if available
+  // FIXME: use crop information here, if available
   EpdRect diff_area = epd_difference_image_cropped(
 	  state->front_fb,
 	  state->back_fb,
@@ -126,9 +123,7 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 	  state->dirty_lines,
     state->dirty_columns
   );
-
-  ESP_LOGI("epdiy", "highlevel diff area: x: %d, y: %d, w: %d, h: %d", diff_area.x, diff_area.y, diff_area.width, diff_area.height);
-
+  
   if (diff_area.height == 0 || diff_area.width == 0) {
       return EPD_DRAW_SUCCESS;
   }
@@ -140,13 +135,10 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
   diff_area.width = epd_width();
   diff_area.height = epd_height();
 
-  enum EpdDrawError err;
+  enum EpdDrawError err = EPD_DRAW_SUCCESS;
   err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->dirty_columns, state->waveform);
 
   uint32_t t2 = esp_timer_get_time() / 1000;
-  printf("actual draw took %dms.\n", t2 - t1);
-
-  t1 = esp_timer_get_time() / 1000;
 
   diff_area.x = 0;
   diff_area.y = 0;
@@ -177,11 +169,9 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
 	}
   }
 
-  t2 = esp_timer_get_time() / 1000;
-  printf("buffer update took %dms.\n", t2 - t1);
-  uint32_t te = esp_timer_get_time() / 1000;
-  printf("full update took %dms.\n", te - ts);
+  uint32_t t3 = esp_timer_get_time() / 1000;
 
+  ESP_LOGI("epdiy", "diff: %dms, draw: %dms, buffer update: %dms, total: %dms", t1 - ts, t2 - t1, t3 - t2, t3 - ts);
   return err;
 }
 

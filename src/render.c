@@ -163,15 +163,9 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         render_context.phase_times = waveform_phases->phase_times;
     }
 
-    ESP_LOGI("epdiy", "starting update, phases: %d", frame_count);
-
 #ifdef RENDER_METHOD_I2S
     i2s_do_update(&render_context);
 #elif defined(RENDER_METHOD_LCD)
-    // int line_start_x = area.x + (horizontally_cropped ? crop_to.x : 0);
-    // int line_end_x = line_start_x + (horizontally_cropped ? crop_to.width : area.width);
-    // line_start_x = min(max(line_start_x, 0), ctx->display_width);
-    // line_end_x = min(max(line_end_x, 0), ctx->display_width);
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         LineQueue_t* queue = &render_context.line_queues[i];
@@ -415,13 +409,11 @@ EpdRect epd_difference_image_base(
     assert((fb_width * fb_height) % 32 == 0);
     assert(col_dirtyness != NULL);
 
-    memset(col_dirtyness, 0, fb_width);
+    memset(col_dirtyness, 0, fb_width / 2);
     memset(dirty_lines, 0, sizeof(bool) * fb_height);
 
     int x_end = min(fb_width, crop_to.x + crop_to.width);
     int y_end = min(fb_height, crop_to.y + crop_to.height);
-
-    uint32_t t1 = esp_timer_get_time() / 1000;
 
     for (int y = crop_to.y; y < y_end; y++) {
         uint32_t offset = y * fb_width / 2;
@@ -450,9 +442,6 @@ EpdRect epd_difference_image_base(
         if (dirty_lines[max_y] != 0)
             break;
     }
-
-    uint32_t t2 = esp_timer_get_time() / 1000;
-    printf("diff time: %dms.\n", t2 - t1);
 
     EpdRect crop_rect = {
         .x = min_x,
