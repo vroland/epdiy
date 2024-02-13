@@ -1,3 +1,4 @@
+#include "driver/gpio.h"
 #include "epd_board.h"
 
 #include <esp_log.h>
@@ -144,8 +145,11 @@ static void epd_board_deinit() {
   vTaskDelay(500);
   pca9555_read_input(config_reg.port, 0);
   pca9555_read_input(config_reg.port, 1);
-  ESP_LOGI("epdiy", "going to sleep.");
   i2c_driver_delete(EPDIY_I2C_PORT);
+  gpio_isr_handler_remove(CFG_INTR);
+  gpio_uninstall_isr_service();
+  gpio_reset_pin(CFG_INTR);
+  gpio_reset_pin(V4_LATCH_ENABLE);
 }
 
 static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t * const mask) {

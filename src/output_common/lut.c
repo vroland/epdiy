@@ -223,7 +223,6 @@ void IRAM_ATTR calc_epd_input_1ppB_64k(
 #endif
 }
 
-
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
  */
@@ -374,6 +373,29 @@ static void IRAM_ATTR waveform_lut_64k(
 }
 
 /**
+ * A 32bit aligned lookup table for lookup using the ESP32-S3 vector extensions.
+ */
+__attribute__((optimize("O3")))
+static void IRAM_ATTR waveform_lut_S3_VE(
+    uint8_t *lut,
+    const EpdWaveformPhases *phases,
+    int frame
+) {
+  uint32_t* lut32 = (uint32_t*) lut;
+  const uint8_t *p_lut = phases->luts + (16 * 4 * frame);
+  for (uint8_t to = 0; to < 16; to++) {
+    for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
+      uint8_t index = (to << 4) | (from_packed * 4);
+      uint8_t packed = *(p_lut++);
+      lut32[index] = (packed >> 6) & 3;
+      lut32[index + 1] = (packed >> 4) & 3;
+      lut32[index + 2] = (packed >> 2) & 3;
+      lut32[index + 3] = (packed >> 0) & 3;
+    }
+  }
+}
+
+/**
  * Build a 16-bit LUT from the waveform if the previous color is
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
@@ -428,6 +450,12 @@ static void IRAM_ATTR waveform_lut_static_from(
  */
 __attribute__((optimize("O3")))
 void mask_line_buffer(uint8_t* lb, int line_buf_len, int xmin, int xmax) {
+#ifdef RENDER_METHOD_I2S
+  const int offset_table[4] = {2, 3, 0, 1};
+#else
+  const int offset_table[4] = {0, 1, 2, 3};
+#endif
+
   // lower bound to where byte order is not an issue.
   int memset_start = (xmin / 16) * 4;
   int memset_end = min(((xmax + 15) / 16) * 4, line_buf_len);
@@ -436,7 +464,6 @@ void mask_line_buffer(uint8_t* lb, int line_buf_len, int xmin, int xmax) {
   memset(lb, 0, memset_start);
   memset(lb + memset_end, 0, line_buf_len - memset_end);
 
-  const int offset_table[4] = {2, 3, 0, 1};
 
   // mask unused pixels at the start of the output interval
   uint8_t line_start_mask = 0xFF << (2 * (xmin % 4));
@@ -478,6 +505,13 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
 ) {
 
   enum EpdDrawMode selected_mode = mode & 0x3F;
+
+#ifdef RENDER_METHOD_LCD
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+        waveform_lut_S3_VE(lut, phases, frame);
+        return EPD_DRAW_SUCCESS;
+    }
+#endif
 
   // two pixel per byte packing with only target color
   if (lut_size == (1 << 16)) {

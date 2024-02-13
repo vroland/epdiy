@@ -25,7 +25,7 @@ void epd_set_board(const EpdBoardDefinition *board_definition) {
   if (epd_board == NULL) {
       epd_board = board_definition;
   } else {
-      ESP_LOGE("epdiy", "EPD board can only be set once!");
+      ESP_LOGW("epdiy", "EPD board can only be set once!");
   }
 }
 

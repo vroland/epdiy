@@ -1,4 +1,5 @@
 #include "../output_common/render_method.h"
+#include "esp_intr_alloc.h"
 
 #ifdef RENDER_METHOD_I2S
 
@@ -58,6 +59,12 @@ void rmt_pulse_init(gpio_num_t pin) {
 
   rmt_config(&row_rmt_config);
   rmt_set_tx_intr_en(row_rmt_config.channel, true);
+}
+
+
+void rmt_pulse_deinit() {
+  esp_intr_disable(gRMT_intr_handle);
+  esp_intr_free(gRMT_intr_handle);
 }
 
 void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
