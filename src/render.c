@@ -384,26 +384,27 @@ static bool interlace_line(
     // since display horizontal resolutions should be divisible by 16,
     // only one end should be unaligned by 8 bytes (16 pixels)
     uint32_t to_addr = (uint32_t)to;
-    if (to_addr % 16 > 0) {
+    int alignment_offset = (to_addr % 16);
+    if (alignment_offset > 0) {
         unaligned_start = 0;
-        unaligned_len = (16 - (to_addr % 16)) * 2;
+        unaligned_len = (16 - alignment_offset) * 2;
     } else {
         unaligned_start = fb_width & (~0x1F);
-        unaligned_len = (16 - (to_addr + fb_width / 2) % 16) * 2;
+        unaligned_len = fb_width & 0x1F;
     }
 
-    int alignment_offset = (to_addr % 16);
     dirty = epd_interlace_4bpp_line_VE(
         to + alignment_offset, from + alignment_offset, interlaced + alignment_offset * 2,
         col_dirtyness + alignment_offset, fb_width
     );
 #endif
+    assert((unaligned_start + unaligned_len <= fb_width));
     for (int x = unaligned_start; x < unaligned_start + unaligned_len; x++) {
         uint8_t t = *(to + x / 2);
         uint8_t f = *(from + x / 2);
         t = (x % 2) ? (t >> 4) : (t & 0x0f);
         f = (x % 2) ? (f >> 4) : (f & 0x0f);
-        col_dirtyness[x / 2] |= (t ^ f);
+        col_dirtyness[x / 2] |= (t ^ f) << (4 * (x % 2));
         dirty |= (t ^ f);
         interlaced[x] = (t << 4) | f;
     }
@@ -421,7 +422,7 @@ EpdRect epd_difference_image_base(
     bool* dirty_lines,
     uint8_t* col_dirtyness
 ) {
-    assert((fb_width * fb_height) % 32 == 0);
+    assert(fb_width % 16 == 0);
     assert(col_dirtyness != NULL);
 
     memset(col_dirtyness, 0, fb_width / 2);
