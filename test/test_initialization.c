@@ -14,7 +14,7 @@
 #define TEST_BOARD epd_board_v7
 #endif
 
-TEST_CASE("initialization and deinitialization works", "[epdiy]")
+TEST_CASE("initialization and deinitialization works", "[epdiy,e2e]")
 {
     epd_init(&TEST_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
 
@@ -25,7 +25,7 @@ TEST_CASE("initialization and deinitialization works", "[epdiy]")
     epd_deinit();
 }
 
-TEST_CASE("re-initialization works", "[epdiy]")
+TEST_CASE("re-initialization works", "[epdiy,e2e]")
 {
     epd_init(&TEST_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
 

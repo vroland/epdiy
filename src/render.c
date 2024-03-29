@@ -91,13 +91,15 @@ static inline int rounded_display_height() {
 /**
 * Populate an output line mask from line dirtyness with one nibble per pixel.
 * If the dirtyness data is NULL, set the mask to neutral.
+* 
+* don't inline for to ensure availability in tests.
 */
-static void populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
+void __attribute__ ((noinline)) _epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
     if (dirty_columns == NULL) {
         memset(line_mask, 0xFF, mask_len);
     } else {
-        assert(epd_width() / 4 <= mask_len);
-        for (int c = 0; c < epd_width() / 2; c += 2) {
+        int pixels = mask_len * 4;
+        for (int c = 0; c <  pixels / 2; c += 2) {
             uint8_t mask = 0;
             mask |= (dirty_columns[c + 1] & 0xF0) != 0 ? 0xC0 : 0x00;
             mask |= (dirty_columns[c + 1] & 0x0F) != 0 ? 0x30 : 0x00;
@@ -191,7 +193,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
 #elif defined(RENDER_METHOD_LCD)
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         LineQueue_t* queue = &render_context.line_queues[i];
-        populate_line_mask(queue->mask_buffer, drawn_columns, queue->mask_buffer_len);
+        _epd_populate_line_mask(queue->mask_buffer, drawn_columns, queue->mask_buffer_len);
     }
 
     lcd_do_update(&render_context);
@@ -368,7 +370,7 @@ uint32_t epd_interlace_4bpp_line_VE(
  * Interlaces the lines at `to`, `from` into `interlaced`.
  * returns `1` if there are differences, `0` otherwise.
  */
-static bool interlace_line(
+bool _epd_interlace_line(
     const uint8_t* to,
     const uint8_t* from,
     uint8_t* interlaced,
@@ -433,7 +435,7 @@ EpdRect epd_difference_image_base(
 
     for (int y = crop_to.y; y < y_end; y++) {
         uint32_t offset = y * fb_width / 2;
-        int dirty = interlace_line(
+        int dirty = _epd_interlace_line(
             to + offset, from + offset, interlaced + offset * 2, col_dirtyness, fb_width
         );
         dirty_lines[y] = dirty;

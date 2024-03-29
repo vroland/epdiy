@@ -390,7 +390,8 @@ static void check_cache_configuration() {
         ESP_LOGE(
             "epdiy",
             "cache line size is set to %d (< 64B)! This will degrade performance, please update "
-            "this option in menuconfig."
+            "this option in menuconfig.",
+            CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE
         );
         ESP_LOGE(
             "epdiy",
