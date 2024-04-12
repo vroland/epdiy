@@ -87,19 +87,19 @@ static inline int rounded_display_height() {
     return (((epd_height() + 7) / 8) * 8);
 }
 
-
 /**
-* Populate an output line mask from line dirtyness with one nibble per pixel.
-* If the dirtyness data is NULL, set the mask to neutral.
-* 
-* don't inline for to ensure availability in tests.
-*/
-void __attribute__ ((noinline)) _epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
+ * Populate an output line mask from line dirtyness with one nibble per pixel.
+ * If the dirtyness data is NULL, set the mask to neutral.
+ *
+ * don't inline for to ensure availability in tests.
+ */
+void __attribute__((noinline))
+_epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
     if (dirty_columns == NULL) {
         memset(line_mask, 0xFF, mask_len);
     } else {
         int pixels = mask_len * 4;
-        for (int c = 0; c <  pixels / 2; c += 2) {
+        for (int c = 0; c < pixels / 2; c += 2) {
             uint8_t mask = 0;
             mask |= (dirty_columns[c + 1] & 0xF0) != 0 ? 0xC0 : 0x00;
             mask |= (dirty_columns[c + 1] & 0x0F) != 0 ? 0x30 : 0x00;
@@ -367,6 +367,32 @@ uint32_t epd_interlace_4bpp_line_VE(
 #endif
 
 /**
+ * Interlaces `len` nibbles from the buffers `to` and `from` into `interlaced`.
+ * In the process, tracks which nibbles differ in `col_dirtyness`.
+ * Returns `1` if there are differences, `0` otherwise.
+ * Does not require special alignment of the buffers beyond 32 bit alignment.
+ */
+static inline int _interlace_line_unaligned(
+    const uint8_t* to,
+    const uint8_t* from,
+    uint8_t* interlaced,
+    uint8_t* col_dirtyness,
+    int len
+) {
+    int dirty = 0;
+    for (int x = 0; x < len; x++) {
+        uint8_t t = *(to + x / 2);
+        uint8_t f = *(from + x / 2);
+        t = (x % 2) ? (t >> 4) : (t & 0x0f);
+        f = (x % 2) ? (f >> 4) : (f & 0x0f);
+        col_dirtyness[x / 2] |= (t ^ f) << (4 * (x % 2));
+        dirty |= (t ^ f);
+        interlaced[x] = (t << 4) | f;
+    }
+    return dirty;
+}
+
+/**
  * Interlaces the lines at `to`, `from` into `interlaced`.
  * returns `1` if there are differences, `0` otherwise.
  */
@@ -377,41 +403,33 @@ bool _epd_interlace_line(
     uint8_t* col_dirtyness,
     int fb_width
 ) {
+#ifdef RENDER_METHOD_I2S
+    return _interlace_line_unaligned(to, from, interlaced, col_dirtyness, fb_width) > 0;
+#elif defined(RENDER_METHOD_LCD)
+    // Use Vector Extensions with the ESP32-S3.
+    // Both input buffers should have the same alignment w.r.t. 16 bytes,
+    // as asserted in epd_difference_image_base.
     uint32_t dirty = 0;
-    int unaligned_start = 0;
-    int unaligned_len = fb_width;
 
-// use Vector Extensions with the ESP32-S3
-#ifdef RENDER_METHOD_LCD
-    // since display horizontal resolutions should be divisible by 16,
-    // only one end should be unaligned by 8 bytes (16 pixels)
-    uint32_t to_addr = (uint32_t)to;
-    int alignment_offset = (to_addr % 16);
-    if (alignment_offset > 0) {
-        unaligned_start = 0;
-        unaligned_len = (16 - alignment_offset) * 2;
-    } else {
-        unaligned_start = fb_width & (~0x1F);
-        unaligned_len = fb_width & 0x1F;
-    }
+    // alignment boundaries in pixels
+    int unaligned_len_front_px = ((16 - (uint32_t)to % 16) * 2) % 32;
+    int unaligned_len_back_px = (((uint32_t)to + fb_width / 2) % 16) * 2;
+    int unaligned_back_start_px = fb_width - unaligned_len_back_px;
+    int aligned_len_px = fb_width - unaligned_len_front_px - unaligned_len_back_px;
 
-    dirty = epd_interlace_4bpp_line_VE(
-        to + alignment_offset, from + alignment_offset, interlaced + alignment_offset * 2,
-        col_dirtyness + alignment_offset, fb_width
+    dirty |= _interlace_line_unaligned(to, from, interlaced, col_dirtyness, unaligned_len_front_px);
+    dirty |= epd_interlace_4bpp_line_VE(
+        to + unaligned_len_front_px / 2, from + unaligned_len_front_px / 2,
+        interlaced + unaligned_len_front_px, col_dirtyness + unaligned_len_front_px / 2,
+        aligned_len_px
     );
+    dirty |= _interlace_line_unaligned(
+        to + unaligned_back_start_px / 2, from + unaligned_back_start_px / 2,
+        interlaced + unaligned_back_start_px, col_dirtyness + unaligned_back_start_px / 2,
+        unaligned_len_back_px
+    );
+    return dirty;
 #endif
-    assert((unaligned_start + unaligned_len <= fb_width));
-    for (int x = unaligned_start; x < unaligned_start + unaligned_len; x++) {
-        uint8_t t = *(to + x / 2);
-        uint8_t f = *(from + x / 2);
-        t = (x % 2) ? (t >> 4) : (t & 0x0f);
-        f = (x % 2) ? (f >> 4) : (f & 0x0f);
-        col_dirtyness[x / 2] |= (t ^ f) << (4 * (x % 2));
-        dirty |= (t ^ f);
-        interlaced[x] = (t << 4) | f;
-    }
-
-    return dirty > 0;
 }
 
 EpdRect epd_difference_image_base(
@@ -424,8 +442,14 @@ EpdRect epd_difference_image_base(
     bool* dirty_lines,
     uint8_t* col_dirtyness
 ) {
-    assert(fb_width % 16 == 0);
+    assert(fb_width % 8 == 0);
     assert(col_dirtyness != NULL);
+
+    // these buffers should be allocated 16 byte aligned
+    assert((uint32_t)to % 16 == 0);
+    assert((uint32_t)from % 16 == 0);
+    assert((uint32_t)col_dirtyness % 16 == 0);
+    assert((uint32_t)interlaced % 16 == 0);
 
     memset(col_dirtyness, 0, fb_width / 2);
     memset(dirty_lines, 0, sizeof(bool) * fb_height);
