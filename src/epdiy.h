@@ -108,6 +108,10 @@ enum EpdDrawMode {
     /// See `PREVIOUSLY_WHITE`.
     /// Draw on a black background
     PREVIOUSLY_BLACK = 0x400,
+
+    /// Enforce NOT using S3 Vector extensions.
+    /// USed for testing.
+    MODE_FORCE_NO_PIE = 0x800,
 };
 
 /** Display software rotation.

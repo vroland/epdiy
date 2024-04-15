@@ -372,6 +372,7 @@ uint32_t epd_interlace_4bpp_line_VE(
  * Returns `1` if there are differences, `0` otherwise.
  * Does not require special alignment of the buffers beyond 32 bit alignment.
  */
+__attribute__((optimize("O3")))
 static inline int _interlace_line_unaligned(
     const uint8_t* to,
     const uint8_t* from,
@@ -396,6 +397,7 @@ static inline int _interlace_line_unaligned(
  * Interlaces the lines at `to`, `from` into `interlaced`.
  * returns `1` if there are differences, `0` otherwise.
  */
+__attribute__((optimize("O3")))
 bool _epd_interlace_line(
     const uint8_t* to,
     const uint8_t* from,

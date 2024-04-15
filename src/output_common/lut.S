@@ -6,8 +6,8 @@
 
 .text
 .align  4
-.global calc_epd_input_1ppB_1k_S3_VE
-.type   calc_epd_input_1ppB_1k_S3_VE,@function
+.global calc_epd_input_1ppB_1k_S3_VE_aligned
+.type   calc_epd_input_1ppB_1k_S3_VE_aligned,@function
 
 //        // CRASH AND BURN for debugging
 //        EE.MOVI.32.A q3, a2, 0
@@ -16,13 +16,13 @@
 //        EE.MOVI.32.A q3, a5, 3
 //        l8ui a10, a10, 0
 
-// void calc_epd_input_1ppB_64k(
+// void calc_epd_input_1ppB_1k_S3_VE_aligned(
 //    const uint32_t *ld,
 //    uint8_t *epd_input,
 //    const uint8_t *conversion_lut,
 //    uint32_t epd_width
 //);
-calc_epd_input_1ppB_1k_S3_VE: 
+calc_epd_input_1ppB_1k_S3_VE_aligned:
 // input   - a2
 // output   - a3
 // lut   - a4

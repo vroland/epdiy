@@ -1,8 +1,10 @@
 #include "lut.h"
 
+#include "epdiy.h"
 #include "render_method.h"
 #include "render_context.h"
 
+#include <stdint.h>
 #include <string.h>
 
 #include "esp_system.h" // for ESP_IDF_VERSION_VAL
@@ -151,49 +153,56 @@ void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
 }
 
 /**
- * Look up 4 pixels of a differential image.
+ * Look up 4 pixels of a differential image in a LUT constructed for use with vector extensions.
  */
 __attribute__((optimize("O3")))
-static inline uint8_t lookup_differential_pixels(const uint32_t in, const uint8_t *conversion_lut) {
-  uint8_t out = conversion_lut[(in >> 24) & 0xFF];
-  out |= (conversion_lut + 0x100)[(in >> 16) & 0xFF];
-  out |= (conversion_lut + 0x200)[(in >> 8) & 0xFF];
-  out |= (conversion_lut + 0x300)[in & 0xFF];
+static inline uint8_t lookup_pixels_in_VE_LUT(const uint32_t in, const uint8_t *conversion_lut) {
+  uint32_t* padded_lut = (uint32_t*)conversion_lut;
+  uint8_t out = padded_lut[(in >> 24) & 0xFF] << 6;
+  out |= padded_lut[(in >> 16) & 0xFF] << 4;
+  out |= padded_lut[(in >> 8) & 0xFF] << 2;
+  out |= padded_lut[(in >> 0 )& 0xFF];
   return out;
 }
 
-/**
- * Calculate EPD input for a difference image with one pixel per byte.
- */
-__attribute__((optimize("O3")))
-void IRAM_ATTR calc_epd_input_1ppB(
-    const uint32_t *ld,
-    uint8_t *epd_input,
-    const uint8_t *conversion_lut,
-    uint32_t epd_width
-) {
 
-  // this is reversed for little-endian, but this is later compensated
-  // through the output peripheral.
-  for (uint32_t j = 0; j < epd_width / 4; j += 4) {
-#ifdef RENDER_METHOD_LCD
-    epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
-#elif RENDER_METHOD_I2S
-    epd_input[j + 2] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 3] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 0] = lookup_differential_pixels(*(ld++), conversion_lut);
-    epd_input[j + 1] = lookup_differential_pixels(*(ld++), conversion_lut);
-#endif
-  }
+/**
+* Lookup accelerated by the S3 Vector Extensions.
+* Expects aligned buffers and a length that is divisible by 16.
+*/
+void IRAM_ATTR calc_epd_input_1ppB_1k_S3_VE_aligned(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint32_t epd_width);
+
+
+/**
+* Lookup accelerated by the S3 Vector Extensions.
+* Uses a 1K padded LUT (each entry takes up 32 bits)
+*/
+void IRAM_ATTR calc_epd_input_1ppB_1k_S3_VE(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint32_t epd_width) {
+    // alignment boundaries in pixels
+    int unaligned_len_front = (16 - (uint32_t)ld % 16) % 16;
+    int unaligned_len_back = ((uint32_t)ld + epd_width) % 16;
+    int aligned_len = epd_width - unaligned_len_front - unaligned_len_back;
+
+    if (unaligned_len_front) {
+      for (int i=0; i< unaligned_len_front / 4; i++) {
+        (*epd_input++) = lookup_pixels_in_VE_LUT((*ld++), conversion_lut);
+      }
+    }
+    calc_epd_input_1ppB_1k_S3_VE_aligned(ld, epd_input, conversion_lut, aligned_len);
+
+    ld += aligned_len / 4;
+    epd_input += aligned_len / 4;
+
+    if (unaligned_len_back) {
+      for (int i=0; i< unaligned_len_back / 4; i++) {
+        (*epd_input++) = lookup_pixels_in_VE_LUT((*ld++), conversion_lut);
+      }
+    }
 }
 
 /**
  * Calculate EPD input for a difference image with one pixel per byte.
  */
-
 __attribute__((optimize("O3")))
 void IRAM_ATTR calc_epd_input_1ppB_64k(
     const uint32_t *ld,
@@ -507,7 +516,7 @@ enum EpdDrawError IRAM_ATTR calculate_lut(
   enum EpdDrawMode selected_mode = mode & 0x3F;
 
 #ifdef RENDER_METHOD_LCD
-    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+    if ((mode & MODE_PACKING_1PPB_DIFFERENCE) && !(mode & MODE_FORCE_NO_PIE)) {
         waveform_lut_S3_VE(lut, phases, frame);
         return EPD_DRAW_SUCCESS;
     }

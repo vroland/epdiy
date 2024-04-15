@@ -5,6 +5,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unity.h>
+#include "esp_timer.h"
+
+#define DEFAULT_EXAMPLE_LEN 704
 
 bool _epd_interlace_line(
     const uint8_t* to,
@@ -75,7 +78,7 @@ static void diff_test_buffers_free(DiffTestBuffers* bufs) {
 
 TEST_CASE("simple aligned diff works", "[epdiy,unit]") {
     // length of the example buffers in bytes (i.e., half the length in pixels)
-    const int example_len = 176;
+    const int example_len = DEFAULT_EXAMPLE_LEN;
     DiffTestBuffers bufs;
     bool dirty;
 
@@ -97,8 +100,8 @@ TEST_CASE("simple aligned diff works", "[epdiy,unit]") {
 }
 
 TEST_CASE("dirtynes for diff without changes is correct", "[epdiy,unit]") {
-    const int example_len = 176;
-    const uint8_t NULL_ARRAY[176 * 2] = {0};
+    const int example_len = DEFAULT_EXAMPLE_LEN;
+    const uint8_t NULL_ARRAY[DEFAULT_EXAMPLE_LEN * 2] = {0};
     DiffTestBuffers bufs;
     bool dirty;
 
@@ -127,8 +130,8 @@ TEST_CASE("dirtynes for diff without changes is correct", "[epdiy,unit]") {
 }
 
 TEST_CASE("different 4-byte alignments work", "[epdiy,unit]") {
-    const int example_len = 176;
-    const uint8_t NULL_ARRAY[176 * 2] = {0};
+    const int example_len = DEFAULT_EXAMPLE_LEN;
+    const uint8_t NULL_ARRAY[DEFAULT_EXAMPLE_LEN * 2] = {0};
     DiffTestBuffers bufs;
     bool dirty;
 
@@ -150,13 +153,23 @@ TEST_CASE("different 4-byte alignments work", "[epdiy,unit]") {
             );
 
             printf(
-                "testing  with alignment (in px): (%d, %d)\n", 2 * start_offset, 2 * unaligned_len
+                "testing  with alignment (in px): (%d, %d)... ", 2 * start_offset, 2 * unaligned_len
             );
-            dirty = _epd_interlace_line(
-                bufs.to + start_offset, bufs.from + start_offset,
-                bufs.interlaced + 2 * start_offset, bufs.col_dirtyness + start_offset,
-                2 * unaligned_len
-            );
+            uint64_t start = esp_timer_get_time();
+
+            for (int i = 0; i < 100; i++) {
+                dirty = _epd_interlace_line(
+                    bufs.to + start_offset, bufs.from + start_offset,
+                    bufs.interlaced + 2 * start_offset, bufs.col_dirtyness + start_offset,
+                    2 * unaligned_len
+                );
+            }
+
+            uint64_t end = esp_timer_get_time();
+
+            printf("took %.2fus per iter.\n", (end - start) / 100.0);
+
+
 
             TEST_ASSERT(dirty == true);
 

@@ -33,11 +33,10 @@ lut_func_t get_lut_function(RenderContext_t* ctx) {
         return &calc_epd_input_1ppB_1k_S3_VE;
 #endif
 
-        if (ctx->conversion_lut_size == 1024) {
-            return &calc_epd_input_1ppB;
-        } else {
+        if (ctx->conversion_lut_size == (1 << 16)) {
             return &calc_epd_input_1ppB_64k;
         }
+        return NULL;
     } else if (mode & MODE_PACKING_8PPB) {
         return &calc_epd_input_1bpp;
     } else {
