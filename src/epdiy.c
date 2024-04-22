@@ -382,7 +382,7 @@ enum EpdDrawError epd_draw_image(EpdRect area, const uint8_t *data, const EpdWav
         .width = 0,
         .height = 0,
     };
-    return epd_draw_base(area, data, no_crop, EPD_MODE_DEFAULT, temperature, NULL, waveform);
+    return epd_draw_base(area, data, no_crop, EPD_MODE_DEFAULT, temperature, NULL, NULL, waveform);
 }
 
 void epd_set_rotation(enum EpdRotation rotation) {

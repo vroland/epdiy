@@ -382,10 +382,6 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
 
         memcpy(buf, lp, lq->element_size);
 
-        if (line_start_x > 0 || line_end_x < ctx->display_width) {
-            //mask_line_buffer(line_buf, line_bytes, line_start_x, line_end_x);
-        }
-
         lq_commit(lq);
 
         if (shifted) {
@@ -395,6 +391,7 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
 }
 
 void i2s_deinit() {
+    rmt_pulse_deinit();
     i2s_bus_deinit();
 }
 

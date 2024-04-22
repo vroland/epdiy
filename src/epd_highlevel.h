@@ -78,6 +78,8 @@ typedef struct {
   uint8_t* difference_fb;
   /// Tainted lines based on the last difference calculation.
   bool* dirty_lines;
+  /// Tainted column nibbles based on the last difference calculation.
+  uint8_t* dirty_columns;
   /// The waveform information to use.
   const EpdWaveform* waveform;
 } EpdiyHighlevelState;

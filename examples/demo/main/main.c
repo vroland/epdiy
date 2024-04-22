@@ -54,6 +54,11 @@ void idf_setup() {
         epd_rotated_display_height()
     );
 
+    // The display bus settings for V7 may be conservative, you can manually
+    // override the bus speed to tune for speed, i.e., if you set the PSRAM speed
+    // to 120MHz.
+    // epd_set_lcd_pixel_clock_MHz(17);
+
     heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
     heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 }
