@@ -1,5 +1,6 @@
 #include "i2s_data_bus.h"
 
+#include "esp_intr_alloc.h"
 #include "sdkconfig.h"
 
 // the I2S driver is based on ESP32 registers and won't compile on the S3
@@ -301,6 +302,7 @@ void i2s_bus_init(i2s_bus_config *cfg, uint32_t epd_row_width) {
 }
 
 void i2s_bus_deinit() {
+  esp_intr_disable(gI2S_intr_handle);
   esp_intr_free(gI2S_intr_handle);
 
   free(i2s_state.buf_a);

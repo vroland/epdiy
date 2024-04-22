@@ -61,6 +61,7 @@ void nibble_shift_buffer_right(uint8_t *buf, uint32_t len);
 
 void calc_epd_input_1ppB(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint32_t epd_width);
 void calc_epd_input_1ppB_64k(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint32_t epd_width);
+void calc_epd_input_1ppB_1k_S3_VE(const uint32_t *ld, uint8_t *epd_input, const uint8_t *conversion_lut, uint32_t epd_width);
 
 uint8_t lookup_pixels_4bpp_1k(uint16_t in, const uint8_t *conversion_lut, uint8_t from, uint32_t epd_width);
 void calc_epd_input_1bpp(const uint32_t *line_data, uint8_t *epd_input, const uint8_t *lut, uint32_t epd_width);

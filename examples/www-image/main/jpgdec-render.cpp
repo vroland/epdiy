@@ -475,7 +475,7 @@ void wifi_init_sta(void) {
 void app_main() {
     enum EpdInitOptions init_options = EPD_LUT_64K;
 
-    epd_init(&epd_board_v7, &ED133UT2, init_options);
+    epd_init(&epd_board_v7, &EC060KH5, init_options);
     color_filter_type = epd_get_display()->display_color_filter;
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,

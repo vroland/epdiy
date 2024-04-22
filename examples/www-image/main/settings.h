@@ -1,10 +1,10 @@
 // WiFi configuration:
-#define ESP_WIFI_SSID "sagemcom6AE0"
-#define ESP_WIFI_PASSWORD ""
+#define ESP_WIFI_SSID "SercommB918"
+#define ESP_WIFI_PASSWORD "MEFWMYSWDGCM5P"
 
 // Affects the gamma to calculate gray (lower is darker/higher contrast)
 // Nice test values: 0.9 1.2 1.4 higher and is too bright
-double gamma_value = 0.7;
+double gamma_value = 0.9;
 
 // - - - - Display configuration - - - - - - - - -
 // EPD Waveform should match your EPD for good grayscales
@@ -19,7 +19,7 @@ double gamma_value = 0.7;
 // Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
 // Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
 //#define IMG_URL ("https://loremflickr.com/2232/1680")
-#define IMG_URL ("http://img.cale.es/jpg/fasani/5ef2ee980a4ec")
+#define IMG_URL ("http://img.cale.es/jpg/fasani/5e5ff140694ee")
 // idf >= 4.3 needs VALIDATE_SSL_CERTIFICATE set to true for https URLs
 // Please check the README to understand how to use an SSL Certificate
 // Note: This makes a sntp time sync query for cert validation  (It's slower)
@@ -38,7 +38,7 @@ double gamma_value = 0.7;
 #define JPG_DITHERING true
 
 // NONE - DES_COLOR (Fabricated by wf-tech.com) applicable to jpgdec-render.cpp
-#define DISPLAY_COLOR_TYPE "DES_COLOR"
+#define DISPLAY_COLOR_TYPE "DISPLAY_CFA_KALEIDO"
 // As default is 512 without setting buffer_size property in esp_http_client_config_t
 #define HTTP_RECEIVE_BUFFER_SIZE 1986
 

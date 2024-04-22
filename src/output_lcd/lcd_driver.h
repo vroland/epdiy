@@ -11,24 +11,7 @@
  */
 typedef struct {
   // GPIO numbers of the parallel bus pins.
-  gpio_num_t data_0;
-  gpio_num_t data_1;
-  gpio_num_t data_2;
-  gpio_num_t data_3;
-  gpio_num_t data_4;
-  gpio_num_t data_5;
-  gpio_num_t data_6;
-  gpio_num_t data_7;
-
-
-  gpio_num_t data_8;
-  gpio_num_t data_9;
-  gpio_num_t data_10;
-  gpio_num_t data_11;
-  gpio_num_t data_12;
-  gpio_num_t data_13;
-  gpio_num_t data_14;
-  gpio_num_t data_15;
+  gpio_num_t data[16];
 
   // horizontal clock pin.
   gpio_num_t clock;
@@ -58,6 +41,7 @@ typedef bool(*line_cb_func_t)(void*, uint8_t*);
 typedef void(*frame_done_func_t)(void*);
 
 void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height);
+void epd_lcd_deinit();
 void epd_lcd_frame_done_cb(frame_done_func_t, void* payload);
 void epd_lcd_line_source_cb(line_cb_func_t, void* payload);
 void epd_lcd_start_frame();

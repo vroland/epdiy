@@ -13,6 +13,12 @@
  */
 void rmt_pulse_init(gpio_num_t pin);
 
+
+/**
+* Resets the pin and RMT peripheral, frees associated resources.
+*/
+void rmt_pulse_deinit();
+
 /**
  * Outputs a single pulse (high -> low) on the configured pin.
  * This function will always wait for a previous call to finish.
@@ -38,3 +44,4 @@ bool rmt_busy();
  */
 void pulse_ckv_ticks(uint16_t high_time_us, uint16_t low_time_us,
                      bool wait);
+
