@@ -102,12 +102,12 @@ const EpdDisplay_t GDEW101C01 = {
 };
 // EINK Kaleido display
 // epdiy_ED047TC2 is the one that gets more grays, but is not right
-const EpdDisplay_t EC060KH3 = {
+const EpdDisplay_t EC060KH5 = {
     .width = 1448,
     .height = 1072,
     .bus_width = 8,
     .bus_speed = 20,
-    .default_waveform = &epdiy_ED047TC2,
+    .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
     .display_color_filter = DISPLAY_CFA_KALEIDO
 };

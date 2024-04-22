@@ -5,6 +5,7 @@
 #include "freertos/task.h"
 
 #include "dragon.h"
+#include "big_dragon.h"
 #include "epd_highlevel.h"
 #include "epdiy.h"
 
@@ -18,23 +19,27 @@ EpdiyHighlevelState hl;
 #endif
 
 void idf_loop() {
-    EpdRect dragon_area = {.x = 0, .y = 0, .width = dragon_width, .height = dragon_height};
+    EpdRect dragon_area = 
+    {.x = 0, .y = 0, 
+    .width = big_dragon_width, 
+    .height = big_dragon_height};
 
     int temperature = 25;
 
     epd_poweron();
     epd_fullclear(&hl, temperature);
 
-    epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
+    //epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
+    epd_copy_to_framebuffer(dragon_area, big_dragon_data, epd_hl_get_framebuffer(&hl));
 
     enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
     epd_poweroff();
 
-    vTaskDelay(1000);
+    vTaskDelay(5000);
 }
 
 void idf_setup() {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    epd_init(&DEMO_BOARD, &EC060KH5, EPD_LUT_64K);
     epd_set_vcom(1560);
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
 }
