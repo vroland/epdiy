@@ -23,9 +23,22 @@
 // Gallery mode will loop through all JPG images in the SDCard
 #define GALLERY_MODE true
 // Seconds wait till reading next picture
-#define GALLERY_WAIT_SEC 10
+#define GALLERY_WAIT_SEC 5
 // Clean mode will do a full clean refresh before loading a new image (slower)
 #define GALLERY_CLEAN_MODE false
+
+#define FRONT_LIGHT_ENABLE true
+#define FL_PWM   GPIO_NUM_11
+
+#define LV_TICK_PERIOD_MS 1
+#define LEDC_TIMER              LEDC_TIMER_0
+#define LEDC_MODE               LEDC_LOW_SPEED_MODE
+#define LEDC_OUTPUT_IO          (11) // Define the output GPIO
+#define LEDC_CHANNEL            LEDC_CHANNEL_0
+#define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
+#define LEDC_DUTY               (2096) // 4096 Set duty to 50%. (2 ** 13) * 50% = 4096
+#define LEDC_FREQUENCY          (4000) // Frequency in Hertz. Set frequency at 4 kHz
+
 
 #include <errno.h>
 #include <dirent.h>
@@ -35,6 +48,10 @@
 #include "driver/gpio.h"
 #include "tinyusb.h"
 #include "tusb_msc_storage.h"
+// GPIO & PWM control of front-light
+#include "driver/gpio.h"
+#include "driver/ledc.h"
+
 #ifdef CONFIG_EXAMPLE_STORAGE_MEDIA_SDMMCCARD
 #include "diskio_impl.h"
 #include "diskio_sdmmc.h"
@@ -421,7 +438,17 @@ void gallery_mode() {
                 epd_fullclear(&hl, temperature);
             }
             read_file(d->d_name);
+
+            for (int duty=100; duty<8000; duty+=250) {
+                ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
+                ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
+
             vTaskDelay(pdMS_TO_TICKS(GALLERY_WAIT_SEC *1000));
+            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+
         }
     }
 }
@@ -605,10 +632,39 @@ clean:
 
 void app_main(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(1500));
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    epd_init(&epd_board_v7, &ED097TC2, EPD_LUT_64K);
+    epd_init(&epd_board_v7, &ED060XC3, EPD_LUT_64K);
     epd_set_vcom(1760);
+    
+    #if FRONT_LIGHT_ENABLE
+    gpio_set_pull_mode(FL_PWM, GPIO_PULLDOWN_ONLY);
+    gpio_set_direction(FL_PWM, GPIO_MODE_OUTPUT);
+// Prepare and then apply the LEDC PWM timer configuration
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode       = LEDC_MODE,
+        .duty_resolution  = LEDC_DUTY_RES,
+        .timer_num        = LEDC_TIMER,
+        .freq_hz          = LEDC_FREQUENCY,  // Set output frequency at 4 kHz
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+        // Prepare and then apply the LEDC PWM channel configuration
+    ledc_channel_config_t ledc_channel = {
+        .gpio_num       = LEDC_OUTPUT_IO,
+        .speed_mode     = LEDC_MODE,
+        .channel        = LEDC_CHANNEL,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .timer_sel      = LEDC_TIMER,
+        
+        .duty           = 0, // Set duty to 0%
+        .hpoint         = 0
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+    // Set duty to 50%
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY));
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
+    #endif
     // For color we use the epdiy built-in gamma_curve:
     if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
       epd_set_gamma_curve(gamma_value);
