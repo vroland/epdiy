@@ -3,9 +3,9 @@
  */
 
 #pragma once
+#include <stdint.h>
 #include "driver/gpio.h"
 #include "esp_attr.h"
-#include <stdint.h>
 
 /**
  * Initializes RMT Channel 0 with a pin for RMT pulsing.
@@ -13,10 +13,9 @@
  */
 void rmt_pulse_init(gpio_num_t pin);
 
-
 /**
-* Resets the pin and RMT peripheral, frees associated resources.
-*/
+ * Resets the pin and RMT peripheral, frees associated resources.
+ */
 void rmt_pulse_deinit();
 
 /**
@@ -27,8 +26,7 @@ void rmt_pulse_deinit();
  * @param: low_time_us Pulse low time in us.
  * @param: wait Block until the pulse is finished.
  */
-void pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
-                  bool wait);
+void pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us, bool wait);
 /**
  * Indicates if the rmt is currently sending a pulse.
  */
@@ -42,6 +40,4 @@ bool rmt_busy();
  * @param: low_time_us Pulse low time in clock ticks.
  * @param: wait Block until the pulse is finished.
  */
-void pulse_ckv_ticks(uint16_t high_time_us, uint16_t low_time_us,
-                     bool wait);
-
+void pulse_ckv_ticks(uint16_t high_time_us, uint16_t low_time_us, bool wait);

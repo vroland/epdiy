@@ -11,17 +11,14 @@
 #include "esp_timer.h"
 #include "output_common/lut.h"
 
-
 #define DEFAULT_EXAMPLE_LEN 1408
 
-static const uint8_t input_data_pattern[16] = {
-    0xFF, 0xFF, 0xF0, 0xFF, 0xFF, 0x00, 0x01, 0x10, 0xA5, 0xA5, 0x5A, 0x5A, 0xFF, 0xFF, 0x00, 0x08};
-static const uint8_t result_data_pattern_lcd[4] = {0x20, 0x90, 0x5A, 0x40};
+static const uint8_t input_data_pattern[16] = { 0xFF, 0xFF, 0xF0, 0xFF, 0xFF, 0x00, 0x01, 0x10,
+                                                0xA5, 0xA5, 0x5A, 0x5A, 0xFF, 0xFF, 0x00, 0x08 };
+static const uint8_t result_data_pattern_lcd[4] = { 0x20, 0x90, 0x5A, 0x40 };
 
-
-typedef void (*lut_func_t)(const uint32_t *, uint8_t *, const uint8_t *, uint32_t);
+typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*, uint32_t);
 static uint8_t waveform_phases[16][4];
-
 
 static EpdWaveformPhases test_waveform = {
     .phase_times = NULL,
@@ -37,16 +34,16 @@ typedef struct {
     int example_len_px;
 } LutTestBuffers;
 
-
 static void fill_test_waveform() {
-    for (int to=0; to<16; to++) {
-
+    for (int to = 0; to < 16; to++) {
         memset(waveform_phases[to], 0, 4);
 
-        for (int from=0; from<16; from++) {
+        for (int from = 0; from < 16; from++) {
             uint8_t val = 0x00;
-            if (to < from) val = 0x01;
-            if (to > from) val = 0x02;
+            if (to < from)
+                val = 0x01;
+            if (to > from)
+                val = 0x02;
             waveform_phases[to][from >> 2] |= val << (3 - (from & 0x3)) * 2;
         }
     }
@@ -64,7 +61,7 @@ static void lut_test_buffers_fill(LutTestBuffers* bufs) {
 
     memset(bufs->lut, 0, 1 << 16);
     memset(bufs->result_line, 0, bufs->example_len_px / 4);
-    
+
     fill_test_waveform();
 }
 
@@ -102,7 +99,7 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
     for (int start_offset = 0; start_offset <= 16; start_offset += 4) {
         for (int end_offset = 0; end_offset <= 16; end_offset += 4) {
             int unaligned_len = len - end_offset - start_offset;
-            
+
             memset(bufs->result_line, 0, out_len);
             memcpy(bufs->expected_line, expectation_backup, out_len);
 
@@ -113,8 +110,13 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
             printf("testing  with alignment (in px): (%d, %d)... ", start_offset, unaligned_len);
 
             uint64_t start = esp_timer_get_time();
-            for (int i=0; i < 100; i++) {
-                lut_func(bufs->line_data + start_offset / 4, bufs->result_line + start_offset / 4, bufs->lut, unaligned_len);
+            for (int i = 0; i < 100; i++) {
+                lut_func(
+                    bufs->line_data + start_offset / 4,
+                    bufs->result_line + start_offset / 4,
+                    bufs->lut,
+                    unaligned_len
+                );
             }
             uint64_t end = esp_timer_get_time();
 
@@ -129,7 +131,6 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
 
     heap_caps_free(expectation_backup);
 }
-
 
 TEST_CASE("1ppB lookup LCD, 64k LUT", "[epdiy,unit]") {
     LutTestBuffers bufs;

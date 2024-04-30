@@ -1,10 +1,9 @@
 #pragma once
 
 #include <stdatomic.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-
+#include <stdint.h>
 
 /// Circular line queue with atomic read / write operations
 /// and accelerated masking on the output buffer.
@@ -15,7 +14,7 @@ typedef struct {
     uint8_t** bufs;
     // size of an element
     size_t element_size;
-    //size of the mask buffer
+    // size of the mask buffer
     size_t mask_buffer_len;
     // mask to appyl to the output buffer, NULL if none.
     // mut be elem_buf_size long.

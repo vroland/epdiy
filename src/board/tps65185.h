@@ -34,4 +34,4 @@ void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV);
  */
 int8_t tps_read_thermistor(i2c_port_t i2c_num);
 
-#endif //  TPS65185_H
+#endif  //  TPS65185_H

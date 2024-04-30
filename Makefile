@@ -17,8 +17,11 @@ clean:
 	rm src/waveforms/eink_*.h
 
 format: 
-	clang-format -i $(shell find ./examples -regex '.*main.*\.\(c\|cpp\|h\|ino\)$$' \
-		-not -regex '.*/\(.ccls-cache\|waveforms\|\components\|build\)/.*' \
+	clang-format --style=file -i $(shell find ./ -regex '.*\.\(c\|cpp\|h\|ino\)$$' \
+		-not -regex '.*/\(.ccls-cache\|.cache\|waveforms\|\components\|build\)/.*' \
+		-not -regex '.*/img_.*.h' \
+		-not -regex '.*/build.*' \
+		-not -regex '.*/\(firasans_.*.h\|opensans.*.h\|amiri.h\|alexandria.h\|dragon.h\)' \
 		-not -regex '.*E[DS][0-9]*[A-Za-z]*[0-9].h')
 
 src/waveforms/epdiy_%.h: src/waveforms/epdiy_%.json
