@@ -1,6 +1,7 @@
 .pio
 .vscode
 build/
+build.clang
 sdkconfig.old
 sdkconfig
 **/build/
@@ -24,3 +25,4 @@ dependencies.lock
 ED*.h
 ES*.h
 examples/private_*/
+*.code-workspace
