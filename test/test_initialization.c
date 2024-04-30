@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <unity.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -35,6 +36,7 @@ TEST_CASE("re-initialization works", "[epdiy,e2e]")
 
     epd_deinit();
 
+    int before_init = esp_get_free_internal_heap_size();
     epd_init(&TEST_BOARD, &ED097TC2, EPD_OPTIONS_DEFAULT);
  
     epd_poweron();
@@ -42,4 +44,6 @@ TEST_CASE("re-initialization works", "[epdiy,e2e]")
     epd_poweroff();
 
     epd_deinit();
+    int after_init = esp_get_free_internal_heap_size();
+    TEST_ASSERT_EQUAL(after_init, before_init);
 }
