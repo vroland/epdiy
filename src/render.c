@@ -324,7 +324,7 @@ void epd_renderer_init(enum EpdInitOptions options) {
         );
         assert(render_context.feed_line_buffers[i] != NULL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 12, (void*)i, configMAX_PRIORITIES,
+            render_thread, "epd_prep", 1 << 12, (void*)i, configMAX_PRIORITIES - 1,
             &render_context.feed_tasks[i], i
         ));
     }
