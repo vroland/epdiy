@@ -2,3 +2,4 @@ BasedOnStyle: chromium
 IndentWidth: 4
 ColumnLimit: 100
 AlignAfterOpenBracket: BlockIndent
+IncludeBlocks: Preserve
