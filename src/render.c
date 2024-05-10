@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "esp_heap_caps.h"
 #include "output_common/line_queue.h"
 #include "output_common/lut.h"
 #include "output_common/render_context.h"
@@ -338,6 +339,7 @@ void epd_renderer_deinit() {
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         vTaskDelete(render_context.feed_tasks[i]);
         lq_free(&render_context.line_queues[i]);
+        heap_caps_free(render_context.feed_line_buffers[i]);
         vSemaphoreDelete(render_context.feed_done_smphr[i]);
     }
 
@@ -351,8 +353,8 @@ void epd_renderer_deinit() {
         epd_board->deinit();
     }
 
-    free(render_context.conversion_lut);
-    free(render_context.line_threads);
+    heap_caps_free(render_context.conversion_lut);
+    heap_caps_free(render_context.line_threads);
     vSemaphoreDelete(render_context.frame_done);
 }
 
