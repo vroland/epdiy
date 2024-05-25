@@ -3,6 +3,19 @@ name: ESP-IDF
 on: [push, pull_request]
 
 jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    container:
+      image: "espressif/idf:release-v5.2"
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          . $IDF_PATH/export.sh
+          idf_tools.py install esp-clang
+          . $IDF_PATH/export.sh
+          which clang-format
+          make format-check
+
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -11,6 +24,7 @@ jobs:
         version:
           - release-v4.4
           - release-v5.1
+          - release-v5.2
         example:
           - calibration_helper
           - demo
