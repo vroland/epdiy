@@ -50,7 +50,8 @@ void idf_setup() {
     epd_set_rotation(EPD_ROT_LANDSCAPE);
 
     printf(
-        "Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(),
+        "Dimensions after rotation, width: %d height: %d\n\n",
+        epd_rotated_display_width(),
         epd_rotated_display_height()
     );
 
@@ -221,7 +222,8 @@ void idf_loop() {
         .x = 20,
         .y = 20,
         .width = epd_rotated_display_width() - 40,
-        .height = epd_rotated_display_height() - 40};
+        .height = epd_rotated_display_height() - 40,
+    };
     epd_draw_rect(border_rect, 0, fb);
 
     cursor_x = 50;
@@ -235,7 +237,9 @@ void idf_loop() {
         "➸ High-quality font rendering ✎🙋\n"
         "➸ Partial update\n"
         "➸ Arbitrary transitions with vendor waveforms",
-        &cursor_x, &cursor_y, fb
+        &cursor_x,
+        &cursor_y,
+        fb
     );
 
     EpdRect img_beach_area = {

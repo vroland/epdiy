@@ -74,8 +74,8 @@ double_t get_battery_percentage() {
         percent_experiment = 100;
     }
 
-    String voltage = "Battery Voltage :" + String(battery_voltage) + "V which is around " +
-                     String(percent_experiment) + "%";
+    String voltage = "Battery Voltage :" + String(battery_voltage) + "V which is around "
+                     + String(percent_experiment) + "%";
     Serial.println(voltage);
 
     epd_poweroff();
@@ -135,7 +135,11 @@ void display_full_screen_left_aligned_text(const char* text) {
     String battery_text = String(get_battery_percentage());
     battery_text.concat("% Battery");
     epd_write_string(
-        &FiraSans_12, battery_text.c_str(), &battery_cursor_x, &battery_cursor_y, fb,
+        &FiraSans_12,
+        battery_text.c_str(),
+        &battery_cursor_x,
+        &battery_cursor_y,
+        fb,
         &battery_font_props
     );
     /********************************************************/
@@ -193,8 +197,8 @@ void print_wakeup_reason() {
  */
 void correct_adc_reference() {
     esp_adc_cal_characteristics_t adc_chars;
-    esp_adc_cal_value_t val_type =
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    esp_adc_cal_value_t val_type
+        = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
         Serial.printf("eFuse Vref:%u mV", adc_chars.vref);
         vref = adc_chars.vref;

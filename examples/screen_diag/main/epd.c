@@ -1,8 +1,8 @@
 #include "epd.h"
 
+#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <esp_log.h>
 
 static EpdiyHighlevelState s_state;
 uint8_t* g_framebuffer;
@@ -15,8 +15,7 @@ static int s_temperature;
 #define DEMO_BOARD epd_board_v7
 #endif
 
-void initialize_screen(void)
-{
+void initialize_screen(void) {
     epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
@@ -33,8 +32,7 @@ void initialize_screen(void)
     epd_poweroff();
 }
 
-void update_screen(void)
-{
+void update_screen(void) {
     enum EpdDrawError err;
 
     epd_poweron();
@@ -47,14 +45,12 @@ void update_screen(void)
     }
 }
 
-void clear_screen(void)
-{
+void clear_screen(void) {
     epd_hl_set_all_white(&s_state);
     update_screen();
 }
 
-void full_clear_screen(void)
-{
+void full_clear_screen(void) {
     epd_poweron();
     epd_fullclear(&s_state, s_temperature);
     epd_poweroff();

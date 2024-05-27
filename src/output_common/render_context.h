@@ -1,9 +1,9 @@
 #pragma once
 
-#include <stdatomic.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include <stdatomic.h>
 
 #include "../epdiy.h"
 #include "line_queue.h"
@@ -13,8 +13,8 @@
 typedef struct {
     EpdRect area;
     EpdRect crop_to;
-    const bool *drawn_lines;
-    const uint8_t *data_ptr;
+    const bool* drawn_lines;
+    const uint8_t* data_ptr;
 
     /// The display width for quick access.
     int display_width;
@@ -39,7 +39,7 @@ typedef struct {
 
     /// index of the waveform mode when using vendor waveforms.
     /// This is not necessarily the mode number if the waveform header
-    //only contains a selection of modes!
+    // only contains a selection of modes!
     int waveform_index;
     /// waveform range when using vendor waveforms
     int waveform_range;
@@ -51,7 +51,6 @@ typedef struct {
     const EpdWaveform* waveform;
     enum EpdDrawMode mode;
     enum EpdDrawError error;
-
 
     // Lookup table size.
     size_t conversion_lut_size;
@@ -67,7 +66,7 @@ typedef struct {
     int skipping;
 } RenderContext_t;
 
-typedef void (*lut_func_t)(const uint32_t *, uint8_t *, const uint8_t *, uint32_t);
+typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*, uint32_t);
 
 /**
  * Depending on the render context, decide which LUT function to use.
@@ -80,8 +79,8 @@ lut_func_t get_lut_function(RenderContext_t* ctx);
  * framebuffer start pointer, min and max vertical positions and the pixels per byte.
  */
 void get_buffer_params(
-    RenderContext_t *ctx,
-    int *bytes_per_line,
+    RenderContext_t* ctx,
+    int* bytes_per_line,
     const uint8_t** start_ptr,
     int* min_y,
     int* max_y,
@@ -93,4 +92,4 @@ void get_buffer_params(
  *
  * (Reset counters, etc)
  */
-void prepare_context_for_next_frame(RenderContext_t *ctx);
+void prepare_context_for_next_frame(RenderContext_t* ctx);

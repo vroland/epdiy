@@ -203,9 +203,7 @@ typedef struct {
 
 /** Initialize the ePaper display */
 void epd_init(
-    const EpdBoardDefinition* board,
-    const EpdDisplay_t* display,
-    enum EpdInitOptions options
+    const EpdBoardDefinition* board, const EpdDisplay_t* display, enum EpdInitOptions options
 );
 
 /**
@@ -330,13 +328,7 @@ void epd_draw_hline(int x, int y, int length, uint8_t color, uint8_t* framebuffe
 void epd_draw_vline(int x, int y, int length, uint8_t color, uint8_t* framebuffer);
 
 void epd_fill_circle_helper(
-    int x0,
-    int y0,
-    int r,
-    int corners,
-    int delta,
-    uint8_t color,
-    uint8_t* framebuffer
+    int x0, int y0, int r, int corners, int delta, uint8_t color, uint8_t* framebuffer
 );
 
 /**
@@ -404,14 +396,7 @@ void epd_draw_line(int x0, int y0, int x1, int y1, uint8_t color, uint8_t* frame
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_draw_triangle(
-    int x0,
-    int y0,
-    int x1,
-    int y1,
-    int x2,
-    int y2,
-    uint8_t color,
-    uint8_t* framebuffer
+    int x0, int y0, int x1, int y1, int x2, int y2, uint8_t color, uint8_t* framebuffer
 );
 
 /**
@@ -427,14 +412,7 @@ void epd_draw_triangle(
  * @param framebuffer: The framebuffer to draw to,
  */
 void epd_fill_triangle(
-    int x0,
-    int y0,
-    int x1,
-    int y1,
-    int x2,
-    int y2,
-    uint8_t color,
-    uint8_t* framebuffer
+    int x0, int y0, int x1, int y1, int x2, int y2, uint8_t color, uint8_t* framebuffer
 );
 /**
  * Get the current ambient temperature in °C, if supported by the board.
@@ -497,11 +475,7 @@ enum EpdDrawError epd_write_string(
  * Write a (multi-line) string to the EPD.
  */
 enum EpdDrawError epd_write_default(
-    const EpdFont* font,
-    const char* string,
-    int* cursor_x,
-    int* cursor_y,
-    uint8_t* framebuffer
+    const EpdFont* font, const char* string, int* cursor_x, int* cursor_y, uint8_t* framebuffer
 );
 
 /**
@@ -539,7 +513,8 @@ void epd_push_pixels(EpdRect area, short time, int color);
  *      skipped.
  * @param drawn_columns: If not NULL, an array of at least the width of the
  *      image / 2, 16-byte aligned.
- *      The image will only be updated in pixel columns where the corresponding nibbles are non-zero.
+ *      The image will only be updated in pixel columns where the corresponding nibbles are
+ * non-zero.
  * @param waveform: The waveform information to use for drawing.
  *      If you don't have special waveforms, use `EPD_BUILTIN_WAVEFORM`.
  * @returns `EPD_DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
@@ -613,10 +588,7 @@ void epd_draw_rotated_image(EpdRect image_area, const uint8_t* image_buffer, uin
  * With an optional transparent color (color key transparency)
  */
 void epd_draw_rotated_transparent_image(
-    EpdRect image_area,
-    const uint8_t* image_buffer,
-    uint8_t* framebuffer,
-    uint8_t transparent_color
+    EpdRect image_area, const uint8_t* image_buffer, uint8_t* framebuffer, uint8_t transparent_color
 );
 
 /**

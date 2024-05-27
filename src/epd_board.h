@@ -8,18 +8,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <xtensa/core-macros.h>
 #include <esp_err.h>
+#include <xtensa/core-macros.h>
 
 /**
  * State of display control pins.
  */
 typedef struct {
-  bool ep_latch_enable : 1;
-  bool ep_output_enable : 1;
-  bool ep_sth : 1;
-  bool ep_mode : 1;
-  bool ep_stv : 1;
+    bool ep_latch_enable : 1;
+    bool ep_output_enable : 1;
+    bool ep_sth : 1;
+    bool ep_mode : 1;
+    bool ep_stv : 1;
 } epd_ctrl_state_t;
 
 /**
@@ -27,44 +27,44 @@ typedef struct {
  */
 typedef struct {
     /**
-    * Initialize the board.
-    */
+     * Initialize the board.
+     */
     void (*init)(uint32_t epd_row_width);
     /**
-    * Clean up resources and peripherals used by the board.
-    */
+     * Clean up resources and peripherals used by the board.
+     */
     void (*deinit)(void);
     /**
-    * Set display line state
-    */
-    void (*set_ctrl)(epd_ctrl_state_t *, const epd_ctrl_state_t * const);
+     * Set display line state
+     */
+    void (*set_ctrl)(epd_ctrl_state_t*, const epd_ctrl_state_t* const);
     /**
-    * Enable power to the display.
-    */
-    void (*poweron)(epd_ctrl_state_t *);
+     * Enable power to the display.
+     */
+    void (*poweron)(epd_ctrl_state_t*);
     /**
-    * Disable power to the display.
-    */
-    void (*poweroff)(epd_ctrl_state_t *);
+     * Disable power to the display.
+     */
+    void (*poweroff)(epd_ctrl_state_t*);
 
     /**
-    * Set the display common voltage if supported.
-    *
-    * Voltage is set as absolute value in millivolts.
-    * Although VCOM is negative, this function takes a positive (absolute) value.
-    */
+     * Set the display common voltage if supported.
+     *
+     * Voltage is set as absolute value in millivolts.
+     * Although VCOM is negative, this function takes a positive (absolute) value.
+     */
     void (*set_vcom)(int);
 
     /**
-    * Get the current temperature if supported by the board.
-    */
+     * Get the current temperature if supported by the board.
+     */
     float (*get_temperature)(void);
 
     /**
-    * Set GPIO direction of the broken-out GPIO extender port,
-    * if available.
-    * Setting `make_input` to `1` corresponds to input, `0` corresponds to output.
-    */
+     * Set GPIO direction of the broken-out GPIO extender port,
+     * if available.
+     * Setting `make_input` to `1` corresponds to input, `0` corresponds to output.
+     */
     esp_err_t (*gpio_set_direction)(int pin, bool make_input);
 
     /**
@@ -73,8 +73,8 @@ typedef struct {
     bool (*gpio_read)(int pin);
 
     /**
-    * Set the output level of a GPIO extender, if available.
-    */
+     * Set the output level of a GPIO extender, if available.
+     */
     esp_err_t (*gpio_write)(int pin, bool value);
 } EpdBoardDefinition;
 
@@ -88,12 +88,12 @@ const EpdBoardDefinition* epd_current_board();
  *
  * The implementation of this method is in board/epd_board.c.
  **/
-void epd_set_board(const EpdBoardDefinition *board);
+void epd_set_board(const EpdBoardDefinition* board);
 
 /**
  * Get the board's current control register state.
  */
-epd_ctrl_state_t *epd_ctrl_state();
+epd_ctrl_state_t* epd_ctrl_state();
 
 /**
  * Set the display mode pin.

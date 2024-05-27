@@ -154,8 +154,9 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     }
 
     const bool crop = (crop_to.width > 0 && crop_to.height > 0);
-    if (crop && (crop_to.width > area.width || crop_to.height > area.height ||
-                 crop_to.x > area.width || crop_to.y > area.height)) {
+    if (crop
+        && (crop_to.width > area.width || crop_to.height > area.height || crop_to.x > area.width
+            || crop_to.y > area.height)) {
         return EPD_DRAW_INVALID_CROP;
     }
 
@@ -279,8 +280,8 @@ void epd_renderer_init(enum EpdInitOptions options) {
     }
 
     ESP_LOGI("epd", "Space used for waveform LUT: %dK", lut_size / 1024);
-    render_context.conversion_lut =
-        (uint8_t*)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    render_context.conversion_lut
+        = (uint8_t*)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (render_context.conversion_lut == NULL) {
         ESP_LOGE("epd", "could not allocate LUT!");
         abort();
@@ -295,8 +296,9 @@ void epd_renderer_init(enum EpdInitOptions options) {
 
     // When using the LCD peripheral, we may need padding lines to
     // satisfy the bounce buffer size requirements
-    render_context.line_threads =
-        (uint8_t*)heap_caps_malloc(rounded_display_height(), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    render_context.line_threads = (uint8_t*)heap_caps_malloc(
+        rounded_display_height(), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL
+    );
 
     int queue_len = 32;
     if (options & EPD_FEED_QUEUE_32) {
@@ -325,8 +327,13 @@ void epd_renderer_init(enum EpdInitOptions options) {
         );
         assert(render_context.feed_line_buffers[i] != NULL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 12, (void*)i, configMAX_PRIORITIES - 1,
-            &render_context.feed_tasks[i], i
+            render_thread,
+            "epd_prep",
+            1 << 12,
+            (void*)i,
+            configMAX_PRIORITIES - 1,
+            &render_context.feed_tasks[i],
+            i
         ));
     }
 }
@@ -374,13 +381,8 @@ uint32_t epd_interlace_4bpp_line_VE(
  * Returns `1` if there are differences, `0` otherwise.
  * Does not require special alignment of the buffers beyond 32 bit alignment.
  */
-__attribute__((optimize("O3")))
-static inline int _interlace_line_unaligned(
-    const uint8_t* to,
-    const uint8_t* from,
-    uint8_t* interlaced,
-    uint8_t* col_dirtyness,
-    int len
+__attribute__((optimize("O3"))) static inline int _interlace_line_unaligned(
+    const uint8_t* to, const uint8_t* from, uint8_t* interlaced, uint8_t* col_dirtyness, int len
 ) {
     int dirty = 0;
     for (int x = 0; x < len; x++) {
@@ -399,8 +401,7 @@ static inline int _interlace_line_unaligned(
  * Interlaces the lines at `to`, `from` into `interlaced`.
  * returns `1` if there are differences, `0` otherwise.
  */
-__attribute__((optimize("O3")))
-bool _epd_interlace_line(
+__attribute__((optimize("O3"))) bool _epd_interlace_line(
     const uint8_t* to,
     const uint8_t* from,
     uint8_t* interlaced,
@@ -423,13 +424,17 @@ bool _epd_interlace_line(
 
     dirty |= _interlace_line_unaligned(to, from, interlaced, col_dirtyness, unaligned_len_front_px);
     dirty |= epd_interlace_4bpp_line_VE(
-        to + unaligned_len_front_px / 2, from + unaligned_len_front_px / 2,
-        interlaced + unaligned_len_front_px, col_dirtyness + unaligned_len_front_px / 2,
+        to + unaligned_len_front_px / 2,
+        from + unaligned_len_front_px / 2,
+        interlaced + unaligned_len_front_px,
+        col_dirtyness + unaligned_len_front_px / 2,
         aligned_len_px
     );
     dirty |= _interlace_line_unaligned(
-        to + unaligned_back_start_px / 2, from + unaligned_back_start_px / 2,
-        interlaced + unaligned_back_start_px, col_dirtyness + unaligned_back_start_px / 2,
+        to + unaligned_back_start_px / 2,
+        from + unaligned_back_start_px / 2,
+        interlaced + unaligned_back_start_px,
+        col_dirtyness + unaligned_back_start_px / 2,
         unaligned_len_back_px
     );
     return dirty;
@@ -507,7 +512,13 @@ EpdRect epd_difference_image(
     uint8_t* col_dirtyness
 ) {
     return epd_difference_image_base(
-        to, from, epd_full_screen(), epd_width(), epd_height(), interlaced, dirty_lines,
+        to,
+        from,
+        epd_full_screen(),
+        epd_width(),
+        epd_height(),
+        interlaced,
+        dirty_lines,
         col_dirtyness
     );
 }

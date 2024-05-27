@@ -9,8 +9,7 @@
 #endif
 
 #ifdef __clang__
-#define IRAM_ATTR 
+#define IRAM_ATTR
 // define this if we're using clangd to make it accept the GCC builtin
-void __assert_func (const char* file, int line, const char* func,
-               const char* failedexpr);
+void __assert_func(const char* file, int line, const char* func, const char* failedexpr);
 #endif

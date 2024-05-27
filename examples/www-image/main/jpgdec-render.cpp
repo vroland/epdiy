@@ -109,7 +109,7 @@ static void obtain_time(void) {
 
     // wait for time to be set
     time_t now = 0;
-    struct tm timeinfo = {0};
+    struct tm timeinfo = { 0 };
     int retry = 0;
     const int retry_count = 10;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
@@ -141,7 +141,8 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
         // Copy directly horizontal MCU pixels in EPD fb
         memcpy(
             &fb[(pDraw->y + yy) * epd_width() / 2 + pDraw->x / 2],
-            &pDraw->pPixels[(yy * pDraw->iWidth) >> 2], pDraw->iWidth
+            &pDraw->pPixels[(yy * pDraw->iWidth) >> 2],
+            pDraw->iWidth
         );
     }
 
@@ -188,8 +189,12 @@ int decodeJpeg(uint8_t* source_buf, int xpos, int ypos) {
         if (jpeg.decodeDither(dither_space, 0)) {
             time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
             ESP_LOGI(
-                "decode", "%d ms - %dx%d image MCUs:%d", time_decomp, jpeg.getWidth(),
-                jpeg.getHeight(), mcu_count
+                "decode",
+                "%d ms - %dx%d image MCUs:%d",
+                time_decomp,
+                jpeg.getWidth(),
+                jpeg.getHeight(),
+                mcu_count
             );
         } else {
             ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
@@ -247,7 +252,9 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
 
                 ESP_LOGI("www-dw", "%d ms - download", time_download);
                 ESP_LOGI(
-                    "render", "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render,
+                    "render",
+                    "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)",
+                    time_render,
                     JPEG_CPY_FRAMEBUFFER
                 );
                 // Refresh display
@@ -277,15 +284,14 @@ static void http_post(void) {
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
      */
-    esp_http_client_config_t config = {
-        .url = IMG_URL,
+    esp_http_client_config_t config
+        = {.url = IMG_URL,
 #if VALIDATE_SSL_CERTIFICATE == true
-        .cert_pem = (char*)server_cert_pem_start,
+           .cert_pem = (char*)server_cert_pem_start,
 #endif
-        .disable_auto_redirect = false,
-        .event_handler = _http_event_handler,
-        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE
-    };
+           .disable_auto_redirect = false,
+           .event_handler = _http_event_handler,
+           .buffer_size = HTTP_RECEIVE_BUFFER_SIZE };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -299,8 +305,11 @@ static void http_post(void) {
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
         ESP_LOGI(
-            TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n", IMG_URL,
-            esp_http_client_get_status_code(client), esp_http_client_get_content_length(client)
+            TAG,
+            "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n",
+            IMG_URL,
+            esp_http_client_get_status_code(client),
+            esp_http_client_get_content_length(client)
         );
     } else {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
@@ -326,8 +335,9 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT BIT1
 static int s_retry_num = 0;
 
-static void
-event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+static void event_handler(
+    void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data
+) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -338,7 +348,9 @@ event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* ev
         } else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGI(
-                TAG, "Connect to the AP failed %d times. Going to deepsleep %d minutes", 5,
+                TAG,
+                "Connect to the AP failed %d times. Going to deepsleep %d minutes",
+                5,
                 DEEPSLEEP_MINUTES_AFTER_RENDER
             );
             deepsleep();

@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <esp_console.h>
 #include <argtable3/argtable3.h>
+#include <esp_console.h>
 
 #ifndef ARRAY_SIZE
 /**
@@ -48,13 +48,13 @@ bool validate_color(uint8_t* inout_color, struct arg_int* arg);
  *
  * @param args_struct name of the (static) argument struct.
  */
-#define HANDLE_ARGUMENTS(args_struct) \
-    {                                                               \
-        int nerrors = arg_parse(argc, argv, (void**) &args_struct); \
-        if (nerrors > 0) {                                          \
-            arg_print_errors(stdout, args_struct.end, argv[0]);     \
-            return 1;                                               \
-        }                                                           \
+#define HANDLE_ARGUMENTS(args_struct)                              \
+    {                                                              \
+        int nerrors = arg_parse(argc, argv, (void**)&args_struct); \
+        if (nerrors > 0) {                                         \
+            arg_print_errors(stdout, args_struct.end, argv[0]);    \
+            return 1;                                              \
+        }                                                          \
     }
 
 /**
@@ -64,7 +64,8 @@ bool validate_color(uint8_t* inout_color, struct arg_int* arg);
  * @param accessor accessor used to retrieve the first value (e.g. ival for struct arg_int)
  * @param default_value
  */
-#define GET_ARG(arg, accessor, default_value) (arg)->count == 1 ? (arg)->accessor[0] : (default_value)
+#define GET_ARG(arg, accessor, default_value) \
+    (arg)->count == 1 ? (arg)->accessor[0] : (default_value)
 
 /**
  * Alias for GET_ARG, specialized for int arguments.

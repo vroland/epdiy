@@ -8,42 +8,41 @@
 
 static const int EPDIY_TPS_ADDR = 0x68;
 
-static uint8_t i2c_master_read_slave(i2c_port_t i2c_num, int reg)
-{
-	uint8_t r_data[1];
+static uint8_t i2c_master_read_slave(i2c_port_t i2c_num, int reg) {
+    uint8_t r_data[1];
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, ( EPDIY_TPS_ADDR << 1 ) | I2C_MASTER_WRITE, true);
-	i2c_master_write_byte(cmd, reg, true);
-	i2c_master_stop(cmd);
+    i2c_master_write_byte(cmd, (EPDIY_TPS_ADDR << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, reg, true);
+    i2c_master_stop(cmd);
 
     ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS));
-	i2c_cmd_link_delete(cmd);
+    i2c_cmd_link_delete(cmd);
 
-	cmd = i2c_cmd_link_create();
+    cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
-	i2c_master_write_byte(cmd, ( EPDIY_TPS_ADDR << 1 ) | I2C_MASTER_READ, true);
+    i2c_master_write_byte(cmd, (EPDIY_TPS_ADDR << 1) | I2C_MASTER_READ, true);
     /*
-	if (size > 1) {
+        if (size > 1) {
         i2c_master_read(cmd, data_rd, size - 1, I2C_MASTER_ACK);
     }
     */
     i2c_master_read_byte(cmd, r_data, I2C_MASTER_NACK);
     i2c_master_stop(cmd);
 
-	ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS));
+    ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS));
     i2c_cmd_link_delete(cmd);
-
 
     return r_data[0];
 }
 
-static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t ctrl,  uint8_t* data_wr, size_t size)
-{
+static esp_err_t i2c_master_write_slave(
+    i2c_port_t i2c_num, uint8_t ctrl, uint8_t* data_wr, size_t size
+) {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, ( EPDIY_TPS_ADDR  << 1 ) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, (EPDIY_TPS_ADDR << 1) | I2C_MASTER_WRITE, true);
     i2c_master_write_byte(cmd, ctrl, true);
 
     i2c_master_write(cmd, data_wr, size, true);
@@ -54,15 +53,14 @@ static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t ctrl,  uint8
 }
 
 esp_err_t tps_write_register(i2c_port_t port, int reg, uint8_t value) {
-	uint8_t w_data[1];
+    uint8_t w_data[1];
     esp_err_t err;
 
-	w_data[0] = value;
+    w_data[0] = value;
 
     err = i2c_master_write_slave(port, reg, w_data, 1);
     return err;
 }
-
 
 uint8_t tps_read_register(i2c_port_t i2c_num, int reg) {
     return i2c_master_read_slave(i2c_num, reg);

@@ -124,7 +124,7 @@ typedef struct {
     int display_lines;
 } s3_lcd_t;
 
-static s3_lcd_t lcd = {0};
+static s3_lcd_t lcd = { 0 };
 
 void IRAM_ATTR epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
     lcd.line_source_cb = line_source;
@@ -261,9 +261,7 @@ __attribute__((optimize("O3"))) IRAM_ATTR static void lcd_isr_vsync(void* args) 
 
 // ISR handling bounce buffer refill
 static IRAM_ATTR bool lcd_rgb_panel_eof_handler(
-    gdma_channel_handle_t dma_chan,
-    gdma_event_data_t* event_data,
-    void* user_data
+    gdma_channel_handle_t dma_chan, gdma_event_data_t* event_data, void* user_data
 ) {
     dma_descriptor_t* desc = (dma_descriptor_t*)event_data->tx_eof_desc_addr;
     // Figure out which bounce buffer to write to.
@@ -399,8 +397,10 @@ static void check_cache_configuration() {
             "speed."
         );
         ESP_LOGE(
-            "epdiy", "Reducing the pixel clock from %d MHz to %d MHz for now!",
-            lcd.config.pixel_clock / 1000 / 1000, lcd.config.pixel_clock / 1000 / 1000 / 2
+            "epdiy",
+            "Reducing the pixel clock from %d MHz to %d MHz for now!",
+            lcd.config.pixel_clock / 1000 / 1000,
+            lcd.config.pixel_clock / 1000 / 1000 / 2
         );
         lcd.config.pixel_clock = lcd.config.pixel_clock / 2;
 
@@ -417,9 +417,7 @@ static void check_cache_configuration() {
  * touching the LCD peripheral config.
  */
 static void assign_lcd_parameters_from_config(
-    const LcdEpdConfig_t* config,
-    int display_width,
-    int display_height
+    const LcdEpdConfig_t* config, int display_width, int display_height
 ) {
     // copy over the configuraiton object
     memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
@@ -496,8 +494,8 @@ static esp_err_t init_lcd_peripheral() {
 
     // install interrupt service, (LCD peripheral shares the interrupt source with Camera by
     // different mask)
-    int flags = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_SHARED |
-                ESP_INTR_FLAG_LOWMED;
+    int flags = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_SHARED
+                | ESP_INTR_FLAG_LOWMED;
     int source = lcd_periph_signals.panels[0].irq_id;
     uint32_t status = (uint32_t)lcd_ll_get_interrupt_status_reg(lcd.hal.dev);
     ret = esp_intr_alloc_intrstatus(
@@ -616,10 +614,9 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
     int flags = 0;
     uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
     ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
-    lcd.line_length_us =
-        (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 /
-            lcd.config.pixel_clock +
-        1;
+    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1)
+                             * 1000000 / lcd.config.pixel_clock
+                         + 1;
     lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
     ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
 
@@ -630,12 +627,15 @@ void IRAM_ATTR epd_lcd_start_frame() {
     int initial_lines = min(LINE_BATCH, lcd.display_lines);
 
     // hsync: pulse with, back porch, active width, front porch
-    int end_line =
-        lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
+    int end_line
+        = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(
-        lcd.hal.dev, lcd.config.le_high_time - (lcd.dummy_bytes > 0), lcd.config.line_front_porch,
+        lcd.hal.dev,
+        lcd.config.le_high_time - (lcd.dummy_bytes > 0),
+        lcd.config.line_front_porch,
         // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
-        lcd.lcd_res_h + (lcd.dummy_bytes > 0), end_line
+        lcd.lcd_res_h + (lcd.dummy_bytes > 0),
+        end_line
     );
     lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 1, initial_lines, 1);
 
