@@ -5,6 +5,7 @@
 #include "render_method.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "esp_system.h"  // for ESP_IDF_VERSION_VAL
@@ -89,9 +90,6 @@ nibble_shift_buffer_right(uint8_t* buf, uint32_t len) {
     }
 }
 
-///////////////////////////// Looking up EPD Pixels
-//////////////////////////////////
-
 __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_1bpp(
     const uint32_t* line_data, uint8_t* epd_input, const uint8_t* lut, uint32_t epd_width
 ) {
@@ -122,8 +120,8 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
         uint16_t v4 = *(line_data_16++);
 
 #ifdef RENDER_METHOD_LCD
-        uint32_t pixel = conversion_lut[v1] << 16 | conversion_lut[v2] << 24 | conversion_lut[v3]
-                         | conversion_lut[v4] << 8;
+        uint32_t pixel = conversion_lut[v1] | conversion_lut[v2] << 8 | conversion_lut[v3] << 16
+                         | conversion_lut[v4] << 24;
 #elif RENDER_METHOD_I2S
         uint32_t pixel = conversion_lut[v4];
         pixel = pixel << 8;
@@ -158,6 +156,15 @@ __attribute__((optimize("O3"))) static inline uint8_t lookup_pixels_in_VE_LUT(
 void IRAM_ATTR calc_epd_input_1ppB_1k_S3_VE_aligned(
     const uint32_t* ld, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
 );
+
+#ifdef RENDER_METHOD_I2S
+void calc_epd_input_1ppB_1k_S3_VE_aligned(
+    const uint32_t* ld, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
+) {
+    // dummy implementation, should never be called.
+    abort();
+}
+#endif
 
 /**
  * Lookup accelerated by the S3 Vector Extensions.
@@ -288,7 +295,7 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
  * Unpack the waveform data into a lookup table, with bit shifted copies.
  */
 __attribute__((optimize("O3"))) static void IRAM_ATTR
-waveform_lut(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
+build_2ppB_lut_1k(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
     const uint8_t* p_lut = phases->luts + (16 * 4 * frame);
     for (uint8_t to = 0; to < 16; to++) {
         for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
@@ -317,7 +324,7 @@ waveform_lut(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
  * 64k to loop up two bytes at once
  */
 __attribute__((optimize("O3"))) static void IRAM_ATTR
-waveform_lut_64k(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
+build_1ppB_lut_64k(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
     const uint8_t* p_lut = phases->luts + (16 * 4 * frame);
     for (uint8_t to = 0; to < 16; to++) {
         for (uint8_t from_packed = 0; from_packed < 4; from_packed++) {
@@ -349,7 +356,7 @@ waveform_lut_64k(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
  * A 32bit aligned lookup table for lookup using the ESP32-S3 vector extensions.
  */
 __attribute__((optimize("O3"))) static void IRAM_ATTR
-waveform_lut_S3_VE(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
+build_1ppB_lut_S3_VE_1k(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
     uint32_t* lut32 = (uint32_t*)lut;
     const uint8_t* p_lut = phases->luts + (16 * 4 * frame);
     for (uint8_t to = 0; to < 16; to++) {
@@ -369,8 +376,8 @@ waveform_lut_S3_VE(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
  */
-__attribute__((optimize("O3"))) static void IRAM_ATTR
-waveform_lut_static_from(uint8_t* lut, const EpdWaveformPhases* phases, uint8_t from, int frame) {
+__attribute__((optimize("O3"))) static void
+build_2ppB_lut_64k_static_from(uint8_t* lut, const EpdWaveformPhases* phases, uint8_t from, int frame) {
     const uint8_t* p_lut = phases->luts + (16 * 4 * frame);
 
     /// index into the packed "from" row
@@ -409,99 +416,73 @@ waveform_lut_static_from(uint8_t* lut, const EpdWaveformPhases* phases, uint8_t 
     }
 }
 
-/**
- * Set all pixels not in [xmin,xmax) to nop in the current line buffer.
- */
-__attribute__((optimize("O3"))) void mask_line_buffer(
-    uint8_t* lb, int line_buf_len, int xmin, int xmax
-) {
-#ifdef RENDER_METHOD_I2S
-    const int offset_table[4] = { 2, 3, 0, 1 };
-#else
-    const int offset_table[4] = { 0, 1, 2, 3 };
-#endif
-
-    // lower bound to where byte order is not an issue.
-    int memset_start = (xmin / 16) * 4;
-    int memset_end = min(((xmax + 15) / 16) * 4, line_buf_len);
-
-    // memset the areas where order is not an issue
-    memset(lb, 0, memset_start);
-    memset(lb + memset_end, 0, line_buf_len - memset_end);
-
-    // mask unused pixels at the start of the output interval
-    uint8_t line_start_mask = 0xFF << (2 * (xmin % 4));
-    uint8_t line_end_mask = 0xFF >> (8 - 2 * (xmax % 4));
-
-    // number of full bytes to mask
-    int lower_full_bytes = max(0, (xmin / 4 - memset_start));
-    int upper_full_bytes = max(0, (memset_end - ((xmax + 3) / 4)));
-    assert(lower_full_bytes <= 3);
-    assert(upper_full_bytes <= 3);
-    assert(memset_end >= 4);
-
-    // mask full bytes
-    for (int i = 0; i < lower_full_bytes; i++) {
-        lb[memset_start + offset_table[i]] = 0x0;
-    }
-    for (int i = 0; i < upper_full_bytes; i++) {
-        lb[memset_end - 4 + offset_table[3 - i]] = 0x0;
-    }
-
-    // mask partial bytes
-    if ((memset_start + lower_full_bytes) * 4 < xmin) {
-        lb[memset_start + offset_table[lower_full_bytes]] &= line_start_mask;
-    }
-    if ((memset_end - upper_full_bytes) * 4 > xmax) {
-        lb[memset_end - 4 + offset_table[3 - upper_full_bytes]] &= line_end_mask;
-    }
+static void build_2ppB_lut_64k_from_0(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
+    build_2ppB_lut_64k_static_from(lut, phases, 0, frame);
 }
 
-__attribute__((optimize("O3"))) enum EpdDrawError IRAM_ATTR calculate_lut(
-    uint8_t* lut, int lut_size, enum EpdDrawMode mode, int frame, const EpdWaveformPhases* phases
-) {
-    enum EpdDrawMode selected_mode = mode & 0x3F;
+static void build_2ppB_lut_64k_from_15(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
+    build_2ppB_lut_64k_static_from(lut, phases, 0xF, frame);
+}
 
-#ifdef RENDER_METHOD_LCD
-    if ((mode & MODE_PACKING_1PPB_DIFFERENCE) && !(mode & MODE_FORCE_NO_PIE)) {
-        waveform_lut_S3_VE(lut, phases, frame);
-        return EPD_DRAW_SUCCESS;
-    }
-#endif
+static void build_8ppB_lut_256b_from_15(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
+    memcpy(lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+}
 
-    // two pixel per byte packing with only target color
-    if (lut_size == (1 << 16)) {
-        if (mode & MODE_PACKING_2PPB) {
+
+
+LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
+    LutFunctionPair pair;
+    pair.build_func = NULL;
+    pair.lookup_func = NULL;
+    
+
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE) { 
+        if (EPD_CURRENT_RENDER_METHOD == RENDER_METHOD_LCD && !(mode & MODE_FORCE_NO_PIE) && lut_size >= 1024) {
+            pair.build_func = &build_1ppB_lut_S3_VE_1k;
+            pair.lookup_func = &calc_epd_input_1ppB_1k_S3_VE;
+            return pair;
+        } else if (lut_size >= 1 << 16) {
+            pair.build_func = &build_1ppB_lut_64k;
+            pair.lookup_func = &calc_epd_input_1bpp;
+            return pair;
+        } 
+    } else if (mode & MODE_PACKING_2PPB) {
+        if (lut_size >= 1 << 16) {
             if (mode & PREVIOUSLY_WHITE) {
-                waveform_lut_static_from(lut, phases, 0x0F, frame);
-            } else if (mode & PREVIOUSLY_BLACK) {
-                waveform_lut_static_from(lut, phases, 0x00, frame);
-            } else {
-                waveform_lut(lut, phases, frame);
+                pair.build_func = &build_2ppB_lut_64k_from_15;
+                pair.lookup_func = &calc_epd_input_4bpp_lut_64k;
+                return pair;
+            } else if (mode & PREVIOUSLY_BLACK) { 
+                pair.build_func = &build_2ppB_lut_64k_from_0;
+                pair.lookup_func = &calc_epd_input_4bpp_lut_64k;
+                return pair;
             }
-            // one pixel per byte with from and to colors
-        } else if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
-            waveform_lut_64k(lut, phases, frame);
-        } else {
-            return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+        } else if (lut_size >= 1024) {
+            if (mode & PREVIOUSLY_WHITE) {
+                pair.build_func = &build_2ppB_lut_1k;
+                pair.lookup_func = &calc_epd_input_4bpp_1k_lut_white;
+                return pair;
+            } else if (mode & PREVIOUSLY_BLACK) {
+                pair.build_func = &build_2ppB_lut_1k;
+                pair.lookup_func = &calc_epd_input_4bpp_1k_lut_black;
+                return pair;
+            }
         }
-
-        // 1bit per pixel monochrome with only target color
-    } else if (mode & MODE_PACKING_8PPB && selected_mode == MODE_EPDIY_MONOCHROME) {
-        // FIXME: Pack into waveform?
+    } else if (mode & MODE_PACKING_8PPB) {
+        if (lut_size < sizeof(lut_1bpp_black)) {
+            return pair;
+        }
+        
         if (mode & PREVIOUSLY_WHITE) {
-            memcpy(lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+            pair.build_func = &build_8ppB_lut_256b_from_15;
+            pair.lookup_func = &calc_epd_input_1bpp;
+            return pair;
         } else if (mode & PREVIOUSLY_BLACK) {
-            // FIXME: implement!
-            // memcpy(render_context.conversion_lut, lut_1bpp_white, sizeof(lut_1bpp_white));
-            return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
-        } else {
-            return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+            // FIXME: to implement
         }
-
-        // unknown format.
-    } else {
-        return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
     }
-    return EPD_DRAW_SUCCESS;
+
+    return pair;
 }
+
+

@@ -116,13 +116,12 @@ void epd_push_pixels_lcd(RenderContext_t* ctx, short time, int color) {
 #define int_min(a, b) (((a) < (b)) ? (a) : (b))
 __attribute__((optimize("O3"))) void IRAM_ATTR
 lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
+    assert(ctx->lut_lookup_func != NULL);
     uint8_t* input_line = ctx->feed_line_buffers[thread_id];
 
     LineQueue_t* lq = &ctx->line_queues[thread_id];
     int l = 0;
-
-    lut_func_t input_calc_func = get_lut_function(ctx);
-
+    
     // if there is an error, start the frame but don't feed data.
     if (ctx->error) {
         memset(ctx->line_threads, 0, ctx->lines_total);
@@ -131,8 +130,6 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
         ESP_LOGW("epd_lcd", "draw frame draw initiated, but an error flag is set: %X", ctx->error);
         return;
     }
-
-    assert(input_calc_func != NULL);
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
     memset(input_line, 0x00, ctx->display_width);
@@ -194,7 +191,7 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             buf = lq_current(lq);
         }
 
-        (*input_calc_func)(lp, buf, ctx->conversion_lut, ctx->display_width);
+        ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);
 
         lq_commit(lq);
     }

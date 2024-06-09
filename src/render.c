@@ -169,6 +169,12 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         );
     }
 #endif
+    
+    LutFunctionPair lut_functions = find_lut_functions(mode, render_context.conversion_lut_size);
+    if (lut_functions.build_func == NULL || lut_functions.lookup_func == NULL) {
+        ESP_LOGE("epdiy", "no output lookup method found for your mode and LUT size!");
+        return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    }
 
     render_context.area = area;
     render_context.crop_to = crop_to;
@@ -179,6 +185,8 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     render_context.error = EPD_DRAW_SUCCESS;
     render_context.drawn_lines = drawn_lines;
     render_context.data_ptr = data;
+    render_context.lut_build_func = lut_functions.build_func;
+    render_context.lut_lookup_func = lut_functions.lookup_func;
 
     render_context.lines_prepared = 0;
     render_context.lines_consumed = 0;
