@@ -9,25 +9,25 @@
 #include "epdiy.h"
 #include "esp_attr.h"
 #include "esp_timer.h"
+
 #include "output_common/lut.h"
+#include "output_common/render_method.h"
 
 #define DEFAULT_EXAMPLE_LEN 1408
 
 static const uint8_t input_data_pattern[16] = { 0xFF, 0xFF, 0xF0, 0xFF, 0xFF, 0x00, 0x01, 0x10,
                                                 0xA5, 0xA5, 0x5A, 0x5A, 0xFF, 0xFF, 0x00, 0x08 };
-static const uint8_t result_data_pattern_lcd_1ppB[4] = { 0x20, 0x90, 0x5A, 0x40 };
-static const uint8_t result_data_pattern_lcd_2ppB_white[8]
+
+static const uint8_t result_pattern_1ppB[4] = { 0x20, 0x90, 0x5A, 0x40 };
+static const uint8_t result_pattern_2ppB_white[8]
     = { 0x00, 0x01, 0x50, 0x55, 0x55, 0x55, 0x00, 0x55 };
-static const uint8_t result_data_pattern_lcd_2ppB_black[8]
+static const uint8_t result_pattern_2ppB_black[8]
     = { 0xAA, 0xA8, 0x0A, 0x82, 0xAA, 0xAA, 0xAA, 0x20 };
 
 typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*, uint32_t);
 static uint8_t waveform_phases[16][4];
 
 void calc_epd_input_1ppB_1k_S3_VE(
-    const uint32_t* ld, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
-);
-void calc_epd_input_1ppB_64k(
     const uint32_t* ld, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
 );
 
@@ -88,14 +88,18 @@ static void lut_test_buffers_fill(LutTestBuffers* bufs, const uint8_t* result_pa
 static void lut_test_buffers_init(
     LutTestBuffers* bufs, int example_len_px, const uint8_t* result_pattern, int in_out_ratio
 ) {
-    bufs->line_data = heap_caps_aligned_alloc(16, example_len_px, MALLOC_CAP_INTERNAL);
-    bufs->result_line
-        = heap_caps_aligned_alloc(16, example_len_px / in_out_ratio, MALLOC_CAP_INTERNAL);
-    bufs->expected_line
-        = heap_caps_aligned_alloc(16, example_len_px / in_out_ratio, MALLOC_CAP_INTERNAL);
-    bufs->lut = heap_caps_malloc(1 << 16, MALLOC_CAP_INTERNAL);
+    uint32_t caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+    bufs->line_data = heap_caps_aligned_alloc(16, example_len_px, caps);
+    bufs->result_line = heap_caps_aligned_alloc(16, example_len_px / in_out_ratio, caps);
+    bufs->expected_line = heap_caps_aligned_alloc(16, example_len_px / in_out_ratio, caps);
+    bufs->lut = heap_caps_malloc(1 << 16, caps);
     bufs->example_len_px = example_len_px;
     bufs->in_out_ratio = in_out_ratio;
+
+    assert(bufs->line_data != NULL);
+    assert(bufs->result_line != NULL);
+    assert(bufs->expected_line != NULL);
+    assert(bufs->lut != NULL);
 
     lut_test_buffers_fill(bufs, result_pattern);
 }
@@ -143,6 +147,7 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
                     unaligned_len
                 );
             }
+
             heap_caps_check_integrity_all(true);
             uint64_t end = esp_timer_get_time();
             printf("took %.2fus per iter.\n", (end - start) / 100.0);
@@ -160,19 +165,20 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
 
 TEST_CASE("1ppB lookup LCD, 64k LUT", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_data_pattern_lcd_1ppB, 4);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_pattern_1ppB, 4);
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_1PPB_DIFFERENCE | MODE_FORCE_NO_PIE;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 16);
     func_pair.build_func(bufs.lut, &test_waveform, 0);
-    test_with_alignments(&bufs, calc_epd_input_1ppB_64k);
+    test_with_alignments(&bufs, func_pair.lookup_func);
 
     diff_test_buffers_free(&bufs);
 }
 
+#if !DISABLED_FOR_TARGETS(ESP32)
 TEST_CASE("1ppB lookup LCD, 1k LUT, PIE", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_data_pattern_lcd_1ppB, 4);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_pattern_1ppB, 4);
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_1PPB_DIFFERENCE;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
@@ -180,10 +186,11 @@ TEST_CASE("1ppB lookup LCD, 1k LUT, PIE", "[epdiy,unit,lut]") {
     test_with_alignments(&bufs, calc_epd_input_1ppB_1k_S3_VE);
     diff_test_buffers_free(&bufs);
 }
+#endif
 
 TEST_CASE("2ppB lookup LCD, 64k LUT, previously white", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_data_pattern_lcd_2ppB_white, 2);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_pattern_2ppB_white, 2);
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 16);
@@ -195,7 +202,7 @@ TEST_CASE("2ppB lookup LCD, 64k LUT, previously white", "[epdiy,unit,lut]") {
 
 TEST_CASE("2ppB lookup LCD, 64k LUT, previously black", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_data_pattern_lcd_2ppB_black, 2);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_pattern_2ppB_black, 2);
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_2PPB | PREVIOUSLY_BLACK;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 16);
@@ -207,7 +214,7 @@ TEST_CASE("2ppB lookup LCD, 64k LUT, previously black", "[epdiy,unit,lut]") {
 
 TEST_CASE("2ppB lookup LCD, 1k LUT, previously white", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_data_pattern_lcd_2ppB_white, 2);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_pattern_2ppB_white, 2);
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_2PPB | PREVIOUSLY_WHITE;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
@@ -219,7 +226,7 @@ TEST_CASE("2ppB lookup LCD, 1k LUT, previously white", "[epdiy,unit,lut]") {
 
 TEST_CASE("2ppB lookup LCD, 1k LUT, previously black", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_data_pattern_lcd_2ppB_black, 2);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN, result_pattern_2ppB_black, 2);
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_2PPB | PREVIOUSLY_BLACK;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
