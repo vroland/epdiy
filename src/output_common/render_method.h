@@ -22,7 +22,6 @@ extern const enum EpdRenderMethod EPD_CURRENT_RENDER_METHOD;
 #error "unknown chip, cannot choose render method!"
 #endif
 
-
 #ifdef __clang__
 #define IRAM_ATTR
 // define this if we're using clangd to make it accept the GCC builtin

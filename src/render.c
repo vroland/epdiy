@@ -169,7 +169,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         );
     }
 #endif
-    
+
     LutFunctionPair lut_functions = find_lut_functions(mode, render_context.conversion_lut_size);
     if (lut_functions.build_func == NULL || lut_functions.lookup_func == NULL) {
         ESP_LOGE("epdiy", "no output lookup method found for your mode and LUT size!");

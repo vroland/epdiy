@@ -105,36 +105,6 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_1bpp(
     }
 }
 
-__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
-    const uint32_t* line_data, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
-) {
-    uint32_t* wide_epd_input = (uint32_t*)epd_input;
-    const uint16_t* line_data_16 = (const uint16_t*)line_data;
-
-    // this is reversed for little-endian, but this is later compensated
-    // through the output peripheral.
-    for (uint32_t j = 0; j < epd_width / 16; j++) {
-        uint16_t v1 = *(line_data_16++);
-        uint16_t v2 = *(line_data_16++);
-        uint16_t v3 = *(line_data_16++);
-        uint16_t v4 = *(line_data_16++);
-
-#ifdef RENDER_METHOD_LCD
-        uint32_t pixel = conversion_lut[v1] | conversion_lut[v2] << 8 | conversion_lut[v3] << 16
-                         | conversion_lut[v4] << 24;
-#elif RENDER_METHOD_I2S
-        uint32_t pixel = conversion_lut[v4];
-        pixel = pixel << 8;
-        pixel |= conversion_lut[v3];
-        pixel = pixel << 8;
-        pixel |= conversion_lut[v2];
-        pixel = pixel << 8;
-        pixel |= conversion_lut[v1];
-#endif
-        wide_epd_input[j] = pixel;
-    }
-}
-
 /**
  * Look up 4 pixels of a differential image in a LUT constructed for use with vector extensions.
  */
@@ -226,11 +196,43 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_1ppB_64k(
 #endif
 }
 
+__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
+    const uint32_t* line_data, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
+) {
+    const uint16_t* line_data_16 = (const uint16_t*)line_data;
+
+#ifdef RENDER_METHOD_LCD
+    for (uint32_t j = 0; j < epd_width / 4; j++) {
+        epd_input[j] = conversion_lut[*(line_data_16++)];
+    }
+#elif RENDER_METHOD_I2S
+    // TODO!
+    uint32_t* wide_epd_input = (uint32_t*)epd_input;
+
+    // this is reversed for little-endian, but this is later compensated
+    // through the output peripheral.
+    for (uint32_t j = 0; j < epd_width / 16; j++) {
+        uint16_t v1 = *(line_data_16++);
+        uint16_t v2 = *(line_data_16++);
+        uint16_t v3 = *(line_data_16++);
+        uint16_t v4 = *(line_data_16++);
+        uint32_t pixel = conversion_lut[v4];
+        pixel = pixel << 8;
+        pixel |= conversion_lut[v3];
+        pixel = pixel << 8;
+        pixel |= conversion_lut[v2];
+        pixel = pixel << 8;
+        pixel |= conversion_lut[v1];
+        wide_epd_input[j] = pixel;
+    }
+#endif
+}
+
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
  */
-__attribute__((optimize("O3"))) uint8_t lookup_pixels_4bpp_1k(
-    uint16_t in, const uint8_t* conversion_lut, uint8_t from, uint32_t epd_width
+__attribute__((optimize("O3"))) static uint8_t lookup_pixels_4bpp_1k(
+    uint16_t in, const uint8_t* conversion_lut, uint8_t from
 ) {
     uint8_t v;
     uint8_t out;
@@ -258,22 +260,36 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut(
     uint8_t from,
     uint32_t epd_width
 ) {
-    uint16_t* ptr = (uint16_t*)ld;
-    // this is reversed for little-endian, but this is later compensated
-    // through the output peripheral.
-    for (uint32_t j = 0; j < epd_width / 4; j += 4) {
+    const uint16_t* line_data_16 = (const uint16_t*)ld;
+
 #ifdef RENDER_METHOD_LCD
-        epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-        epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-        epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-        epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
+    for (uint32_t j = 0; j < epd_width / 4; j++) {
+        epd_input[j] = lookup_pixels_4bpp_1k(*(line_data_16++), conversion_lut, from);
+    };
 #elif RENDER_METHOD_I2S
-        epd_input[j + 2] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-        epd_input[j + 3] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-        epd_input[j + 0] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-        epd_input[j + 1] = lookup_pixels_4bpp_1k(*(ptr++), conversion_lut, from, epd_width);
-#endif
+    uint32_t* wide_epd_input = (uint32_t*)epd_input;
+    const uint16_t* line_data_16 = (const uint16_t*)ld
+        // this is reversed for little-endian, but this is later compensated
+        // through the output peripheral.
+        for (uint32_t j = 0; j < epd_width / 16; j++) {
+        uint16_t v1 = *(line_data_16++);
+        uint16_t v2 = *(line_data_16++);
+        uint16_t v3 = *(line_data_16++);
+        uint16_t v4 = *(line_data_16++);
+        uint8_t o1 = lookup_pixels_4bpp_1k(v1, conversion_lut, from);
+        uint8_t o2 = lookup_pixels_4bpp_1k(v2, conversion_lut, from);
+        uint8_t o3 = lookup_pixels_4bpp_1k(v3, conversion_lut, from);
+        uint8_t o4 = lookup_pixels_4bpp_1k(v4, conversion_lut, from);
+        uint32_t pixel = o4;
+        pixel = pixel << 8;
+        pixel |= o3;
+        pixel = pixel << 8;
+        pixel |= o2;
+        pixel = pixel << 8;
+        pixel |= o1;
+        wide_epd_input[j] = pixel;
     }
+#endif
 }
 
 __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut_white(
@@ -376,8 +392,9 @@ build_1ppB_lut_S3_VE_1k(uint8_t* lut, const EpdWaveformPhases* phases, int frame
  * known, e.g. all white or all black.
  * This LUT is use to look up 4 pixels at once, as with the epdiy LUT.
  */
-__attribute__((optimize("O3"))) static void
-build_2ppB_lut_64k_static_from(uint8_t* lut, const EpdWaveformPhases* phases, uint8_t from, int frame) {
+__attribute__((optimize("O3"))) static void build_2ppB_lut_64k_static_from(
+    uint8_t* lut, const EpdWaveformPhases* phases, uint8_t from, int frame
+) {
     const uint8_t* p_lut = phases->luts + (16 * 4 * frame);
 
     /// index into the packed "from" row
@@ -428,16 +445,14 @@ static void build_8ppB_lut_256b_from_15(uint8_t* lut, const EpdWaveformPhases* p
     memcpy(lut, lut_1bpp_black, sizeof(lut_1bpp_black));
 }
 
-
-
 LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
     LutFunctionPair pair;
     pair.build_func = NULL;
     pair.lookup_func = NULL;
-    
 
-    if (mode & MODE_PACKING_1PPB_DIFFERENCE) { 
-        if (EPD_CURRENT_RENDER_METHOD == RENDER_METHOD_LCD && !(mode & MODE_FORCE_NO_PIE) && lut_size >= 1024) {
+    if (mode & MODE_PACKING_1PPB_DIFFERENCE) {
+        if (EPD_CURRENT_RENDER_METHOD == RENDER_METHOD_LCD && !(mode & MODE_FORCE_NO_PIE)
+            && lut_size >= 1024) {
             pair.build_func = &build_1ppB_lut_S3_VE_1k;
             pair.lookup_func = &calc_epd_input_1ppB_1k_S3_VE;
             return pair;
@@ -445,14 +460,14 @@ LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
             pair.build_func = &build_1ppB_lut_64k;
             pair.lookup_func = &calc_epd_input_1bpp;
             return pair;
-        } 
+        }
     } else if (mode & MODE_PACKING_2PPB) {
         if (lut_size >= 1 << 16) {
             if (mode & PREVIOUSLY_WHITE) {
                 pair.build_func = &build_2ppB_lut_64k_from_15;
                 pair.lookup_func = &calc_epd_input_4bpp_lut_64k;
                 return pair;
-            } else if (mode & PREVIOUSLY_BLACK) { 
+            } else if (mode & PREVIOUSLY_BLACK) {
                 pair.build_func = &build_2ppB_lut_64k_from_0;
                 pair.lookup_func = &calc_epd_input_4bpp_lut_64k;
                 return pair;
@@ -472,7 +487,7 @@ LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
         if (lut_size < sizeof(lut_1bpp_black)) {
             return pair;
         }
-        
+
         if (mode & PREVIOUSLY_WHITE) {
             pair.build_func = &build_8ppB_lut_256b_from_15;
             pair.lookup_func = &calc_epd_input_1bpp;
@@ -484,5 +499,3 @@ LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
 
     return pair;
 }
-
-

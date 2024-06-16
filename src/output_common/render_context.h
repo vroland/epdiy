@@ -57,7 +57,7 @@ typedef struct {
     size_t conversion_lut_size;
     // Lookup table space.
     uint8_t* conversion_lut;
-    
+
     /// LUT lookup function. Must not be NULL.
     lut_func_t lut_lookup_func;
     /// LUT building function. Must not be NULL
@@ -71,7 +71,6 @@ typedef struct {
     /// track line skipping when working in old i2s mode
     int skipping;
 } RenderContext_t;
-
 
 /**
  * Based on the render context, assign the bytes per line,

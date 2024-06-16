@@ -1,5 +1,5 @@
-#include "sdkconfig.h"
 #include "render_method.h"
+#include "sdkconfig.h"
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 const enum EpdRenderMethod EPD_CURRENT_RENDER_METHOD = RENDER_METHOD_I2S;

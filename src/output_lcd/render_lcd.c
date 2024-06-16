@@ -121,7 +121,7 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
 
     LineQueue_t* lq = &ctx->line_queues[thread_id];
     int l = 0;
-    
+
     // if there is an error, start the frame but don't feed data.
     if (ctx->error) {
         memset(ctx->line_threads, 0, ctx->lines_total);
