@@ -249,6 +249,7 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t* ctx, int thread_id) {
             ctx->conversion_lut,
             ctx->display_width
         );
+        reorder_line_buffer((uint32_t*)i2s_get_current_buffer(), ctx->display_width / 4);
         i2s_write_row(ctx, frame_time);
     }
     if (!ctx->skipping) {
