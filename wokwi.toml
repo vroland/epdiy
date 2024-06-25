@@ -1,4 +1,0 @@
-[wokwi]
-version = 1
-firmware = 'examples/dragon/build/dragon_example.bin'
-elf = 'examples/dragon/build/dragon_example.elf'

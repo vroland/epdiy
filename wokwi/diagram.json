@@ -3,9 +3,14 @@
   "author": "Martin F.",
   "editor": "wokwi",
   "parts": [
-    { "type": "board-esp32-s3-devkitc-1", "id": "esp", "top": -0.18, "left": -5.03, 
-    "attrs": { "psramSize": "8", "flashSize": "4" }
+    {
+      "type": "board-esp32-s3-devkitc-1",
+      "id": "esp",
+      "top": -0.18,
+      "left": -5.03,
+      "attrs": { "psramSize": "16", "flashSize": "4" }
     },
+    { "type": "chip-pca9535", "id": "chip1", "top": 87.42, "left": 235.2, "attrs": {} },
     {
       "type": "wokwi-led",
       "id": "led1",
@@ -78,7 +83,7 @@
     {
       "type": "wokwi-led",
       "id": "led12",
-      "top": 78.4,
+      "top": 30.4,
       "left": 90.6,
       "rotate": 180,
       "attrs": { "color": "red" }
@@ -86,12 +91,12 @@
     {
       "type": "wokwi-led",
       "id": "led13",
-      "top": 68.8,
+      "top": 20.8,
       "left": 109.8,
       "rotate": 180,
       "attrs": { "color": "red" }
     },
-    { "type": "wokwi-gnd", "id": "gnd3", "top": 86.4, "left": 143.4, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "gnd3", "top": 28.8, "left": 162.6, "attrs": {} },
     {
       "type": "wokwi-resistor",
       "id": "r1",
@@ -126,7 +131,93 @@
       "top": 90.35,
       "left": -76.8,
       "attrs": { "value": "1000" }
-    }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led14",
+      "top": 193.6,
+      "left": 369,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led15",
+      "top": 184,
+      "left": 388.2,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led16",
+      "top": 164.8,
+      "left": 417,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r6",
+      "top": 52.8,
+      "left": 191.45,
+      "rotate": 90,
+      "attrs": { "value": "10000" }
+    },
+    { "type": "wokwi-vcc", "id": "vcc1", "top": 0.76, "left": 211.2, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "gnd4", "top": 211.2, "left": 412.2, "attrs": {} },
+    {
+      "type": "wokwi-led",
+      "id": "led17",
+      "top": 155.2,
+      "left": 436.2,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led18",
+      "top": 145.6,
+      "left": 455.4,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led19",
+      "top": 136,
+      "left": 369,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led20",
+      "top": 126.4,
+      "left": 388.2,
+      "rotate": 180,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r7",
+      "top": 91.2,
+      "left": 354.65,
+      "rotate": 90,
+      "attrs": { "value": "10000" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r8",
+      "top": 81.6,
+      "left": 393.05,
+      "rotate": 90,
+      "attrs": { "value": "10000" }
+    },
+    { "type": "wokwi-vcc", "id": "vcc2", "top": 29.56, "left": 393.6, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "gnd5", "top": 144, "left": 489, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "gnd6", "top": 106.5, "left": 440.5, "rotate": 270, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "gnd7", "top": 153.6, "left": 210.6, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -161,7 +252,35 @@
     [ "esp:42", "led13:A", "green", [ "h0" ] ],
     [ "esp:45", "led10:A", "green", [ "h0" ] ],
     [ "esp:48", "led11:A", "green", [ "h0" ] ],
-    [ "esp:4", "led9:A", "green", [ "h0" ] ]
+    [ "esp:4", "led9:A", "green", [ "h0" ] ],
+    [ "chip1:SDA", "esp:39", "purple", [ "h21.01", "v-28.8", "h-153.6", "v28.8" ] ],
+    [ "chip1:SCL", "esp:40", "purple", [ "h30.61", "v-48", "h-172.8", "v28.8" ] ],
+    [ "chip1:P10", "led14:A", "green", [ "v0" ] ],
+    [ "chip1:nINT", "esp:38", "orange", [ "h-19.2", "v19.2" ] ],
+    [ "chip1:P11", "led15:A", "green", [ "h0" ] ],
+    [ "chip1:P13", "led16:A", "green", [ "h0" ] ],
+    [ "chip1:nINT", "r6:2", "green", [ "h0" ] ],
+    [ "r6:1", "vcc1:VCC", "red", [ "h0" ] ],
+    [ "led14:C", "gnd4:GND", "black", [ "v0", "h18.8" ] ],
+    [ "led15:C", "gnd4:GND", "black", [ "v0", "h9.2", "v9.6" ] ],
+    [ "led16:C", "gnd4:GND", "black", [ "v0" ] ],
+    [ "chip1:P17", "led20:A", "green", [ "h0" ] ],
+    [ "chip1:P16", "led19:A", "green", [ "h0" ] ],
+    [ "chip1:P17", "r7:2", "green", [ "h0" ] ],
+    [ "r7:1", "vcc2:VCC", "green", [ "h0" ] ],
+    [ "r8:1", "vcc2:VCC", "green", [ "h0" ] ],
+    [ "chip1:P15", "led18:A", "green", [ "h0" ] ],
+    [ "chip1:P14", "led17:A", "green", [ "h0" ] ],
+    [ "chip1:P16", "r8:2", "green", [ "h21.01", "v-19.2" ] ],
+    [ "led17:C", "gnd4:GND", "black", [ "v48", "h-38.8" ] ],
+    [ "led18:C", "gnd4:GND", "black", [ "v0" ] ],
+    [ "led19:C", "gnd5:GND", "black", [ "v0" ] ],
+    [ "led20:C", "gnd5:GND", "black", [ "v0" ] ],
+    [ "chip1:A0", "gnd6:GND", "black", [ "h0" ] ],
+    [ "chip1:A1", "gnd7:GND", "black", [ "h-9.6", "v48" ] ],
+    [ "chip1:A2", "gnd7:GND", "black", [ "h-9.6", "v28.8" ] ]
   ],
-  "dependencies": {}
+  "dependencies": {
+  "chip-pca9535": "github:martinberlin/wokwi-pca9535@1.4"
+  }
 }
