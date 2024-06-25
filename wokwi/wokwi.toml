@@ -2,3 +2,7 @@
 version = 1
 firmware = '../examples/dragon/build/dragon_example.bin'
 elf = '../examples/dragon/build/dragon_example.elf'
+
+[[chip]]
+name = 'chip-pca9535'
+binary = 'chips/pca9535.wasm'

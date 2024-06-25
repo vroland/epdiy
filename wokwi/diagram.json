@@ -279,8 +279,5 @@
     [ "chip1:A0", "gnd6:GND", "black", [ "h0" ] ],
     [ "chip1:A1", "gnd7:GND", "black", [ "h-9.6", "v48" ] ],
     [ "chip1:A2", "gnd7:GND", "black", [ "h-9.6", "v28.8" ] ]
-  ],
-  "dependencies": {
-  "chip-pca9535": "github:martinberlin/wokwi-pca9535@1.4"
-  }
+  ]
 }
