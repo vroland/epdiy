@@ -14,6 +14,9 @@
 EpdiyHighlevelState hl;
 int temperature = 25;
 uint8_t * fb;
+enum EpdDrawMode draw_mode = MODE_DU;
+uint8_t draw_color = 0; // BLACK
+
 // epdiy font 20pt
 #include "firasans_20.h"
 
@@ -47,7 +50,6 @@ uint8_t * fb;
 #define WRITE_BIT                          I2C_MASTER_WRITE /*!< I2C master write */
 #define READ_BIT                           I2C_MASTER_READ  /*!< I2C master read */
 #define ACK_CHECK_EN                       0x1              /*!< I2C master will check ack from slave*/
-#define ACK_CHECK_DIS                      0x0              /*!< I2C master will not check ack from slave */
 #define ACK_VAL                            0x0              /*!< I2C ack value */
 #define NACK_VAL                           0x1              /*!< I2C nack value */
 
@@ -96,20 +98,32 @@ struct cyttsp_bootloader_data {
 };
 
 static const char *TAG = "Draw";
-
+int ux_draw_calls = 0;
 void ux_draw() {
+    ux_draw_calls++;
+    printf("UX draw called %d times\n", ux_draw_calls);
     // Clear display & Draw UX
     epd_fullclear(&hl, temperature);
-    EpdRect re = {.x=epd_width()-200,.y=epd_height()-100,.width=190,.height=95};
-    epd_fill_rect(re, 0, fb);
+    EpdRect all_touch = {.x=epd_width()-700,.y=epd_height()-100,.width=190,.height=95};
+    EpdRect but_du = {.x=epd_width()-405,.y=epd_height()-100,.width=90,.height=95};
+    EpdRect but_16 = {.x=epd_width()-305,.y=epd_height()-100,.width=90,.height=95};
+    EpdRect but_clear = {.x=epd_width()-200,.y=epd_height()-100,.width=190,.height=95};
+   
+    epd_fill_rect(but_clear, 0, fb);
+    epd_fill_rect(but_du, 0, fb);
+    epd_fill_rect(but_16, 0, fb);
     const EpdFont* font = &FiraSans_20;
     EpdFontProperties font_props = epd_font_properties_default();
     font_props.fg_color = 255; // WHITE
-    int x_cursor = re.x + 90;
-    int y_cursor = re.y + 60;
+    int x_cursor = but_du.x + 180;
+    int y_cursor = but_du.y + 60;
     font_props.flags = EPD_DRAW_ALIGN_CENTER;
-    epd_write_string(font, "CLEAR", &x_cursor, &y_cursor, fb, &font_props);
-    epd_hl_update_area(&hl, MODE_DU, temperature, re);
+    epd_write_string(font, "DU    16G     CLEAR", &x_cursor, &y_cursor, fb, &font_props);
+    epd_fill_circle(all_touch.x+50, epd_height()-50, 50, 0, fb);
+    epd_fill_circle(all_touch.x+150, epd_height()-50, 50, 120, fb);
+    epd_draw_circle(all_touch.x+250, epd_height()-50, 50, 0, fb);
+    epd_draw_circle(all_touch.x+250, epd_height()-50, 48, 0, fb);
+    epd_hl_update_area(&hl, MODE_GC16, temperature, all_touch);
 }
 void init_epdiy() {
     // epdiy driver init
@@ -270,15 +284,37 @@ static void touch_INT(void* arg)
                 //printf("x1:%d y1:%d z1:%d\n", tp.x,tp.y,xy_data.z1);
                 if (tp.x > epd_width()-200 && tp.y > epd_height()-100) {
                     ux_draw();
-                } 
+                    continue;
+                } else if 
+                (tp.x < epd_width()-200 && tp.x > epd_width()-300 && tp.y > epd_height()-100) {
+                    draw_mode = MODE_GC16;
+                    draw_color = 100;
+                    continue;
+                } else if 
+                (tp.x < epd_width()-300 && tp.x > epd_width()-400 && tp.y > epd_height()-100) {
+                    draw_mode = MODE_DU;
+                    continue;
+                } else if 
+                (tp.x < epd_width()-600 && tp.x > epd_width()-700 && tp.y > epd_height()-100) {
+                    draw_color = 0;
+                    continue;
+                } else if 
+                (tp.x < epd_width()-500 && tp.x > epd_width()-600 && tp.y > epd_height()-100) {
+                    draw_color = 120;
+                    continue;
+                } else if 
+                (tp.x < epd_width()-400 && tp.x > epd_width()-500 && tp.y > epd_height()-100) {
+                    draw_color = 255;
+                    continue;
+                }
                 // Mirrored Y and inverted width|height
                 EpdRect draw_area = {
                     .x = tp.x, 
                     .y = tp.y-cradio, 
                     .width = cradio,
                     .height = cradio*2};
-                epd_fill_circle(tp.x,tp.y,cradio, 0,fb);
-                epd_hl_update_area(&hl, MODE_DU, temperature, draw_area);
+                epd_fill_circle(tp.x,tp.y,cradio, draw_color ,fb);
+                epd_hl_update_area(&hl, draw_mode, temperature, draw_area);
             }
             if (touch == 2) {
                 xy_data.x2 = be16_to_cpu(xy_data.x2);
