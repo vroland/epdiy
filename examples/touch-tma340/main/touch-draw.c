@@ -59,8 +59,10 @@ static uint8_t sec_key[] = {0x00, 0xFF, 0xA5, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05
 #define GET_BOOTLOADERMODE(reg)		((reg & 0x10) >> 4)
 
 struct point_touch {
-    uint16_t x __attribute__ ((packed));
-	uint16_t y __attribute__ ((packed));
+    uint16_t x;
+	uint16_t y;
+    uint16_t x2;
+	uint16_t y2;
 	uint8_t z;
 };
 
@@ -120,7 +122,7 @@ void ux_draw() {
     font_props.flags = EPD_DRAW_ALIGN_CENTER;
     epd_write_string(font, "DU    16G     CLEAR", &x_cursor, &y_cursor, fb, &font_props);
     epd_fill_circle(all_touch.x+50, epd_height()-50, 50, 0, fb);
-    epd_fill_circle(all_touch.x+150, epd_height()-50, 50, 120, fb);
+    epd_fill_circle(all_touch.x+150, epd_height()-50, 50, 90, fb);
     epd_draw_circle(all_touch.x+250, epd_height()-50, 50, 0, fb);
     epd_draw_circle(all_touch.x+250, epd_height()-50, 48, 0, fb);
     epd_hl_update_area(&hl, MODE_GC16, temperature, all_touch);
@@ -300,7 +302,7 @@ static void touch_INT(void* arg)
                     continue;
                 } else if 
                 (tp.x < epd_width()-500 && tp.x > epd_width()-600 && tp.y > epd_height()-100) {
-                    draw_color = 120;
+                    draw_color = 90;
                     continue;
                 } else if 
                 (tp.x < epd_width()-400 && tp.x > epd_width()-500 && tp.y > epd_height()-100) {
@@ -314,13 +316,32 @@ static void touch_INT(void* arg)
                     .width = cradio,
                     .height = cradio*2};
                 epd_fill_circle(tp.x,tp.y,cradio, draw_color ,fb);
-                epd_hl_update_area(&hl, draw_mode, temperature, draw_area);
+                if (touch == 1) {
+                    epd_hl_update_area(&hl, draw_mode, temperature, draw_area);
+                }
+                
+                if (touch == 2) {
+                    tp.x2 = be16_to_cpu(xy_data.y2);
+                    tp.y2 = epd_height()- be16_to_cpu(xy_data.x2);
+                    int xu = (tp.x<tp.x2) ? tp.x : tp.x2;
+                    int yu = (tp.y<tp.y2) ? tp.y : tp.y2;
+                    int wu = (tp.x<tp.x2) ? tp.x2-tp.x : tp.x-tp.x2;
+                    int hu = (tp.y<tp.y2) ? tp.y2-tp.y : tp.y-tp.y2;
+                    EpdRect draw_area2 = {
+                    .x = xu, 
+                    .y = yu-cradio, 
+                    .width = wu+cradio,
+                    .height = hu+(cradio*2)};
+                    epd_fill_circle(tp.x2,tp.y2,cradio, draw_color ,fb);
+                    for (int i=0; i<cradio; i++) {
+                      epd_draw_line(tp.x,tp.y+i,tp.x2,tp.y2+i,draw_color,fb);
+                    }
+                    epd_hl_update_area(&hl, draw_mode, temperature, draw_area2);
+                //printf("x2:%d y2:%d z2:%d\n", xy_data.x2,xy_data.y2,xy_data.z2);
+                }
+                
             }
-            if (touch == 2) {
-                xy_data.x2 = be16_to_cpu(xy_data.x2);
-                xy_data.y2 = be16_to_cpu(xy_data.y2);
-                printf("x2:%d y2:%d z2:%d\n", xy_data.x2,xy_data.y2,xy_data.z2);
-            }
+            
         }
     }
 }
