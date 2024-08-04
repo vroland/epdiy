@@ -23,6 +23,10 @@ static const uint8_t result_pattern_2ppB_white[8]
     = { 0x00, 0x01, 0x50, 0x55, 0x55, 0x55, 0x00, 0x55 };
 static const uint8_t result_pattern_2ppB_black[8]
     = { 0xAA, 0xA8, 0x0A, 0x82, 0xAA, 0xAA, 0xAA, 0x20 };
+static const uint8_t result_pattern_8ppB[32]
+    = { 0x00, 0x00, 0x00, 0x00, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55,
+        0x55, 0x54, 0x55, 0x55, 0x54, 0x44, 0x11, 0x44, 0x11, 0x11, 0x44,
+        0x11, 0x44, 0x00, 0x00, 0x00, 0x00, 0x55, 0x55, 0x15, 0x55 };
 
 typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*, uint32_t);
 static uint8_t waveform_phases[16][4];
@@ -43,7 +47,7 @@ typedef struct {
     uint8_t* expected_line;
     uint8_t* lut;
     /// Ratio of input bytes to output bytes
-    int in_out_ratio;
+    float in_out_ratio;
     int example_len_px;
 } LutTestBuffers;
 
@@ -71,8 +75,10 @@ static void lut_test_buffers_fill(LutTestBuffers* bufs, const uint8_t* result_pa
     // initialize test and check patterns
     for (int i = 0; i < bufs->example_len_px; i++) {
         bufs->line_data[i] = input_data_pattern[i % sizeof(input_data_pattern)];
-        bufs->expected_line[i / bufs->in_out_ratio]
-            = result_pattern[(i / bufs->in_out_ratio) % result_pattern_len];
+    }
+
+    for (int i = 0; i < bufs->example_len_px / bufs->in_out_ratio; i++) {
+        bufs->expected_line[i] = result_pattern[i % result_pattern_len];
     }
 
     memset(bufs->lut, 0, 1 << 16);
@@ -86,12 +92,12 @@ static void lut_test_buffers_fill(LutTestBuffers* bufs, const uint8_t* result_pa
  * Allocates and populates buffers for LUT tests.
  */
 static void lut_test_buffers_init(
-    LutTestBuffers* bufs, int example_len_px, const uint8_t* result_pattern, int in_out_ratio
+    LutTestBuffers* bufs, int example_len_px, const uint8_t* result_pattern, float in_out_ratio
 ) {
     uint32_t caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
     bufs->line_data = heap_caps_aligned_alloc(16, example_len_px, caps);
-    bufs->result_line = heap_caps_aligned_alloc(16, example_len_px / in_out_ratio, caps);
-    bufs->expected_line = heap_caps_aligned_alloc(16, example_len_px / in_out_ratio, caps);
+    bufs->result_line = heap_caps_aligned_alloc(16, (int)(example_len_px / in_out_ratio), caps);
+    bufs->expected_line = heap_caps_aligned_alloc(16, (int)(example_len_px / in_out_ratio), caps);
     bufs->lut = heap_caps_malloc(1 << 16, caps);
     bufs->example_len_px = example_len_px;
     bufs->in_out_ratio = in_out_ratio;
@@ -124,6 +130,12 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
     // test combinations of start / end missalignment in four byte steps
     for (int start_offset = 0; start_offset <= 16; start_offset += 4) {
         for (int end_offset = 0; end_offset <= 16; end_offset += 4) {
+            /// for 8ppB buffers, we skip 4 byte start offset since an input byte encodes 2 output
+            /// bytes, there is no way to shift the output by just one byte.
+            if (bufs->in_out_ratio < 1.0 && (start_offset % 8) == 4) {
+                continue;
+            }
+
             int unaligned_len = len - end_offset - start_offset;
 
             memset(bufs->result_line, 0, out_len);
@@ -141,7 +153,9 @@ static void IRAM_ATTR test_with_alignments(LutTestBuffers* bufs, lut_func_t lut_
             uint64_t start = esp_timer_get_time();
             for (int i = 0; i < 100; i++) {
                 lut_func(
-                    (uint32_t*)(bufs->line_data + start_offset * bufs->in_out_ratio / 4),
+                    // We shift the alignment of the input data by four pixels
+                    (uint32_t*)(bufs->line_data + (int)(start_offset * bufs->in_out_ratio / 4)),
+                    // we shift the alignment of the result line by one byte
                     bufs->result_line + start_offset / 4,
                     bufs->lut,
                     unaligned_len
@@ -230,6 +244,20 @@ TEST_CASE("2ppB lookup LCD, 1k LUT, previously black", "[epdiy,unit,lut]") {
 
     enum EpdDrawMode mode = MODE_GL16 | MODE_PACKING_2PPB | PREVIOUSLY_BLACK;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
+    func_pair.build_func(bufs.lut, &test_waveform, 0);
+    test_with_alignments(&bufs, func_pair.lookup_func);
+
+    diff_test_buffers_free(&bufs);
+}
+
+TEST_CASE("8ppB lookup LCD, 1k LUT, previously white", "[epdiy,unit,lut]") {
+    LutTestBuffers bufs;
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN / 2, result_pattern_8ppB, 0.5);
+
+    enum EpdDrawMode mode = MODE_DU | MODE_PACKING_8PPB | PREVIOUSLY_WHITE;
+    LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
+    TEST_ASSERT_NOT_NULL(func_pair.build_func);
+    TEST_ASSERT_NOT_NULL(func_pair.lookup_func);
     func_pair.build_func(bufs.lut, &test_waveform, 0);
     test_with_alignments(&bufs, func_pair.lookup_func);
 

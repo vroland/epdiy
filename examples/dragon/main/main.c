@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "ED097TC2.h"
 #include "dragon.h"
 #include "epd_highlevel.h"
 #include "epdiy.h"
@@ -27,14 +28,25 @@ void idf_loop() {
 
     epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
 
-    enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
+    epd_draw_base(
+        dragon_area,
+        epd_hl_get_framebuffer(&hl),
+        dragon_area,
+        MODE_GC16 | MODE_PACKING_2PPB | PREVIOUSLY_WHITE,
+        temperature,
+        NULL,
+        NULL,
+        &ed097tc2
+    );
+
+    // enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
     epd_poweroff();
 
-    vTaskDelay(1000);
+    vTaskDelay(100000);
 }
 
 void idf_setup() {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_1K);
     epd_set_vcom(1560);
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
 }

@@ -19,7 +19,7 @@
  *          Since we disable the PSRAM workaround here for performance reasons.
  */
 
-/* Python script for generating the 1bpp lookup table:
+/* Python script for generating the 8ppB lookup table:
  * for i in range(256):
      number = 0;
      for b in range(8):
@@ -27,7 +27,7 @@
              number |= 1 << (2*b)
      print ('0x%04x,'%number)
  */
-const uint32_t lut_1bpp_black[256] = {
+const uint32_t lut_8ppB_black[256] = {
     0x5555, 0x5554, 0x5551, 0x5550, 0x5545, 0x5544, 0x5541, 0x5540, 0x5515, 0x5514, 0x5511, 0x5510,
     0x5505, 0x5504, 0x5501, 0x5500, 0x5455, 0x5454, 0x5451, 0x5450, 0x5445, 0x5444, 0x5441, 0x5440,
     0x5415, 0x5414, 0x5411, 0x5410, 0x5405, 0x5404, 0x5401, 0x5400, 0x5155, 0x5154, 0x5151, 0x5150,
@@ -92,7 +92,7 @@ nibble_shift_buffer_right(uint8_t* buf, uint32_t len) {
     }
 }
 
-__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_1bpp(
+__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_8ppB(
     const uint32_t* line_data, uint8_t* epd_input, const uint8_t* lut, uint32_t epd_width
 ) {
     uint32_t* wide_epd_input = (uint32_t*)epd_input;
@@ -100,10 +100,23 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_1bpp(
     uint32_t* lut_32 = (uint32_t*)lut;
     // this is reversed for little-endian, but this is later compensated
     // through the output peripheral.
-    for (uint32_t j = 0; j < epd_width / 16; j++) {
+    for (int j = 0; j < epd_width / 16; j++) {
         uint8_t v1 = *(data_ptr++);
         uint8_t v2 = *(data_ptr++);
-        wide_epd_input[j] = (lut_32[v1] << 16) | lut_32[v2];
+        wide_epd_input[j] = (lut_32[v2] << 16) | lut_32[v1];
+    }
+
+    // Account for missing line end if epd_width is not divisible by 16.
+    // We assume divisibility by 4.
+    for (int j = 0; j < (epd_width % 16) / 4; j++) {
+        uint8_t nibble = *data_ptr;
+        if (j % 2 == 1) {
+            nibble = nibble >> 4;
+            data_ptr++;
+        } else {
+            nibble = nibble & 0xF;
+        }
+        epd_input[(epd_width / 16) * 4 + j] = lut_32[nibble];
     }
 }
 
@@ -179,7 +192,7 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_1ppB_64k(
     }
 }
 
-__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
+__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_2ppB_lut_64k(
     const uint32_t* line_data, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
 ) {
     const uint16_t* line_data_16 = (const uint16_t*)line_data;
@@ -192,7 +205,7 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_lut_64k(
 /**
  * Look up 4 pixels in a 1K LUT with fixed "from" value.
  */
-__attribute__((optimize("O3"))) static uint8_t lookup_pixels_4bpp_1k(
+__attribute__((optimize("O3"))) static uint8_t lookup_pixels_2ppB_1k(
     uint16_t in, const uint8_t* conversion_lut, uint8_t from
 ) {
     uint8_t v;
@@ -211,10 +224,10 @@ __attribute__((optimize("O3"))) static uint8_t lookup_pixels_4bpp_1k(
 }
 
 /**
- * Calculate EPD input for a 4bpp buffer, but with a difference image LUT.
+ * Calculate EPD input for a 2ppB buffer, but with a difference image LUT.
  * This is used for small-LUT mode.
  */
-__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut(
+__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_2ppB_1k_lut(
     const uint32_t* ld,
     uint8_t* epd_input,
     const uint8_t* conversion_lut,
@@ -224,20 +237,20 @@ __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut(
     const uint16_t* line_data_16 = (const uint16_t*)ld;
 
     for (uint32_t j = 0; j < epd_width / 4; j++) {
-        epd_input[j] = lookup_pixels_4bpp_1k(*(line_data_16++), conversion_lut, from);
+        epd_input[j] = lookup_pixels_2ppB_1k(*(line_data_16++), conversion_lut, from);
     };
 }
 
-__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut_white(
+__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_2ppB_1k_lut_white(
     const uint32_t* ld, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
 ) {
-    calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0xF, epd_width);
+    calc_epd_input_2ppB_1k_lut(ld, epd_input, conversion_lut, 0xF, epd_width);
 }
 
-__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_4bpp_1k_lut_black(
+__attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_2ppB_1k_lut_black(
     const uint32_t* ld, uint8_t* epd_input, const uint8_t* conversion_lut, uint32_t epd_width
 ) {
-    calc_epd_input_4bpp_1k_lut(ld, epd_input, conversion_lut, 0x0, epd_width);
+    calc_epd_input_2ppB_1k_lut(ld, epd_input, conversion_lut, 0x0, epd_width);
 }
 
 ///////////////////////////// Calculate Lookup Tables
@@ -378,7 +391,7 @@ static void build_2ppB_lut_64k_from_15(uint8_t* lut, const EpdWaveformPhases* ph
 }
 
 static void build_8ppB_lut_256b_from_15(uint8_t* lut, const EpdWaveformPhases* phases, int frame) {
-    memcpy(lut, lut_1bpp_black, sizeof(lut_1bpp_black));
+    memcpy(lut, lut_8ppB_black, sizeof(lut_8ppB_black));
 }
 
 LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
@@ -401,32 +414,32 @@ LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
         if (lut_size >= 1 << 16) {
             if (mode & PREVIOUSLY_WHITE) {
                 pair.build_func = &build_2ppB_lut_64k_from_15;
-                pair.lookup_func = &calc_epd_input_4bpp_lut_64k;
+                pair.lookup_func = &calc_epd_input_2ppB_lut_64k;
                 return pair;
             } else if (mode & PREVIOUSLY_BLACK) {
                 pair.build_func = &build_2ppB_lut_64k_from_0;
-                pair.lookup_func = &calc_epd_input_4bpp_lut_64k;
+                pair.lookup_func = &calc_epd_input_2ppB_lut_64k;
                 return pair;
             }
         } else if (lut_size >= 1024) {
             if (mode & PREVIOUSLY_WHITE) {
                 pair.build_func = &build_2ppB_lut_1k;
-                pair.lookup_func = &calc_epd_input_4bpp_1k_lut_white;
+                pair.lookup_func = &calc_epd_input_2ppB_1k_lut_white;
                 return pair;
             } else if (mode & PREVIOUSLY_BLACK) {
                 pair.build_func = &build_2ppB_lut_1k;
-                pair.lookup_func = &calc_epd_input_4bpp_1k_lut_black;
+                pair.lookup_func = &calc_epd_input_2ppB_1k_lut_black;
                 return pair;
             }
         }
     } else if (mode & MODE_PACKING_8PPB) {
-        if (lut_size < sizeof(lut_1bpp_black)) {
+        if (lut_size < sizeof(lut_8ppB_black)) {
             return pair;
         }
 
         if (mode & PREVIOUSLY_WHITE) {
             pair.build_func = &build_8ppB_lut_256b_from_15;
-            pair.lookup_func = &calc_epd_input_1bpp;
+            pair.lookup_func = &calc_epd_input_8ppB;
             return pair;
         } else if (mode & PREVIOUSLY_BLACK) {
             // FIXME: to implement

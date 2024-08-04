@@ -94,8 +94,9 @@ static inline int rounded_display_height() {
  *
  * don't inline for to ensure availability in tests.
  */
-void __attribute__((noinline))
-_epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
+void __attribute__((noinline)) _epd_populate_line_mask(
+    uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len
+) {
     if (dirty_columns == NULL) {
         memset(line_mask, 0xFF, mask_len);
     } else {
