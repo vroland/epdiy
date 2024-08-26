@@ -518,7 +518,12 @@ static esp_err_t init_lcd_peripheral() {
 
     // enable RGB mode and set data width
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+    lcd_ll_set_dma_read_stride(lcd.hal.dev, lcd.config.bus_width);
+    lcd_ll_set_data_wire_width(lcd.hal.dev, lcd.config.bus_width);
+#else
     lcd_ll_set_data_width(lcd.hal.dev, lcd.config.bus_width);
+#endif
     lcd_ll_set_phase_cycles(lcd.hal.dev, 0, (lcd.dummy_bytes > 0), 1);  // enable data phase only
     lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false);     // enable data phase only
 
@@ -612,7 +617,18 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
 
     // set pclk
     int flags = 0;
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+    hal_utils_clk_div_t clk_div = {};
+    uint32_t freq
+        = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags, &clk_div);
+    lcd_ll_set_group_clock_coeff(
+        &LCD_CAM, (int)clk_div.integer, (int)clk_div.denominator, (int)clk_div.numerator
+    );
+#else
     uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
+#endif
+
     ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
     lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1)
                              * 1000000 / lcd.config.pixel_clock
