@@ -25,6 +25,7 @@ jobs:
           - release-v4.4
           - release-v5.1
           - release-v5.2
+          - release-v5.3
         example:
           - calibration_helper
           - demo
