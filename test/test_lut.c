@@ -23,10 +23,14 @@ static const uint8_t result_pattern_2ppB_white[8]
     = { 0x00, 0x01, 0x50, 0x55, 0x55, 0x55, 0x00, 0x55 };
 static const uint8_t result_pattern_2ppB_black[8]
     = { 0xAA, 0xA8, 0x0A, 0x82, 0xAA, 0xAA, 0xAA, 0x20 };
-static const uint8_t result_pattern_8ppB[32]
+static const uint8_t result_pattern_8ppB_on_white[32]
     = { 0x00, 0x00, 0x00, 0x00, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55,
         0x55, 0x54, 0x55, 0x55, 0x54, 0x44, 0x11, 0x44, 0x11, 0x11, 0x44,
         0x11, 0x44, 0x00, 0x00, 0x00, 0x00, 0x55, 0x55, 0x15, 0x55 };
+static const uint8_t result_pattern_8ppB_on_black[32]
+    = { 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00,
+        0x00, 0x02, 0x00, 0x00, 0x02, 0x22, 0x88, 0x22, 0x88, 0x88, 0x22,
+        0x88, 0x22, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x80, 0x00 };
 
 typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*, uint32_t);
 static uint8_t waveform_phases[16][4];
@@ -252,9 +256,23 @@ TEST_CASE("2ppB lookup LCD, 1k LUT, previously black", "[epdiy,unit,lut]") {
 
 TEST_CASE("8ppB lookup LCD, 1k LUT, previously white", "[epdiy,unit,lut]") {
     LutTestBuffers bufs;
-    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN / 2, result_pattern_8ppB, 0.5);
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN / 2, result_pattern_8ppB_on_white, 0.5);
 
     enum EpdDrawMode mode = MODE_DU | MODE_PACKING_8PPB | PREVIOUSLY_WHITE;
+    LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
+    TEST_ASSERT_NOT_NULL(func_pair.build_func);
+    TEST_ASSERT_NOT_NULL(func_pair.lookup_func);
+    func_pair.build_func(bufs.lut, &test_waveform, 0);
+    test_with_alignments(&bufs, func_pair.lookup_func);
+
+    diff_test_buffers_free(&bufs);
+}
+
+TEST_CASE("8ppB lookup LCD, 1k LUT, previously black", "[epdiy,unit,lut]") {
+    LutTestBuffers bufs;
+    lut_test_buffers_init(&bufs, DEFAULT_EXAMPLE_LEN / 2, result_pattern_8ppB_on_black, 0.5);
+
+    enum EpdDrawMode mode = MODE_DU | MODE_PACKING_8PPB | PREVIOUSLY_BLACK;
     LutFunctionPair func_pair = find_lut_functions(mode, 1 << 10);
     TEST_ASSERT_NOT_NULL(func_pair.build_func);
     TEST_ASSERT_NOT_NULL(func_pair.lookup_func);

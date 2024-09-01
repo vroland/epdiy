@@ -49,46 +49,59 @@ void clear() {
     memset(framebuffer, 0xFF, fb_size);
 }
 
-void test_8ppB() {
-    clear();
-
-    // bytes in a line in 8ppB mode
+/**
+ * Draw triangles at varying alignments into the framebuffer in 8ppB mode.
+ * start_line, start_column specify the start position.
+ * The bits that belong to a triangle are flipped, i.e., it is drawn at the
+ * inverse color to the background it is drawn onto.
+ */
+void draw_8bpp_triangles(int start_line, int start_column) {
+    start_column /= 8;
     int line_bytes = epd_width() / 8;
 
-    int start_line = 100;
-    int start_column = 80 / 8;
-
-    // draw differently aligned triangles to check for uniformity
     for (int align = 0; align < 16; align++) {
         for (int height = 0; height < 16; height++) {
             for (int len = 0; len < height; len++) {
                 int line = (start_line + 16 * align + height);
                 int column = align + len;
                 uint8_t* line_address = framebuffer + (line_bytes * line);
-                *(line_address + start_column + column / 8) &= ~(1 << (column % 8));
+                *(line_address + start_column + column / 8) ^= 1 << (column % 8);
             }
         }
     }
+}
 
-    int black_start_column = 160 / 8;
+void test_8ppB() {
+    clear();
+    EpdRect area = epd_full_screen();
 
-    // draw a black area for later
-    for (int line = 0; line < 200; line++) {
+    // bytes in a line in 8ppB mode
+    int line_bytes = epd_width() / 8;
+
+    int start_line = 100;
+
+    // draw differently aligned black triangles to check for uniformity
+    draw_8bpp_triangles(start_line, 80);
+
+    int black_start_column = 160;
+
+    // draw a black area
+    for (int line = 0; line < 300; line++) {
         uint8_t* line_address = framebuffer + (line_bytes * (start_line + line));
-        memset(line_address + black_start_column, 0, 32);
+        memset(line_address + black_start_column / 8, 0, 32);
     }
 
+    // draw white triangles on the black background
+    draw_8bpp_triangles(start_line, black_start_column + 16);
+
+    // update the display. In the first update, white pixels are no-opps,
+    // in the second update, black pixels are no-ops.
+    enum EpdDrawMode mode;
     epd_poweron();
-    checkError(epd_draw_base(
-        epd_full_screen(),
-        framebuffer,
-        epd_full_screen(),
-        MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_WHITE,
-        25,
-        NULL,
-        NULL,
-        &epdiy_ED047TC2
-    ));
+    mode = MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_WHITE;
+    checkError(epd_draw_base(area, framebuffer, area, mode, 25, NULL, NULL, &epdiy_ED047TC2));
+    mode = MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_BLACK;
+    checkError(epd_draw_base(area, framebuffer, area, mode, 25, NULL, NULL, &epdiy_ED047TC2));
     epd_poweroff();
 }
 
