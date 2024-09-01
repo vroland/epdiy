@@ -443,6 +443,7 @@ LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {
             return pair;
         } else if (mode & PREVIOUSLY_BLACK) {
             // FIXME: to implement
+            return pair;
         }
     }
 
