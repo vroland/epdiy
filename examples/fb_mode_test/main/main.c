@@ -196,9 +196,9 @@ void app_main() {
     memset(framebuffer, 0xFF, fb_size);
 
     test_2ppB();
-    
+
     // clear a small square to test selective clear.
-    EpdRect area = {.x = 250, .y = 150, .width=50, .height=50};
+    EpdRect area = { .x = 250, .y = 150, .width = 50, .height = 50 };
     clear(area);
 
     printf("going to sleep...\n");

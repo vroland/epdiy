@@ -30,4 +30,3 @@ typedef struct {
  * for the selected draw mode and allocated LUT size.
  */
 LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size);
-

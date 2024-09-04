@@ -18,9 +18,7 @@
 #include "lcd_driver.h"
 #include "render_lcd.h"
 
-
-void epd_apply_line_mask_VE(uint8_t * line, const uint8_t* mask, int mask_len);
-
+void epd_apply_line_mask_VE(uint8_t* line, const uint8_t* mask, int mask_len);
 
 static bool IRAM_ATTR fill_line_noop(RenderContext_t* ctx, uint8_t* line) {
     memset(line, 0x00, ctx->display_width / 4);
@@ -30,7 +28,8 @@ static bool IRAM_ATTR fill_line_noop(RenderContext_t* ctx, uint8_t* line) {
 
 static bool IRAM_ATTR fill_line_white(RenderContext_t* ctx, uint8_t* line) {
     // do a no-op if we're out of the draw area
-    if (ctx->lines_consumed < ctx->area.y || ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
+    if (ctx->lines_consumed < ctx->area.y
+        || ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
         return fill_line_noop(ctx, line);
     }
 
@@ -43,7 +42,8 @@ static bool IRAM_ATTR fill_line_white(RenderContext_t* ctx, uint8_t* line) {
 
 static bool IRAM_ATTR fill_line_black(RenderContext_t* ctx, uint8_t* line) {
     // do a no-op if we're out of the draw area
-    if (ctx->lines_consumed < ctx->area.y || ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
+    if (ctx->lines_consumed < ctx->area.y
+        || ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
         return fill_line_noop(ctx, line);
     }
 

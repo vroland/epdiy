@@ -96,7 +96,6 @@ static inline int max(int x, int y) {
 // status tracker for row skipping
 uint32_t skipping;
 
-
 __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_8ppB(
     const uint32_t* line_data, uint8_t* epd_input, const uint8_t* lut, uint32_t epd_width
 ) {
