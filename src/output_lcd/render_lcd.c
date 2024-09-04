@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../output_common/render_method.h"
+#include "../output_common/utils.h"
 
 #ifdef RENDER_METHOD_LCD
 
@@ -17,18 +18,39 @@
 #include "lcd_driver.h"
 #include "render_lcd.h"
 
+
+void epd_apply_line_mask_VE(uint8_t * line, const uint8_t* mask, int mask_len);
+
+
 static bool IRAM_ATTR fill_line_noop(RenderContext_t* ctx, uint8_t* line) {
     memset(line, 0x00, ctx->display_width / 4);
+    ctx->lines_consumed++;
     return false;
 }
 
 static bool IRAM_ATTR fill_line_white(RenderContext_t* ctx, uint8_t* line) {
+    // do a no-op if we're out of the draw area
+    if (ctx->lines_consumed < ctx->area.y || ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
+        return fill_line_noop(ctx, line);
+    }
+
     memset(line, CLEAR_BYTE, ctx->display_width / 4);
+    // we use the non-VE version here, because the buffers are not extended to multiples of 16 bytes
+    epd_apply_line_mask(line, ctx->line_mask, ctx->display_width / 4);
+    ctx->lines_consumed++;
     return false;
 }
 
 static bool IRAM_ATTR fill_line_black(RenderContext_t* ctx, uint8_t* line) {
+    // do a no-op if we're out of the draw area
+    if (ctx->lines_consumed < ctx->area.y || ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
+        return fill_line_noop(ctx, line);
+    }
+
     memset(line, DARK_BYTE, ctx->display_width / 4);
+    // we use the non-VE version here, because the buffers are not extended to multiples of 16 bytes
+    epd_apply_line_mask(line, ctx->line_mask, ctx->display_width / 4);
+    ctx->lines_consumed++;
     return false;
 }
 
@@ -100,6 +122,10 @@ void lcd_do_update(RenderContext_t* ctx) {
 void epd_push_pixels_lcd(RenderContext_t* ctx, short time, int color) {
     epd_set_mode(1);
     ctx->current_frame = 0;
+    ctx->lines_consumed = 0;
+
+    epd_populate_area_mask(ctx->line_mask, ctx->area, ctx->display_width);
+
     epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
     if (color == 0) {
         epd_lcd_line_source_cb((line_cb_func_t)&fill_line_black, ctx);
@@ -194,7 +220,6 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
         ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);
 
         // apply the line mask
-        void epd_apply_line_mask_VE(uint8_t * line, const uint8_t* mask, int mask_len);
         epd_apply_line_mask_VE(buf, ctx->line_mask, ctx->display_width / 4);
 
         lq_commit(lq);

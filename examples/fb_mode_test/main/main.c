@@ -48,9 +48,9 @@ static inline void checkError(enum EpdDrawError err) {
 /**
  * Clears the screen to white and resets the framebuffer.
  */
-void clear() {
+void clear(EpdRect area) {
     epd_poweron();
-    epd_clear();
+    epd_clear_area(area);
     epd_poweroff();
     memset(framebuffer, 0xFF, fb_size);
 }
@@ -189,13 +189,17 @@ void app_main() {
     fb_size = epd_width() * epd_height() / 2;
     framebuffer = heap_caps_aligned_alloc(16, fb_size, MALLOC_CAP_SPIRAM);
 
-    clear();
+    clear(epd_full_screen());
 
     test_8ppB();
 
     memset(framebuffer, 0xFF, fb_size);
 
     test_2ppB();
+    
+    // clear a small square to test selective clear.
+    EpdRect area = {.x = 250, .y = 150, .width=50, .height=50};
+    clear(area);
 
     printf("going to sleep...\n");
     epd_deinit();

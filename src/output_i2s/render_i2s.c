@@ -13,6 +13,7 @@
 
 // output a row to the display.
 #include "../output_common/lut.h"
+#include "../output_common/utils.h"
 #include "../output_common/render_context.h"
 #include "i2s_data_bus.h"
 #include "rmt_pulse.h"
@@ -183,14 +184,11 @@ void i2s_do_update(RenderContext_t* ctx) {
 void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t* ctx, EpdRect area, short time, int color) {
     int line_bytes = ctx->display_width / 4;
     uint8_t row[line_bytes];
-    memset(row, 0, line_bytes);
-
     const uint8_t color_choice[4] = { DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF };
-    for (uint32_t i = 0; i < area.width; i++) {
-        uint32_t position = i + area.x % 4;
-        uint8_t mask = color_choice[color] & (0b00000011 << (2 * (position % 4)));
-        row[area.x / 4 + position / 4] |= mask;
-    }
+    memset(row, color_choice[color], line_bytes);
+
+    epd_populate_area_mask(ctx->line_mask, ctx->area, ctx->display_width);
+    epd_apply_line_mask(row, ctx->line_mask, ctx->display_width / 4);
     reorder_line_buffer((uint32_t*)row, line_bytes);
 
     i2s_start_frame();

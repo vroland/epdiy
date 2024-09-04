@@ -450,7 +450,7 @@ static esp_err_t allocate_lcd_buffers() {
 
     // allocate bounce buffers
     for (int i = 0; i < 2; i++) {
-        lcd.bounce_buffer[i] = heap_caps_aligned_calloc(4, 1, lcd.bb_size, dma_flags);
+        lcd.bounce_buffer[i] = heap_caps_aligned_calloc(16, 1, lcd.bb_size, dma_flags);
         ESP_RETURN_ON_FALSE(lcd.bounce_buffer[i], ESP_ERR_NO_MEM, TAG, "install interrupt failed");
     }
 

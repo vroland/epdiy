@@ -96,33 +96,6 @@ static inline int max(int x, int y) {
 // status tracker for row skipping
 uint32_t skipping;
 
-__attribute__((optimize("O3"))) void IRAM_ATTR
-reorder_line_buffer(uint32_t* line_data, int buf_len) {
-    for (uint32_t i = 0; i < buf_len / 4; i++) {
-        uint32_t val = *line_data;
-        *(line_data++) = val >> 16 | ((val & 0x0000FFFF) << 16);
-    }
-}
-
-__attribute__((optimize("O3"))) void IRAM_ATTR
-bit_shift_buffer_right(uint8_t* buf, uint32_t len, int shift) {
-    uint8_t carry = 0xFF << (8 - shift);
-    for (uint32_t i = 0; i < len; i++) {
-        uint8_t val = buf[i];
-        buf[i] = (val >> shift) | carry;
-        carry = val << (8 - shift);
-    }
-}
-
-__attribute__((optimize("O3"))) void IRAM_ATTR
-nibble_shift_buffer_right(uint8_t* buf, uint32_t len) {
-    uint8_t carry = 0xF;
-    for (uint32_t i = 0; i < len; i++) {
-        uint8_t val = buf[i];
-        buf[i] = (val << 4) | carry;
-        carry = (val & 0xF0) >> 4;
-    }
-}
 
 __attribute__((optimize("O3"))) void IRAM_ATTR calc_epd_input_8ppB(
     const uint32_t* line_data, uint8_t* epd_input, const uint8_t* lut, uint32_t epd_width
