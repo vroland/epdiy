@@ -4,6 +4,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <stdatomic.h>
+#include <stdint.h>
 
 #include "../epdiy.h"
 #include "line_queue.h"
@@ -67,6 +68,9 @@ typedef struct {
     /// one for each thread.
     LineQueue_t line_queues[NUM_RENDER_THREADS];
     uint8_t* line_threads;
+
+    // Output line mask
+    uint8_t* line_mask;
 
     /// track line skipping when working in old i2s mode
     int skipping;

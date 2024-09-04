@@ -243,12 +243,17 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t* ctx, int thread_id) {
             continue;
         }
 
+        // lookup pixel actions in the waveform LUT
         ctx->lut_lookup_func(
             (uint32_t*)line_buf,
             (uint8_t*)i2s_get_current_buffer(),
             ctx->conversion_lut,
             ctx->display_width
         );
+
+        // apply the line mask
+        epd_apply_line_mask(i2s_get_current_buffer(), ctx->line_mask, ctx->display_width / 4);
+
         reorder_line_buffer((uint32_t*)i2s_get_current_buffer(), ctx->display_width / 4);
         i2s_write_row(ctx, frame_time);
     }

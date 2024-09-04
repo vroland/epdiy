@@ -116,7 +116,7 @@ void test_8ppB() {
         uint8_t* line_address = framebuffer + (line_bytes * (start_line + line));
         memset(line_address + black_start_column / 8, 0, 32);
     }
-    
+
     // update the display. In the first update, white pixels are no-opps,
     // in the second update, black pixels are no-ops.
     epd_poweron();
@@ -126,7 +126,6 @@ void test_8ppB() {
 
     // draw white triangles on the black background
     draw_8bpp_triangles(start_line, black_start_column + 16);
-
 
     epd_poweron();
     mode = MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_BLACK;
@@ -167,7 +166,6 @@ void test_2ppB() {
     // draw white triangles on the black background
     draw_2bpp_triangles(start_line, black_start_column + 16, 255);
 
-        
     epd_poweron();
     mode = MODE_PACKING_2PPB | MODE_DU | PREVIOUSLY_BLACK;
     checkError(

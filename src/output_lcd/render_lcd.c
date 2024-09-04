@@ -193,6 +193,10 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
 
         ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);
 
+        // apply the line mask
+        void epd_apply_line_mask_VE(uint8_t * line, const uint8_t* mask, int mask_len);
+        epd_apply_line_mask_VE(buf, ctx->line_mask, ctx->display_width / 4);
+
         lq_commit(lq);
     }
 }

@@ -36,6 +36,12 @@ LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size);
  */
 void reorder_line_buffer(uint32_t* line_data, int buf_len);
 
+/**
+ * Apply a mask to a line buffer.
+ * `len` must be divisible by 4.
+ */
+void epd_apply_line_mask(uint8_t* buf, const uint8_t* mask, int len);
+
 // legacy functions
 void bit_shift_buffer_right(uint8_t* buf, uint32_t len, int shift);
 void nibble_shift_buffer_right(uint8_t* buf, uint32_t len);

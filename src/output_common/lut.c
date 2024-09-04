@@ -1,6 +1,7 @@
 #include "lut.h"
 
 #include "epdiy.h"
+#include "esp_attr.h"
 #include "render_context.h"
 #include "render_method.h"
 
@@ -431,6 +432,12 @@ static void build_8ppB_lut_256b_from_black(
     uint8_t* lut, const EpdWaveformPhases* phases, int frame
 ) {
     memcpy(lut, lut_8ppB_start_at_black, sizeof(lut_8ppB_start_at_black));
+}
+
+void IRAM_ATTR epd_apply_line_mask(uint8_t* buf, const uint8_t* mask, int len) {
+    for (int i = 0; i < len / 4; i++) {
+        ((uint32_t*)buf)[i] &= ((uint32_t*)mask)[i];
+    }
 }
 
 LutFunctionPair find_lut_functions(enum EpdDrawMode mode, uint32_t lut_size) {

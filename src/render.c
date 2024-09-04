@@ -198,16 +198,10 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     if (waveform_phases != NULL && waveform_phases->phase_times != NULL) {
         render_context.phase_times = waveform_phases->phase_times;
     }
-    
-    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        LineQueue_t* queue = &render_context.line_queues[i];
-        _epd_populate_line_mask(queue->mask_buffer, drawn_columns, queue->mask_buffer_len);
-        
-        
-        for (int i = 0; i < queue->mask_buffer_len / 4; i++) {
-            printf("%X\n", ((uint32_t*)(queue->mask_buffer))[i]);
-        }
-    }
+
+    _epd_populate_line_mask(
+        render_context.line_mask, drawn_columns, render_context.display_width / 4
+    );
 
 #ifdef RENDER_METHOD_I2S
     i2s_do_update(&render_context);
@@ -326,16 +320,18 @@ void epd_renderer_init(enum EpdInitOptions options) {
         abort();
     }
 
+    render_context.line_mask
+        = heap_caps_aligned_alloc(16, epd_width() / 4, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    assert(render_context.line_mask != NULL);
+
 #ifdef RENDER_METHOD_LCD
-    bool use_lq_mask = true;
     size_t queue_elem_size = render_context.display_width / 4;
 #elif defined(RENDER_METHOD_I2S)
-    bool use_lq_mask = false;
-    size_t queue_elem_size = epd_width();
+    size_t queue_elem_size = render_context.display_width;
 #endif
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        render_context.line_queues[i] = lq_init(queue_len, queue_elem_size, use_lq_mask);
+        render_context.line_queues[i] = lq_init(queue_len, queue_elem_size);
         render_context.feed_line_buffers[i] = (uint8_t*)heap_caps_malloc(
             render_context.display_width, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL
         );
@@ -376,6 +372,7 @@ void epd_renderer_deinit() {
 
     heap_caps_free(render_context.conversion_lut);
     heap_caps_free(render_context.line_threads);
+    heap_caps_free(render_context.line_mask);
     vSemaphoreDelete(render_context.frame_done);
 }
 
