@@ -284,13 +284,14 @@ static void http_post(void) {
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
      */
-    esp_http_client_config_t config = { .url = IMG_URL,
+    esp_http_client_config_t config
+        = {.url = IMG_URL,
 #if VALIDATE_SSL_CERTIFICATE == true
-                                        .cert_pem = (char*)server_cert_pem_start,
+           .cert_pem = (char*)server_cert_pem_start,
 #endif
-                                        .disable_auto_redirect = false,
-                                        .event_handler = _http_event_handler,
-                                        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE };
+           .disable_auto_redirect = false,
+           .event_handler = _http_event_handler,
+           .buffer_size = HTTP_RECEIVE_BUFFER_SIZE };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 

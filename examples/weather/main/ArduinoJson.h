@@ -4546,8 +4546,8 @@ struct BoundedReader<TSource*, typename enable_if<IsCharOrVoid<TSource>::value>:
    public:
     explicit BoundedReader(const void* ptr, size_t len)
         : IteratorReader<const char*>(
-              reinterpret_cast<const char*>(ptr), reinterpret_cast<const char*>(ptr) + len
-          ) {}
+            reinterpret_cast<const char*>(ptr), reinterpret_cast<const char*>(ptr) + len
+        ) {}
 };
 template <typename TArray>
 struct Reader<ElementProxy<TArray>, void> : Reader<char*, void> {
