@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <esp_attr.h>
 #include <esp_heap_caps.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,13 +67,6 @@ uint8_t* IRAM_ATTR lq_current(LineQueue_t* queue) {
 
 void IRAM_ATTR lq_commit(LineQueue_t* queue) {
     int current = atomic_load_explicit(&queue->current, memory_order_acquire);
-
-    if (current == queue->size - 1) {
-        queue->current = 0;
-    } else {
-        atomic_fetch_add(&queue->current, 1);
-    }
-
 #ifdef RENDER_METHOD_LCD
     void epd_apply_line_mask_VE(uint8_t * line, const uint8_t* mask, int mask_len);
     epd_apply_line_mask_VE(queue->bufs[current], queue->mask_buffer, queue->mask_buffer_len);
@@ -81,6 +75,12 @@ void IRAM_ATTR lq_commit(LineQueue_t* queue) {
         ((uint32_t*)(queue->bufs[current]))[i] &= ((uint32_t*)(queue->mask_buffer))[i];
     }
 #endif
+
+    if (current == queue->size - 1) {
+        queue->current = 0;
+    } else {
+        atomic_fetch_add(&queue->current, 1);
+    }
 }
 
 int IRAM_ATTR lq_read(LineQueue_t* queue, uint8_t* dst) {

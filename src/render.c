@@ -198,15 +198,20 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     if (waveform_phases != NULL && waveform_phases->phase_times != NULL) {
         render_context.phase_times = waveform_phases->phase_times;
     }
+    
+    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
+        LineQueue_t* queue = &render_context.line_queues[i];
+        _epd_populate_line_mask(queue->mask_buffer, drawn_columns, queue->mask_buffer_len);
+        
+        
+        for (int i = 0; i < queue->mask_buffer_len / 4; i++) {
+            printf("%X\n", ((uint32_t*)(queue->mask_buffer))[i]);
+        }
+    }
 
 #ifdef RENDER_METHOD_I2S
     i2s_do_update(&render_context);
 #elif defined(RENDER_METHOD_LCD)
-    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        LineQueue_t* queue = &render_context.line_queues[i];
-        _epd_populate_line_mask(queue->mask_buffer, drawn_columns, queue->mask_buffer_len);
-    }
-
     lcd_do_update(&render_context);
 #endif
 

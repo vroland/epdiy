@@ -99,6 +99,7 @@ void draw_2bpp_triangles(int start_line, int start_column, uint8_t color) {
 
 void test_8ppB() {
     EpdRect area = epd_full_screen();
+    enum EpdDrawMode mode;
 
     // bytes in a line in 8ppB mode
     int line_bytes = epd_width() / 8;
@@ -115,16 +116,19 @@ void test_8ppB() {
         uint8_t* line_address = framebuffer + (line_bytes * (start_line + line));
         memset(line_address + black_start_column / 8, 0, 32);
     }
+    
+    // update the display. In the first update, white pixels are no-opps,
+    // in the second update, black pixels are no-ops.
+    epd_poweron();
+    mode = MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_WHITE;
+    checkError(epd_draw_base(area, framebuffer, area, mode, 25, NULL, NULL, &epdiy_ED047TC2));
+    epd_poweroff();
 
     // draw white triangles on the black background
     draw_8bpp_triangles(start_line, black_start_column + 16);
 
-    // update the display. In the first update, white pixels are no-opps,
-    // in the second update, black pixels are no-ops.
-    enum EpdDrawMode mode;
+
     epd_poweron();
-    mode = MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_WHITE;
-    checkError(epd_draw_base(area, framebuffer, area, mode, 25, NULL, NULL, &epdiy_ED047TC2));
     mode = MODE_PACKING_8PPB | MODE_DU | PREVIOUSLY_BLACK;
     checkError(epd_draw_base(area, framebuffer, area, mode, 25, NULL, NULL, &epdiy_ED047TC2));
     epd_poweroff();
@@ -132,6 +136,7 @@ void test_8ppB() {
 
 void test_2ppB() {
     EpdRect area = epd_full_screen();
+    enum EpdDrawMode mode;
     int start_column = 500;
     int start_line = 100;
 
@@ -144,9 +149,6 @@ void test_2ppB() {
     EpdRect black_area = { .x = black_start_column, .y = 100, .width = 256, .height = 300 };
     epd_fill_rect(black_area, 0, framebuffer);
 
-    // draw white triangles on the black background
-    draw_2bpp_triangles(start_line, black_start_column + 16, 255);
-
     // Do not overdraw the 8ppB image
     uint8_t* drawn_columns = malloc(epd_width() / 2);
     assert(drawn_columns != NULL);
@@ -155,12 +157,18 @@ void test_2ppB() {
 
     // update the display. In the first update, white pixels are no-opps,
     // in the second update, black pixels are no-ops.
-    enum EpdDrawMode mode;
     epd_poweron();
     mode = MODE_PACKING_2PPB | MODE_DU | PREVIOUSLY_WHITE;
     checkError(
         epd_draw_base(area, framebuffer, area, mode, 25, NULL, drawn_columns, &epdiy_ED047TC2)
     );
+    epd_poweroff();
+
+    // draw white triangles on the black background
+    draw_2bpp_triangles(start_line, black_start_column + 16, 255);
+
+        
+    epd_poweron();
     mode = MODE_PACKING_2PPB | MODE_DU | PREVIOUSLY_BLACK;
     checkError(
         epd_draw_base(area, framebuffer, area, mode, 25, NULL, drawn_columns, &epdiy_ED047TC2)
