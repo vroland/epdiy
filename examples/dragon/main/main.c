@@ -34,17 +34,30 @@ void idf_loop() {
 }
 
 void idf_setup() {
-    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
-    epd_set_vcom(1560);
+    epd_init(&DEMO_BOARD, &ED097OC4, EPD_LUT_64K);
+    epd_set_vcom(1780);
+    epd_poweron();
+
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
-}
+    epd_fullclear(&hl, 20);
+    vTaskDelay(500);
+
+    epd_draw_line(0, 0, epd_width() - 1, epd_height() - 1, 0, epd_hl_get_framebuffer(&hl));
+  epd_draw_line(0, epd_height() - 1, epd_width() - 1, 0, 0, epd_hl_get_framebuffer(&hl));
+
+  int r = epd_height()/ 2;
+  epd_draw_circle(epd_width() / 2, epd_height() / 2, r, 0, epd_hl_get_framebuffer(&hl));
+    
+  enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, 20);
+    epd_poweroff();
+    }
 
 #ifndef ARDUINO_ARCH_ESP32
 void app_main() {
     idf_setup();
 
-    while (1) {
-        idf_loop();
-    };
+   // while (1) {
+    //    idf_loop();
+    // };
 }
 #endif

@@ -6,3 +6,7 @@ elf = '../examples/dragon/build/dragon_example.elf'
 [[chip]]
 name = 'pca9535'
 binary = 'chips/pca9535.wasm'
+
+[[chip]]
+name = 'tps65185'
+binary = 'chips/tps65185.wasm'

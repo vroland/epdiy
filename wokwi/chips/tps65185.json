@@ -1,0 +1,15 @@
+{
+  "name": "tps65185",
+  "author": "martinberlin",
+  "pins": [
+        "nINT",
+        "SCL",
+        "SDA",
+        "VCC",
+        "GND",
+        "PWRUP",
+        "PWR_GOOD"
+
+  ],
+  "controls": []
+}

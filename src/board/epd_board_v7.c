@@ -220,12 +220,14 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     // give the IC time to powerup and set lines
     vTaskDelay(1);
 
+    
     while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
     }
 
     ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
 
     tps_set_vcom(config_reg.port, vcom);
+    
 
     state->ep_sth = true;
     mask = (const epd_ctrl_state_t){
