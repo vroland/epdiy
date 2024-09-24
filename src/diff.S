@@ -1,8 +1,8 @@
 #include <xtensa/config/core-isa.h>
 #include <xtensa/config/core-matmap.h>
-#include "output_common/render_method.h"
+#include "sdkconfig.h"
 
-#ifdef RENDER_METHOD_LCD
+#ifdef CONFIG_IDF_TARGET_ESP32S3
 
 .text
 .align  4

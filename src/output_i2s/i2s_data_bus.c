@@ -100,9 +100,8 @@ static void IRAM_ATTR i2s_int_hdl(void* arg) {
     dev->int_clr.val = dev->int_raw.val;
 }
 
-volatile uint8_t IRAM_ATTR* i2s_get_current_buffer() {
-    return (volatile uint8_t*)(current_buffer ? i2s_state.dma_desc_a->buf
-                                              : i2s_state.dma_desc_b->buf);
+uint8_t* IRAM_ATTR i2s_get_current_buffer() {
+    return (uint8_t*)(current_buffer ? i2s_state.dma_desc_a->buf : i2s_state.dma_desc_b->buf);
 }
 
 bool IRAM_ATTR i2s_is_busy() {

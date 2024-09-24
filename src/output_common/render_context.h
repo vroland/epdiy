@@ -4,9 +4,11 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <stdatomic.h>
+#include <stdint.h>
 
 #include "../epdiy.h"
 #include "line_queue.h"
+#include "lut.h"
 
 #define NUM_RENDER_THREADS 2
 
@@ -57,22 +59,22 @@ typedef struct {
     // Lookup table space.
     uint8_t* conversion_lut;
 
+    /// LUT lookup function. Must not be NULL.
+    lut_func_t lut_lookup_func;
+    /// LUT building function. Must not be NULL
+    lut_build_func_t lut_build_func;
+
     /// Queue of lines prepared for output to the display,
     /// one for each thread.
     LineQueue_t line_queues[NUM_RENDER_THREADS];
     uint8_t* line_threads;
 
+    // Output line mask
+    uint8_t* line_mask;
+
     /// track line skipping when working in old i2s mode
     int skipping;
 } RenderContext_t;
-
-typedef void (*lut_func_t)(const uint32_t*, uint8_t*, const uint8_t*, uint32_t);
-
-/**
- * Depending on the render context, decide which LUT function to use.
- * If the lookup fails, an error flag in the context is set.
- */
-lut_func_t get_lut_function(RenderContext_t* ctx);
 
 /**
  * Based on the render context, assign the bytes per line,

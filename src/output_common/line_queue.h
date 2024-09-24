@@ -14,15 +14,10 @@ typedef struct {
     uint8_t** bufs;
     // size of an element
     size_t element_size;
-    // size of the mask buffer
-    size_t mask_buffer_len;
-    // mask to appyl to the output buffer, NULL if none.
-    // mut be elem_buf_size long.
-    uint8_t* mask_buffer;
 } LineQueue_t;
 
 /// Initialize the line queue and allocate memory.
-LineQueue_t lq_init(int queue_len, int element_size, bool use_mask);
+LineQueue_t lq_init(int queue_len, int element_size);
 
 /// Deinitialize the line queue and free memory.
 void lq_free(LineQueue_t* queue);

@@ -6,7 +6,7 @@ jobs:
   format-check:
     runs-on: ubuntu-latest
     container:
-      image: "espressif/idf:release-v5.2"
+      image: "espressif/idf:release-v5.3"
     steps:
       - uses: actions/checkout@v4
       - run: |

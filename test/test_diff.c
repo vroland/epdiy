@@ -86,7 +86,7 @@ TEST_CASE("simple aligned diff works", "[epdiy,unit]") {
     diff_test_buffers_init(&bufs, example_len);
 
     // This should trigger use of vector extensions on the S3
-    TEST_ASSERT((uint32_t)bufs.to % 16 == 0)
+    TEST_ASSERT((uint32_t)bufs.to % 16 == 0);
 
     // fully aligned
     dirty = _epd_interlace_line(
@@ -109,7 +109,7 @@ TEST_CASE("dirtynes for diff without changes is correct", "[epdiy,unit]") {
     diff_test_buffers_init(&bufs, example_len);
 
     // This should trigger use of vector extensions on the S3
-    TEST_ASSERT((uint32_t)bufs.to % 16 == 0)
+    TEST_ASSERT((uint32_t)bufs.to % 16 == 0);
 
     // both use "from" buffer
     dirty = _epd_interlace_line(
@@ -132,7 +132,6 @@ TEST_CASE("dirtynes for diff without changes is correct", "[epdiy,unit]") {
 
 TEST_CASE("different 4-byte alignments work", "[epdiy,unit]") {
     const int example_len = DEFAULT_EXAMPLE_LEN;
-    const uint8_t NULL_ARRAY[DEFAULT_EXAMPLE_LEN * 2] = { 0 };
     DiffTestBuffers bufs;
     bool dirty;
 

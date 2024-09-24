@@ -52,7 +52,7 @@ void i2s_gpio_detach(i2s_bus_config* cfg);
 /**
  * Get the currently writable line buffer.
  */
-volatile uint8_t* i2s_get_current_buffer();
+uint8_t* i2s_get_current_buffer();
 
 /**
  * Switches front and back line buffer.
