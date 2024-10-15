@@ -23,6 +23,7 @@
 
 #include <epdiy.h>
 
+#include "epd_display.h"
 #include "sdkconfig.h"
 
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
@@ -51,6 +52,16 @@ static inline void checkError(enum EpdDrawError err) {
 void clear() {
     epd_poweron();
     epd_clear();
+    epd_poweroff();
+    memset(framebuffer, 0xFF, fb_size);
+}
+
+/**
+ * Clear an example area on the screen to white, does not reset the framebuffer.
+ */
+void clear_area(EpdRect clear_area) {
+    epd_poweron();
+    epd_clear_area(clear_area);
     epd_poweroff();
     memset(framebuffer, 0xFF, fb_size);
 }
@@ -196,6 +207,15 @@ void app_main() {
     memset(framebuffer, 0xFF, fb_size);
 
     test_2ppB();
+
+    // Clear at different positions
+    EpdRect area = { .x = 100, .y = epd_height() - 200, .width = 80, .height = 100 };
+    clear_area(area);
+    area.width += 1;
+    area.x += 100;
+    clear_area(area);
+    area.x += 101;
+    clear_area(area);
 
     printf("going to sleep...\n");
     epd_deinit();

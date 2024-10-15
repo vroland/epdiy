@@ -74,6 +74,9 @@ typedef struct {
 
     /// track line skipping when working in old i2s mode
     int skipping;
+
+    /// line buffer when using epd_push_pixels
+    uint8_t* static_line_buffer;
 } RenderContext_t;
 
 /**
@@ -95,3 +98,13 @@ void get_buffer_params(
  * (Reset counters, etc)
  */
 void prepare_context_for_next_frame(RenderContext_t* ctx);
+
+/**
+ * Populate an output line mask from line dirtyness with two bits per pixel.
+ * If the dirtyness data is NULL, set the mask to neutral.
+ *
+ * don't inline for to ensure availability in tests.
+ */
+void __attribute__((noinline)) epd_populate_line_mask(
+    uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len
+);

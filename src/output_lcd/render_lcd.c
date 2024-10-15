@@ -17,20 +17,8 @@
 #include "lcd_driver.h"
 #include "render_lcd.h"
 
-static bool IRAM_ATTR fill_line_noop(RenderContext_t* ctx, uint8_t* line) {
-    memset(line, 0x00, ctx->display_width / 4);
-    return false;
-}
-
-static bool IRAM_ATTR fill_line_white(RenderContext_t* ctx, uint8_t* line) {
-    memset(line, CLEAR_BYTE, ctx->display_width / 4);
-    return false;
-}
-
-static bool IRAM_ATTR fill_line_black(RenderContext_t* ctx, uint8_t* line) {
-    memset(line, DARK_BYTE, ctx->display_width / 4);
-    return false;
-}
+// declare vector optimized line mask application.
+void epd_apply_line_mask_VE(uint8_t* line, const uint8_t* mask, int mask_len);
 
 __attribute__((optimize("O3"))) static bool IRAM_ATTR
 retrieve_line_isr(RenderContext_t* ctx, uint8_t* buf) {
@@ -97,20 +85,75 @@ void lcd_do_update(RenderContext_t* ctx) {
     epd_set_mode(0);
 }
 
-void epd_push_pixels_lcd(RenderContext_t* ctx, short time, int color) {
-    epd_set_mode(1);
-    ctx->current_frame = 0;
-    epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
-    if (color == 0) {
-        epd_lcd_line_source_cb((line_cb_func_t)&fill_line_black, ctx);
-    } else if (color == 1) {
-        epd_lcd_line_source_cb((line_cb_func_t)&fill_line_white, ctx);
+__attribute__((optimize("O3"))) static bool IRAM_ATTR
+push_pixels_isr(RenderContext_t* ctx, uint8_t* buf) {
+    // Output no-op outside of drawn area
+    if (ctx->lines_consumed < ctx->area.y) {
+        memset(buf, 0, ctx->display_width / 4);
+    } else if (ctx->lines_consumed >= ctx->area.y + ctx->area.height) {
+        memset(buf, 0, ctx->display_width / 4);
     } else {
-        epd_lcd_line_source_cb((line_cb_func_t)&fill_line_noop, ctx);
+        memcpy(buf, ctx->static_line_buffer, ctx->display_width / 4);
     }
+    ctx->lines_consumed += 1;
+    return pdFALSE;
+}
+
+/**
+ * Populate the line mask for use in epd_push_pixels.
+ */
+static void push_pixels_populate_line(RenderContext_t* ctx, int color) {
+    // Select fill pattern by draw color
+    int fill_byte = 0;
+    switch (color) {
+        case 0:
+            fill_byte = DARK_BYTE;
+            break;
+        case 1:
+            fill_byte = CLEAR_BYTE;
+            break;
+        default:
+            fill_byte = 0x00;
+    }
+
+    // Compute a line mask based on the drawn area
+    uint8_t* dirtyness = malloc(ctx->display_width / 2);
+    assert(dirtyness != NULL);
+
+    memset(dirtyness, 0, ctx->display_width / 2);
+
+    for (int i = 0; i < ctx->display_width; i++) {
+        if ((i >= ctx->area.x) && (i < ctx->area.x + ctx->area.width)) {
+            dirtyness[i / 2] |= i % 2 ? 0xF0 : 0x0F;
+        }
+    }
+    epd_populate_line_mask(ctx->line_mask, dirtyness, ctx->display_width / 4);
+
+    // mask the line pattern with the populated mask
+    memset(ctx->static_line_buffer, fill_byte, ctx->display_width / 4);
+    epd_apply_line_mask(ctx->static_line_buffer, ctx->line_mask, ctx->display_width / 4);
+
+    free(dirtyness);
+}
+
+void epd_push_pixels_lcd(RenderContext_t* ctx, short time, int color) {
+    ctx->current_frame = 0;
+    ctx->lines_total = ctx->display_height;
+    ctx->lines_consumed = 0;
+    ctx->static_line_buffer = malloc(ctx->display_width / 4);
+    assert(ctx->static_line_buffer != NULL);
+
+    push_pixels_populate_line(ctx, color);
+    epd_lcd_frame_done_cb((frame_done_func_t)handle_lcd_frame_done, ctx);
+    epd_lcd_line_source_cb((line_cb_func_t)&push_pixels_isr, ctx);
+
+    epd_set_mode(1);
     epd_lcd_start_frame();
     xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
     epd_set_mode(0);
+
+    free(ctx->static_line_buffer);
+    ctx->static_line_buffer = NULL;
 }
 
 #define int_min(a, b) (((a) < (b)) ? (a) : (b))
@@ -194,7 +237,6 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
         ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);
 
         // apply the line mask
-        void epd_apply_line_mask_VE(uint8_t * line, const uint8_t* mask, int mask_len);
         epd_apply_line_mask_VE(buf, ctx->line_mask, ctx->display_width / 4);
 
         lq_commit(lq);
