@@ -88,29 +88,6 @@ static inline int rounded_display_height() {
     return (((epd_height() + 7) / 8) * 8);
 }
 
-/**
- * Populate an output line mask from line dirtyness with one nibble per pixel.
- * If the dirtyness data is NULL, set the mask to neutral.
- *
- * don't inline for to ensure availability in tests.
- */
-void __attribute__((noinline))
-_epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
-    if (dirty_columns == NULL) {
-        memset(line_mask, 0xFF, mask_len);
-    } else {
-        int pixels = mask_len * 4;
-        for (int c = 0; c < pixels / 2; c += 2) {
-            uint8_t mask = 0;
-            mask |= (dirty_columns[c + 1] & 0xF0) != 0 ? 0xC0 : 0x00;
-            mask |= (dirty_columns[c + 1] & 0x0F) != 0 ? 0x30 : 0x00;
-            mask |= (dirty_columns[c] & 0xF0) != 0 ? 0x0C : 0x00;
-            mask |= (dirty_columns[c] & 0x0F) != 0 ? 0x03 : 0x00;
-            line_mask[c / 2] = mask;
-        }
-    }
-}
-
 // FIXME: fix misleading naming:
 //  area -> buffer dimensions
 //  crop -> area taken out of buffer
@@ -198,7 +175,7 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         render_context.phase_times = waveform_phases->phase_times;
     }
 
-    _epd_populate_line_mask(
+    epd_populate_line_mask(
         render_context.line_mask, drawn_columns, render_context.display_width / 4
     );
 
@@ -294,6 +271,7 @@ void epd_renderer_init(enum EpdInitOptions options) {
         abort();
     }
     render_context.conversion_lut_size = lut_size;
+    render_context.static_line_buffer = NULL;
 
     render_context.frame_done = xSemaphoreCreateBinary();
 

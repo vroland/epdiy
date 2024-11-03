@@ -1,5 +1,6 @@
 #include "render_context.h"
 
+#include <string.h>
 #include "esp_log.h"
 
 #include "../epdiy.h"
@@ -86,4 +87,20 @@ void IRAM_ATTR prepare_context_for_next_frame(RenderContext_t* ctx) {
 
     ctx->lines_prepared = 0;
     ctx->lines_consumed = 0;
+}
+
+void epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
+    if (dirty_columns == NULL) {
+        memset(line_mask, 0xFF, mask_len);
+    } else {
+        int pixels = mask_len * 4;
+        for (int c = 0; c < pixels / 2; c += 2) {
+            uint8_t mask = 0;
+            mask |= (dirty_columns[c + 1] & 0xF0) != 0 ? 0xC0 : 0x00;
+            mask |= (dirty_columns[c + 1] & 0x0F) != 0 ? 0x30 : 0x00;
+            mask |= (dirty_columns[c] & 0xF0) != 0 ? 0x0C : 0x00;
+            mask |= (dirty_columns[c] & 0x0F) != 0 ? 0x03 : 0x00;
+            line_mask[c / 2] = mask;
+        }
+    }
 }
