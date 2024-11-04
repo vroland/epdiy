@@ -73,31 +73,31 @@ Displays
 
 |Name      |Size |Resolution|Compatible|Connector|Pin count|Compatible since pcb version|Notes
 | --:      | --: | --:       | --:         | --:                  | --: | --: | --: |
-| ED060SC4 | 6"  | 800 x 600 | yes, tested | FH26W-39S-0.3SHW(60) | 39  | v2  |     |
-|ED097OC4|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|v2|Cheap, inferior contrast
-|ED097TC2|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|v2|Slightly higher price, better contrast
-|ED097OC1|9.7"|1200 x 825|yes (should work)|XF2M-3315-1A|33|v2|Cheap, inferior performance
-|ED047TC1|4.7"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
-| ED050SC5 | 5" | 600 x 800 | yes, tested       | THD0510-33CL-GF | 33 | v5 |
-| ED050SC3 | 5" | 600 x 800 | yes (should work) | THD0510-33CL-GF | 33 | v5 |
-| ED133UT2 | 13.3" | 1600 x 1200 | yes, tested | adapter board | 39 | v2 | Adapter Board required, also PENG133D
-| ED060XC3 | 6" | 758 x 1024 | yes, tested | THD0515-34CL-SN | 34 | v5 | Cheapest, good contrast and resolution
-| ED060XD4 | 6"  | 758 x 1024 | yes, tested | THD0515-34CL-SN | 34 | v5 |
-| ED060XC5 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
-| ED060XD6 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
-| ED060XH2 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
-| ED060XC9 | 6"  | 758 x 1024 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
-| ED060KD1 | 6"  | 1072 x 1448 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
-| ED060KC1 | 6"  | 1072 x 1448 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
-| ED060SCF | 6" | 600 x 800 | yes, tested | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
-| ED060SCN | 6" | 600 x 800 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
-| ED060SCP | 6" | 600 x 800 | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
-| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
-| ED060SCG | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
-| ED060SCE | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
-| ED060SCM | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
-| ED060SCT | 6"  | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 | connector dropped in v6
-| ED078KC1 | 7.8"  | 1872 x 1404 | yes, tested     | FH12-40S-0.5SH | 40 | v7 | 16 data lines
+| ED060SC4 | 6"  | 800 x 600<br>167 PPI | yes, tested | FH26W-39S-0.3SHW(60) | 39  | v2  |     |
+|ED097OC4|9.7"|1200 x 825<br>150 PPI|yes, tested|XF2M-3315-1A|33|v2|Cheap, inferior contrast
+|ED097TC2|9.7"|1200 x 825<br>150 PPI|yes, tested|XF2M-3315-1A|33|v2|Slightly higher price, better contrast
+|ED097OC1|9.7"|1200 x 825<br>150 PPI|yes (should work)|XF2M-3315-1A|33|v2|Cheap, inferior performance
+|ED047TC1|4.7"|960 x 540<br>234 PPI|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
+| ED050SC5 | 5" | 600 x 800<br>200 PPI | yes, tested       | THD0510-33CL-GF | 33 | v5 |
+| ED050SC3 | 5" | 600 x 800<br>200 PPI | yes (should work) | THD0510-33CL-GF | 33 | v5 |
+| ED133UT2 | 13.3" | 1600 x 1200<br>150 PPI | yes, tested | adapter board | 39 | v2 | Adapter Board required, also PENG133D
+| ED060XC3 | 6" | 758 x 1024<br>212 PPI | yes, tested | THD0515-34CL-SN | 34 | v5 | Cheapest, good contrast and resolution
+| ED060XD4 | 6"  | 758 x 1024<br>212 PPI | yes, tested | THD0515-34CL-SN | 34 | v5 |
+| ED060XC5 | 6"  | 758 x 1024<br>212 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060XD6 | 6"  | 758 x 1024<br>212 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060XH2 | 6"  | 758 x 1024<br>212 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060XC9 | 6"  | 758 x 1024<br>212 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060KD1 | 6"  | 1072 x 1448<br>300 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060KC1 | 6"  | 1072 x 1448<br>300 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 |
+| ED060SCF | 6" | 600 x 800<br>167 PPI | yes, tested | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
+| ED060SCN | 6" | 600 x 800<br>167 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
+| ED060SCP | 6" | 600 x 800<br>167 PPI | yes (should work as ED060XC3) | THD0515-34CL-SN | 34 | v5 | Different flex cable shape
+| ED060SC7 | 6" | 600 x 800<br>167 PPI | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCG | 6"  | 600 x 800<br>167 PPI | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCE | 6"  | 600 x 800<br>167 PPI | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCM | 6"  | 600 x 800<br>167 PPI | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
+| ED060SCT | 6"  | 600 x 800<br>167 PPI | yes, tested       | AXT334124 | 34 | v5 | connector dropped in v6
+| ED078KC1 | 7.8"  | 1872 x 1404<br>300 PPI | yes, tested     | FH12-40S-0.5SH | 40 | v7 | 16 data lines
 
 
 Troubleshooting
