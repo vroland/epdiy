@@ -97,7 +97,7 @@ Displays
 | ED060SCE | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
 | ED060SCM | 6"  | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 | connector dropped in v6
 | ED060SCT | 6"  | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 | connector dropped in v6
-| ED078KC1 | 6"  | 1872 x 1404 | yes, tested     | FH12-40S-0.5SH | 40 | v7 | 16 data lines
+| ED078KC1 | 7.8"  | 1872 x 1404 | yes, tested     | FH12-40S-0.5SH | 40 | v7 | 16 data lines
 
 
 Troubleshooting
