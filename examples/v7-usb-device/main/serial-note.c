@@ -49,10 +49,11 @@ void tinyusb_cdc_rx_callback(int itf, cdcacm_event_t *event)
         temperature = epd_ambient_temperature();
         char strbuf[520];
         sprintf(strbuf, "%s", buf);
+        cursor_x+=10;
         epd_write_string(&FiraSans_20, strbuf, &cursor_x, &cursor_y, fb, &font_props);
         // 0D: Carriage return
         if (buf[0] == 0x0D) { 
-            cursor_y += 16;
+            cursor_y += 18;
             cursor_x = 10;
         } else {
             cursor_y = temp_y;
@@ -131,7 +132,8 @@ const char *descriptor_str[] = {
 
 void app_main(void)
 {
-    printf("Serial example\n");
+    printf("Serial example starting in 2 seconds\n");
+    vTaskDelay(pdMS_TO_TICKS(2000));
     // EPDiy init
     epd_init(&epd_board_v7, &ED097TC2, EPD_LUT_64K);
     epd_set_vcom(1760);

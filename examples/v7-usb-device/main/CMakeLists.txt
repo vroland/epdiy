@@ -4,12 +4,17 @@
 
 # Select only ONE app_source:
 
-# Dumb slow terminal example, type and write character in display
-#set(app_sources "serial-note.c")
+
 
 # Still in research  "serial-receive-file.c" IDEA: To make a port of rz (zmodem serial receive protocol to transfer image via serial)
 
-set(app_sources "msc-sd/msc_main.cpp")
+set(app_sources 
+# Dumb slow terminal example, type and write character in display
+
+"serial-note.c"
+#"msc-sd/msc_main.cpp"
+#"msc-sd/msc_only_sd.cpp"
+)
 
 set(requires epdiy esp_tinyusb fatfs console
     # JpegDecoder
