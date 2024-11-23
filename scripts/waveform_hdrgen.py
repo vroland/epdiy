@@ -18,24 +18,37 @@ waveforms = json.load(sys.stdin);
 
 total_size = 0
 
-def phase_to_c(phase):
-    """
-    Convert a 5 bit phase to a 4 bit C LUT.
-    """
-    global total_size
+def phase_to_c(phase,bits_per_pixel_c=4):
+    
+    N1 = len(phase)
+    N2 = len(phase[0])
+    N = 2**bits_per_pixel_c
+   
+    if N1%N != 0:
+        raise ValueError(f"first dimension of phases is {N1}. Allowed are multiples of {N}")
+    
+    step1 = int(N1/N)
+        
+    if N2%N != 0:
+        raise ValueError(f"second dimension of phases is {N2}. Allowed are multiples of {N}")
+    
+    step2 = int(N2/N)
 
     targets = []
-    for t in range(0, 32, 2):
+    for t in range(0, N1, step1):
         chunk = 0
         line = []
-        for f in range(0, 32, 2):
+        i = 0
+        for f in range(0, N2, step2):
             fr = phase[t][f]
             chunk = (chunk << 2) | fr
-            if f and f % 8 == 6:
+            #if f and (f) % 8 == 6:  # true for f == 6, 
+            i += 1
+            if i == 4:
+                i = 0
                 line.append(chunk)
                 chunk = 0
         targets.append(line)
-        total_size += len(line)
 
     return targets
 
@@ -61,7 +74,7 @@ if args.temperature_range:
 
 modes = []
 
-mode_filter = list(range(len(waveforms["modes"])))
+mode_filter = [wm["mode"] for wm in waveforms["modes"]]
 
 if args.export_modes:
     mode_filter = list(map(int, args.export_modes.split(",")))
@@ -72,6 +85,8 @@ num_modes = len(mode_filter)
 
 temp_intervals = []
 for bounds in waveforms["temperature_ranges"]["range_bounds"]:
+    if bounds["from"] < tmin or bounds["from"] > tmax:
+        continue
     temp_intervals.append(f"{{ .min = {bounds['from']}, .max = {bounds['to']} }}")
 
 modes = []
