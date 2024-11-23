@@ -42,7 +42,6 @@ def phase_to_c(phase,bits_per_pixel_c=4):
         for f in range(0, N2, step2):
             fr = phase[t][f]
             chunk = (chunk << 2) | fr
-            #if f and (f) % 8 == 6:  # true for f == 6, 
             i += 1
             if i == 4:
                 i = 0
