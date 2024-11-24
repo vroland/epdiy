@@ -84,7 +84,7 @@ num_modes = len(mode_filter)
 
 temp_intervals = []
 for bounds in waveforms["temperature_ranges"]["range_bounds"]:
-    if bounds["from"] < tmin or bounds["from"] > tmax:
+    if bounds["to"] < tmin or bounds["from"] > tmax:
         continue
     temp_intervals.append(f"{{ .min = {bounds['from']}, .max = {bounds['to']} }}")
 
@@ -98,7 +98,7 @@ for m_index, mode in enumerate(waveforms["modes"]):
     ranges = []
     for i, r in enumerate(mode["ranges"]):
         bounds = waveforms["temperature_ranges"]["range_bounds"][i]
-        if bounds["from"] < tmin or bounds["from"] > tmax:
+        if bounds["to"] < tmin or bounds["from"] > tmax:
             continue
 
         phases = []
