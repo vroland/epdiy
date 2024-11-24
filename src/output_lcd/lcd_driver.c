@@ -653,7 +653,7 @@ void IRAM_ATTR epd_lcd_start_frame() {
         lcd.lcd_res_h + (lcd.dummy_bytes > 0),
         end_line
     );
-    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 1, initial_lines, 1);
+    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, initial_lines, 1);
 
     // generate the hsync at the very beginning of line
     lcd_ll_set_hsync_position(lcd.hal.dev, 1);

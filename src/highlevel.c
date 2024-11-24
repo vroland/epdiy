@@ -172,12 +172,12 @@ enum EpdDrawError epd_hl_update_area(
                 x += 1;
             }
 
-            if (x_last % 2) {
+            if (!(x_last % 2)) {
                 *(lbb + x_last / 2) = (*(lfb + x_last / 2) & 0x0F) | (*(lbb + x_last / 2) & 0xF0);
                 x_last -= 1;
             }
 
-            memcpy(lbb + (x / 2), lfb + (x / 2), (x_last - x) / 2);
+            memcpy(lbb + (x / 2), lfb + (x / 2), (x_last - x + 1) / 2);
         }
     }
 
