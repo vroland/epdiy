@@ -69,6 +69,9 @@ Coord_xy _rotate(uint16_t x, uint16_t y) {
             y = epd_height() - y - 1;
             break;
     }
+    if (epd_get_display()->mirror_vertically) {
+         y = epd_height()  - y - 1;
+    }
     Coord_xy coord = { x, y };
     return coord;
 }

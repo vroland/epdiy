@@ -26,6 +26,9 @@ typedef struct {
     /// (Only used by the LCD based renderer in V7+)
     int bus_speed;
 
+    /// Changes behaviour of draw functions if the display draws bottom to top
+    bool mirror_vertically;
+
     /// Default waveform to use.
     const EpdWaveform* default_waveform;
     /// Display type
@@ -39,4 +42,5 @@ extern const EpdDisplay_t ED097TC2;
 extern const EpdDisplay_t ED133UT2;
 extern const EpdDisplay_t ED047TC1;
 extern const EpdDisplay_t ED047TC2;
+extern const EpdDisplay_t ED068TG1;
 extern const EpdDisplay_t ED078KC1;

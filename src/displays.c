@@ -5,6 +5,7 @@ const EpdDisplay_t ED060SCT = {
     .height = 600,
     .bus_width = 8,
     .bus_speed = 20,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED060SCT,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
@@ -14,6 +15,7 @@ const EpdDisplay_t ED060XC3 = {
     .height = 768,
     .bus_width = 8,
     .bus_speed = 20,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED060XC3,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
@@ -23,6 +25,7 @@ const EpdDisplay_t ED097OC4 = {
     .height = 825,
     .bus_width = 8,
     .bus_speed = 15,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED097OC4,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
@@ -32,6 +35,7 @@ const EpdDisplay_t ED097TC2 = {
     .height = 825,
     .bus_width = 8,
     .bus_speed = 22,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_ED097TC2,
 };
@@ -41,6 +45,7 @@ const EpdDisplay_t ED133UT2 = {
     .height = 1200,
     .bus_width = 8,
     .bus_speed = 20,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_ED097TC2,
 };
@@ -50,6 +55,7 @@ const EpdDisplay_t ED047TC1 = {
     .height = 540,
     .bus_width = 8,
     .bus_speed = 20,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED047TC1,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
@@ -59,6 +65,7 @@ const EpdDisplay_t ED047TC2 = {
     .height = 540,
     .bus_width = 8,
     .bus_speed = 20,
+    .mirror_vertically = false,
     .default_waveform = &epdiy_ED047TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
@@ -68,6 +75,17 @@ const EpdDisplay_t ED078KC1 = {
     .height = 1404,
     .bus_width = 16,
     .bus_speed = 11,
+    .mirror_vertically = false,
+    .default_waveform = &epdiy_ED047TC2,
+    .display_type = DISPLAY_TYPE_GENERIC,
+};
+
+const EpdDisplay_t ED068TG1 = {
+    .width = 1440,
+    .height = 1080,
+    .bus_width = 16,
+    .bus_speed = 11,
+    .mirror_vertically = true,
     .default_waveform = &epdiy_ED047TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
