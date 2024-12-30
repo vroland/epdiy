@@ -89,7 +89,7 @@ static lcd_bus_config_t lcd_config = {
     .data[4] = D4,
     .data[5] = D5,
     .data[6] = D6,
-    .data[7] = D7
+    .data[7] = D7,
 };
 
 static void epd_board_init(uint32_t epd_row_width) {
