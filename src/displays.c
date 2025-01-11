@@ -79,5 +79,5 @@ const EpdDisplay_t ED052TC4 = {
     .bus_width = 8,
     .bus_speed = 22,
     .default_waveform = &epdiy_ED097TC2,
-    .display_type = DISPLAY_TYPE_ED097TC2
+    .display_type = DISPLAY_TYPE_ED097TC2,
 };
