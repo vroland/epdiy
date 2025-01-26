@@ -1,5 +1,7 @@
 
 #include "tps65185.h"
+#include "pca9555.h"
+#include "epd_board.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -89,4 +91,46 @@ int8_t tps_read_thermistor(i2c_port_t i2c_num) {
         }
     }
     return (int8_t)tps_read_register(i2c_num, TPS_REG_TMST_VALUE);
+}
+
+/**
+ * @brief 1 Device enters ACTIVE mode
+ *        2 All power rails are up except VCOM
+ *        3 VCOM pin is in HiZ state
+ */
+void tps_vcom_kickback() {
+    printf("VCOM Kickback test\n");
+    // Pull the WAKEUP pin and the PWRUP pin high to enable all output rails.
+    // But do not set VCOM to any voltage!
+    epd_current_board()->measure_vcom(epd_ctrl_state());
+
+    //  Set the HiZ bit in the VCOM2 register (BIT 5) 0x20
+    // This puts the VCOM pin in a high-impedance state.
+    tps_write_register(I2C_NUM_0, 4, 0x20); 
+}
+
+/**
+ * @brief Start measurements 
+ */
+void tps_vcom_kickback_start() {
+    // Set the ACQ bit in the VCOM2 register to 1 (BIT 7)
+    tps_write_register(I2C_NUM_0, 4, 0x80);
+}
+
+/**
+ * @brief ACQC (Acquisition Complete) bit in the INT1 register is set
+ * //lbs &= 0xFF;mbs &= 0x100 >> 8;
+ * @return mV 0 is not read! 
+ */
+unsigned tps_vcom_kickback_rdy() {
+    // ACQC (Acquisition Complete) bit in the INT1 register is set?
+    if (tps_read_register(I2C_NUM_0, TPS_REG_INT1) == 0x02) {
+        uint8_t lsb = tps_read_register(I2C_NUM_0, 3);
+        uint8_t msb = tps_read_register(I2C_NUM_0, 4);
+        int u16Value = (lsb | (msb << 8)) & 0x1ff;
+        printf("Kickback lsb:%d msb:%d result:%d\n\n", lsb, msb, u16Value);
+        return u16Value;
+    } else {
+        return 0;
+    }
 }
