@@ -102,34 +102,43 @@ void tps_vcom_kickback() {
     printf("VCOM Kickback test\n");
     // Pull the WAKEUP pin and the PWRUP pin high to enable all output rails.
     // But do not set VCOM to any voltage!
-    epd_current_board()->measure_vcom(epd_ctrl_state());
-
-    //  Set the HiZ bit in the VCOM2 register (BIT 5) 0x20
+     epd_current_board()->measure_vcom(epd_ctrl_state());
+    // Set the HiZ bit in the VCOM2 register (BIT 5) 0x20
     // This puts the VCOM pin in a high-impedance state.
-    tps_write_register(I2C_NUM_0, 4, 0x20); 
-}
+    // PLUS
+    // BIT 3 & 4 Number of acquisitions that is averaged to a single kick-back V. measurement
+    tps_write_register(I2C_NUM_0, 4, 0x38);
+    vTaskDelay(1);
+
+    uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
+    uint8_t vcomreg = tps_read_register(I2C_NUM_0, TPS_REG_VCOM2);
+    printf("kickback INT1: %x VCOM: %x\n\n", int1reg, vcomreg);
+
+    }
 
 /**
  * @brief Start measurements 
  */
 void tps_vcom_kickback_start() {
+    uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
+    printf("kickstart INT1: %x\n\n", int1reg);
     // Set the ACQ bit in the VCOM2 register to 1 (BIT 7)
-    tps_write_register(I2C_NUM_0, 4, 0x80);
+    tps_write_register(I2C_NUM_0, TPS_REG_VCOM2, 0xA0); // BIT 5 + 7
 }
 
 /**
  * @brief ACQC (Acquisition Complete) bit in the INT1 register is set
- * //lbs &= 0xFF;mbs &= 0x100 >> 8;
  * @return mV 0 is not read! 
  */
 unsigned tps_vcom_kickback_rdy() {
-    // ACQC (Acquisition Complete) bit in the INT1 register is set?
-    if (tps_read_register(I2C_NUM_0, TPS_REG_INT1) == 0x02) {
+    uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
+
+    if (int1reg == 0x02) {
         uint8_t lsb = tps_read_register(I2C_NUM_0, 3);
         uint8_t msb = tps_read_register(I2C_NUM_0, 4);
         int u16Value = (lsb | (msb << 8)) & 0x1ff;
         printf("Kickback lsb:%d msb:%d result:%d\n\n", lsb, msb, u16Value);
-        return u16Value;
+        return u16Value *10;
     } else {
         return 0;
     }

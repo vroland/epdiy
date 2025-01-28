@@ -21,33 +21,30 @@ int temperature = 25;
 EpdRect dragon_area = { .x = 0, .y = 0, .width = dragon_width, .height = dragon_height };
 
 void idf_loop() {
-    epd_fullclear(&hl, temperature);
-    epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
-    // Supposedly to measure VCOM the display needs to update
-    // all the time with a NULL waveform (That we don't know how it is)
-    // MODE_GC16 or MODE_DU ?
+    //vTaskDelay(pdMS_TO_TICKS(1));
     //epd_fill_rect(epd_full_screen(), 0, epd_hl_get_framebuffer(&hl));
     epd_hl_update_screen(&hl, MODE_DU, temperature);
-
-    tps_vcom_kickback_rdy();
-    vTaskDelay(20);
-    /*
-    epd_fill_rect(epd_full_screen(), 255, epd_hl_get_framebuffer(&hl));
-    epd_hl_update_screen(&hl, MODE_GC16, temperature);
-    vTaskDelay(100); */
 }
 
 void idf_setup() {
     epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
-    hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
-   
-    
+    hl = epd_hl_init(&epdiy_NULL);
     tps_vcom_kickback();
-    tps_vcom_kickback_start();
 
-    while ( 1 ) {
-      idf_loop();
+    for (int a = 5; a>0; a--) {
+        idf_loop();
     }
+    tps_vcom_kickback_start();
+    
+    int isrdy = 1;
+    int kickback_volt = 0;
+    while (kickback_volt == 0) {
+    idf_loop();
+    isrdy++;
+    kickback_volt = tps_vcom_kickback_rdy();
+    }
+    printf("VCOM reading of %d mV. was ready in %d refreshes\n", kickback_volt, isrdy);
+
 }
 
 #ifndef ARDUINO_ARCH_ESP32

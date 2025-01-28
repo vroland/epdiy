@@ -273,8 +273,7 @@ static void epd_board_measure_vcom(epd_ctrl_state_t* state) {
     while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
     }
     ESP_LOGI("epdiy", "Power rails enabled");
-    // Replace for vcom kick-back: We will not set VCOM in this mode
-    //tps_set_vcom(config_reg.port, vcom);
+
     state->ep_sth = true;
     mask = (const epd_ctrl_state_t){
         .ep_sth = true,
