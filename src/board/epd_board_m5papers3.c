@@ -24,8 +24,8 @@
 #endif
 
 #define EPD_SPV GPIO_NUM_17
-#define EPD_EN  GPIO_NUM_45
-#define BST_EN  GPIO_NUM_46
+#define EPD_EN GPIO_NUM_45
+#define BST_EN GPIO_NUM_46
 #define EPD_XLE GPIO_NUM_15
 
 /* Control Lines */
@@ -97,23 +97,23 @@ static void epd_board_deinit() {
 }
 
 static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {
-  if (state->ep_sth) {
-    gpio_set_level(STH, 1);
-  } else {
-    gpio_set_level(STH, 0);
-  }
+    if (state->ep_sth) {
+        gpio_set_level(STH, 1);
+    } else {
+        gpio_set_level(STH, 0);
+    }
 
-  if (state->ep_stv) {
-    gpio_set_level(EPD_SPV, 1);
-  } else {
-    gpio_set_level(EPD_SPV, 0);
-  }
+    if (state->ep_stv) {
+        gpio_set_level(EPD_SPV, 1);
+    } else {
+        gpio_set_level(EPD_SPV, 0);
+    }
 
-  if (state->ep_latch_enable) {
-    gpio_set_level(EPD_XLE, 1);
-  } else {
-    gpio_set_level(EPD_XLE, 0);
-  }
+    if (state->ep_latch_enable) {
+        gpio_set_level(EPD_XLE, 1);
+    } else {
+        gpio_set_level(EPD_XLE, 0);
+    }
 }
 
 static void epd_board_poweron(epd_ctrl_state_t* state) {
@@ -122,15 +122,15 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     gpio_set_level(BST_EN, 1);
     vTaskDelay(1 / portTICK_PERIOD_MS);
     gpio_set_level(EPD_SPV, 1);
-    gpio_set_level(EPD_SPV, 1);
+    gpio_set_level(STH, 1);
 }
 
 static void epd_board_poweroff(epd_ctrl_state_t* state) {
-  // gpio_set_level(BST_EN,0);
-  // vTaskDelay(1 / portTICK_PERIOD_MS);
-  // gpio_set_level(EPD_EN,0);
-  // vTaskDelay(1 / portTICK_PERIOD_MS);
-  gpio_set_level(EPD_SPV,0);
+    gpio_set_level(BST_EN, 0);
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+    gpio_set_level(EPD_EN, 0);
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+    gpio_set_level(EPD_SPV, 0);
 }
 
 static float epd_board_ambient_temperature() {
