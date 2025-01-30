@@ -94,41 +94,36 @@ int8_t tps_read_thermistor(i2c_port_t i2c_num) {
 }
 
 /**
- * @brief 1 Device enters ACTIVE mode
- *        2 All power rails are up except VCOM
- *        3 VCOM pin is in HiZ state
+ *  1 Device enters ACTIVE mode
+ *  2 All power rails are up except VCOM
+ *    VCOM pin is in HiZ state
  */
 void tps_vcom_kickback() {
     printf("VCOM Kickback test\n");
-    // Pull the WAKEUP pin and the PWRUP pin high to enable all output rails.
-    // But do not set VCOM to any voltage!
-     epd_current_board()->measure_vcom(epd_ctrl_state());
-    // Set the HiZ bit in the VCOM2 register (BIT 5) 0x20
-    // This puts the VCOM pin in a high-impedance state.
-    // PLUS
-    // BIT 3 & 4 Number of acquisitions that is averaged to a single kick-back V. measurement
+    // pull the WAKEUP pin and the PWRUP pin high to enable all output rails.
+    epd_current_board()->measure_vcom(epd_ctrl_state());
+    // set the HiZ bit in the VCOM2 register (BIT 5) 0x20
+    // this puts the VCOM pin in a high-impedance state.
+    // bit 3 & 4 Number of acquisitions that is averaged to a single kick-back V. measurement
     tps_write_register(I2C_NUM_0, 4, 0x38);
     vTaskDelay(1);
 
     uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
     uint8_t vcomreg = tps_read_register(I2C_NUM_0, TPS_REG_VCOM2);
-    printf("kickback INT1: %x VCOM: %x\n\n", int1reg, vcomreg);
-
     }
 
 /**
- * @brief Start measurements 
+ * start measurements 
  */
 void tps_vcom_kickback_start() {
     uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
-    printf("kickstart INT1: %x\n\n", int1reg);
-    // Set the ACQ bit in the VCOM2 register to 1 (BIT 7)
-    tps_write_register(I2C_NUM_0, TPS_REG_VCOM2, 0xA0); // BIT 5 + 7
+    // set the ACQ bit in the VCOM2 register to 1 (BIT 7)
+    tps_write_register(I2C_NUM_0, TPS_REG_VCOM2, 0xA0);
 }
 
 /**
- * @brief ACQC (Acquisition Complete) bit in the INT1 register is set
- * @return mV 0 is not read! 
+ * ACQC (Acquisition Complete) bit in the INT1 register is set
+ * @return unsigned: 0 is not read
  */
 unsigned tps_vcom_kickback_rdy() {
     uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
@@ -137,8 +132,8 @@ unsigned tps_vcom_kickback_rdy() {
         uint8_t lsb = tps_read_register(I2C_NUM_0, 3);
         uint8_t msb = tps_read_register(I2C_NUM_0, 4);
         int u16Value = (lsb | (msb << 8)) & 0x1ff;
-        printf("Kickback raw readings:%d TPS temperature: %d °C\n\n", u16Value, tps_read_thermistor(I2C_NUM_0));
-        return u16Value *10;
+        ESP_LOGI("Kickback raw readings", "value: %d TPS temperature: %d °C", u16Value, tps_read_thermistor(I2C_NUM_0));
+        return u16Value * 10;
     } else {
         return 0;
     }
