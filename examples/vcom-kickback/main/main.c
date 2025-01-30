@@ -55,7 +55,7 @@ void idf_setup() {
         isrdy++;
         kickback_volt = tps_vcom_kickback_rdy();
     }
-    ESP_LOGI("VCOM kick-back", "got value of %d mV. It was ready in %d refreshes", kickback_volt, isrdy);
+    ESP_LOGI("vcom", "readings are of %d mV. It was ready in %d refreshes", kickback_volt, isrdy);
 
     vTaskDelay(pdMS_TO_TICKS(2000));
     esp_restart();
