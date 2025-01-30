@@ -41,10 +41,9 @@ idf_component_register(SRCS ${srcs}
 #include <math.h>  // round + pow
 #include <stdio.h>
 #include <string.h>
-#include <inttypes.h>
 extern "C" {
-  #include "epd_highlevel.h"
-  #include "epdiy.h"
+#include "epd_highlevel.h"
+#include "epdiy.h"
 }
 EpdiyHighlevelState hl;
 // JPG decoder from @bitbank2
@@ -76,6 +75,9 @@ uint8_t* fb;          // EPD 2bpp buffer
 uint8_t* source_buf;  // JPG download buffer
 
 uint32_t buffer_pos = 0;
+uint32_t time_download = 0;
+uint32_t time_decomp = 0;
+uint32_t time_render = 0;
 uint16_t ep_width = 0;
 uint16_t ep_height = 0;
 
@@ -83,10 +85,7 @@ static const char* TAG = "Jpgdec";
 uint16_t countDataEventCalls = 0;
 uint32_t countDataBytes = 0;
 uint32_t img_buf_pos = 0;
-uint64_t start_time = 0;
-uint64_t time_download = 0;
-uint64_t time_decomp = 0;
-uint64_t time_render = 0;
+uint64_t startTime = 0;
 
 #if VALIDATE_SSL_CERTIFICATE == true
 /* Time aware for ESP32: Important to check SSL certs validity */
@@ -114,7 +113,7 @@ static void obtain_time(void) {
     int retry = 0;
     const int retry_count = 10;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
-        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", (int)retry, (int)retry_count);
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
     time(&now);
@@ -191,18 +190,18 @@ int decodeJpeg(uint8_t* source_buf, int xpos, int ypos) {
             time_decomp = (esp_timer_get_time() - decode_start) / 1000 - time_render;
             ESP_LOGI(
                 "decode",
-                "%lld ms - %dx%d image MCUs:%d",
+                "%d ms - %dx%d image MCUs:%d",
                 time_decomp,
-                (int)jpeg.getWidth(),
-                (int)jpeg.getHeight(),
-                (int)mcu_count
+                jpeg.getWidth(),
+                jpeg.getHeight(),
+                mcu_count
             );
         } else {
-            ESP_LOGE("jpeg.decode", "Failed with error: %d", (int)jpeg.getLastError());
+            ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
         }
 
     } else {
-        ESP_LOGE("jpeg.openRAM", "Failed with error: %d", (int)jpeg.getLastError());
+        ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
     }
     jpeg.close();
 
@@ -237,46 +236,43 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
 #endif
 
             if (countDataEventCalls == 1)
-                start_time = esp_timer_get_time();
+                startTime = esp_timer_get_time();
             // Append received data into source_buf
-            memcpy(&source_buf[img_buf_pos], evt->data, (int)evt->data_len);
+            memcpy(&source_buf[img_buf_pos], evt->data, evt->data_len);
             img_buf_pos += evt->data_len;
             break;
 
         case HTTP_EVENT_ON_FINISH:
             // Do not draw if it's a redirect (302)
             if (esp_http_client_get_status_code(evt->client) == 200) {
-                printf("%ld bytes read from %s\n", img_buf_pos, IMG_URL);
-                time_download = (esp_timer_get_time() - start_time) / 1000;
+                printf("%d bytes read from %s\n", img_buf_pos, IMG_URL);
+                time_download = (esp_timer_get_time() - startTime) / 1000;
 
                 decodeJpeg(source_buf, 0, 0);
 
-                ESP_LOGI("www-dw", "%lld ms - download", time_download);
+                ESP_LOGI("www-dw", "%d ms - download", time_download);
                 ESP_LOGI(
                     "render",
-                    "%lld ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)",
+                    "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)",
                     time_render,
-                    (int)JPEG_CPY_FRAMEBUFFER
+                    JPEG_CPY_FRAMEBUFFER
                 );
                 // Refresh display
                 epd_hl_update_screen(&hl, MODE_GC16, 25);
 
                 ESP_LOGI(
-                    "total", "%lld ms - total time spent\n", time_download + time_decomp + time_render
+                    "total", "%d ms - total time spent\n", time_download + time_decomp + time_render
                 );
             } else {
                 printf(
                     "HTTP on finish got status code: %d\n",
-                    (int)esp_http_client_get_status_code(evt->client)
+                    esp_http_client_get_status_code(evt->client)
                 );
             }
             break;
 
         case HTTP_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED\n");
-            break;
-        default:
-            ESP_LOGI(TAG, "HTTP_EVENT_UNKNOWN or redirect\n");
             break;
     }
     return ESP_OK;
@@ -310,7 +306,7 @@ static void http_post(void) {
     if (err == ESP_OK) {
         ESP_LOGI(
             TAG,
-            "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %lld\n",
+            "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n",
             IMG_URL,
             esp_http_client_get_status_code(client),
             esp_http_client_get_content_length(client)
@@ -354,8 +350,8 @@ static void event_handler(
             ESP_LOGI(
                 TAG,
                 "Connect to the AP failed %d times. Going to deepsleep %d minutes",
-                (int)5,
-                (int)DEEPSLEEP_MINUTES_AFTER_RENDER
+                5,
+                DEEPSLEEP_MINUTES_AFTER_RENDER
             );
             deepsleep();
         }
@@ -396,6 +392,7 @@ void wifi_init_sta(void) {
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_LOGI(TAG, "wifi_init_sta finished.");
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed
      * for the maximum number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see
@@ -411,7 +408,7 @@ void wifi_init_sta(void) {
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", ESP_WIFI_SSID);
     } else {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT in wifi_init");
+        ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 
     /* The event will not be processed after unregister */
@@ -425,8 +422,7 @@ void wifi_init_sta(void) {
 }
 
 void app_main() {
-    // EPD_DISPLAY is in settings header
-    epd_init(&epd_board_v7, &EPD_DISPLAY, EPD_LUT_64K);
+    epd_init(EPD_OPTIONS_DEFAULT);
     hl = epd_hl_init(WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
 
