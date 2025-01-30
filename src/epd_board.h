@@ -44,7 +44,7 @@ typedef struct {
     void (*poweron)(epd_ctrl_state_t*);
 
     /**
-     * Measure VCOM kick-back
+     * Measure VCOM kick-back. Only in v6 & v7 boards!
      */
     void (*measure_vcom)(epd_ctrl_state_t* state);
 

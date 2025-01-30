@@ -137,7 +137,7 @@ unsigned tps_vcom_kickback_rdy() {
         uint8_t lsb = tps_read_register(I2C_NUM_0, 3);
         uint8_t msb = tps_read_register(I2C_NUM_0, 4);
         int u16Value = (lsb | (msb << 8)) & 0x1ff;
-        printf("Kickback lsb:%d msb:%d result:%d\n\n", lsb, msb, u16Value);
+        printf("Kickback raw readings:%d TPS temperature: %d °C\n\n", u16Value, tps_read_thermistor(I2C_NUM_0));
         return u16Value *10;
     } else {
         return 0;
