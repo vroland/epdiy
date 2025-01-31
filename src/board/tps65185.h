@@ -38,13 +38,12 @@ void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV);
 void tps_vcom_kickback();
 
 /**
- * @brief start measurements
- * 
+ * @brief start VCOM kick-back voltage measurements
  */
 void tps_vcom_kickback_start();
 
 /**
- * ACQC (Acquisition Complete) bit in the INT1 register is set
+ * VCOM kick-back ACQC (Acquisition Complete) bit in the INT1 register is set
  * @return unsigned: 0 is not read
  */
 unsigned tps_vcom_kickback_rdy();
