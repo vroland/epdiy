@@ -128,6 +128,8 @@ static void epd_board_init(uint32_t epd_row_width) {
 
     // set all epdiy lines to output except TPS interrupt + PWR good
     gpio_set_direction(CFG_PIN_PWRGOOD, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(CFG_PIN_PWRGOOD, GPIO_PULLUP_ONLY);
+    
     gpio_set_direction(CFG_PIN_WAKEUP, GPIO_MODE_OUTPUT);
     gpio_set_direction(CFG_PIN_PWRUP, GPIO_MODE_OUTPUT);
     gpio_set_direction(CFG_PIN_VCOM_CTRL, GPIO_MODE_OUTPUT);
@@ -221,10 +223,10 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     vTaskDelay(1);
 
     // Check if PWRs lines are up
-    /* while (gpio_get_level(CFG_PIN_PWRGOOD) == 0) {
+    while (gpio_get_level(CFG_PIN_PWRGOOD) == 0) {
         vTaskDelay(pdMS_TO_TICKS(100));
         printf("PWRGOOD: %d\n", gpio_get_level(CFG_PIN_PWRGOOD));
-    } */
+    }
     ESP_LOGI("v7_RAW", "PWRGOOD OK");
 
     tps_set_vcom(config_reg.port, vcom);
