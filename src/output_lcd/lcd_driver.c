@@ -508,8 +508,12 @@ static esp_err_t init_lcd_peripheral() {
 
     // enable RGB mode and set data width
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     lcd_ll_set_dma_read_stride(lcd.hal.dev, lcd.config.bus_width);
     lcd_ll_set_data_wire_width(lcd.hal.dev, lcd.config.bus_width);
+#else
+    lcd_ll_set_data_width(lcd.hal.dev, lcd.config.bus_width);
+#endif
     lcd_ll_set_phase_cycles(lcd.hal.dev, 0, (lcd.dummy_bytes > 0), 1);  // enable data phase only
     lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false);     // enable data phase only
 

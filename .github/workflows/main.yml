@@ -32,12 +32,15 @@ jobs:
           - demo
         include:
           - version: release-v5.4
-            example: 
-              - screen_diag
-              - dragon
-              - grayscale_test
-              - www-image
-              - calibration_helper
+            example: screen_diag
+          - version: release-v5.4
+            example: dragon
+          - version: release-v5.4
+            example: grayscale_test
+          - version: release-v5.4
+            example: www-image
+          - version: release-v5.4
+            example: calibration_helper
 
     continue-on-error: ${{ matrix.version == 'latest' }}
 
