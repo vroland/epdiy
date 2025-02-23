@@ -105,5 +105,6 @@ void prepare_context_for_next_frame(RenderContext_t* ctx);
  *
  * don't inline for to ensure availability in tests.
  */
-void __attribute__((noinline))
-epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len);
+void __attribute__((noinline)) epd_populate_line_mask(
+    uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len
+);
