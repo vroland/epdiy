@@ -47,7 +47,7 @@
 
 #define TAG "epdiy"
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 2)
 #define LCD_PERIPH_SIGNALS lcd_periph_signals
 #else
 #define LCD_PERIPH_SIGNALS lcd_periph_rgb_signals
