@@ -4,7 +4,6 @@
 #ifdef RENDER_METHOD_I2S
 
 #include "driver/rmt.h"
-#include "esp_system.h"
 #include "rmt_pulse.h"
 
 #include "soc/rmt_struct.h"
@@ -25,7 +24,6 @@ static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
     RMT.int_clr.val = RMT.int_st.val;
 }
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access
 // to RMTMEM through the rmt_private.h header which we can't access outside the sdk. Declare our own
 // extern here to properly use the RMTMEM smybol defined in
@@ -33,7 +31,6 @@ static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
 // old rmt_block_mem_t struct. Same data fields, different names
 typedef rmt_mem_t rmt_block_mem_t;
 extern rmt_block_mem_t RMTMEM;
-#endif
 
 void rmt_pulse_init(gpio_num_t pin) {
     row_rmt_config.rmt_mode = RMT_MODE_TX;
@@ -52,9 +49,6 @@ void rmt_pulse_init(gpio_num_t pin) {
     row_rmt_config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
     row_rmt_config.tx_config.idle_output_en = true;
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0) && ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 0, 2)
-#error "This driver is not compatible with IDF version 4.1.\nPlease use 4.0 or >= 4.2!"
-#endif
     esp_intr_alloc(
         ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3, rmt_interrupt_handler, 0, &gRMT_intr_handle
     );
