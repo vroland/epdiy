@@ -6,7 +6,7 @@ jobs:
   format-check:
     runs-on: ubuntu-latest
     container:
-      image: "espressif/idf:release-v5.4"
+      image: "espressif/idf:v5.4"
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -22,24 +22,24 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - release-v5.2
-          - release-v5.3
-          - release-v5.4
+          - v5.2
+          - v5.3
+          - v5.4
         target:
           - esp32
           - esp32s3
         example:
           - demo
         include:
-          - version: release-v5.4
+          - version: v5.4
             example: screen_diag
-          - version: release-v5.4
+          - version: v5.4
             example: dragon
-          - version: release-v5.4
+          - version: v5.4
             example: grayscale_test
-          - version: release-v5.4
+          - version: v5.4
             example: www-image
-          - version: release-v5.4
+          - version: v5.4
             example: calibration_helper
 
     continue-on-error: ${{ matrix.version == 'latest' }}
@@ -62,7 +62,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - release-v5.3.2
+          - release-v5.3
         example:
           - weather
         arduino-esp32: 
