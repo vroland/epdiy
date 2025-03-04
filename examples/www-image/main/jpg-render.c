@@ -190,10 +190,10 @@ void deepsleep() {
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
-static uint32_t feed_buffer(
+static unsigned int feed_buffer(
     JDEC* jd,
-    uint8_t* buff,  // Pointer to the read buffer (NULL:skip)
-    uint32_t nd
+    unsigned char* buff,  // Pointer to the read buffer (NULL:skip)
+    unsigned int nd
 ) {
     uint32_t count = 0;
 
@@ -209,7 +209,7 @@ static uint32_t feed_buffer(
 }
 
 /* User defined call-back function to output decoded RGB bitmap in decoded_image buffer */
-static uint32_t tjd_output(
+static unsigned int tjd_output(
     JDEC* jd,     /* Decompressor object of current session */
     void* bitmap, /* Bitmap data to be output */
     JRECT* rect   /* Rectangular region to output */
