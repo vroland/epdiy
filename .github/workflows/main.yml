@@ -83,5 +83,6 @@ jobs:
         run: |
           . $IDF_PATH/export.sh
           cd examples/${{ matrix.example }}
+          idf.py set-target esp32s3
           idf.py build
 
