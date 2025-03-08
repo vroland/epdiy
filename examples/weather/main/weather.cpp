@@ -231,7 +231,7 @@ uint8_t StartWiFi() {
     IPAddress dns(8, 8, 8, 8);  // Google DNS
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);  // switch off AP
-    WiFi.setAutoConnect(true);
+    // Deprecated? WiFi.setAutoConnect(true);
     WiFi.setAutoReconnect(true);
     WiFi.begin(ssid, password);
     unsigned long start = millis();
@@ -313,7 +313,7 @@ void setup() {
             volatile uint32_t t1 = Millis();
             epd_clear();
             volatile uint32_t t2 = Millis();
-            printf("EPD clear took %dms.\n", t2 - t1);
+            printf("EPD clear took %ldms.\n", t2 - t1);
 
             // epd_poweroff();
             // epd_poweron();

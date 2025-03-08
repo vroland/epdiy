@@ -5,11 +5,7 @@
 
 #include "epdiy.h"
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
-#include "rom/miniz.h"
-#else
 #include <miniz.h>
-#endif
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
