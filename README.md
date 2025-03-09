@@ -80,6 +80,7 @@ Displays
 |ED047TC1|4.7"|960 x 540<br>234 PPI|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
 | ED050SC5 | 5" | 600 x 800<br>200 PPI | yes, tested       | THD0510-33CL-GF | 33 | v5 |
 | ED050SC3 | 5" | 600 x 800<br>200 PPI | yes (should work) | THD0510-33CL-GF | 33 | v5 |
+| ED052TC4 | 5.2" | 1280 x 780<br>??? PPI | yes (should work) | WP27D-P050VA3 | 50 | v5 |
 | ED133UT2 | 13.3" | 1600 x 1200<br>150 PPI | yes, tested | adapter board | 39 | v2 | Adapter Board required, also PENG133D
 | ED060XC3 | 6" | 758 x 1024<br>212 PPI | yes, tested | THD0515-34CL-SN | 34 | v5 | Cheapest, good contrast and resolution
 | ED060XD4 | 6"  | 758 x 1024<br>212 PPI | yes, tested | THD0515-34CL-SN | 34 | v5 |

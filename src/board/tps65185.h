@@ -30,6 +30,25 @@ uint8_t tps_read_register(i2c_port_t i2c_num, int reg);
 void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV);
 
 /**
+ * @brief Please read datasheet section 8.3.7.1 Kick-Back Voltage Measurement
+ *  1 Device enters ACTIVE mode
+ *  2 All power rails are up except VCOM
+ *    VCOM pin is in HiZ state
+ */
+void tps_vcom_kickback();
+
+/**
+ * @brief start VCOM kick-back voltage measurements
+ */
+void tps_vcom_kickback_start();
+
+/**
+ * VCOM kick-back ACQC (Acquisition Complete) bit in the INT1 register is set
+ * @return unsigned: 0 is not read
+ */
+unsigned tps_vcom_kickback_rdy();
+
+/**
  * Read the temperature via the on-board thermistor.
  */
 int8_t tps_read_thermistor(i2c_port_t i2c_num);
