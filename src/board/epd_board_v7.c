@@ -248,6 +248,53 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     }
 }
 
+static void epd_board_measure_vcom(epd_ctrl_state_t* state) {
+    epd_ctrl_state_t mask = {
+        .ep_output_enable = true,
+        .ep_mode = true,
+        .ep_stv = true,
+    };
+    state->ep_stv = true;
+    state->ep_mode = false;
+    state->ep_output_enable = true;
+    config_reg.wakeup = true;
+    epd_board_set_ctrl(state, &mask);
+    config_reg.pwrup = true;
+    epd_board_set_ctrl(state, &mask);
+
+    // give the IC time to powerup and set lines
+    vTaskDelay(1);
+    state->ep_sth = true;
+    mask = (const epd_ctrl_state_t){
+        .ep_sth = true,
+    };
+    epd_board_set_ctrl(state, &mask);
+
+    while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
+    }
+    ESP_LOGI("epdiy", "Power rails enabled");
+
+    state->ep_sth = true;
+    mask = (const epd_ctrl_state_t){
+        .ep_sth = true,
+    };
+    epd_board_set_ctrl(state, &mask);
+
+    int tries = 0;
+    while (!((tps_read_register(config_reg.port, TPS_REG_PG) & 0xFA) == 0xFA)) {
+        if (tries >= 500) {
+            ESP_LOGE(
+                "epdiy",
+                "Power enable failed! PG status: %X",
+                tps_read_register(config_reg.port, TPS_REG_PG)
+            );
+            return;
+        }
+        tries++;
+        vTaskDelay(1);
+    }
+}
+
 static void epd_board_poweroff(epd_ctrl_state_t* state) {
     epd_ctrl_state_t mask = {
         .ep_stv = true,
@@ -280,6 +327,7 @@ const EpdBoardDefinition epd_board_v7 = {
     .poweron = epd_board_poweron,
     .poweroff = epd_board_poweroff,
 
+    .measure_vcom = epd_board_measure_vcom,
     .get_temperature = epd_board_ambient_temperature,
     .set_vcom = set_vcom,
 

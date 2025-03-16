@@ -71,3 +71,13 @@ const EpdDisplay_t ED078KC1 = {
     .default_waveform = &epdiy_ED047TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
+
+// Attention is by default horizontal rows mirrored
+const EpdDisplay_t ED052TC4 = {
+    .width = 1280,
+    .height = 720,
+    .bus_width = 8,
+    .bus_speed = 22,
+    .default_waveform = &epdiy_ED097TC2,
+    .display_type = DISPLAY_TYPE_ED097TC2,
+};

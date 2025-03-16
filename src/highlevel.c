@@ -207,3 +207,10 @@ void epd_fullclear(EpdiyHighlevelState* state, int temperature) {
     assert(err == EPD_DRAW_SUCCESS);
     epd_clear();
 }
+
+void epd_hl_waveform(EpdiyHighlevelState* state, const EpdWaveform* waveform) {
+    if (waveform == NULL) {
+        waveform = epd_get_display()->default_waveform;
+    }
+    state->waveform = waveform;
+}
