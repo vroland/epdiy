@@ -1,5 +1,7 @@
 
 #include "tps65185.h"
+#include "pca9555.h"
+#include "epd_board.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -89,4 +91,38 @@ int8_t tps_read_thermistor(i2c_port_t i2c_num) {
         }
     }
     return (int8_t)tps_read_register(i2c_num, TPS_REG_TMST_VALUE);
+}
+
+void tps_vcom_kickback() {
+    printf("VCOM Kickback test\n");
+    // pull the WAKEUP pin and the PWRUP pin high to enable all output rails.
+    epd_current_board()->measure_vcom(epd_ctrl_state());
+    // set the HiZ bit in the VCOM2 register (BIT 5) 0x20
+    // this puts the VCOM pin in a high-impedance state.
+    // bit 3 & 4 Number of acquisitions that is averaged to a single kick-back V. measurement
+    tps_write_register(I2C_NUM_0, 4, 0x38);
+    vTaskDelay(1);
+
+    uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
+    uint8_t vcomreg = tps_read_register(I2C_NUM_0, TPS_REG_VCOM2);
+}
+
+void tps_vcom_kickback_start() {
+    uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
+    // set the ACQ bit in the VCOM2 register to 1 (BIT 7)
+    tps_write_register(I2C_NUM_0, TPS_REG_VCOM2, 0xA0);
+}
+
+unsigned tps_vcom_kickback_rdy() {
+    uint8_t int1reg = tps_read_register(I2C_NUM_0, TPS_REG_INT1);
+
+    if (int1reg == 0x02) {
+        uint8_t lsb = tps_read_register(I2C_NUM_0, 3);
+        uint8_t msb = tps_read_register(I2C_NUM_0, 4);
+        int u16Value = (lsb | (msb << 8)) & 0x1ff;
+        ESP_LOGI("vcom", "raw value:%d temperature:%d C", u16Value, tps_read_thermistor(I2C_NUM_0));
+        return u16Value * 10;
+    } else {
+        return 0;
+    }
 }

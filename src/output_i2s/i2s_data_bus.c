@@ -21,11 +21,7 @@
 #include "soc/rtc.h"
 
 #include "esp_system.h"  // for ESP_IDF_VERSION_VAL
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "esp_private/periph_ctrl.h"
-#else
-#include "driver/periph_ctrl.h"
-#endif
 
 /// DMA descriptors for front and back line buffer.
 /// We use two buffers, so one can be filled while the other
@@ -214,12 +210,8 @@ void i2s_bus_init(i2s_bus_config* cfg, uint32_t epd_row_width) {
     dev->sample_rate_conf.tx_bck_div_num = 2;
 
     // Initialize Audio Clock (APLL)
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     rtc_clk_apll_enable(true);
     rtc_clk_apll_coeff_set(0, 0, 0, 8);
-#else
-    rtc_clk_apll_enable(1, 0, 0, 8, 0);
-#endif
 
     // Set Audio Clock Dividers
     dev->clkm_conf.val = 0;
@@ -302,12 +294,8 @@ void i2s_bus_deinit() {
     free((void*)i2s_state.dma_desc_a);
     free((void*)i2s_state.dma_desc_b);
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     rtc_clk_apll_coeff_set(0, 0, 0, 8);
     rtc_clk_apll_enable(true);
-#else
-    rtc_clk_apll_enable(0, 0, 0, 8, 0);
-#endif
 
     periph_module_disable(PERIPH_I2S1_MODULE);
 }

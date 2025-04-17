@@ -147,6 +147,11 @@ void epd_hl_set_all_white(EpdiyHighlevelState* state);
  */
 void epd_fullclear(EpdiyHighlevelState* state, int temperature);
 
+/**
+ * Just changes the used Waveform
+ */
+void epd_hl_waveform(EpdiyHighlevelState* state, const EpdWaveform* waveform);
+
 #ifdef __cplusplus
 }
 #endif
