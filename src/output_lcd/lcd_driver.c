@@ -610,8 +610,18 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     hal_utils_clk_div_t clk_div = {};
+/**
+ * There was a change in the parameters of this function in this commit:
+ * https://github.com/espressif/esp-idf/commit/d39388fe4f4c5bfb0b52df9177307b1688f41016#diff-2df607d77e3f6e350bab8eb31cfd914500ae42744564e1640cec47006cc17a9c
+ * There are different builds with the same IDF minor version, some with, some without the commit.
+ * So we try to select the correct one by checking if the flag value is defined.
+ */
+#ifdef LCD_HAL_PCLK_FLAG_ALLOW_EQUAL_SYSCLK
     uint32_t freq
         = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags, &clk_div);
+#else
+    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, &clk_div);
+#endif
     lcd_ll_set_group_clock_coeff(
         &LCD_CAM, (int)clk_div.integer, (int)clk_div.denominator, (int)clk_div.numerator
     );
