@@ -125,6 +125,7 @@ extern const EpdBoardDefinition epd_board_v4;
 extern const EpdBoardDefinition epd_board_v5;
 extern const EpdBoardDefinition epd_board_v6;
 extern const EpdBoardDefinition epd_board_v7;
+extern const EpdBoardDefinition epd_board_v7_raw;
 
 /**
  * Helper for short, precise delays.
