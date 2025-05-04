@@ -2,7 +2,7 @@
  * @file epd_board_v7_raw.c
  * @author Martin Fasani www.fasani.de
  * @brief Small v7 board without IO expander targeted only to 8-bit einks
- * @date 2025-02-10 
+ * @date 2025-02-10
  */
 #include <stdint.h>
 #include "epd_board.h"
@@ -17,7 +17,7 @@
 #include <driver/i2c.h>
 #include <sdkconfig.h>
 
-// Make this compile von the ESP32 without ifdefing the whole file
+// Make this compile on the ESP32 without ifdefing the whole file
 #ifndef CONFIG_IDF_TARGET_ESP32S3
 #define GPIO_NUM_40 -1
 #define GPIO_NUM_41 -1
@@ -34,14 +34,14 @@
 #define CFG_SDA GPIO_NUM_39
 #define EPDIY_I2C_PORT I2C_NUM_0
 
-#define CFG_PIN_OE    GPIO_NUM_9
-#define CFG_PIN_MODE  GPIO_NUM_10
+#define CFG_PIN_OE GPIO_NUM_9
+#define CFG_PIN_MODE GPIO_NUM_10
 #define __CFG_PIN_STV GPIO_NUM_45
 #define CFG_PIN_PWRUP GPIO_NUM_11
 #define CFG_PIN_VCOM_CTRL GPIO_NUM_12
-#define CFG_PIN_WAKEUP    GPIO_NUM_14
-#define CFG_PIN_PWRGOOD   GPIO_NUM_47
-#define CFG_PIN_INT       GPIO_NUM_13 //TPS65185 INT
+#define CFG_PIN_WAKEUP GPIO_NUM_14
+#define CFG_PIN_PWRGOOD GPIO_NUM_47
+#define CFG_PIN_INT GPIO_NUM_13  // TPS65185 INT
 
 #define D7 GPIO_NUM_8
 #define D6 GPIO_NUM_18
@@ -80,21 +80,19 @@ static void IRAM_ATTR interrupt_handler(void* arg) {
     interrupt_done = true;
 }
 
-static lcd_bus_config_t lcd_config = {
-    .clock = CKH,
-    .ckv = CKV,
-    .leh = LEH,
-    .start_pulse = STH,
-    .stv = STV,
-    .data[0] = D0,
-    .data[1] = D1,
-    .data[2] = D2,
-    .data[3] = D3,
-    .data[4] = D4,
-    .data[5] = D5,
-    .data[6] = D6,
-    .data[7] = D7
-};
+static lcd_bus_config_t lcd_config = { .clock = CKH,
+                                       .ckv = CKV,
+                                       .leh = LEH,
+                                       .start_pulse = STH,
+                                       .stv = STV,
+                                       .data[0] = D0,
+                                       .data[1] = D1,
+                                       .data[2] = D2,
+                                       .data[3] = D3,
+                                       .data[4] = D4,
+                                       .data[5] = D5,
+                                       .data[6] = D6,
+                                       .data[7] = D7 };
 
 static void epd_board_init(uint32_t epd_row_width) {
     gpio_hold_dis(CKH);  // free CKH after wakeup
@@ -129,7 +127,7 @@ static void epd_board_init(uint32_t epd_row_width) {
     // set all epdiy lines to output except TPS interrupt + PWR good
     gpio_set_direction(CFG_PIN_PWRGOOD, GPIO_MODE_INPUT);
     gpio_set_pull_mode(CFG_PIN_PWRGOOD, GPIO_PULLUP_ONLY);
-    
+
     gpio_set_direction(CFG_PIN_WAKEUP, GPIO_MODE_OUTPUT);
     gpio_set_direction(CFG_PIN_PWRUP, GPIO_MODE_OUTPUT);
     gpio_set_direction(CFG_PIN_VCOM_CTRL, GPIO_MODE_OUTPUT);
@@ -155,8 +153,6 @@ static void epd_board_init(uint32_t epd_row_width) {
 
 static void epd_board_deinit() {
     epd_lcd_deinit();
-
-    int tries = 0;
     gpio_set_level(CFG_PIN_PWRUP, false);
 
     // Not sure why we need this delay, but the TPS65185 seems to generate an interrupt after some
@@ -167,36 +163,36 @@ static void epd_board_deinit() {
     gpio_uninstall_isr_service();
 }
 
-static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {  
-        if (state->ep_output_enable) {
-            gpio_set_level(CFG_PIN_OE, 1);
-        } else {
-            gpio_set_level(CFG_PIN_OE, 0);
-        }
+static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {
+    if (state->ep_output_enable) {
+        gpio_set_level(CFG_PIN_OE, 1);
+    } else {
+        gpio_set_level(CFG_PIN_OE, 0);
+    }
 
-        if (state->ep_mode) {
-            gpio_set_level(CFG_PIN_MODE, 1);
-        } else {
-            gpio_set_level(CFG_PIN_MODE, 0);
-        }
+    if (state->ep_mode) {
+        gpio_set_level(CFG_PIN_MODE, 1);
+    } else {
+        gpio_set_level(CFG_PIN_MODE, 0);
+    }
 
-        if (config_reg.pwrup && !gpio_get_level(CFG_PIN_PWRUP)) {
-            gpio_set_level(CFG_PIN_PWRUP, 1);
-        } else {
-            gpio_set_level(CFG_PIN_PWRUP, 0);
-        }
+    if (config_reg.pwrup && !gpio_get_level(CFG_PIN_PWRUP)) {
+        gpio_set_level(CFG_PIN_PWRUP, 1);
+    } else {
+        gpio_set_level(CFG_PIN_PWRUP, 0);
+    }
 
-        if (config_reg.vcom_ctrl && !gpio_get_level(CFG_PIN_VCOM_CTRL)) {
-            gpio_set_level(CFG_PIN_VCOM_CTRL, 1);
-        } else {
-            gpio_set_level(CFG_PIN_VCOM_CTRL, 0);
-        }
+    if (config_reg.vcom_ctrl && !gpio_get_level(CFG_PIN_VCOM_CTRL)) {
+        gpio_set_level(CFG_PIN_VCOM_CTRL, 1);
+    } else {
+        gpio_set_level(CFG_PIN_VCOM_CTRL, 0);
+    }
 
-        if (config_reg.wakeup && !gpio_get_level(CFG_PIN_WAKEUP)) {
-            gpio_set_level(CFG_PIN_WAKEUP, 1);
-        } else {
-            gpio_set_level(CFG_PIN_WAKEUP, 0);
-        }
+    if (config_reg.wakeup && !gpio_get_level(CFG_PIN_WAKEUP)) {
+        gpio_set_level(CFG_PIN_WAKEUP, 1);
+    } else {
+        gpio_set_level(CFG_PIN_WAKEUP, 0);
+    }
 }
 
 static void epd_board_poweron(epd_ctrl_state_t* state) {
@@ -221,9 +217,15 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     vTaskDelay(1);
 
     // Check if PWRs lines are up
+    int timeout_counter = 0;
+    const int timeout_limit = 20;  // 20 * 100ms = 2 seconds
     while (gpio_get_level(CFG_PIN_PWRGOOD) == 0) {
+        if (timeout_counter >= timeout_limit) {
+            ESP_LOGE("v7_RAW", "Timeout waiting for PWRGOOD signal");
+            break;
+        }
+        timeout_counter++;
         vTaskDelay(pdMS_TO_TICKS(100));
-        //printf("PWRGOOD: %d\n", gpio_get_level(CFG_PIN_PWRGOOD));
     }
     ESP_LOGI("v7_RAW", "PWRGOOD OK");
 
