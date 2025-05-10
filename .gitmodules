@@ -1,0 +1,3 @@
+[submodule "examples/www-image/components/jpegdec"]
+	path = examples/www-image/components/jpegdec
+	url = https://github.com/bitbank2/JPEGDEC.git
