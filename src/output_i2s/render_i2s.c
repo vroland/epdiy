@@ -3,23 +3,21 @@
 #include "../output_common/render_method.h"
 
 #ifdef RENDER_METHOD_I2S
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <esp_log.h>
 
-#include "epdiy.h"
 #include "epd_internals.h"
+#include "epdiy.h"
 
 // output a row to the display.
-#include "i2s_data_bus.h"
 #include "../output_common/lut.h"
 #include "../output_common/render_context.h"
+#include "i2s_data_bus.h"
 #include "rmt_pulse.h"
 
-
-
-static const epd_ctrl_state_t NoChangeState = {0};
+static const epd_ctrl_state_t NoChangeState = { 0 };
 
 /**
  * Waits until all previously submitted data has been written.
@@ -43,7 +41,6 @@ static void IRAM_ATTR i2s_output_row(uint32_t output_time_dus) {
     epd_ctrl_state_t* ctrl_state = epd_ctrl_state();
     epd_ctrl_state_t mask = NoChangeState;
 
-
     ctrl_state->ep_sth = true;
     ctrl_state->ep_latch_enable = true;
     mask.ep_sth = true;
@@ -66,14 +63,13 @@ static void IRAM_ATTR i2s_output_row(uint32_t output_time_dus) {
 }
 
 /** Line i2s_output_row, but resets skip indicator. */
-static void IRAM_ATTR i2s_write_row(RenderContext_t *ctx, uint32_t output_time_dus) {
+static void IRAM_ATTR i2s_write_row(RenderContext_t* ctx, uint32_t output_time_dus) {
     i2s_output_row(output_time_dus);
     ctx->skipping = 0;
 }
 
 /** Skip a row without writing to it. */
-static void IRAM_ATTR i2s_skip_row(RenderContext_t *ctx,
-                            uint8_t pipeline_finish_time) {
+static void IRAM_ATTR i2s_skip_row(RenderContext_t* ctx, uint8_t pipeline_finish_time) {
     int line_bytes = ctx->display_width / 4;
     // output previously loaded row, fill buffer with no-ops.
     if (ctx->skipping < 2) {
@@ -112,13 +108,13 @@ static void i2s_start_frame() {
     ctrl_state->ep_stv = false;
     mask.ep_stv = true;
     epd_board->set_ctrl(ctrl_state, &mask);
-    //busy_delay(240);
+    // busy_delay(240);
     pulse_ckv_us(1000, 100, false);
     mask = NoChangeState;
     ctrl_state->ep_stv = true;
     mask.ep_stv = true;
     epd_board->set_ctrl(ctrl_state, &mask);
-    //pulse_ckv_us(0, 10, true);
+    // pulse_ckv_us(0, 10, true);
     pulse_ckv_us(1, 1, true);
     pulse_ckv_us(1, 1, true);
     pulse_ckv_us(1, 1, true);
@@ -160,8 +156,7 @@ static void i2s_end_frame() {
     pulse_ckv_us(1, 1, true);
 }
 
-void i2s_do_update(RenderContext_t *ctx) {
-
+void i2s_do_update(RenderContext_t* ctx) {
     for (uint8_t k = 0; k < ctx->cycle_frames; k++) {
         prepare_context_for_next_frame(ctx);
 
@@ -185,20 +180,18 @@ void i2s_do_update(RenderContext_t *ctx) {
     }
 }
 
-void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short time, int color) {
-
+void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t* ctx, EpdRect area, short time, int color) {
     int line_bytes = ctx->display_width / 4;
     uint8_t row[line_bytes];
     memset(row, 0, line_bytes);
 
-    const uint8_t color_choice[4] = {DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF};
+    const uint8_t color_choice[4] = { DARK_BYTE, CLEAR_BYTE, 0x00, 0xFF };
     for (uint32_t i = 0; i < area.width; i++) {
         uint32_t position = i + area.x % 4;
-        uint8_t mask =
-            color_choice[color] & (0b00000011 << (2 * (position % 4)));
+        uint8_t mask = color_choice[color] & (0b00000011 << (2 * (position % 4)));
         row[area.x / 4 + position / 4] |= mask;
     }
-    reorder_line_buffer((uint32_t *)row, line_bytes);
+    reorder_line_buffer((uint32_t*)row, line_bytes);
 
     i2s_start_frame();
 
@@ -228,19 +221,16 @@ void IRAM_ATTR epd_push_pixels_i2s(RenderContext_t *ctx, EpdRect area, short tim
     i2s_end_frame();
 }
 
-
-void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
+void IRAM_ATTR i2s_output_frame(RenderContext_t* ctx, int thread_id) {
     uint8_t* line_buf = ctx->feed_line_buffers[thread_id];
 
     ctx->skipping = 0;
     EpdRect area = ctx->area;
     int frame_time = ctx->frame_time;
 
-    lut_func_t input_calc_func = get_lut_function(ctx);
-
     i2s_start_frame();
     for (int i = 0; i < ctx->display_height; i++) {
-        LineQueue_t *lq = &ctx->line_queues[0];
+        LineQueue_t* lq = &ctx->line_queues[0];
 
         memset(line_buf, 0, ctx->display_width);
         while (lq_read(lq, line_buf) < 0) {
@@ -253,8 +243,18 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
             continue;
         }
 
-        (*input_calc_func)((uint32_t*)line_buf, (uint8_t*)i2s_get_current_buffer(),
-                           ctx->conversion_lut, ctx->display_width);
+        // lookup pixel actions in the waveform LUT
+        ctx->lut_lookup_func(
+            (uint32_t*)line_buf,
+            (uint8_t*)i2s_get_current_buffer(),
+            ctx->conversion_lut,
+            ctx->display_width
+        );
+
+        // apply the line mask
+        epd_apply_line_mask(i2s_get_current_buffer(), ctx->line_mask, ctx->display_width / 4);
+
+        reorder_line_buffer((uint32_t*)i2s_get_current_buffer(), ctx->display_width / 4);
         i2s_write_row(ctx, frame_time);
     }
     if (!ctx->skipping) {
@@ -268,22 +268,25 @@ void IRAM_ATTR i2s_output_frame(RenderContext_t *ctx, int thread_id) {
     xSemaphoreGive(ctx->frame_done);
 }
 
-static inline int min(int x, int y) { return x < y ? x : y; }
-static inline int max(int x, int y) { return x > y ? x : y; }
+static inline int min(int x, int y) {
+    return x < y ? x : y;
+}
+static inline int max(int x, int y) {
+    return x > y ? x : y;
+}
 
-void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
-
+void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t* ctx, int thread_id) {
     uint8_t* input_line = ctx->feed_line_buffers[thread_id];
 
     // line must be able to hold 2-pixel-per-byte or 1-pixel-per-byte data
     memset(input_line, 0x00, ctx->display_width);
 
-    LineQueue_t *lq = &ctx->line_queues[thread_id];
+    LineQueue_t* lq = &ctx->line_queues[thread_id];
 
     EpdRect area = ctx->area;
 
     int min_y, max_y, bytes_per_line, pixels_per_byte;
-    const uint8_t *ptr_start;
+    const uint8_t* ptr_start;
     get_buffer_params(ctx, &bytes_per_line, &ptr_start, &min_y, &max_y, &pixels_per_byte);
 
     const EpdRect crop_to = ctx->crop_to;
@@ -303,10 +306,9 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
         // if (thread_id) gpio_set_level(15, 0);
         ctx->line_threads[l] = thread_id;
 
-        if (l < min_y || l >= max_y ||
-            (ctx->drawn_lines != NULL &&
-             !ctx->drawn_lines[l - area.y])) {
-            uint8_t *buf = NULL;
+        if (l < min_y || l >= max_y
+            || (ctx->drawn_lines != NULL && !ctx->drawn_lines[l - area.y])) {
+            uint8_t* buf = NULL;
             while (buf == NULL)
                 buf = lq_current(lq);
             memset(buf, 0x00, lq->element_size);
@@ -314,14 +316,14 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
             continue;
         }
 
-        uint32_t *lp = (uint32_t *)input_line;
+        uint32_t* lp = (uint32_t*)input_line;
         bool shifted = false;
-        const uint8_t *ptr = ptr_start + bytes_per_line * (l - min_y);
+        const uint8_t* ptr = ptr_start + bytes_per_line * (l - min_y);
 
         if (area.width == ctx->display_width && area.x == 0 && !ctx->error) {
-            lp = (uint32_t *)ptr;
+            lp = (uint32_t*)ptr;
         } else if (!ctx->error) {
-            uint8_t *buf_start = (uint8_t *)input_line;
+            uint8_t* buf_start = (uint8_t*)input_line;
             uint32_t line_bytes = bytes_per_line;
 
             int min_x = area.x + crop_x;
@@ -332,8 +334,10 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
                 // ptr was already adjusted above
                 line_bytes += min_x / pixels_per_byte;
             }
-            line_bytes =
-                min(line_bytes, ctx->display_width / pixels_per_byte - (uint32_t)(buf_start - input_line));
+            line_bytes = min(
+                line_bytes,
+                ctx->display_width / pixels_per_byte - (uint32_t)(buf_start - input_line)
+            );
 
             memcpy(buf_start, ptr, line_bytes);
 
@@ -341,14 +345,14 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
             /// consider half-byte shifts in two-pixel-per-Byte mode.
             if (pixels_per_byte == 2) {
                 // mask last nibble for uneven width
-                if (cropped_width % 2 == 1 &&
-                    min_x / 2 + cropped_width / 2 + 1 < ctx->display_width) {
+                if (cropped_width % 2 == 1
+                    && min_x / 2 + cropped_width / 2 + 1 < ctx->display_width) {
                     *(buf_start + line_bytes - 1) |= 0xF0;
                 }
                 if (area.x % 2 == 1 && !(crop_x % 2 == 1) && min_x < ctx->display_width) {
                     shifted = true;
-                    uint32_t remaining = (uint32_t)input_line + ctx->display_width / 2 -
-                                         (uint32_t)buf_start;
+                    uint32_t remaining
+                        = (uint32_t)input_line + ctx->display_width / 2 - (uint32_t)buf_start;
                     uint32_t to_shift = min(line_bytes + 1, remaining);
                     // shift one nibble to right
                     nibble_shift_buffer_right(buf_start, to_shift);
@@ -367,16 +371,16 @@ void IRAM_ATTR i2s_fetch_frame_data(RenderContext_t *ctx, int thread_id) {
                 if (min_x % 8 != 0 && min_x < ctx->display_width) {
                     // shift to right
                     shifted = true;
-                    uint32_t remaining = (uint32_t)input_line + ctx->display_width / 8 -
-                                         (uint32_t)buf_start;
+                    uint32_t remaining
+                        = (uint32_t)input_line + ctx->display_width / 8 - (uint32_t)buf_start;
                     uint32_t to_shift = min(line_bytes + 1, remaining);
                     bit_shift_buffer_right(buf_start, to_shift, min_x % 8);
                 }
             }
-            lp = (uint32_t *)input_line;
+            lp = (uint32_t*)input_line;
         }
 
-        uint8_t *buf = NULL;
+        uint8_t* buf = NULL;
         while (buf == NULL)
             buf = lq_current(lq);
 

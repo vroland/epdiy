@@ -118,8 +118,8 @@
 #endif
 #endif  // ARDUINO
 #ifndef ARDUINOJSON_ENABLE_PROGMEM
-#if defined(PROGMEM) && defined(pgm_read_byte) && defined(pgm_read_dword) && \
-    defined(pgm_read_ptr) && defined(pgm_read_float)
+#if defined(PROGMEM) && defined(pgm_read_byte) && defined(pgm_read_dword) && defined(pgm_read_ptr) \
+    && defined(pgm_read_float)
 #define ARDUINOJSON_ENABLE_PROGMEM 1
 #else
 #define ARDUINOJSON_ENABLE_PROGMEM 0
@@ -144,8 +144,8 @@
 #define ARDUINOJSON_NEGATIVE_EXPONENTIATION_THRESHOLD 1e-5
 #endif
 #ifndef ARDUINOJSON_LITTLE_ENDIAN
-#if defined(_MSC_VER) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) || \
-    defined(__LITTLE_ENDIAN__) || defined(__i386) || defined(__x86_64)
+#if defined(_MSC_VER) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) \
+    || defined(__LITTLE_ENDIAN__) || defined(__i386) || defined(__x86_64)
 #define ARDUINOJSON_LITTLE_ENDIAN 1
 #else
 #define ARDUINOJSON_LITTLE_ENDIAN 0
@@ -216,21 +216,27 @@
 #define ARDUINOJSON_VERSION_MINOR 17
 #define ARDUINOJSON_VERSION_REVISION 3
 #ifndef ARDUINOJSON_NAMESPACE
-#define ARDUINOJSON_NAMESPACE                                                                 \
-    ARDUINOJSON_CONCAT4(                                                                      \
-        ARDUINOJSON_CONCAT4(                                                                  \
-            ArduinoJson, ARDUINOJSON_VERSION_MAJOR, ARDUINOJSON_VERSION_MINOR,                \
-            ARDUINOJSON_VERSION_REVISION                                                      \
-        ),                                                                                    \
-        _,                                                                                    \
-        ARDUINOJSON_HEX_DIGIT(                                                                \
-            ARDUINOJSON_ENABLE_PROGMEM, ARDUINOJSON_USE_LONG_LONG, ARDUINOJSON_USE_DOUBLE,    \
-            ARDUINOJSON_ENABLE_STRING_DEDUPLICATION                                           \
-        ),                                                                                    \
-        ARDUINOJSON_HEX_DIGIT(                                                                \
-            ARDUINOJSON_ENABLE_NAN, ARDUINOJSON_ENABLE_INFINITY, ARDUINOJSON_ENABLE_COMMENTS, \
-            ARDUINOJSON_DECODE_UNICODE                                                        \
-        )                                                                                     \
+#define ARDUINOJSON_NAMESPACE                       \
+    ARDUINOJSON_CONCAT4(                            \
+        ARDUINOJSON_CONCAT4(                        \
+            ArduinoJson,                            \
+            ARDUINOJSON_VERSION_MAJOR,              \
+            ARDUINOJSON_VERSION_MINOR,              \
+            ARDUINOJSON_VERSION_REVISION            \
+        ),                                          \
+        _,                                          \
+        ARDUINOJSON_HEX_DIGIT(                      \
+            ARDUINOJSON_ENABLE_PROGMEM,             \
+            ARDUINOJSON_USE_LONG_LONG,              \
+            ARDUINOJSON_USE_DOUBLE,                 \
+            ARDUINOJSON_ENABLE_STRING_DEDUPLICATION \
+        ),                                          \
+        ARDUINOJSON_HEX_DIGIT(                      \
+            ARDUINOJSON_ENABLE_NAN,                 \
+            ARDUINOJSON_ENABLE_INFINITY,            \
+            ARDUINOJSON_ENABLE_COMMENTS,            \
+            ARDUINOJSON_DECODE_UNICODE              \
+        )                                           \
     )
 #endif
 #if ARDUINOJSON_DEBUG
@@ -459,25 +465,25 @@ template <typename T>
 struct is_same<T, T> : true_type {};
 template <typename T>
 struct is_integral {
-    static const bool value =
-        is_same<T, signed char>::value || is_same<T, unsigned char>::value ||
-        is_same<T, signed short>::value || is_same<T, unsigned short>::value ||
-        is_same<T, signed int>::value || is_same<T, unsigned int>::value ||
-        is_same<T, signed long>::value || is_same<T, unsigned long>::value ||
+    static const bool value
+        = is_same<T, signed char>::value || is_same<T, unsigned char>::value
+          || is_same<T, signed short>::value || is_same<T, unsigned short>::value
+          || is_same<T, signed int>::value || is_same<T, unsigned int>::value
+          || is_same<T, signed long>::value || is_same<T, unsigned long>::value ||
 #if ARDUINOJSON_HAS_LONG_LONG
-        is_same<T, signed long long>::value || is_same<T, unsigned long long>::value ||
+          is_same<T, signed long long>::value || is_same<T, unsigned long long>::value ||
 #endif
 #if ARDUINOJSON_HAS_INT64
-        is_same<T, signed __int64>::value || is_same<T, unsigned __int64>::value ||
+          is_same<T, signed __int64>::value || is_same<T, unsigned __int64>::value ||
 #endif
-        is_same<T, char>::value || is_same<T, bool>::value;
+          is_same<T, char>::value || is_same<T, bool>::value;
 };
 template <typename T>
 struct is_integral<const T> : is_integral<T> {};
 template <typename T>
 struct is_enum {
-    static const bool value = is_convertible<T, int>::value && !is_class<T>::value &&
-                              !is_integral<T>::value && !is_floating_point<T>::value;
+    static const bool value = is_convertible<T, int>::value && !is_class<T>::value
+                              && !is_integral<T>::value && !is_floating_point<T>::value;
 };
 template <typename T>
 struct is_pointer : false_type {};
@@ -1281,17 +1287,27 @@ struct FloatTraits<T, 8 /*64bits*/> {
     }
     static T positiveBinaryPowerOfTen(int index) {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(  //
-            uint32_t, factors,
+            uint32_t,
+            factors,
             ARDUINOJSON_EXPAND18({
-                0x40240000, 0x00000000,  // 1e1
-                0x40590000, 0x00000000,  // 1e2
-                0x40C38800, 0x00000000,  // 1e4
-                0x4197D784, 0x00000000,  // 1e8
-                0x4341C379, 0x37E08000,  // 1e16
-                0x4693B8B5, 0xB5056E17,  // 1e32
-                0x4D384F03, 0xE93FF9F5,  // 1e64
-                0x5A827748, 0xF9301D32,  // 1e128
-                0x75154FDD, 0x7F73BF3C   // 1e256
+                0x40240000,
+                0x00000000,  // 1e1
+                0x40590000,
+                0x00000000,  // 1e2
+                0x40C38800,
+                0x00000000,  // 1e4
+                0x4197D784,
+                0x00000000,  // 1e8
+                0x4341C379,
+                0x37E08000,  // 1e16
+                0x4693B8B5,
+                0xB5056E17,  // 1e32
+                0x4D384F03,
+                0xE93FF9F5,  // 1e64
+                0x5A827748,
+                0xF9301D32,  // 1e128
+                0x75154FDD,
+                0x7F73BF3C  // 1e256
             })
         );
         return forge(
@@ -1301,17 +1317,27 @@ struct FloatTraits<T, 8 /*64bits*/> {
     }
     static T negativeBinaryPowerOfTen(int index) {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(  //
-            uint32_t, factors,
+            uint32_t,
+            factors,
             ARDUINOJSON_EXPAND18({
-                0x3FB99999, 0x9999999A,  // 1e-1
-                0x3F847AE1, 0x47AE147B,  // 1e-2
-                0x3F1A36E2, 0xEB1C432D,  // 1e-4
-                0x3E45798E, 0xE2308C3A,  // 1e-8
-                0x3C9CD2B2, 0x97D889BC,  // 1e-16
-                0x3949F623, 0xD5A8A733,  // 1e-32
-                0x32A50FFD, 0x44F4A73D,  // 1e-64
-                0x255BBA08, 0xCF8C979D,  // 1e-128
-                0x0AC80628, 0x64AC6F43   // 1e-256
+                0x3FB99999,
+                0x9999999A,  // 1e-1
+                0x3F847AE1,
+                0x47AE147B,  // 1e-2
+                0x3F1A36E2,
+                0xEB1C432D,  // 1e-4
+                0x3E45798E,
+                0xE2308C3A,  // 1e-8
+                0x3C9CD2B2,
+                0x97D889BC,  // 1e-16
+                0x3949F623,
+                0xD5A8A733,  // 1e-32
+                0x32A50FFD,
+                0x44F4A73D,  // 1e-64
+                0x255BBA08,
+                0xCF8C979D,  // 1e-128
+                0x0AC80628,
+                0x64AC6F43  // 1e-256
             })
         );
         return forge(
@@ -1321,17 +1347,27 @@ struct FloatTraits<T, 8 /*64bits*/> {
     }
     static T negativeBinaryPowerOfTenPlusOne(int index) {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(  //
-            uint32_t, factors,
+            uint32_t,
+            factors,
             ARDUINOJSON_EXPAND18({
-                0x3FF00000, 0x00000000,  // 1e0
-                0x3FB99999, 0x9999999A,  // 1e-1
-                0x3F50624D, 0xD2F1A9FC,  // 1e-3
-                0x3E7AD7F2, 0x9ABCAF48,  // 1e-7
-                0x3CD203AF, 0x9EE75616,  // 1e-15
-                0x398039D6, 0x65896880,  // 1e-31
-                0x32DA53FC, 0x9631D10D,  // 1e-63
-                0x25915445, 0x81B7DEC2,  // 1e-127
-                0x0AFE07B2, 0x7DD78B14   // 1e-255
+                0x3FF00000,
+                0x00000000,  // 1e0
+                0x3FB99999,
+                0x9999999A,  // 1e-1
+                0x3F50624D,
+                0xD2F1A9FC,  // 1e-3
+                0x3E7AD7F2,
+                0x9ABCAF48,  // 1e-7
+                0x3CD203AF,
+                0x9EE75616,  // 1e-15
+                0x398039D6,
+                0x65896880,  // 1e-31
+                0x32DA53FC,
+                0x9631D10D,  // 1e-63
+                0x25915445,
+                0x81B7DEC2,  // 1e-127
+                0x0AFE07B2,
+                0x7DD78B14  // 1e-255
             })
         );
         return forge(
@@ -1374,19 +1410,19 @@ struct FloatTraits<T, 4 /*32bits*/> {
     }
     static T positiveBinaryPowerOfTen(int index) {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(
-            T, factors, ARDUINOJSON_EXPAND6({1e1f, 1e2f, 1e4f, 1e8f, 1e16f, 1e32f})
+            T, factors, ARDUINOJSON_EXPAND6({ 1e1f, 1e2f, 1e4f, 1e8f, 1e16f, 1e32f })
         );
         return ARDUINOJSON_READ_STATIC_ARRAY(T, factors, index);
     }
     static T negativeBinaryPowerOfTen(int index) {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(
-            T, factors, ARDUINOJSON_EXPAND6({1e-1f, 1e-2f, 1e-4f, 1e-8f, 1e-16f, 1e-32f})
+            T, factors, ARDUINOJSON_EXPAND6({ 1e-1f, 1e-2f, 1e-4f, 1e-8f, 1e-16f, 1e-32f })
         );
         return ARDUINOJSON_READ_STATIC_ARRAY(T, factors, index);
     }
     static T negativeBinaryPowerOfTenPlusOne(int index) {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(
-            T, factors, ARDUINOJSON_EXPAND6({1e0f, 1e-1f, 1e-3f, 1e-7f, 1e-15f, 1e-31f})
+            T, factors, ARDUINOJSON_EXPAND6({ 1e0f, 1e-1f, 1e-3f, 1e-7f, 1e-15f, 1e-31f })
         );
         return ARDUINOJSON_READ_STATIC_ARRAY(T, factors, index);
     }
@@ -1541,8 +1577,8 @@ class VariantData {
         }
     }
     bool isFloat() const {
-        return type() == VALUE_IS_FLOAT || type() == VALUE_IS_POSITIVE_INTEGER ||
-               type() == VALUE_IS_NEGATIVE_INTEGER;
+        return type() == VALUE_IS_FLOAT || type() == VALUE_IS_POSITIVE_INTEGER
+               || type() == VALUE_IS_NEGATIVE_INTEGER;
     }
     bool isString() const {
         return type() == VALUE_IS_LINKED_STRING || type() == VALUE_IS_OWNED_STRING;
@@ -1631,8 +1667,9 @@ class VariantData {
         return setString(value, pool, typename TAdaptedString::storage_policy());
     }
     template <typename TAdaptedString>
-    inline bool
-    setString(TAdaptedString value, MemoryPool* pool, storage_policies::decide_at_runtime) {
+    inline bool setString(
+        TAdaptedString value, MemoryPool* pool, storage_policies::decide_at_runtime
+    ) {
         if (value.isStatic())
             return setString(value, pool, storage_policies::store_by_address());
         else
@@ -1743,10 +1780,7 @@ inline bool slotSetKey(VariantSlot* var, TAdaptedString key, MemoryPool* pool) {
 }
 template <typename TAdaptedString>
 inline bool slotSetKey(
-    VariantSlot* var,
-    TAdaptedString key,
-    MemoryPool* pool,
-    storage_policies::decide_at_runtime
+    VariantSlot* var, TAdaptedString key, MemoryPool* pool, storage_policies::decide_at_runtime
 ) {
     if (key.isStatic()) {
         return slotSetKey(var, key, pool, storage_policies::store_by_address());
@@ -1755,18 +1789,16 @@ inline bool slotSetKey(
     }
 }
 template <typename TAdaptedString>
-inline bool
-slotSetKey(VariantSlot* var, TAdaptedString key, MemoryPool*, storage_policies::store_by_address) {
+inline bool slotSetKey(
+    VariantSlot* var, TAdaptedString key, MemoryPool*, storage_policies::store_by_address
+) {
     ARDUINOJSON_ASSERT(var);
     var->setKey(key.data(), storage_policies::store_by_address());
     return true;
 }
 template <typename TAdaptedString>
 inline bool slotSetKey(
-    VariantSlot* var,
-    TAdaptedString key,
-    MemoryPool* pool,
-    storage_policies::store_by_copy
+    VariantSlot* var, TAdaptedString key, MemoryPool* pool, storage_policies::store_by_copy
 ) {
     const char* dup = pool->saveString(key);
     if (!dup)
@@ -2022,8 +2054,9 @@ inline CollectionData* variantToObject(VariantData* var) {
 inline NO_INLINE VariantData* variantAddElement(VariantData* var, MemoryPool* pool) {
     return var != 0 ? var->addElement(pool) : 0;
 }
-inline NO_INLINE VariantData*
-variantGetOrAddElement(VariantData* var, size_t index, MemoryPool* pool) {
+inline NO_INLINE VariantData* variantGetOrAddElement(
+    VariantData* var, size_t index, MemoryPool* pool
+) {
     return var != 0 ? var->getOrAddElement(index, pool) : 0;
 }
 template <typename TChar>
@@ -2031,8 +2064,9 @@ NO_INLINE VariantData* variantGetOrAddMember(VariantData* var, TChar* key, Memor
     return var != 0 ? var->getOrAddMember(adaptString(key), pool) : 0;
 }
 template <typename TString>
-NO_INLINE VariantData*
-variantGetOrAddMember(VariantData* var, const TString& key, MemoryPool* pool) {
+NO_INLINE VariantData* variantGetOrAddMember(
+    VariantData* var, const TString& key, MemoryPool* pool
+) {
     return var != 0 ? var->getOrAddMember(adaptString(key), pool) : 0;
 }
 enum CompareResult {
@@ -2077,8 +2111,8 @@ CompareResult arithmeticCompare(
     const T1& lhs,
     const T2& rhs,
     typename enable_if<
-        is_integral<T1>::value && is_integral<T2>::value &&
-        is_signed<T1>::value == is_signed<T2>::value && sizeof(T2) == sizeof(T1)>::type* = 0
+        is_integral<T1>::value && is_integral<T2>::value
+        && is_signed<T1>::value == is_signed<T2>::value && sizeof(T2) == sizeof(T1)>::type* = 0
 ) {
     return arithmeticCompare<T1>(lhs, static_cast<T1>(rhs));
 }
@@ -2087,8 +2121,8 @@ CompareResult arithmeticCompare(
     const T1& lhs,
     const T2& rhs,
     typename enable_if<
-        is_integral<T1>::value && is_integral<T2>::value && is_unsigned<T1>::value &&
-        is_signed<T2>::value && sizeof(T2) == sizeof(T1)>::type* = 0
+        is_integral<T1>::value && is_integral<T2>::value && is_unsigned<T1>::value
+        && is_signed<T2>::value && sizeof(T2) == sizeof(T1)>::type* = 0
 ) {
     if (rhs < 0)
         return COMPARE_RESULT_GREATER;
@@ -2099,8 +2133,8 @@ CompareResult arithmeticCompare(
     const T1& lhs,
     const T2& rhs,
     typename enable_if<
-        is_integral<T1>::value && is_integral<T2>::value && is_signed<T1>::value &&
-        is_unsigned<T2>::value && sizeof(T2) == sizeof(T1)>::type* = 0
+        is_integral<T1>::value && is_integral<T2>::value && is_signed<T1>::value
+        && is_unsigned<T2>::value && sizeof(T2) == sizeof(T1)>::type* = 0
 ) {
     if (lhs < 0)
         return COMPARE_RESULT_LESS;
@@ -2116,17 +2150,13 @@ CompareResult arithmeticCompare(
 }
 template <typename T2>
 CompareResult arithmeticCompareNegateLeft(
-    UInt,
-    const T2&,
-    typename enable_if<is_unsigned<T2>::value>::type* = 0
+    UInt, const T2&, typename enable_if<is_unsigned<T2>::value>::type* = 0
 ) {
     return COMPARE_RESULT_LESS;
 }
 template <typename T2>
 CompareResult arithmeticCompareNegateLeft(
-    UInt lhs,
-    const T2& rhs,
-    typename enable_if<is_signed<T2>::value>::type* = 0
+    UInt lhs, const T2& rhs, typename enable_if<is_signed<T2>::value>::type* = 0
 ) {
     if (rhs > 0)
         return COMPARE_RESULT_LESS;
@@ -2134,17 +2164,13 @@ CompareResult arithmeticCompareNegateLeft(
 }
 template <typename T1>
 CompareResult arithmeticCompareNegateRight(
-    const T1&,
-    UInt,
-    typename enable_if<is_unsigned<T1>::value>::type* = 0
+    const T1&, UInt, typename enable_if<is_unsigned<T1>::value>::type* = 0
 ) {
     return COMPARE_RESULT_GREATER;
 }
 template <typename T1>
 CompareResult arithmeticCompareNegateRight(
-    const T1& lhs,
-    UInt rhs,
-    typename enable_if<is_signed<T1>::value>::type* = 0
+    const T1& lhs, UInt rhs, typename enable_if<is_signed<T1>::value>::type* = 0
 ) {
     if (lhs > 0)
         return COMPARE_RESULT_GREATER;
@@ -2158,16 +2184,18 @@ CompareResult compare(const T1& lhs, const T2& rhs);  // VariantCompare.cpp
 template <typename TVariant>
 struct VariantOperators {
     template <typename T>
-    friend typename enable_if<!IsVariant<T>::value, typename VariantAs<T>::type>::type
-    operator|(const TVariant& variant, T defaultValue) {
+    friend typename enable_if<!IsVariant<T>::value, typename VariantAs<T>::type>::type operator|(
+        const TVariant& variant, T defaultValue
+    ) {
         if (variant.template is<T>())
             return variant.template as<T>();
         else
             return defaultValue;
     }
     template <typename T>
-    friend typename enable_if<IsVariant<T>::value, typename T::variant_type>::type
-    operator|(const TVariant& variant, T defaultValue) {
+    friend typename enable_if<IsVariant<T>::value, typename T::variant_type>::type operator|(
+        const TVariant& variant, T defaultValue
+    ) {
         if (variant)
             return variant;
         else
@@ -2186,8 +2214,9 @@ struct VariantOperators {
         return compare(lhs, rhs) == COMPARE_RESULT_EQUAL;
     }
     template <typename T>
-    friend typename enable_if<!IsVisitable<T>::value, bool>::type
-    operator==(TVariant lhs, const T& rhs) {
+    friend typename enable_if<!IsVisitable<T>::value, bool>::type operator==(
+        TVariant lhs, const T& rhs
+    ) {
         return compare(lhs, rhs) == COMPARE_RESULT_EQUAL;
     }
     template <typename T>
@@ -2203,8 +2232,9 @@ struct VariantOperators {
         return compare(lhs, rhs) != COMPARE_RESULT_EQUAL;
     }
     template <typename T>
-    friend typename enable_if<!IsVisitable<T>::value, bool>::type
-    operator!=(TVariant lhs, const T& rhs) {
+    friend typename enable_if<!IsVisitable<T>::value, bool>::type operator!=(
+        TVariant lhs, const T& rhs
+    ) {
         return compare(lhs, rhs) != COMPARE_RESULT_EQUAL;
     }
     template <typename T>
@@ -2220,8 +2250,9 @@ struct VariantOperators {
         return compare(lhs, rhs) == COMPARE_RESULT_LESS;
     }
     template <typename T>
-    friend typename enable_if<!IsVisitable<T>::value, bool>::type
-    operator<(TVariant lhs, const T& rhs) {
+    friend typename enable_if<!IsVisitable<T>::value, bool>::type operator<(
+        TVariant lhs, const T& rhs
+    ) {
         return compare(lhs, rhs) == COMPARE_RESULT_LESS;
     }
     template <typename T>
@@ -2237,8 +2268,9 @@ struct VariantOperators {
         return (compare(lhs, rhs) & COMPARE_RESULT_LESS_OR_EQUAL) != 0;
     }
     template <typename T>
-    friend typename enable_if<!IsVisitable<T>::value, bool>::type
-    operator<=(TVariant lhs, const T& rhs) {
+    friend typename enable_if<!IsVisitable<T>::value, bool>::type operator<=(
+        TVariant lhs, const T& rhs
+    ) {
         return (compare(lhs, rhs) & COMPARE_RESULT_LESS_OR_EQUAL) != 0;
     }
     template <typename T>
@@ -2254,8 +2286,9 @@ struct VariantOperators {
         return compare(lhs, rhs) == COMPARE_RESULT_GREATER;
     }
     template <typename T>
-    friend typename enable_if<!IsVisitable<T>::value, bool>::type
-    operator>(TVariant lhs, const T& rhs) {
+    friend typename enable_if<!IsVisitable<T>::value, bool>::type operator>(
+        TVariant lhs, const T& rhs
+    ) {
         return compare(lhs, rhs) == COMPARE_RESULT_GREATER;
     }
     template <typename T>
@@ -2271,8 +2304,9 @@ struct VariantOperators {
         return (compare(lhs, rhs) & COMPARE_RESULT_GREATER_OR_EQUAL) != 0;
     }
     template <typename T>
-    friend typename enable_if<!IsVisitable<T>::value, bool>::type
-    operator>=(TVariant lhs, const T& rhs) {
+    friend typename enable_if<!IsVisitable<T>::value, bool>::type operator>=(
+        TVariant lhs, const T& rhs
+    ) {
         return (compare(lhs, rhs) & COMPARE_RESULT_GREATER_OR_EQUAL) != 0;
     }
 };
@@ -2415,8 +2449,7 @@ class VariantRef : public VariantRefBase<VariantData>,
     }
     template <typename T>
     FORCE_INLINE bool set(
-        T value,
-        typename enable_if<is_integral<T>::value && !is_same<bool, T>::value>::type* = 0
+        T value, typename enable_if<is_integral<T>::value && !is_same<bool, T>::value>::type* = 0
     ) const {
         return variantSetInteger<T>(_data, value);
     }
@@ -2425,8 +2458,7 @@ class VariantRef : public VariantRefBase<VariantData>,
     }
     template <typename T>
     FORCE_INLINE bool set(
-        SerializedValue<T> value,
-        typename enable_if<!is_same<const char*, T>::value>::type* = 0
+        SerializedValue<T> value, typename enable_if<!is_same<const char*, T>::value>::type* = 0
     ) const {
         return variantSetOwnedRaw(_data, value, _pool);
     }
@@ -2729,8 +2761,9 @@ void objectRemove(CollectionData* obj, TAdaptedString key) {
     obj->removeMember(key);
 }
 template <typename TAdaptedString>
-inline VariantData*
-objectGetOrAddMember(CollectionData* obj, TAdaptedString key, MemoryPool* pool) {
+inline VariantData* objectGetOrAddMember(
+    CollectionData* obj, TAdaptedString key, MemoryPool* pool
+) {
     if (!obj)
         return 0;
     return obj->getOrAddMember(key, pool);
@@ -3449,9 +3482,9 @@ class BasicJsonDocument : AllocatorOwner<TAllocator>, public JsonDocument {
     BasicJsonDocument(
         const T& src,
         typename enable_if<
-            is_same<T, VariantRef>::value || is_same<T, VariantConstRef>::value ||
-            is_same<T, ArrayRef>::value || is_same<T, ArrayConstRef>::value ||
-            is_same<T, ObjectRef>::value || is_same<T, ObjectConstRef>::value>::type* = 0
+            is_same<T, VariantRef>::value || is_same<T, VariantConstRef>::value
+            || is_same<T, ArrayRef>::value || is_same<T, ArrayConstRef>::value
+            || is_same<T, ObjectRef>::value || is_same<T, ObjectConstRef>::value>::type* = 0
     )
         : JsonDocument(allocPool(src.memoryUsage())) {
         set(src);
@@ -3595,8 +3628,9 @@ inline bool copyArray(T* src, size_t len, JsonDocument& dst) {
     return copyArray(src, len, dst.to<ArrayRef>());
 }
 template <typename T, size_t N1, size_t N2, typename TDestination>
-inline typename enable_if<!is_base_of<JsonDocument, TDestination>::value, bool>::type
-copyArray(T (&src)[N1][N2], const TDestination& dst) {
+inline typename enable_if<!is_base_of<JsonDocument, TDestination>::value, bool>::type copyArray(
+    T (&src)[N1][N2], const TDestination& dst
+) {
     bool ok = true;
     for (size_t i = 0; i < N1; i++) {
         ArrayRef nestedArray = dst.createNestedArray();
@@ -3664,8 +3698,9 @@ class ArrayCopier2D : public Visitor<void> {
     size_t _capacity1, _capacity2;
 };
 template <typename TSource, typename T, size_t N>
-inline typename enable_if<!is_array<T>::value, size_t>::type
-copyArray(const TSource& src, T (&dst)[N]) {
+inline typename enable_if<!is_array<T>::value, size_t>::type copyArray(
+    const TSource& src, T (&dst)[N]
+) {
     return copyArray(src, dst, N);
 }
 template <typename TSource, typename T>
@@ -4369,9 +4404,9 @@ class DeserializationError {
     }
     Code code() const { return _code; }
     const char* c_str() const {
-        static const char* messages[] = {"Ok",           "EmptyInput", "IncompleteInput",
-                                         "InvalidInput", "NoMemory",   "NotSupported",
-                                         "TooDeep"};
+        static const char* messages[]
+            = { "Ok",       "EmptyInput",   "IncompleteInput", "InvalidInput",
+                "NoMemory", "NotSupported", "TooDeep" };
         ARDUINOJSON_ASSERT(static_cast<size_t>(_code) < sizeof(messages) / sizeof(messages[0]));
         return messages[_code];
     }
@@ -4385,7 +4420,7 @@ class DeserializationError {
         ARDUINOJSON_DEFINE_STATIC_ARRAY(char, s5, "NotSupported");
         ARDUINOJSON_DEFINE_STATIC_ARRAY(char, s6, "TooDeep");
         ARDUINOJSON_DEFINE_STATIC_ARRAY(
-            const char*, messages, ARDUINOJSON_EXPAND7({s0, s1, s2, s3, s4, s5, s6})
+            const char*, messages, ARDUINOJSON_EXPAND7({ s0, s1, s2, s3, s4, s5, s6 })
         );
         return ARDUINOJSON_READ_STATIC_ARRAY(const __FlashStringHelper*, messages, _code);
     }
@@ -4487,8 +4522,8 @@ struct Reader<TSource, typename void_<typename TSource::const_iterator>::type>
 };
 template <typename T>
 struct IsCharOrVoid {
-    static const bool value = is_same<T, void>::value || is_same<T, char>::value ||
-                              is_same<T, unsigned char>::value || is_same<T, signed char>::value;
+    static const bool value = is_same<T, void>::value || is_same<T, char>::value
+                              || is_same<T, unsigned char>::value || is_same<T, signed char>::value;
 };
 template <typename T>
 struct IsCharOrVoid<const T> : IsCharOrVoid<T> {};
@@ -4511,8 +4546,7 @@ struct BoundedReader<TSource*, typename enable_if<IsCharOrVoid<TSource>::value>:
    public:
     explicit BoundedReader(const void* ptr, size_t len)
         : IteratorReader<const char*>(
-              reinterpret_cast<const char*>(ptr),
-              reinterpret_cast<const char*>(ptr) + len
+              reinterpret_cast<const char*>(ptr), reinterpret_cast<const char*>(ptr) + len
           ) {}
 };
 template <typename TArray>
@@ -4678,9 +4712,7 @@ StringCopier makeStringStorage(TInput&, MemoryPool& pool) {
 }
 template <typename TChar>
 StringMover makeStringStorage(
-    TChar* input,
-    MemoryPool&,
-    typename enable_if<!is_const<TChar>::value>::type* = 0
+    TChar* input, MemoryPool&, typename enable_if<!is_const<TChar>::value>::type* = 0
 ) {
     return StringMover(reinterpret_cast<char*>(input));
 }
@@ -4689,8 +4721,9 @@ TDeserializer<TReader, TWriter> makeDeserializer(MemoryPool& pool, TReader reade
     return TDeserializer<TReader, TWriter>(pool, reader, writer);
 }
 template <template <typename, typename> class TDeserializer, typename TString, typename TFilter>
-typename enable_if<!is_array<TString>::value, DeserializationError>::type
-deserialize(JsonDocument& doc, const TString& input, NestingLimit nestingLimit, TFilter filter) {
+typename enable_if<!is_array<TString>::value, DeserializationError>::type deserialize(
+    JsonDocument& doc, const TString& input, NestingLimit nestingLimit, TFilter filter
+) {
     Reader<TString> reader(input);
     doc.clear();
     return makeDeserializer<TDeserializer>(
@@ -4700,11 +4733,7 @@ deserialize(JsonDocument& doc, const TString& input, NestingLimit nestingLimit, 
 }
 template <template <typename, typename> class TDeserializer, typename TChar, typename TFilter>
 DeserializationError deserialize(
-    JsonDocument& doc,
-    TChar* input,
-    size_t inputSize,
-    NestingLimit nestingLimit,
-    TFilter filter
+    JsonDocument& doc, TChar* input, size_t inputSize, NestingLimit nestingLimit, TFilter filter
 ) {
     BoundedReader<TChar*> reader(input, inputSize);
     doc.clear();
@@ -4714,8 +4743,9 @@ DeserializationError deserialize(
         .parse(doc.data(), filter, nestingLimit);
 }
 template <template <typename, typename> class TDeserializer, typename TStream, typename TFilter>
-DeserializationError
-deserialize(JsonDocument& doc, TStream& input, NestingLimit nestingLimit, TFilter filter) {
+DeserializationError deserialize(
+    JsonDocument& doc, TStream& input, NestingLimit nestingLimit, TFilter filter
+) {
     Reader<TStream> reader(input);
     doc.clear();
     return makeDeserializer<TDeserializer>(
@@ -5241,8 +5271,8 @@ class JsonDeserializer {
     }
     static inline bool isBetween(char c, char min, char max) { return min <= c && c <= max; }
     static inline bool canBeInNonQuotedString(char c) {
-        return isBetween(c, '0', '9') || isBetween(c, '_', 'z') || isBetween(c, 'A', 'Z') ||
-               c == '+' || c == '-' || c == '.';
+        return isBetween(c, '0', '9') || isBetween(c, '_', 'z') || isBetween(c, 'A', 'Z')
+               || c == '+' || c == '-' || c == '.';
     }
     static inline bool isQuote(char c) { return c == '\'' || c == '\"'; }
     static inline uint8_t decodeHex(char c) {
@@ -5319,9 +5349,7 @@ class JsonDeserializer {
 };
 template <typename TString>
 DeserializationError deserializeJson(
-    JsonDocument& doc,
-    const TString& input,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, const TString& input, NestingLimit nestingLimit = NestingLimit()
 ) {
     return deserialize<JsonDeserializer>(doc, input, nestingLimit, AllowAllFilter());
 }
@@ -5335,54 +5363,50 @@ DeserializationError deserializeJson(
     return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TString>
-DeserializationError
-deserializeJson(JsonDocument& doc, const TString& input, NestingLimit nestingLimit, Filter filter) {
-    return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
-}
-template <typename TStream>
-DeserializationError
-deserializeJson(JsonDocument& doc, TStream& input, NestingLimit nestingLimit = NestingLimit()) {
-    return deserialize<JsonDeserializer>(doc, input, nestingLimit, AllowAllFilter());
-}
-template <typename TStream>
 DeserializationError deserializeJson(
-    JsonDocument& doc,
-    TStream& input,
-    Filter filter,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, const TString& input, NestingLimit nestingLimit, Filter filter
 ) {
     return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TStream>
-DeserializationError
-deserializeJson(JsonDocument& doc, TStream& input, NestingLimit nestingLimit, Filter filter) {
-    return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
-}
-template <typename TChar>
-DeserializationError
-deserializeJson(JsonDocument& doc, TChar* input, NestingLimit nestingLimit = NestingLimit()) {
+DeserializationError deserializeJson(
+    JsonDocument& doc, TStream& input, NestingLimit nestingLimit = NestingLimit()
+) {
     return deserialize<JsonDeserializer>(doc, input, nestingLimit, AllowAllFilter());
 }
-template <typename TChar>
+template <typename TStream>
 DeserializationError deserializeJson(
-    JsonDocument& doc,
-    TChar* input,
-    Filter filter,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, TStream& input, Filter filter, NestingLimit nestingLimit = NestingLimit()
+) {
+    return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
+}
+template <typename TStream>
+DeserializationError deserializeJson(
+    JsonDocument& doc, TStream& input, NestingLimit nestingLimit, Filter filter
 ) {
     return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TChar>
-DeserializationError
-deserializeJson(JsonDocument& doc, TChar* input, NestingLimit nestingLimit, Filter filter) {
+DeserializationError deserializeJson(
+    JsonDocument& doc, TChar* input, NestingLimit nestingLimit = NestingLimit()
+) {
+    return deserialize<JsonDeserializer>(doc, input, nestingLimit, AllowAllFilter());
+}
+template <typename TChar>
+DeserializationError deserializeJson(
+    JsonDocument& doc, TChar* input, Filter filter, NestingLimit nestingLimit = NestingLimit()
+) {
     return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TChar>
 DeserializationError deserializeJson(
-    JsonDocument& doc,
-    TChar* input,
-    size_t inputSize,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, TChar* input, NestingLimit nestingLimit, Filter filter
+) {
+    return deserialize<JsonDeserializer>(doc, input, nestingLimit, filter);
+}
+template <typename TChar>
+DeserializationError deserializeJson(
+    JsonDocument& doc, TChar* input, size_t inputSize, NestingLimit nestingLimit = NestingLimit()
 ) {
     return deserialize<JsonDeserializer>(doc, input, inputSize, nestingLimit, AllowAllFilter());
 }
@@ -5398,11 +5422,7 @@ DeserializationError deserializeJson(
 }
 template <typename TChar>
 DeserializationError deserializeJson(
-    JsonDocument& doc,
-    TChar* input,
-    size_t inputSize,
-    NestingLimit nestingLimit,
-    Filter filter
+    JsonDocument& doc, TChar* input, size_t inputSize, NestingLimit nestingLimit, Filter filter
 ) {
     return deserialize<JsonDeserializer>(doc, input, inputSize, nestingLimit, filter);
 }
@@ -5832,8 +5852,9 @@ size_t measureJson(const TSource& source) {
 }
 #if ARDUINOJSON_ENABLE_STD_STREAM
 template <typename T>
-inline typename enable_if<IsVisitable<T>::value, std::ostream&>::type
-operator<<(std::ostream& os, const T& source) {
+inline typename enable_if<IsVisitable<T>::value, std::ostream&>::type operator<<(
+    std::ostream& os, const T& source
+) {
     serializeJson(source, os);
     return os;
 }
@@ -6364,9 +6385,7 @@ class MsgPackDeserializer {
 };
 template <typename TString>
 DeserializationError deserializeMsgPack(
-    JsonDocument& doc,
-    const TString& input,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, const TString& input, NestingLimit nestingLimit = NestingLimit()
 ) {
     return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, AllowAllFilter());
 }
@@ -6381,57 +6400,49 @@ DeserializationError deserializeMsgPack(
 }
 template <typename TString>
 DeserializationError deserializeMsgPack(
-    JsonDocument& doc,
-    const TString& input,
-    NestingLimit nestingLimit,
-    Filter filter
+    JsonDocument& doc, const TString& input, NestingLimit nestingLimit, Filter filter
 ) {
     return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TStream>
-DeserializationError
-deserializeMsgPack(JsonDocument& doc, TStream& input, NestingLimit nestingLimit = NestingLimit()) {
+DeserializationError deserializeMsgPack(
+    JsonDocument& doc, TStream& input, NestingLimit nestingLimit = NestingLimit()
+) {
     return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, AllowAllFilter());
 }
 template <typename TStream>
 DeserializationError deserializeMsgPack(
-    JsonDocument& doc,
-    TStream& input,
-    Filter filter,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, TStream& input, Filter filter, NestingLimit nestingLimit = NestingLimit()
 ) {
     return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TStream>
-DeserializationError
-deserializeMsgPack(JsonDocument& doc, TStream& input, NestingLimit nestingLimit, Filter filter) {
-    return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, filter);
-}
-template <typename TChar>
-DeserializationError
-deserializeMsgPack(JsonDocument& doc, TChar* input, NestingLimit nestingLimit = NestingLimit()) {
-    return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, AllowAllFilter());
-}
-template <typename TChar>
 DeserializationError deserializeMsgPack(
-    JsonDocument& doc,
-    TChar* input,
-    Filter filter,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, TStream& input, NestingLimit nestingLimit, Filter filter
 ) {
     return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TChar>
-DeserializationError
-deserializeMsgPack(JsonDocument& doc, TChar* input, NestingLimit nestingLimit, Filter filter) {
+DeserializationError deserializeMsgPack(
+    JsonDocument& doc, TChar* input, NestingLimit nestingLimit = NestingLimit()
+) {
+    return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, AllowAllFilter());
+}
+template <typename TChar>
+DeserializationError deserializeMsgPack(
+    JsonDocument& doc, TChar* input, Filter filter, NestingLimit nestingLimit = NestingLimit()
+) {
     return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, filter);
 }
 template <typename TChar>
 DeserializationError deserializeMsgPack(
-    JsonDocument& doc,
-    TChar* input,
-    size_t inputSize,
-    NestingLimit nestingLimit = NestingLimit()
+    JsonDocument& doc, TChar* input, NestingLimit nestingLimit, Filter filter
+) {
+    return deserialize<MsgPackDeserializer>(doc, input, nestingLimit, filter);
+}
+template <typename TChar>
+DeserializationError deserializeMsgPack(
+    JsonDocument& doc, TChar* input, size_t inputSize, NestingLimit nestingLimit = NestingLimit()
 ) {
     return deserialize<MsgPackDeserializer>(doc, input, inputSize, nestingLimit, AllowAllFilter());
 }
@@ -6447,11 +6458,7 @@ DeserializationError deserializeMsgPack(
 }
 template <typename TChar>
 DeserializationError deserializeMsgPack(
-    JsonDocument& doc,
-    TChar* input,
-    size_t inputSize,
-    NestingLimit nestingLimit,
-    Filter filter
+    JsonDocument& doc, TChar* input, size_t inputSize, NestingLimit nestingLimit, Filter filter
 ) {
     return deserialize<MsgPackDeserializer>(doc, input, inputSize, nestingLimit, filter);
 }
@@ -6619,10 +6626,10 @@ inline size_t measureMsgPack(const TSource& source) {
 #define ARDUINOJSON_PRAGMA(x) _Pragma(#x)
 #define ARDUINOJSON_COMPILE_ERROR(msg) ARDUINOJSON_PRAGMA(GCC error msg)
 #define ARDUINOJSON_STRINGIFY(S) #S
-#define ARDUINOJSON_DEPRECATION_ERROR(X, Y)                                   \
-    ARDUINOJSON_COMPILE_ERROR(ARDUINOJSON_STRINGIFY(                          \
-        X is a Y from ArduinoJson 5. Please see arduinojson.org /             \
-        upgrade to learn how to upgrade your program to ArduinoJson version 6 \
+#define ARDUINOJSON_DEPRECATION_ERROR(X, Y)                                     \
+    ARDUINOJSON_COMPILE_ERROR(ARDUINOJSON_STRINGIFY(                            \
+        X is a Y from ArduinoJson 5. Please see arduinojson.org                 \
+        / upgrade to learn how to upgrade your program to ArduinoJson version 6 \
     ))
 #define StaticJsonBuffer ARDUINOJSON_DEPRECATION_ERROR(StaticJsonBuffer, class)
 #define DynamicJsonBuffer ARDUINOJSON_DEPRECATION_ERROR(DynamicJsonBuffer, class)

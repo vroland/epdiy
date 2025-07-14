@@ -17,13 +17,14 @@ bool _epd_interlace_line(
     int fb_width
 );
 
-static const uint8_t from_pattern[8] = {0xFF, 0xF0, 0x0F, 0x01, 0x55, 0xAA, 0xFF, 0x80};
-static const uint8_t to_pattern[8] = {0xFF, 0xFF, 0x0F, 0x10, 0xAA, 0x55, 0xFF, 0x00};
+static const uint8_t from_pattern[8] = { 0xFF, 0xF0, 0x0F, 0x01, 0x55, 0xAA, 0xFF, 0x80 };
+static const uint8_t to_pattern[8] = { 0xFF, 0xFF, 0x0F, 0x10, 0xAA, 0x55, 0xFF, 0x00 };
 
-static const uint8_t expected_interlaced_pattern[16] = {
-    0xFF, 0xFF, 0xF0, 0xFF, 0xFF, 0x00, 0x01, 0x10, 0xA5, 0xA5, 0x5A, 0x5A, 0xFF, 0xFF, 0x00, 0x08};
-static const uint8_t expected_col_dirtyness_pattern[8] = {0x00, 0x0F, 0x00, 0x11,
-                                                          0xFF, 0xFF, 0x00, 0x80};
+static const uint8_t expected_interlaced_pattern[16]
+    = { 0xFF, 0xFF, 0xF0, 0xFF, 0xFF, 0x00, 0x01, 0x10,
+        0xA5, 0xA5, 0x5A, 0x5A, 0xFF, 0xFF, 0x00, 0x08 };
+static const uint8_t expected_col_dirtyness_pattern[8]
+    = { 0x00, 0x0F, 0x00, 0x11, 0xFF, 0xFF, 0x00, 0x80 };
 
 typedef struct {
     uint8_t* from;
@@ -85,7 +86,7 @@ TEST_CASE("simple aligned diff works", "[epdiy,unit]") {
     diff_test_buffers_init(&bufs, example_len);
 
     // This should trigger use of vector extensions on the S3
-    TEST_ASSERT((uint32_t)bufs.to % 16 == 0)
+    TEST_ASSERT((uint32_t)bufs.to % 16 == 0);
 
     // fully aligned
     dirty = _epd_interlace_line(
@@ -101,14 +102,14 @@ TEST_CASE("simple aligned diff works", "[epdiy,unit]") {
 
 TEST_CASE("dirtynes for diff without changes is correct", "[epdiy,unit]") {
     const int example_len = DEFAULT_EXAMPLE_LEN;
-    const uint8_t NULL_ARRAY[DEFAULT_EXAMPLE_LEN * 2] = {0};
+    const uint8_t NULL_ARRAY[DEFAULT_EXAMPLE_LEN * 2] = { 0 };
     DiffTestBuffers bufs;
     bool dirty;
 
     diff_test_buffers_init(&bufs, example_len);
 
     // This should trigger use of vector extensions on the S3
-    TEST_ASSERT((uint32_t)bufs.to % 16 == 0)
+    TEST_ASSERT((uint32_t)bufs.to % 16 == 0);
 
     // both use "from" buffer
     dirty = _epd_interlace_line(
@@ -131,7 +132,6 @@ TEST_CASE("dirtynes for diff without changes is correct", "[epdiy,unit]") {
 
 TEST_CASE("different 4-byte alignments work", "[epdiy,unit]") {
     const int example_len = DEFAULT_EXAMPLE_LEN;
-    const uint8_t NULL_ARRAY[DEFAULT_EXAMPLE_LEN * 2] = {0};
     DiffTestBuffers bufs;
     bool dirty;
 
@@ -159,8 +159,10 @@ TEST_CASE("different 4-byte alignments work", "[epdiy,unit]") {
 
             for (int i = 0; i < 100; i++) {
                 dirty = _epd_interlace_line(
-                    bufs.to + start_offset, bufs.from + start_offset,
-                    bufs.interlaced + 2 * start_offset, bufs.col_dirtyness + start_offset,
+                    bufs.to + start_offset,
+                    bufs.from + start_offset,
+                    bufs.interlaced + 2 * start_offset,
+                    bufs.col_dirtyness + start_offset,
                     2 * unaligned_len
                 );
             }
@@ -168,8 +170,6 @@ TEST_CASE("different 4-byte alignments work", "[epdiy,unit]") {
             uint64_t end = esp_timer_get_time();
 
             printf("took %.2fus per iter.\n", (end - start) / 100.0);
-
-
 
             TEST_ASSERT(dirty == true);
 

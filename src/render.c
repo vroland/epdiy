@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "esp_heap_caps.h"
 #include "output_common/line_queue.h"
 #include "output_common/lut.h"
 #include "output_common/render_context.h"
@@ -87,29 +88,6 @@ static inline int rounded_display_height() {
     return (((epd_height() + 7) / 8) * 8);
 }
 
-/**
- * Populate an output line mask from line dirtyness with one nibble per pixel.
- * If the dirtyness data is NULL, set the mask to neutral.
- *
- * don't inline for to ensure availability in tests.
- */
-void __attribute__((noinline))
-_epd_populate_line_mask(uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len) {
-    if (dirty_columns == NULL) {
-        memset(line_mask, 0xFF, mask_len);
-    } else {
-        int pixels = mask_len * 4;
-        for (int c = 0; c < pixels / 2; c += 2) {
-            uint8_t mask = 0;
-            mask |= (dirty_columns[c + 1] & 0xF0) != 0 ? 0xC0 : 0x00;
-            mask |= (dirty_columns[c + 1] & 0x0F) != 0 ? 0x30 : 0x00;
-            mask |= (dirty_columns[c] & 0xF0) != 0 ? 0x0C : 0x00;
-            mask |= (dirty_columns[c] & 0x0F) != 0 ? 0x03 : 0x00;
-            line_mask[c / 2] = mask;
-        }
-    }
-}
-
 // FIXME: fix misleading naming:
 //  area -> buffer dimensions
 //  crop -> area taken out of buffer
@@ -153,8 +131,9 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     }
 
     const bool crop = (crop_to.width > 0 && crop_to.height > 0);
-    if (crop && (crop_to.width > area.width || crop_to.height > area.height ||
-                 crop_to.x > area.width || crop_to.y > area.height)) {
+    if (crop
+        && (crop_to.width > area.width || crop_to.height > area.height || crop_to.x > area.width
+            || crop_to.y > area.height)) {
         return EPD_DRAW_INVALID_CROP;
     }
 
@@ -168,6 +147,12 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     }
 #endif
 
+    LutFunctionPair lut_functions = find_lut_functions(mode, render_context.conversion_lut_size);
+    if (lut_functions.build_func == NULL || lut_functions.lookup_func == NULL) {
+        ESP_LOGE("epdiy", "no output lookup method found for your mode and LUT size!");
+        return EPD_DRAW_LOOKUP_NOT_IMPLEMENTED;
+    }
+
     render_context.area = area;
     render_context.crop_to = crop_to;
     render_context.waveform_range = waveform_range;
@@ -177,6 +162,8 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
     render_context.error = EPD_DRAW_SUCCESS;
     render_context.drawn_lines = drawn_lines;
     render_context.data_ptr = data;
+    render_context.lut_build_func = lut_functions.build_func;
+    render_context.lut_lookup_func = lut_functions.lookup_func;
 
     render_context.lines_prepared = 0;
     render_context.lines_consumed = 0;
@@ -188,14 +175,13 @@ enum EpdDrawError IRAM_ATTR epd_draw_base(
         render_context.phase_times = waveform_phases->phase_times;
     }
 
+    epd_populate_line_mask(
+        render_context.line_mask, drawn_columns, render_context.display_width / 4
+    );
+
 #ifdef RENDER_METHOD_I2S
     i2s_do_update(&render_context);
 #elif defined(RENDER_METHOD_LCD)
-    for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        LineQueue_t* queue = &render_context.line_queues[i];
-        _epd_populate_line_mask(queue->mask_buffer, drawn_columns, queue->mask_buffer_len);
-    }
-
     lcd_do_update(&render_context);
 #endif
 
@@ -278,13 +264,14 @@ void epd_renderer_init(enum EpdInitOptions options) {
     }
 
     ESP_LOGI("epd", "Space used for waveform LUT: %dK", lut_size / 1024);
-    render_context.conversion_lut =
-        (uint8_t*)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    render_context.conversion_lut
+        = (uint8_t*)heap_caps_malloc(lut_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (render_context.conversion_lut == NULL) {
         ESP_LOGE("epd", "could not allocate LUT!");
         abort();
     }
     render_context.conversion_lut_size = lut_size;
+    render_context.static_line_buffer = NULL;
 
     render_context.frame_done = xSemaphoreCreateBinary();
 
@@ -294,8 +281,9 @@ void epd_renderer_init(enum EpdInitOptions options) {
 
     // When using the LCD peripheral, we may need padding lines to
     // satisfy the bounce buffer size requirements
-    render_context.line_threads =
-        (uint8_t*)heap_caps_malloc(rounded_display_height(), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    render_context.line_threads = (uint8_t*)heap_caps_malloc(
+        rounded_display_height(), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL
+    );
 
     int queue_len = 32;
     if (options & EPD_FEED_QUEUE_32) {
@@ -309,23 +297,30 @@ void epd_renderer_init(enum EpdInitOptions options) {
         abort();
     }
 
+    render_context.line_mask
+        = heap_caps_aligned_alloc(16, epd_width() / 4, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    assert(render_context.line_mask != NULL);
+
 #ifdef RENDER_METHOD_LCD
-    bool use_lq_mask = true;
     size_t queue_elem_size = render_context.display_width / 4;
 #elif defined(RENDER_METHOD_I2S)
-    bool use_lq_mask = false;
-    size_t queue_elem_size = epd_width();
+    size_t queue_elem_size = render_context.display_width;
 #endif
 
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
-        render_context.line_queues[i] = lq_init(queue_len, queue_elem_size, use_lq_mask);
+        render_context.line_queues[i] = lq_init(queue_len, queue_elem_size);
         render_context.feed_line_buffers[i] = (uint8_t*)heap_caps_malloc(
             render_context.display_width, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL
         );
         assert(render_context.feed_line_buffers[i] != NULL);
         RTOS_ERROR_CHECK(xTaskCreatePinnedToCore(
-            render_thread, "epd_prep", 1 << 12, (void*)i, configMAX_PRIORITIES,
-            &render_context.feed_tasks[i], i
+            render_thread,
+            "epd_prep",
+            1 << 12,
+            (void*)i,
+            configMAX_PRIORITIES - 1,
+            &render_context.feed_tasks[i],
+            i
         ));
     }
 }
@@ -338,6 +333,7 @@ void epd_renderer_deinit() {
     for (int i = 0; i < NUM_RENDER_THREADS; i++) {
         vTaskDelete(render_context.feed_tasks[i]);
         lq_free(&render_context.line_queues[i]);
+        heap_caps_free(render_context.feed_line_buffers[i]);
         vSemaphoreDelete(render_context.feed_done_smphr[i]);
     }
 
@@ -351,8 +347,9 @@ void epd_renderer_deinit() {
         epd_board->deinit();
     }
 
-    free(render_context.conversion_lut);
-    free(render_context.line_threads);
+    heap_caps_free(render_context.conversion_lut);
+    heap_caps_free(render_context.line_threads);
+    heap_caps_free(render_context.line_mask);
     vSemaphoreDelete(render_context.frame_done);
 }
 
@@ -372,13 +369,8 @@ uint32_t epd_interlace_4bpp_line_VE(
  * Returns `1` if there are differences, `0` otherwise.
  * Does not require special alignment of the buffers beyond 32 bit alignment.
  */
-__attribute__((optimize("O3")))
-static inline int _interlace_line_unaligned(
-    const uint8_t* to,
-    const uint8_t* from,
-    uint8_t* interlaced,
-    uint8_t* col_dirtyness,
-    int len
+__attribute__((optimize("O3"))) static inline int _interlace_line_unaligned(
+    const uint8_t* to, const uint8_t* from, uint8_t* interlaced, uint8_t* col_dirtyness, int len
 ) {
     int dirty = 0;
     for (int x = 0; x < len; x++) {
@@ -397,8 +389,7 @@ static inline int _interlace_line_unaligned(
  * Interlaces the lines at `to`, `from` into `interlaced`.
  * returns `1` if there are differences, `0` otherwise.
  */
-__attribute__((optimize("O3")))
-bool _epd_interlace_line(
+__attribute__((optimize("O3"))) bool _epd_interlace_line(
     const uint8_t* to,
     const uint8_t* from,
     uint8_t* interlaced,
@@ -421,13 +412,17 @@ bool _epd_interlace_line(
 
     dirty |= _interlace_line_unaligned(to, from, interlaced, col_dirtyness, unaligned_len_front_px);
     dirty |= epd_interlace_4bpp_line_VE(
-        to + unaligned_len_front_px / 2, from + unaligned_len_front_px / 2,
-        interlaced + unaligned_len_front_px, col_dirtyness + unaligned_len_front_px / 2,
+        to + unaligned_len_front_px / 2,
+        from + unaligned_len_front_px / 2,
+        interlaced + unaligned_len_front_px,
+        col_dirtyness + unaligned_len_front_px / 2,
         aligned_len_px
     );
     dirty |= _interlace_line_unaligned(
-        to + unaligned_back_start_px / 2, from + unaligned_back_start_px / 2,
-        interlaced + unaligned_back_start_px, col_dirtyness + unaligned_back_start_px / 2,
+        to + unaligned_back_start_px / 2,
+        from + unaligned_back_start_px / 2,
+        interlaced + unaligned_back_start_px,
+        col_dirtyness + unaligned_back_start_px / 2,
         unaligned_len_back_px
     );
     return dirty;
@@ -505,7 +500,13 @@ EpdRect epd_difference_image(
     uint8_t* col_dirtyness
 ) {
     return epd_difference_image_base(
-        to, from, epd_full_screen(), epd_width(), epd_height(), interlaced, dirty_lines,
+        to,
+        from,
+        epd_full_screen(),
+        epd_width(),
+        epd_height(),
+        interlaced,
+        dirty_lines,
         col_dirtyness
     );
 }

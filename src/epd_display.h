@@ -55,6 +55,6 @@ extern const EpdDisplay_t ED133UT2;
 extern const EpdDisplay_t ED047TC1;
 extern const EpdDisplay_t ED047TC2;
 extern const EpdDisplay_t ED078KC1;
-extern const EpdDisplay_t WAVE103;
-extern const EpdDisplay_t GDEW101C01;
+extern const EpdDisplay_t ED052TC4;
+extern const EpdDisplay_t EC060KC1;
 extern const EpdDisplay_t EC060KH5;

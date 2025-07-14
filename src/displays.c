@@ -96,7 +96,7 @@ const EpdDisplay_t GDEW101C01 = {
     .height = 1680,
     .bus_width = 16,
     .bus_speed = 10,
-    .default_waveform = &epdiy_GDEW101C01,
+    .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
     .display_color_filter = DISPLAY_CFA_DES
 };
@@ -106,8 +106,18 @@ const EpdDisplay_t EC060KH5 = {
     .width = 1448,
     .height = 1072,
     .bus_width = 8,
-    .bus_speed = 30,
+    .bus_speed = 20,
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
     .display_color_filter = DISPLAY_CFA_KALEIDO
+};
+
+// Attention is by default horizontal rows mirrored
+const EpdDisplay_t ED052TC4 = {
+    .width = 1280,
+    .height = 720,
+    .bus_width = 8,
+    .bus_speed = 22,
+    .default_waveform = &epdiy_ED097TC2,
+    .display_type = DISPLAY_TYPE_ED097TC2,
 };

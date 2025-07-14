@@ -1,20 +1,22 @@
 #pragma once
 
-#include <stdatomic.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include <stdatomic.h>
+#include <stdint.h>
 
 #include "../epdiy.h"
 #include "line_queue.h"
+#include "lut.h"
 
 #define NUM_RENDER_THREADS 2
 
 typedef struct {
     EpdRect area;
     EpdRect crop_to;
-    const bool *drawn_lines;
-    const uint8_t *data_ptr;
+    const bool* drawn_lines;
+    const uint8_t* data_ptr;
 
     /// The display width for quick access.
     int display_width;
@@ -39,7 +41,7 @@ typedef struct {
 
     /// index of the waveform mode when using vendor waveforms.
     /// This is not necessarily the mode number if the waveform header
-    //only contains a selection of modes!
+    // only contains a selection of modes!
     int waveform_index;
     /// waveform range when using vendor waveforms
     int waveform_range;
@@ -52,36 +54,38 @@ typedef struct {
     enum EpdDrawMode mode;
     enum EpdDrawError error;
 
-
     // Lookup table size.
     size_t conversion_lut_size;
     // Lookup table space.
     uint8_t* conversion_lut;
+
+    /// LUT lookup function. Must not be NULL.
+    lut_func_t lut_lookup_func;
+    /// LUT building function. Must not be NULL
+    lut_build_func_t lut_build_func;
 
     /// Queue of lines prepared for output to the display,
     /// one for each thread.
     LineQueue_t line_queues[NUM_RENDER_THREADS];
     uint8_t* line_threads;
 
+    // Output line mask
+    uint8_t* line_mask;
+
     /// track line skipping when working in old i2s mode
     int skipping;
+
+    /// line buffer when using epd_push_pixels
+    uint8_t* static_line_buffer;
 } RenderContext_t;
-
-typedef void (*lut_func_t)(const uint32_t *, uint8_t *, const uint8_t *, uint32_t);
-
-/**
- * Depending on the render context, decide which LUT function to use.
- * If the lookup fails, an error flag in the context is set.
- */
-lut_func_t get_lut_function(RenderContext_t* ctx);
 
 /**
  * Based on the render context, assign the bytes per line,
  * framebuffer start pointer, min and max vertical positions and the pixels per byte.
  */
 void get_buffer_params(
-    RenderContext_t *ctx,
-    int *bytes_per_line,
+    RenderContext_t* ctx,
+    int* bytes_per_line,
     const uint8_t** start_ptr,
     int* min_y,
     int* max_y,
@@ -93,4 +97,14 @@ void get_buffer_params(
  *
  * (Reset counters, etc)
  */
-void prepare_context_for_next_frame(RenderContext_t *ctx);
+void prepare_context_for_next_frame(RenderContext_t* ctx);
+
+/**
+ * Populate an output line mask from line dirtyness with two bits per pixel.
+ * If the dirtyness data is NULL, set the mask to neutral.
+ *
+ * don't inline for to ensure availability in tests.
+ */
+void __attribute__((noinline)) epd_populate_line_mask(
+    uint8_t* line_mask, const uint8_t* dirty_columns, int mask_len
+);

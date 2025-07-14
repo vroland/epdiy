@@ -76,7 +76,7 @@ First, connect you board with the computer. In the output of :code:`lsusb` you s
 This means the serial adapter is working and there a serial like :code:`/dev/ttyUSB0` should appear.
 
 Next, make sure you have the `Espressif IoT Development Framework <https://github.com/espressif/esp-idf>`_ installed. 
-The current stable (and tested) version is 4.0.
+The current stable (and tested) version is 5.3.
 For instructions on how to get started with the IDF, please refer to their `documentation <https://docs.espressif.com/projects/esp-idf/en/stable/get-started/>`_.
 
 Then, clone the :code:`epdiy` git repository (and its submodules):

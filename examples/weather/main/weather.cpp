@@ -72,11 +72,11 @@ int wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0, EventCnt = 0;
 Forecast_record_type WxConditions[1];
 Forecast_record_type WxForecast[max_readings];
 
-float pressure_readings[max_readings] = {0};
-float temperature_readings[max_readings] = {0};
-float humidity_readings[max_readings] = {0};
-float rain_readings[max_readings] = {0};
-float snow_readings[max_readings] = {0};
+float pressure_readings[max_readings] = { 0 };
+float temperature_readings[max_readings] = { 0 };
+float humidity_readings[max_readings] = { 0 };
+float rain_readings[max_readings] = { 0 };
+float snow_readings[max_readings] = { 0 };
 
 long SleepDuration = 60;  // Sleep time in minutes, aligned to the nearest minute boundary, so if 30
                           // will always update at 00 or 30 past the hour
@@ -181,13 +181,7 @@ void drawCircle(int x0, int y0, int r, uint8_t color);
 void drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 void fillTriangle(
-    int16_t x0,
-    int16_t y0,
-    int16_t x1,
-    int16_t y1,
-    int16_t x2,
-    int16_t y2,
-    uint16_t color
+    int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color
 );
 void drawPixel(int x, int y, uint8_t color);
 void setFont(EpdFont const& font);
@@ -237,7 +231,7 @@ uint8_t StartWiFi() {
     IPAddress dns(8, 8, 8, 8);  // Google DNS
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);  // switch off AP
-    WiFi.setAutoConnect(true);
+    // Deprecated? WiFi.setAutoConnect(true);
     WiFi.setAutoReconnect(true);
     WiFi.begin(ssid, password);
     unsigned long start = millis();
@@ -311,15 +305,15 @@ void setup() {
                 RxForecast = obtainWeatherData(client, "forecast");
             Attempts++;
         }
-        if (true ||
-            (RxWeather && RxForecast)) {  // Only if received both Weather or Forecast proceed
-            StopWiFi();                   // Reduces power consumption
+        if (true
+            || (RxWeather && RxForecast)) {  // Only if received both Weather or Forecast proceed
+            StopWiFi();                      // Reduces power consumption
 
             epd_poweron();
             volatile uint32_t t1 = Millis();
             epd_clear();
             volatile uint32_t t2 = Millis();
-            printf("EPD clear took %dms.\n", t2 - t1);
+            printf("EPD clear took %ldms.\n", t2 - t1);
 
             // epd_poweroff();
             // epd_poweron();
@@ -476,11 +470,11 @@ bool DecodeWeather(WiFiClient& json, String Type) {
             Serial.println("Peri: " + String(WxForecast[r].Period));
         }
         //------------------------------------------
-        float pressure_trend =
-            WxForecast[0].Pressure -
-            WxForecast[2].Pressure;  // Measure pressure slope between ~now and later
-        pressure_trend =
-            ((int)(pressure_trend * 10)) / 10.0;  // Remove any small variations less than 0.1
+        float pressure_trend
+            = WxForecast[0].Pressure
+              - WxForecast[2].Pressure;  // Measure pressure slope between ~now and later
+        pressure_trend
+            = ((int)(pressure_trend * 10)) / 10.0;  // Remove any small variations less than 0.1
         WxConditions[0].Trend = "0";
         if (pressure_trend > 0)
             WxConditions[0].Trend = "+";
@@ -570,8 +564,8 @@ bool obtainWeatherData(WiFiClient& client, const String& RequestType) {
     const String units = (Units == "M" ? "metric" : "imperial");
     client.stop();  // close connection before sending a new request
     HTTPClient http;
-    String uri = "/data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey +
-                 "&mode=json&units=" + units + "&lang=" + Language;
+    String uri = "/data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey
+                 + "&mode=json&units=" + units + "&lang=" + Language;
     if (RequestType != "weather") {
         uri += "&cnt=" + String(max_readings);
     }
@@ -758,7 +752,9 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
     );  // Show current Temperature
     setFont(OpenSans16);
     drawString(
-        x, y + 40, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°",
+        x,
+        y + 40,
+        String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°",
         CENTER
     );  // Show forecast high and Low
 }
@@ -805,8 +801,10 @@ void DisplayForecastWeather(int x, int y, int index) {
         x + fwidth / 2 - 10, y + 30, String(WxForecast[index].Period.substring(11, 16)), CENTER
     );
     drawString(
-        x + fwidth / 2 + 0, y + 130,
-        String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER
+        x + fwidth / 2 + 0,
+        y + 130,
+        String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°",
+        CENTER
     );
 }
 
@@ -820,7 +818,9 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
     }
     if (WxForecast[1].Snowfall >= 0.005) {  // Ignore small amounts
         drawString(
-            x, y + 110, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **",
+            x,
+            y + 110,
+            String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **",
             LEFT
         );  // Only display snowfall total today if > 0
     }
@@ -829,11 +829,15 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
 void DisplayAstronomySection(int x, int y) {
     setFont(OpenSans12B);
     drawString(
-        x + 14, y + 34,
-        ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT
+        x + 14,
+        y + 34,
+        ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE,
+        LEFT
     );
     drawString(
-        x + 14, y + 64, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET,
+        x + 14,
+        y + 64,
+        ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET,
         LEFT
     );
     time_t now = time(NULL);
@@ -957,23 +961,47 @@ void DisplayForecastSection(int x, int y) {
     // DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA :
     // TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
     DrawGraph(
-        gx + 0 * gap, gy, gwidth, gheight, 10, 30,
-        Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings,
-        autoscale_on, barchart_off
+        gx + 0 * gap,
+        gy,
+        gwidth,
+        gheight,
+        10,
+        30,
+        Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F,
+        temperature_readings,
+        max_readings,
+        autoscale_on,
+        barchart_off
     );
     // DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT,
     // humidity_readings, max_readings, autoscale_off, barchart_off);
     if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
         DrawGraph(
-            gx + 1 * gap + 5, gy, gwidth, gheight, 0, 30,
-            Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings,
-            autoscale_on, barchart_on
+            gx + 1 * gap + 5,
+            gy,
+            gwidth,
+            gheight,
+            0,
+            30,
+            Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN,
+            rain_readings,
+            max_readings,
+            autoscale_on,
+            barchart_on
         );
     else
         DrawGraph(
-            gx + 1 * gap + 5, gy, gwidth, gheight, 0, 30,
-            Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings,
-            autoscale_on, barchart_on
+            gx + 1 * gap + 5,
+            gy,
+            gwidth,
+            gheight,
+            0,
+            30,
+            Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN,
+            snow_readings,
+            max_readings,
+            autoscale_on,
+            barchart_on
         );
 }
 
@@ -1075,13 +1103,21 @@ boolean UpdateLocalTime() {
     if (Units == "M") {
         if ((Language == "CZ") || (Language == "DE") || (Language == "NL") || (Language == "PL")) {
             sprintf(
-                day_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday,
-                month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900
+                day_output,
+                "%s, %02u. %s %04u",
+                weekday_D[timeinfo.tm_wday],
+                timeinfo.tm_mday,
+                month_M[timeinfo.tm_mon],
+                (timeinfo.tm_year) + 1900
             );  // day_output >> So., 23. Juni 2019 <<
         } else {
             sprintf(
-                day_output, "%s, %02u %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday,
-                month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900
+                day_output,
+                "%s, %02u %s %04u",
+                weekday_D[timeinfo.tm_wday],
+                timeinfo.tm_mday,
+                month_M[timeinfo.tm_mon],
+                (timeinfo.tm_year) + 1900
             );
         }
         strftime(
@@ -1106,8 +1142,8 @@ void DrawBattery(int x, int y) {
     float voltage = analogRead(35) / 4096.0 * 7.46;
     if (voltage > 1) {  // Only display if there is a valid reading
         Serial.println("Voltage = " + String(voltage));
-        percentage = 2836.9625 * pow(voltage, 4) - 43987.4889 * pow(voltage, 3) +
-                     255233.8134 * pow(voltage, 2) - 656689.7123 * voltage + 632041.7303;
+        percentage = 2836.9625 * pow(voltage, 4) - 43987.4889 * pow(voltage, 3)
+                     + 255233.8134 * pow(voltage, 2) - 656689.7123 * voltage + 632041.7303;
         if (voltage >= 4.20)
             percentage = 100;
         if (voltage <= 3.20)
@@ -1143,7 +1179,10 @@ void addcloud(int x, int y, int scale, int linesize) {
         x + scale * 1.5, y - scale * 1.3, scale * 1.75 - linesize, GxEPD_WHITE
     );  // Right middle upper circle
     fillRect(
-        x - scale * 3 + 2, y - scale + linesize - 1, scale * 5.9, scale * 2 - linesize * 2 + 2,
+        x - scale * 3 + 2,
+        y - scale + linesize - 1,
+        scale * 5.9,
+        scale * 2 - linesize * 2 + 2,
         GxEPD_WHITE
     );  // Upper and lower lines
 }
@@ -1176,8 +1215,11 @@ void addsnow(int x, int y, int scale, bool IconSize) {
             dyo = 0.5 * scale * sin((i - 90) * 3.14 / 180);
             dyi = dyo * 0.1;
             drawLine(
-                dxo + x + flakes * 1.5 * scale - scale * 3, dyo + y + scale * 2,
-                dxi + x + 0 + flakes * 1.5 * scale - scale * 3, dyi + y + scale * 2, GxEPD_BLACK
+                dxo + x + flakes * 1.5 * scale - scale * 3,
+                dyo + y + scale * 2,
+                dxi + x + 0 + flakes * 1.5 * scale - scale * 3,
+                dyi + y + scale * 2,
+                GxEPD_BLACK
             );
         }
     }
@@ -1187,45 +1229,72 @@ void addtstorm(int x, int y, int scale) {
     y = y + scale / 2;
     for (int i = 0; i < 5; i++) {
         drawLine(
-            x - scale * 4 + scale * i * 1.5 + 0, y + scale * 1.5,
-            x - scale * 3.5 + scale * i * 1.5 + 0, y + scale, GxEPD_BLACK
+            x - scale * 4 + scale * i * 1.5 + 0,
+            y + scale * 1.5,
+            x - scale * 3.5 + scale * i * 1.5 + 0,
+            y + scale,
+            GxEPD_BLACK
         );
         if (scale != Small) {
             drawLine(
-                x - scale * 4 + scale * i * 1.5 + 1, y + scale * 1.5,
-                x - scale * 3.5 + scale * i * 1.5 + 1, y + scale, GxEPD_BLACK
+                x - scale * 4 + scale * i * 1.5 + 1,
+                y + scale * 1.5,
+                x - scale * 3.5 + scale * i * 1.5 + 1,
+                y + scale,
+                GxEPD_BLACK
             );
             drawLine(
-                x - scale * 4 + scale * i * 1.5 + 2, y + scale * 1.5,
-                x - scale * 3.5 + scale * i * 1.5 + 2, y + scale, GxEPD_BLACK
+                x - scale * 4 + scale * i * 1.5 + 2,
+                y + scale * 1.5,
+                x - scale * 3.5 + scale * i * 1.5 + 2,
+                y + scale,
+                GxEPD_BLACK
             );
         }
         drawLine(
-            x - scale * 4 + scale * i * 1.5, y + scale * 1.5 + 0,
-            x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5 + 0, GxEPD_BLACK
+            x - scale * 4 + scale * i * 1.5,
+            y + scale * 1.5 + 0,
+            x - scale * 3 + scale * i * 1.5 + 0,
+            y + scale * 1.5 + 0,
+            GxEPD_BLACK
         );
         if (scale != Small) {
             drawLine(
-                x - scale * 4 + scale * i * 1.5, y + scale * 1.5 + 1,
-                x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5 + 1, GxEPD_BLACK
+                x - scale * 4 + scale * i * 1.5,
+                y + scale * 1.5 + 1,
+                x - scale * 3 + scale * i * 1.5 + 0,
+                y + scale * 1.5 + 1,
+                GxEPD_BLACK
             );
             drawLine(
-                x - scale * 4 + scale * i * 1.5, y + scale * 1.5 + 2,
-                x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5 + 2, GxEPD_BLACK
+                x - scale * 4 + scale * i * 1.5,
+                y + scale * 1.5 + 2,
+                x - scale * 3 + scale * i * 1.5 + 0,
+                y + scale * 1.5 + 2,
+                GxEPD_BLACK
             );
         }
         drawLine(
-            x - scale * 3.5 + scale * i * 1.4 + 0, y + scale * 2.5,
-            x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5, GxEPD_BLACK
+            x - scale * 3.5 + scale * i * 1.4 + 0,
+            y + scale * 2.5,
+            x - scale * 3 + scale * i * 1.5 + 0,
+            y + scale * 1.5,
+            GxEPD_BLACK
         );
         if (scale != Small) {
             drawLine(
-                x - scale * 3.5 + scale * i * 1.4 + 1, y + scale * 2.5,
-                x - scale * 3 + scale * i * 1.5 + 1, y + scale * 1.5, GxEPD_BLACK
+                x - scale * 3.5 + scale * i * 1.4 + 1,
+                y + scale * 2.5,
+                x - scale * 3 + scale * i * 1.5 + 1,
+                y + scale * 1.5,
+                GxEPD_BLACK
             );
             drawLine(
-                x - scale * 3.5 + scale * i * 1.4 + 2, y + scale * 2.5,
-                x - scale * 3 + scale * i * 1.5 + 2, y + scale * 1.5, GxEPD_BLACK
+                x - scale * 3.5 + scale * i * 1.4 + 2,
+                y + scale * 2.5,
+                x - scale * 3 + scale * i * 1.5 + 2,
+                y + scale * 1.5,
+                GxEPD_BLACK
             );
         }
     }
@@ -1527,8 +1596,8 @@ void DrawGraph(
     for (int gx = 1; gx < readings; gx++) {
         x2 = x_pos + gx * gwidth / (readings - 1) - 1;  // max_readings is the global variable that
                                                         // sets the maximum data that can be plotted
-        y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight +
-             1;
+        y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight
+             + 1;
         if (barchart_mode) {
             fillRect(
                 last_x + 2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK
@@ -1546,26 +1615,31 @@ void DrawGraph(
             if (spacing < y_minor_axis)
                 drawFastHLine(
                     (x_pos + 3 + j * gwidth / number_of_dashes),
-                    y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes),
+                    y_pos + (gheight * spacing / y_minor_axis),
+                    gwidth / (2 * number_of_dashes),
                     GRAY
                 );
         }
-        if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 ||
-            title == TXT_PRESSURE_IN) {
+        if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5
+            || title == TXT_PRESSURE_IN) {
             drawString(
-                x_pos - 10, y_pos + gheight * spacing / y_minor_axis - 5,
-                String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT
+                x_pos - 10,
+                y_pos + gheight * spacing / y_minor_axis - 5,
+                String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1),
+                RIGHT
             );
         } else {
             if (Y1Min < 1 && Y1Max < 10) {
                 drawString(
-                    x_pos - 10, y_pos + gheight * spacing / y_minor_axis - 5,
+                    x_pos - 10,
+                    y_pos + gheight * spacing / y_minor_axis - 5,
                     String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1),
                     RIGHT
                 );
             } else {
                 drawString(
-                    x_pos - 18, y_pos + gheight * spacing / y_minor_axis - 5,
+                    x_pos - 18,
+                    y_pos + gheight * spacing / y_minor_axis - 5,
                     String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0),
                     RIGHT
                 );
@@ -1648,9 +1722,10 @@ void ReportEvent(String EventMessage[]) {
     for (byte Event = 1; Event <= EventCnt; Event++) {
         if (EventCnt > EventThreshold)
             drawString(
-                wx + 3, wy + 20 + (Event - 1) * 30,
-                "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " +
-                    EventMessage[Event],
+                wx + 3,
+                wy + 20 + (Event - 1) * 30,
+                "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : "
+                    + EventMessage[Event],
                 LEFT
             );
         Serial.println(
@@ -1702,23 +1777,17 @@ void drawCircle(int x0, int y0, int r, uint8_t color) {
 }
 
 void drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-    EpdRect rect = {.x = x, .y = y, .width = w, .height = h};
+    EpdRect rect = { .x = x, .y = y, .width = w, .height = h };
     epd_draw_rect(rect, color, fb);
 }
 
 void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-    EpdRect rect = {.x = x, .y = y, .width = w, .height = h};
+    EpdRect rect = { .x = x, .y = y, .width = w, .height = h };
     epd_fill_rect(rect, color, fb);
 }
 
 void fillTriangle(
-    int16_t x0,
-    int16_t y0,
-    int16_t x1,
-    int16_t y1,
-    int16_t x2,
-    int16_t y2,
-    uint16_t color
+    int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color
 ) {
     epd_fill_triangle(x0, y0, x1, y1, x2, y2, color, fb);
 }

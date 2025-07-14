@@ -25,11 +25,7 @@
 #include "esp_sntp.h"
 
 // JPG decoder is on ESP32 rom for this version
-#if ESP_IDF_VERSION_MAJOR >= 4  // IDF 4+
-#include "esp32/rom/tjpgd.h"
-#else  // ESP32 Before IDF 4.0
 #include "rom/tjpgd.h"
-#endif
 
 #include <inttypes.h>
 #include <math.h>  // round + pow
@@ -68,16 +64,15 @@ uint32_t buffer_pos = 0;
 uint32_t time_download = 0;
 uint32_t time_decomp = 0;
 uint32_t time_render = 0;
-static const char* jd_errors[] = {
-    "Succeeded",
-    "Interrupted by output function",
-    "Device error or wrong termination of input stream",
-    "Insufficient memory pool for the image",
-    "Insufficient stream input buffer",
-    "Parameter error",
-    "Data format error",
-    "Right format but not supported",
-    "Not supported JPEG standard"};
+static const char* jd_errors[] = { "Succeeded",
+                                   "Interrupted by output function",
+                                   "Device error or wrong termination of input stream",
+                                   "Insufficient memory pool for the image",
+                                   "Insufficient stream input buffer",
+                                   "Parameter error",
+                                   "Data format error",
+                                   "Right format but not supported",
+                                   "Not supported JPEG standard" };
 
 uint8_t gamme_curve[256];
 
@@ -110,7 +105,7 @@ static void obtain_time(void) {
 
     // wait for time to be set
     time_t now = 0;
-    struct tm timeinfo = {0};
+    struct tm timeinfo = { 0 };
     int retry = 0;
     const int retry_count = 10;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
@@ -150,19 +145,19 @@ void jpegRender(int xpos, int ypos, int width, int height) {
             int quant_error = oldpixel - newpixel;
             decoded_image[pixel] = newpixel;
             if (bx < (ep_width - 1))
-                decoded_image[pixel + 1] =
-                    minimum(255, decoded_image[pixel + 1] + quant_error * 7 / 16);
+                decoded_image[pixel + 1]
+                    = minimum(255, decoded_image[pixel + 1] + quant_error * 7 / 16);
 
             if (by < (ep_height - 1)) {
                 if (bx > 0)
-                    decoded_image[pixel + ep_width - 1] =
-                        minimum(255, decoded_image[pixel + ep_width - 1] + quant_error * 3 / 16);
+                    decoded_image[pixel + ep_width - 1]
+                        = minimum(255, decoded_image[pixel + ep_width - 1] + quant_error * 3 / 16);
 
-                decoded_image[pixel + ep_width] =
-                    minimum(255, decoded_image[pixel + ep_width] + quant_error * 5 / 16);
+                decoded_image[pixel + ep_width]
+                    = minimum(255, decoded_image[pixel + ep_width] + quant_error * 5 / 16);
                 if (bx < (ep_width - 1))
-                    decoded_image[pixel + ep_width + 1] =
-                        minimum(255, decoded_image[pixel + ep_width + 1] + quant_error * 1 / 16);
+                    decoded_image[pixel + ep_width + 1]
+                        = minimum(255, decoded_image[pixel + ep_width + 1] + quant_error * 1 / 16);
             }
             pixel++;
         }
@@ -191,10 +186,10 @@ void deepsleep() {
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
-static uint32_t feed_buffer(
+static unsigned int feed_buffer(
     JDEC* jd,
-    uint8_t* buff,  // Pointer to the read buffer (NULL:skip)
-    uint32_t nd
+    unsigned char* buff,  // Pointer to the read buffer (NULL:skip)
+    unsigned int nd
 ) {
     uint32_t count = 0;
 
@@ -210,7 +205,7 @@ static uint32_t feed_buffer(
 }
 
 /* User defined call-back function to output decoded RGB bitmap in decoded_image buffer */
-static uint32_t tjd_output(
+static unsigned int tjd_output(
     JDEC* jd,     /* Decompressor object of current session */
     void* bitmap, /* Bitmap data to be output */
     JRECT* rect   /* Rectangular region to output */
@@ -344,7 +339,8 @@ esp_err_t _http_event_handler(esp_http_client_event_t* evt) {
                 epd_hl_update_screen(&hl, MODE_GC16, 25);
 
                 ESP_LOGI(
-                    "total", "%" PRIu32 " ms - total time spent\n",
+                    "total",
+                    "%" PRIu32 " ms - total time spent\n",
                     time_download + time_decomp + time_render
                 );
             }
@@ -367,13 +363,12 @@ static void http_post(void) {
      * either in URL or as host and path parameters.
      * FIX: Uncommenting cert_pem restarts even if providing the right certificate
      */
-    esp_http_client_config_t config = {
-        .url = IMG_URL,
-        .event_handler = _http_event_handler,
-        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
-        .disable_auto_redirect = false,
+    esp_http_client_config_t config = { .url = IMG_URL,
+                                        .event_handler = _http_event_handler,
+                                        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
+                                        .disable_auto_redirect = false,
 #if VALIDATE_SSL_CERTIFICATE == true
-        .cert_pem = (char*)server_cert_pem_start
+                                        .cert_pem = (char*)server_cert_pem_start
 #endif
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -390,8 +385,11 @@ static void http_post(void) {
         // esp_http_client_get_content_length returns a uint64_t in esp-idf v5, so it needs a %lld
         // format specifier
         ESP_LOGI(
-            TAG, "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n", IMG_URL,
-            esp_http_client_get_status_code(client), (int)esp_http_client_get_content_length(client)
+            TAG,
+            "\nIMAGE URL: %s\n\nHTTP GET Status = %d, content_length = %d\n",
+            IMG_URL,
+            esp_http_client_get_status_code(client),
+            (int)esp_http_client_get_content_length(client)
         );
     } else {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
@@ -417,8 +415,9 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT BIT1
 static int s_retry_num = 0;
 
-static void
-event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+static void event_handler(
+    void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data
+) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -429,7 +428,9 @@ event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* ev
         } else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGI(
-                TAG, "Connect to the AP failed %d times. Going to deepsleep %d minutes", 5,
+                TAG,
+                "Connect to the AP failed %d times. Going to deepsleep %d minutes",
+                5,
                 DEEPSLEEP_MINUTES_AFTER_RENDER
             );
             deepsleep();
@@ -514,7 +515,7 @@ void app_main() {
     init_options |= EPD_FEED_QUEUE_8;
 #endif
 
-    epd_init(&DEMO_BOARD, &ED097TC2, init_options);
+    epd_init(&epd_board_v7_raw, &EC060KH5, init_options);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.

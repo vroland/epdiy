@@ -19,10 +19,14 @@ EpdiyHighlevelState hl;
 #endif
 
 void idf_loop() {
+<<<<<<< HEAD
     EpdRect dragon_area = 
     {.x = 0, .y = 0, 
     .width = big_dragon_width, 
     .height = big_dragon_height};
+=======
+    EpdRect dragon_area = { .x = 0, .y = 0, .width = dragon_width, .height = dragon_height };
+>>>>>>> main
 
     int temperature = 25;
 

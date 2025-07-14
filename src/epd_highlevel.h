@@ -48,42 +48,42 @@
  *  Colors
  *  ======
  *
- *  Since most displays only support 16 colors, we're only using the upper 4 bits (nibble) of a byte to detect the color.
+ *  Since most displays only support 16 colors, we're only using the upper 4 bits (nibble) of a byte
+ * to detect the color.
  *
  * 		char pixel_color = color & 0xF0;
  *
- *  So keep in mind, when passing a color to any function, to always set the upper 4 bits, otherwise the color would be black.
+ *  So keep in mind, when passing a color to any function, to always set the upper 4 bits, otherwise
+ * the color would be black.
  *
  *  Possible colors are `0xF0` (white) through `0x80` (median gray) til `0x00` (black).
  */
-
 
 #ifdef __cplusplus
 extern "C" {
 
 #endif
 #pragma once
-#include "epdiy.h"
 #include <stdint.h>
+#include "epdiy.h"
 
 #define EPD_BUILTIN_WAVEFORM NULL
 
 /// Holds the internal state of the high-level API.
 typedef struct {
-  /// The "front" framebuffer object.
-  uint8_t* front_fb;
-  /// The "back" framebuffer object.
-  uint8_t* back_fb;
-  /// Buffer for holding the interlaced difference image.
-  uint8_t* difference_fb;
-  /// Tainted lines based on the last difference calculation.
-  bool* dirty_lines;
-  /// Tainted column nibbles based on the last difference calculation.
-  uint8_t* dirty_columns;
-  /// The waveform information to use.
-  const EpdWaveform* waveform;
+    /// The "front" framebuffer object.
+    uint8_t* front_fb;
+    /// The "back" framebuffer object.
+    uint8_t* back_fb;
+    /// Buffer for holding the interlaced difference image.
+    uint8_t* difference_fb;
+    /// Tainted lines based on the last difference calculation.
+    bool* dirty_lines;
+    /// Tainted column nibbles based on the last difference calculation.
+    uint8_t* dirty_columns;
+    /// The waveform information to use.
+    const EpdWaveform* waveform;
 } EpdiyHighlevelState;
-
 
 /**
  * Initialize a state object.
@@ -114,7 +114,9 @@ uint8_t* epd_hl_get_framebuffer(EpdiyHighlevelState* state);
  * @param temperature: Environmental temperature of the display in °C.
  * @returns `EPD_DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
  */
-enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature);
+enum EpdDrawError epd_hl_update_screen(
+    EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature
+);
 
 /**
  * Update an area of the screen to match the content of the front framebuffer.
@@ -128,7 +130,9 @@ enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawM
  * @param area: Area of the screen to update.
  * @returns `EPD_DRAW_SUCCESS` on sucess, a combination of error flags otherwise.
  */
-enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area);
+enum EpdDrawError epd_hl_update_area(
+    EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature, EpdRect area
+);
 
 /**
  * Reset the front framebuffer to a white state.
@@ -142,6 +146,11 @@ void epd_hl_set_all_white(EpdiyHighlevelState* state);
  * remaining artifacts.
  */
 void epd_fullclear(EpdiyHighlevelState* state, int temperature);
+
+/**
+ * Just changes the used Waveform
+ */
+void epd_hl_waveform(EpdiyHighlevelState* state, const EpdWaveform* waveform);
 
 #ifdef __cplusplus
 }
