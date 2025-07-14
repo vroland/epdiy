@@ -23,11 +23,8 @@
 #include "esp_sntp.h"
 
 // JPG decoder is on ESP32 rom for this version
-#if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
-  #include "esp32/rom/tjpgd.h"
-#else // ESP32 Before IDF 4.0
-  #include "rom/tjpgd.h"
-#endif
+#include "rom/tjpgd.h"
+
 
 #include <stdio.h>
 #include <string.h>
@@ -130,9 +127,9 @@ void deepsleep(){
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
-static uint32_t feed_buffer(JDEC *jd,
-               uint8_t *buff, // Pointer to the read buffer (NULL:skip)
-               uint32_t nd
+static unsigned int feed_buffer(JDEC *jd,
+               unsigned char* buff, // Pointer to the read buffer (NULL:skip)
+               unsigned int nd
 ) {
     uint32_t count = 0;
 
@@ -148,10 +145,10 @@ static uint32_t feed_buffer(JDEC *jd,
 }
 
 /* User defined call-back function to output decoded RGB bitmap in decoded_image buffer */
-static uint32_t
-tjd_output(JDEC *jd,     /* Decompressor object of current session */
-           void *bitmap, /* Bitmap data to be output */
-           JRECT *rect   /* Rectangular region to output */
+static unsigned int tjd_output(
+    JDEC *jd,     /* Decompressor object of current session */
+    void *bitmap, /* Bitmap data to be output */
+    JRECT *rect   /* Rectangular region to output */
 ) {
   uint32_t w = rect->right - rect->left + 1;
   uint32_t h = rect->bottom - rect->top + 1;
@@ -236,7 +233,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                 ESP_LOGE("main", "Initial alloc source_buf failed!");
             }
 
-            printf("Free heap after buffers allocation: %X\n", xPortGetFreeHeapSize());
+            printf("Free heap after buffers allocation: %d\n", xPortGetFreeHeapSize());
         }
         break;
     case HTTP_EVENT_ON_DATA:
@@ -470,7 +467,7 @@ void app_main() {
 
   // WiFi log level set only to Error otherwise outputs too much
   esp_log_level_set("wifi", ESP_LOG_ERROR);
-  epd_init(&epd_board_v7, &GDEW101C01, EPD_LUT_64K);
+  epd_init(&epd_board_v7_raw, &EC060KH5, EPD_LUT_64K);
   // Set VCOM for boards that allow to set this in software (in mV).
   epd_set_vcom(2000);
   
