@@ -11,5 +11,6 @@
 #include "waveforms/epdiy_ED060XC3.h"
 #include "waveforms/epdiy_ED097OC4.h"
 #include "waveforms/epdiy_ED097TC2.h"
+#include "waveforms/epdiy_ED103TC2.h"
 #include "waveforms/epdiy_ED133UT2.h"
 #include "waveforms/epdiy_NULL.h"

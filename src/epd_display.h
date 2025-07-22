@@ -12,6 +12,7 @@ enum EpdDisplayType {
     DISPLAY_TYPE_GENERIC,
     /// Fast display where we can get away with low hold times.
     DISPLAY_TYPE_ED097TC2,
+    DISPLAY_TYPE_XMIRRORED
 };
 
 typedef struct {
@@ -36,6 +37,7 @@ extern const EpdDisplay_t ED060SCT;
 extern const EpdDisplay_t ED060XC3;
 extern const EpdDisplay_t ED097OC4;
 extern const EpdDisplay_t ED097TC2;
+extern const EpdDisplay_t ED103TC2;
 extern const EpdDisplay_t ED133UT2;
 extern const EpdDisplay_t ED047TC1;
 extern const EpdDisplay_t ED047TC2;

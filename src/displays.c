@@ -72,6 +72,15 @@ const EpdDisplay_t ED078KC1 = {
     .display_type = DISPLAY_TYPE_GENERIC,
 };
 
+const EpdDisplay_t ED103TC2 = {
+    .width = 1872,
+    .height = 1404,
+    .bus_width = 16,
+    .bus_speed = 11,
+    .default_waveform = &epdiy_ED103TC2,
+    .display_type = DISPLAY_TYPE_XMIRRORED,
+};
+
 // Attention is by default horizontal rows mirrored
 const EpdDisplay_t ED052TC4 = {
     .width = 1280,

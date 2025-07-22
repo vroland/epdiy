@@ -69,6 +69,9 @@ Coord_xy _rotate(uint16_t x, uint16_t y) {
             y = epd_height() - y - 1;
             break;
     }
+    if (display->display_type == DISPLAY_TYPE_XMIRRORED) {
+        x = epd_width() - x;
+    }
     Coord_xy coord = { x, y };
     return coord;
 }
