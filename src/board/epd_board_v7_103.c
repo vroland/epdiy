@@ -27,7 +27,7 @@
 
 #define CFG_SCL GPIO_NUM_40
 #define CFG_SDA GPIO_NUM_39
-#define CFG_INTR GPIO_NUM_2
+#define CFG_INTR GPIO_NUM_38  // NUM_2 is >1.1    NUM_38 is 1.0
 #define EPDIY_I2C_PORT I2C_NUM_0
 
 #define CFG_PIN_OE (PCA_PIN_PC10 >> 8)

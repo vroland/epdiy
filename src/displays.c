@@ -34,7 +34,7 @@ const EpdDisplay_t ED097TC2 = {
     .width = 1200,
     .height = 825,
     .bus_width = 8,
-    .bus_speed = 18, // 22 works
+    .bus_speed = 12, // 22 works
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_ED097TC2,
     .display_color_filter = DISPLAY_CFA_NONE
@@ -74,21 +74,12 @@ const EpdDisplay_t ED078KC1 = {
     .width = 1872,
     .height = 1404,
     .bus_width = 16,
-    .bus_speed = 11,
-    .default_waveform = &epdiy_ED047TC2,
+    .bus_speed = 10,
+    .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_GENERIC,
     .display_color_filter = DISPLAY_CFA_NONE
 };
 
-const EpdDisplay_t WAVE103 = {
-    .width = 1872,
-    .height = 1404,
-    .bus_width = 16,
-    .bus_speed = 10, // Could be higher, just try
-    .default_waveform = &epdiy_ED097TC2,
-    .display_type = DISPLAY_TYPE_ED097TC2,
-    .display_color_filter = DISPLAY_CFA_NONE
-};
 
 // This display is produced by https://en.wf-tech.com and sold by Good-Display
 const EpdDisplay_t GDEW101C01 = {
