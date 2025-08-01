@@ -12,6 +12,8 @@ enum EpdDisplayType {
     DISPLAY_TYPE_GENERIC,
     /// Fast display where we can get away with low hold times.
     DISPLAY_TYPE_ED097TC2,
+    /// Display with horizontal mirroring.
+    DISPLAY_TYPE_HORIZONTAL_MIRRORED,
 };
 
 typedef struct {
