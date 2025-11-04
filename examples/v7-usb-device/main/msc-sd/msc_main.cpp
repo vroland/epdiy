@@ -27,13 +27,12 @@
 // Clean mode will do a full clean refresh before loading a new image (slower)
 #define GALLERY_CLEAN_MODE false
 
-#define FRONT_LIGHT_ENABLE true
-#define FL_PWM   GPIO_NUM_11
+#define FRONT_LIGHT_ENABLE 1
 
 #define LV_TICK_PERIOD_MS 1
 #define LEDC_TIMER              LEDC_TIMER_0
 #define LEDC_MODE               LEDC_LOW_SPEED_MODE
-#define LEDC_OUTPUT_IO          (11) // Define the output GPIO
+#define LEDC_OUTPUT_IO          (21) // Define the output GPIO
 #define LEDC_CHANNEL            LEDC_CHANNEL_0
 #define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
 #define LEDC_DUTY               (2096) // 4096 Set duty to 50%. (2 ** 13) * 50% = 4096
@@ -47,7 +46,17 @@
 #include "esp_check.h"
 #include "driver/gpio.h"
 #include "tinyusb.h"
-#include "tusb_msc_storage.h"
+#include "tinyusb_default_config.h"
+#include "tinyusb_msc.h"
+#ifdef CONFIG_EXAMPLE_STORAGE_MEDIA_SDMMC
+#include "sdmmc_cmd.h"
+#include "diskio_impl.h"
+#include "diskio_sdmmc.h"
+#if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+#include "sd_pwr_ctrl_by_on_chip_ldo.h"
+#endif // CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+#endif
+
 // GPIO & PWM control of front-light
 #include "driver/gpio.h"
 #include "driver/ledc.h"
@@ -94,6 +103,16 @@ uint32_t time_render = 0;
 
 static const char *TAG = "MSC example";
 
+static esp_console_repl_t *repl = NULL;
+
+/* Storage global variables */
+tinyusb_msc_storage_handle_t storage_hdl = NULL;
+tinyusb_msc_mount_point_t mp;
+
+static SemaphoreHandle_t _wait_console_smp = NULL;
+
+/* TinyUSB descriptors
+   ********************************************************************* */
 #define EPNUM_MSC       1
 #define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_MSC_DESC_LEN)
 
@@ -108,14 +127,6 @@ enum {
 
     EDPT_MSC_OUT  = 0x01,
     EDPT_MSC_IN   = 0x81,
-};
-
-static uint8_t const desc_configuration[] = {
-    // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-
-    // Interface number, string index, EP Out & EP In address, EP size
-    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 0, EDPT_MSC_OUT, EDPT_MSC_IN, TUD_OPT_HIGH_SPEED ? 512 : 64),
 };
 
 static tusb_desc_device_t descriptor_config = {
@@ -135,10 +146,40 @@ static tusb_desc_device_t descriptor_config = {
     .bNumConfigurations = 0x01
 };
 
+static uint8_t const msc_fs_configuration_desc[] = {
+    // Config number, interface count, string index, total length, attribute, power in mA
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+
+    // Interface number, string index, EP Out & EP In address, EP size
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 0, EDPT_MSC_OUT, EDPT_MSC_IN, 64),
+};
+
+#if (TUD_OPT_HIGH_SPEED)
+static const tusb_desc_device_qualifier_t device_qualifier = {
+    .bLength = sizeof(tusb_desc_device_qualifier_t),
+    .bDescriptorType = TUSB_DESC_DEVICE_QUALIFIER,
+    .bcdUSB = 0x0200,
+    .bDeviceClass = TUSB_CLASS_MISC,
+    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol = MISC_PROTOCOL_IAD,
+    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
+    .bNumConfigurations = 0x01,
+    .bReserved = 0
+};
+
+static uint8_t const msc_hs_configuration_desc[] = {
+    // Config number, interface count, string index, total length, attribute, power in mA
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+
+    // Interface number, string index, EP Out & EP In address, EP size
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 0, EDPT_MSC_OUT, EDPT_MSC_IN, 512),
+};
+#endif // TUD_OPT_HIGH_SPEED
+
 static char const *string_desc_arr[] = {
     (const char[]) { 0x09, 0x04 },  // 0: is supported language is English (0x0409)
     "TinyUSB",                      // 1: Manufacturer
-    "epdiy USB Device",             // 2: Product
+    "TinyUSB Device",               // 2: Product
     "123456",                       // 3: Serials
     "Example MSC",                  // 4. MSC
 };
@@ -353,13 +394,11 @@ void read_file(char * filename) {
     }
 }
 
-// mount the partition and show all the files in BASE_PATH
+// Set mount point to the application and list files in BASE_PATH by filesystem API
 static void _mount(void)
 {
     ESP_LOGI(TAG, "Mount storage...");
-    ESP_ERROR_CHECK(tinyusb_msc_storage_mount(BASE_PATH));
-
-    epd_poweron();
+    ESP_ERROR_CHECK(tinyusb_msc_set_storage_mount_point(storage_hdl, TINYUSB_MSC_STORAGE_MOUNT_APP));
 
     // List all the files in this directory
     ESP_LOGI(TAG, "\nls command output:");
@@ -367,46 +406,136 @@ static void _mount(void)
     DIR *dh = opendir(BASE_PATH);
     if (!dh) {
         if (errno == ENOENT) {
-            //If the directory is not found
+            // If the directory is not found
             ESP_LOGE(TAG, "Directory doesn't exist %s", BASE_PATH);
         } else {
-            //If the directory is not readable then throw error and exit
+            // If the directory is not readable then throw error and exit
             ESP_LOGE(TAG, "Unable to read directory %s", BASE_PATH);
         }
         return;
     }
-
-    char strbuf[257];
-    epd_write_string(&FiraSans_20, "Directory listing:", &cursor_x, &cursor_y, fb, &font_props);
-    cursor_x = 10;
-
-    int file_cnt = 0;
-    char selected_file[256];
-    //While the next entry is not readable we will print directory files
+    // While the next entry is not readable we will print directory files
     while ((d = readdir(dh)) != NULL) {
-        if (strncmp(d->d_name, ".", 1) == 0) {
-            printf("%s not image, discarded\n", d->d_name);
-            continue;
-        }
-        file_cnt++;
-        if (file_cnt == 1) {
-            strcpy(selected_file, d->d_name);
-            printf("Opening: %s\n", selected_file);
-        }
-        
-        sprintf(strbuf, "%s", d->d_name);
-        epd_write_string(&FiraSans_20, strbuf, &cursor_x, &cursor_y, fb, &font_props);
-        cursor_x = 10;
+        printf("%s\n", d->d_name);
     }
-    
-    // Read single file
-    epd_hl_update_screen(&hl, MODE_DU, temperature);
-    epd_poweroff();
+    return;
+}
 
-    vTaskDelay(pdMS_TO_TICKS(1500));
-    epd_clear();
-    if (!GALLERY_MODE) {
-        read_file(selected_file);
+// read BASE_PATH/README.MD and print its contents
+static int console_read(int argc, char **argv)
+{
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_mount_point(storage_hdl, &mp));
+    if (mp == TINYUSB_MSC_STORAGE_MOUNT_USB) {
+        ESP_LOGE(TAG, "Storage exposed over USB. Application can't read from storage.");
+        return -1;
+    }
+    ESP_LOGD(TAG, "read from storage:");
+    const char *filename = BASE_PATH "/README.MD";
+    FILE *ptr = fopen(filename, "r");
+    if (ptr == NULL) {
+        ESP_LOGE(TAG, "Filename not present - %s", filename);
+        return -1;
+    }
+    char buf[1024];
+    while (fgets(buf, 1000, ptr) != NULL) {
+        printf("%s", buf);
+    }
+    fclose(ptr);
+    return 0;
+}
+
+// create file BASE_PATH/README.MD if it does not exist
+static int console_write(int argc, char **argv)
+{
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_mount_point(storage_hdl, &mp));
+    if (mp == TINYUSB_MSC_STORAGE_MOUNT_USB) {
+        ESP_LOGE(TAG, "storage exposed over USB. Application can't write to storage.");
+        return -1;
+    }
+    ESP_LOGD(TAG, "write to storage:");
+    const char *filename = BASE_PATH "/README.MD";
+    FILE *fd = fopen(filename, "r");
+    if (!fd) {
+        ESP_LOGW(TAG, "README.MD doesn't exist yet, creating");
+        fd = fopen(filename, "w");
+        fprintf(fd, "Mass Storage Devices are one of the most common USB devices. It use Mass Storage Class (MSC) that allow access to their internal data storage.\n");
+        fprintf(fd, "In this example, ESP chip will be recognised by host (PC) as Mass Storage Device.\n");
+        fprintf(fd, "Upon connection to USB host (PC), the example application will initialize the storage module and then the storage will be seen as removable device on PC.\n");
+        fclose(fd);
+    }
+    return 0;
+}
+
+// Show storage size and sector size
+static int console_size(int argc, char **argv)
+{
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_mount_point(storage_hdl, &mp));
+    if (mp == TINYUSB_MSC_STORAGE_MOUNT_USB) {
+        ESP_LOGE(TAG, "storage exposed over USB. Application can't access storage");
+        return -1;
+    }
+
+    uint32_t sec_count;
+    uint32_t sec_size;
+
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_sector_size(storage_hdl, &sec_size));
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_capacity(storage_hdl, &sec_count));
+
+    // Calculate size in MB or KB
+    uint64_t total_bytes = (uint64_t)sec_size * sec_count;
+    if (total_bytes >= (1024 * 1024)) {
+        uint64_t total_mb = total_bytes / (1024 * 1024);
+        printf("Storage Capacity %lluMB\n", total_mb);
+    } else {
+        uint64_t total_kb = total_bytes / 1024;
+        printf("Storage Capacity %lluKB\n", total_kb);
+    }
+    return 0;
+}
+
+// Show storage status
+static int console_status(int argc, char **argv)
+{
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_mount_point(storage_hdl, &mp));
+    printf("storage exposed over USB: %s\n", (mp == TINYUSB_MSC_STORAGE_MOUNT_USB) ? "Yes" : "No");
+    return 0;
+}
+
+// Exit from application
+static int console_exit(int argc, char **argv)
+{
+    ESP_ERROR_CHECK(tinyusb_msc_delete_storage(storage_hdl));
+    ESP_ERROR_CHECK(tinyusb_driver_uninstall());
+
+    xSemaphoreGive(_wait_console_smp);
+
+    printf("Application Exit\n");
+
+    return 0;
+}
+
+/**
+ * @brief Storage mount changed callback
+ *
+ * @param handle Storage handle
+ * @param event Event information
+ * @param arg User argument, provided during callback registration
+ */
+static void storage_mount_changed_cb(tinyusb_msc_storage_handle_t handle, tinyusb_msc_event_t *event, void *arg)
+{
+    switch (event->id) {
+    case TINYUSB_MSC_EVENT_MOUNT_START:
+        // Verify that all the files are closed before unmounting
+        break;
+    case TINYUSB_MSC_EVENT_MOUNT_COMPLETE:
+        ESP_LOGI(TAG, "Storage mounted to application: %s", (event->mount_point == TINYUSB_MSC_STORAGE_MOUNT_APP) ? "Yes" : "No");
+        break;
+    case TINYUSB_MSC_EVENT_MOUNT_FAILED:
+    case TINYUSB_MSC_EVENT_FORMAT_REQUIRED:
+        ESP_LOGE(TAG, "Storage mount failed or format required");
+        break;
+    default:
+        break;
     }
 }
 
@@ -456,84 +585,13 @@ void gallery_mode() {
 // unmount storage
 static int console_unmount(int argc, char **argv)
 {
-    if (tinyusb_msc_storage_in_use_by_usb_host()) {
-        ESP_LOGE(TAG, "storage is already exposed");
+    ESP_ERROR_CHECK(tinyusb_msc_get_storage_mount_point(storage_hdl, &mp));
+    if (mp == TINYUSB_MSC_STORAGE_MOUNT_USB) {
+        ESP_LOGE(TAG, "Storage is already exposed");
         return -1;
     }
     ESP_LOGI(TAG, "Unmount storage...");
-    ESP_ERROR_CHECK(tinyusb_msc_storage_unmount());
-    return 0;
-}
-
-// read BASE_PATH/README.MD and print its contents
-static int console_read(int argc, char **argv)
-{
-    if (tinyusb_msc_storage_in_use_by_usb_host()) {
-        ESP_LOGE(TAG, "storage exposed over USB. Application can't read from storage.");
-        return -1;
-    }
-    ESP_LOGD(TAG, "read from storage:");
-    const char *filename = BASE_PATH "/README.MD";
-    FILE *ptr = fopen(filename, "r");
-    if (ptr == NULL) {
-        ESP_LOGE(TAG, "Filename not present - %s", filename);
-        return -1;
-    }
-    char buf[1024];
-    while (fgets(buf, 1000, ptr) != NULL) {
-        printf("%s", buf);
-    }
-    fclose(ptr);
-    return 0;
-}
-
-// create file BASE_PATH/README.MD if it does not exist
-static int console_write(int argc, char **argv)
-{
-    if (tinyusb_msc_storage_in_use_by_usb_host()) {
-        ESP_LOGE(TAG, "storage exposed over USB. Application can't write to storage.");
-        return -1;
-    }
-    ESP_LOGD(TAG, "write to storage:");
-    const char *filename = BASE_PATH "/README.MD";
-    FILE *fd = fopen(filename, "r");
-    if (!fd) {
-        ESP_LOGW(TAG, "README.MD doesn't exist yet, creating");
-        fd = fopen(filename, "w");
-        fprintf(fd, "Mass Storage Devices are one of the most common USB devices. It use Mass Storage Class (MSC) that allow access to their internal data storage.\n");
-        fprintf(fd, "In this example, ESP chip will be recognised by host (PC) as Mass Storage Device.\n");
-        fprintf(fd, "Upon connection to USB host (PC), the example application will initialize the storage module and then the storage will be seen as removable device on PC.\n");
-        fclose(fd);
-    }
-    return 0;
-}
-
-// Show storage size and sector size
-static int console_size(int argc, char **argv)
-{
-    if (tinyusb_msc_storage_in_use_by_usb_host()) {
-        ESP_LOGE(TAG, "storage exposed over USB. Application can't access storage");
-        return -1;
-    }
-    uint32_t sec_count = tinyusb_msc_storage_get_sector_count();
-    uint32_t sec_size = tinyusb_msc_storage_get_sector_size();
-    printf("Storage Capacity %lluMB\n", ((uint64_t) sec_count) * sec_size / (1024 * 1024));
-    return 0;
-}
-
-// exit from application
-static int console_status(int argc, char **argv)
-{
-    printf("storage exposed over USB: %s\n", tinyusb_msc_storage_in_use_by_usb_host() ? "Yes" : "No");
-    return 0;
-}
-
-// exit from application
-static int console_exit(int argc, char **argv)
-{
-    tinyusb_msc_storage_deinit();
-    printf("Application Exiting\n");
-    exit(0);
+    ESP_ERROR_CHECK(tinyusb_msc_set_storage_mount_point(storage_hdl, TINYUSB_MSC_STORAGE_MOUNT_USB));
     return 0;
 }
 
@@ -550,7 +608,7 @@ static esp_err_t storage_init_spiflash(wl_handle_t *wl_handle)
 
     return wl_mount(data_partition, wl_handle);
 }
-#else  // CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
+#else
 static esp_err_t storage_init_sdmmc(sdmmc_card_t **card)
 {
     esp_err_t ret = ESP_OK;
@@ -563,6 +621,23 @@ static esp_err_t storage_init_sdmmc(sdmmc_card_t **card)
     // For setting a specific frequency, use host.max_freq_khz (range 400kHz - 40MHz for SDMMC)
     // Example: for fixed frequency of 10MHz, use host.max_freq_khz = 10000;
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+
+    // For SoCs where the SD power can be supplied both via an internal or external (e.g. on-board LDO) power supply.
+    // When using specific IO pins (which can be used for ultra high-speed SDMMC) to connect to the SD card
+    // and the internal LDO power supply, we need to initialize the power supply first.
+#if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+    sd_pwr_ctrl_ldo_config_t ldo_config = {
+        .ldo_chan_id = CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_IO_ID,
+    };
+    sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
+
+    ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
+        return ret;
+    }
+    host.pwr_ctrl_handle = pwr_ctrl_handle;
+#endif
 
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
     // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
@@ -579,11 +654,11 @@ static esp_err_t storage_init_sdmmc(sdmmc_card_t **card)
 #ifdef CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
     slot_config.clk = (gpio_num_t)CONFIG_EXAMPLE_PIN_CLK;
     slot_config.cmd = (gpio_num_t)CONFIG_EXAMPLE_PIN_CMD;
-    slot_config.d0 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D0;
+    slot_config.d0 =  (gpio_num_t)CONFIG_EXAMPLE_PIN_D0;
 #ifdef CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
-    slot_config.d1 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D1;
-    slot_config.d2 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D2;
-    slot_config.d3 = (gpio_num_t)CONFIG_EXAMPLE_PIN_D3;
+    slot_config.d1 =  (gpio_num_t)CONFIG_EXAMPLE_PIN_D1;
+    slot_config.d2 =  (gpio_num_t)CONFIG_EXAMPLE_PIN_D2;
+    slot_config.d3 =  (gpio_num_t)CONFIG_EXAMPLE_PIN_D3;
 #endif  // CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
 
 #endif  // CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
@@ -626,20 +701,22 @@ clean:
         free(sd_card);
         sd_card = NULL;
     }
+#if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+    // We don't need to duplicate error here as all error messages are handled via sd_pwr_* call
+    sd_pwr_ctrl_del_on_chip_ldo(pwr_ctrl_handle);
+#endif // CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
     return ret;
 }
 #endif  // CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
 
 void app_main(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(500));
-
-    epd_init(&epd_board_v7, &ED060XC3, EPD_LUT_64K);
+    epd_init(&epd_board_v7_raw, &ED060XC3, EPD_LUT_64K);
     epd_set_vcom(1760);
     
     #if FRONT_LIGHT_ENABLE
-    gpio_set_pull_mode(FL_PWM, GPIO_PULLDOWN_ONLY);
-    gpio_set_direction(FL_PWM, GPIO_MODE_OUTPUT);
+    gpio_set_pull_mode((gpio_num_t)LEDC_OUTPUT_IO, GPIO_PULLDOWN_ONLY);
+    gpio_set_direction((gpio_num_t)LEDC_OUTPUT_IO, GPIO_MODE_OUTPUT);
 // Prepare and then apply the LEDC PWM timer configuration
     ledc_timer_config_t ledc_timer = {
         .speed_mode       = LEDC_MODE,
@@ -669,7 +746,7 @@ void app_main(void)
     if (strcmp(DISPLAY_COLOR_TYPE, (char*)"DES_COLOR") == 0) {
       epd_set_gamma_curve(gamma_value);
     }
-    temperature = epd_ambient_temperature();
+    temperature = 25;//epd_ambient_temperature();
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
     font_props = epd_font_properties_default();
@@ -688,6 +765,19 @@ void app_main(void)
     }
 
     ESP_LOGI(TAG, "Initializing storage...");
+    _wait_console_smp = xSemaphoreCreateBinary();
+    if (_wait_console_smp == NULL) {
+        ESP_LOGE(TAG, "Failed to create semaphore");
+        return;
+    }
+
+    tinyusb_msc_storage_config_t storage_cfg;
+    memset(&storage_cfg, 0, sizeof(storage_cfg)); // or: tinyusb_msc_storage_config_t storage_cfg = {};
+
+    storage_cfg.mount_point = TINYUSB_MSC_STORAGE_MOUNT_USB; // Initial mount point to USB
+    storage_cfg.fat_fs.base_path = NULL;                     // Use default base path
+    storage_cfg.fat_fs.config.max_files = 5;                 // Maximum number of files that can be opened simultaneously
+    storage_cfg.fat_fs.format_flags = 0;                     // No special format flags
 
 #ifdef CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
     static wl_handle_t wl_handle = WL_INVALID_HANDLE;
@@ -700,12 +790,10 @@ void app_main(void)
 #else // CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
     static sdmmc_card_t *card = NULL;
     ESP_ERROR_CHECK(storage_init_sdmmc(&card));
-
-    const tinyusb_msc_sdmmc_config_t config_sdmmc = {
-        .card = card
-    };
-    ESP_ERROR_CHECK(tinyusb_msc_storage_init_sdmmc(&config_sdmmc));
-#endif  // CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH
+    // Set the storage medium to the SD/MMC card
+    storage_cfg.medium.card = card;
+    ESP_ERROR_CHECK(tinyusb_msc_new_storage_sdmmc(&storage_cfg, &storage_hdl));
+#endif 
 
     _mount();
     if (GALLERY_MODE) {
@@ -713,13 +801,14 @@ void app_main(void)
     }
 
     ESP_LOGI(TAG, "USB MSC initialization");
-    const tinyusb_config_t tusb_cfg = {
-        .device_descriptor = &descriptor_config,
-        .string_descriptor = string_desc_arr,
-        .string_descriptor_count = sizeof(string_desc_arr) / sizeof(string_desc_arr[0]),
-        .external_phy = false,
-        .configuration_descriptor = desc_configuration,
-    };
+
+    tinyusb_config_t tusb_cfg = TINYUSB_DEFAULT_CONFIG();
+
+    tusb_cfg.descriptor.device = &descriptor_config;
+    tusb_cfg.descriptor.full_speed_config = msc_fs_configuration_desc;
+    tusb_cfg.descriptor.string = string_desc_arr;
+    tusb_cfg.descriptor.string_count = sizeof(string_desc_arr) / sizeof(string_desc_arr[0]);
+
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
     ESP_LOGI(TAG, "USB MSC initialization DONE");
 

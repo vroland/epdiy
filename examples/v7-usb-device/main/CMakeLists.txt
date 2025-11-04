@@ -3,20 +3,16 @@
 #       ESP_USB+ to GPIO19, ESP_USB- to GPIO20
 
 # Select only ONE app_source:
-
-
-
-# Still in research  "serial-receive-file.c" IDEA: To make a port of rz (zmodem serial receive protocol to transfer image via serial)
-
 set(app_sources 
 # Dumb slow terminal example, type and write character in display
-
-"serial-note.c"
-#"msc-sd/msc_main.cpp"
-#"msc-sd/msc_only_sd.cpp"
+#"serial-note.c"
+"msc-sd/msc_main.cpp"
 )
 
-set(requires epdiy esp_tinyusb fatfs console
+set(requires epdiy 
+    esp_tinyusb
+    fatfs 
+    console
     # JpegDecoder
     jpegdec)
 

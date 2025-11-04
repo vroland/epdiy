@@ -1,3 +1,9 @@
 [submodule "examples/ble/components/jpegdec"]
 	path = examples/ble/components/jpegdec
 	url = https://github.com/bitbank2/JPEGDEC.git
+[submodule "examples/v7-usb-device/components/jpegdec"]
+	path = examples/v7-usb-device/components/jpegdec
+	url = https://github.com/bitbank2/JPEGDEC.git
+[submodule "examples/v7-usb-device/components/tinyusb"]
+	path = examples/v7-usb-device/components/tinyusb
+	url = https://github.com/espressif/tinyusb.git
