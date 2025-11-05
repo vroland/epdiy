@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16.0)
-set(EXTRA_COMPONENT_DIRS "../../"
-    # Add also www-image components to avoid including them here again (JPEGDEC)
-                         "../../examples/www-image/components")
+set(EXTRA_COMPONENT_DIRS "../../")
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(usb_cdc_example)
+
+# "Trim" the build. Include the minimal set of components, main, and anything it depends on.
+idf_build_set_property(MINIMAL_BUILD ON)
+# This is just to avoid that components/jpegdec includes Arduino.h
+idf_build_set_property(COMPILE_OPTIONS "-D __LINUX__" APPEND)

@@ -74,6 +74,10 @@ extern "C" {
     void app_main();
 }
 #include "firasans_20.h"
+#include "ff.h"
+#include <string>
+#include <algorithm>
+
 int temperature = 25;
 EpdFontProperties font_props;
 int cursor_x = 10;
@@ -104,6 +108,19 @@ uint32_t time_render = 0;
 static const char *TAG = "MSC example";
 
 static esp_console_repl_t *repl = NULL;
+
+static bool is_jpeg_filename(const char* name)
+{
+    if (name == nullptr) return false;
+    std::string s(name);
+    // find last dot
+    auto pos = s.find_last_of('.');
+    if (pos == std::string::npos) return false;
+    std::string ext = s.substr(pos + 1);
+    // make lowercase
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return std::tolower(c); });
+    return (ext == "jpg" || ext == "jpeg");
+}
 
 /* Storage global variables */
 tinyusb_msc_storage_handle_t storage_hdl = NULL;
@@ -557,6 +574,10 @@ void gallery_mode() {
         while ((d = readdir(dh)) != NULL) {
             if (strncmp(d->d_name, ".", 1) == 0) {
                 printf("%s not image, discarded\n", d->d_name);
+                continue;
+            }
+            if (! is_jpeg_filename(d->d_name)) {
+                printf("%s not an image, skipping\n", d->d_name);
                 continue;
             }
             if (GALLERY_CLEAN_MODE) {
