@@ -77,7 +77,8 @@ extern "C" {
 #include "ff.h"
 #include <string>
 #include <algorithm>
-
+uint8_t gamme_curve[256];
+double gamma_value = 0.7; // Lower: Darker Higher: Brighter
 int temperature = 25;
 EpdFontProperties font_props;
 int cursor_x = 10;
@@ -87,10 +88,11 @@ EpdiyHighlevelState hl;
 // Image handling
 uint8_t* source_buf;              // IMG file buffer
 uint8_t* decoded_image;           // RAW decoded image
-double gamma_value = 1; // Lower: Darker Higher: Brighter
+
 
 // JPG decoder from @bitbank2
 #include "JPEGDEC.h"
+#include "jpg_check.h"
 JPEGDEC jpeg;
 #define DEBUG_JPG_PAYLOAD false
 
@@ -285,10 +287,10 @@ int JPEGDraw4Bits(JPEGDRAW* pDraw) {
             uint8_t col2 = (col >> 4) & 0xf;
             uint8_t col3 = (col >> 8) & 0xf;
             uint8_t col4 = (col >> 12) & 0xf;
-            epd_draw_pixel(pDraw->x + xx, pDraw->y + yy, col1 * 16, fb);
-            epd_draw_pixel(pDraw->x + xx + 1, pDraw->y + yy, col2 * 16, fb);
-            epd_draw_pixel(pDraw->x + xx + 2, pDraw->y + yy, col3 * 16, fb);
-            epd_draw_pixel(pDraw->x + xx + 3, pDraw->y + yy, col4 * 16, fb);
+            epd_draw_pixel(pDraw->x + xx, pDraw->y + yy, gamme_curve[col1 * 16], fb);
+            epd_draw_pixel(pDraw->x + xx + 1, pDraw->y + yy, gamme_curve[col2 * 16], fb);
+            epd_draw_pixel(pDraw->x + xx + 2, pDraw->y + yy, gamme_curve[col3 * 16], fb);
+            epd_draw_pixel(pDraw->x + xx + 3, pDraw->y + yy, gamme_curve[col4 * 16], fb);
             /* if (yy==0 && mcu_count==0) {
               printf("1.%d %d %d %d ",col1,col2,col3,col4);
             } */
@@ -392,7 +394,13 @@ void read_file(char * filename) {
         if (DEBUG_JPG_PAYLOAD) {
           ESP_LOG_BUFFER_HEXDUMP(TAG, source_buf, 1024, ESP_LOG_INFO);
         }
-        printf("Reading %d bytes from %s\n", bytes_read, filename);  
+        printf("Reading %d bytes from %s\n", bytes_read, filename);
+        int w=0,h=0;
+        if (!jpg_quick_check_buf(source_buf, bytes_read, &w, &h)) {
+            ESP_LOGW(TAG, "JPEG validation failed — skipping: %s", filename);
+            heap_caps_free(source_buf);
+            return;
+        }
         
         decodeJpeg(source_buf, file_size, 0, 0);
         fclose(file);
@@ -733,8 +741,13 @@ clean:
 void app_main(void)
 {
     epd_init(&epd_board_v7_raw, &ED060XC3, EPD_LUT_64K);
-    epd_set_vcom(1760);
-    
+    epd_set_vcom(1500);
+    // Gamma curva calculation
+    double gammaCorrection = 1.0 / gamma_value;
+    for (int gray_value = 0; gray_value < 256; gray_value++) {
+    gamme_curve[gray_value] = round(255 * pow(gray_value / 255.0, gammaCorrection));
+    }
+
     #if FRONT_LIGHT_ENABLE
     gpio_set_pull_mode((gpio_num_t)LEDC_OUTPUT_IO, GPIO_PULLDOWN_ONLY);
     gpio_set_direction((gpio_num_t)LEDC_OUTPUT_IO, GPIO_MODE_OUTPUT);
