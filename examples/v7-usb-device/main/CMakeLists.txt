@@ -6,11 +6,14 @@
 set(app_sources 
 # Dumb slow terminal example, type and write character in display
 #"serial-note.c"
-"msc-sd/msc_main.cpp"
+#"msc-sd/msc_main.cpp"
+"utils_rand.cpp"
+"msc-sd/msc_sleep.cpp"
 )
 
 set(requires epdiy 
     esp_tinyusb
+    esp_timer
     fatfs 
     console
     # JpegDecoder

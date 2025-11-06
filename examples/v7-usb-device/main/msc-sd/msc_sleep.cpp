@@ -1,16 +1,16 @@
+#include "esp_timer.h"
+#include "esp_console.h"
+#include "esp_check.h"
+#include "esp_sleep.h"
+#include "esp_timer.h"
+#include <utils_rand.h>
+
 /*
  * Original MSC code: 2022-2023 Espressif Systems (Shanghai) CO LTD
  * Adapted to open images and render them with epdiy displays: Fasani Corp.
  * Please check original Readme in their tinyusb examples for MSC:
  * https://github.com/espressif/esp-idf/tree/master/examples/peripherals/usb/device/tusb_msc
- * 
- * 
- * IMPORTANT: Using flash SPI to save / read files is slow and it's actually not working correctly in this
- *            example. I can see only the first 20Kb or so from the image rendered.
- *            An SD Card should be used to get the proper speed IMHO.
- */
-
-/* DESCRIPTION:
+ * DESCRIPTION:
  * This example contains code to make ESP32-S3 based device recognizable by USB-hosts as a USB Mass Storage Device.
  * It either allows the embedded application i.e. example to access the partition or Host PC accesses the partition over USB MSC.
  * They can't be allowed to access the partition at the same time.
@@ -23,7 +23,7 @@
 // Gallery mode will loop through all JPG images in the SDCard
 #define GALLERY_MODE true
 // Seconds wait till reading next picture
-#define GALLERY_WAIT_SEC 1
+#define GALLERY_WAIT_SEC 6
 // Clean mode will do a full clean refresh before loading a new image (slower)
 #define GALLERY_CLEAN_MODE false
 
@@ -38,12 +38,10 @@
 #define LEDC_DUTY               (2096) // 4096 Set duty to 50%. (2 ** 13) * 50% = 4096
 #define LEDC_FREQUENCY          (4000) // Frequency in Hertz. Set frequency at 4 kHz
 
-
+#define DEEPSLEEP_MINUTES 60
 #include <errno.h>
 #include <dirent.h>
-#include "esp_timer.h"
-#include "esp_console.h"
-#include "esp_check.h"
+#include <vector>
 #include "driver/gpio.h"
 #include "tinyusb.h"
 #include "tinyusb_default_config.h"
@@ -89,7 +87,6 @@ EpdiyHighlevelState hl;
 uint8_t* source_buf;              // IMG file buffer
 uint8_t* decoded_image;           // RAW decoded image
 
-
 // JPG decoder from @bitbank2
 #include "JPEGDEC.h"
 #include "jpg_check.h"
@@ -110,6 +107,10 @@ uint32_t time_render = 0;
 static const char *TAG = "MSC example";
 
 static esp_console_repl_t *repl = NULL;
+
+void deepsleep() {
+    esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES);
+}
 
 static bool is_jpeg_filename(const char* name)
 {
@@ -564,51 +565,100 @@ static void storage_mount_changed_cb(tinyusb_msc_storage_handle_t handle, tinyus
     }
 }
 
-void gallery_mode() {
-    struct dirent *d;
-    //While the next entry is not readable we will read each image
-    while(true) {
-        DIR *dh = opendir(BASE_PATH);
-        if (!dh) {
-            if (errno == ENOENT) {
-                ESP_LOGE(TAG, "Directory doesn't exist %s", BASE_PATH);
-            } else {
-                //If the directory is not readable then throw error and exit
-                ESP_LOGE(TAG, "Unable to read directory %s", BASE_PATH);
-            }
-            return;
+// Helper: gather image filenames from BASE_PATH into a vector (long/short names as returned by readdir)
+static size_t get_image_list(std::vector<std::string> &out_images)
+{
+    out_images.clear();
+    DIR *dh = opendir(BASE_PATH);
+    if (!dh) {
+        if (errno == ENOENT) {
+            ESP_LOGE(TAG, "Directory doesn't exist %s", BASE_PATH);
+        } else {
+            ESP_LOGE(TAG, "Unable to read directory %s", BASE_PATH);
         }
-        // Loop through each image
-        while ((d = readdir(dh)) != NULL) {
-            if (strncmp(d->d_name, ".", 1) == 0) {
-                printf("%s not image, discarded\n", d->d_name);
-                continue;
-            }
-            if (! is_jpeg_filename(d->d_name)) {
-                printf("%s not an image, skipping\n", d->d_name);
-                continue;
-            }
-            if (GALLERY_CLEAN_MODE) {
-                epd_poweron();
-                epd_fullclear(&hl, temperature);
-                epd_poweroff();
-            } else {
-                epd_fullclear(&hl, temperature);
-            }
-            read_file(d->d_name);
-
-            for (int duty=100; duty<8000; duty+=250) {
-                ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
-                ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-                vTaskDelay(pdMS_TO_TICKS(100));
-            }
-
-            vTaskDelay(pdMS_TO_TICKS(GALLERY_WAIT_SEC *1000));
-            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
-            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-
-        }
+        return 0;
     }
+
+    struct dirent *d;
+    while ((d = readdir(dh)) != NULL) {
+        // skip dot entries
+        if (d->d_name[0] == '.') continue;
+        // skip non-jpeg files
+        if (!is_jpeg_filename(d->d_name)) continue;
+        out_images.emplace_back(d->d_name);
+    }
+    closedir(dh);
+    return out_images.size();
+}
+
+// The gallery_mode now counts images, picks a random stop-count (>=5 up to total), displays that many images
+// then goes to deep sleep to save battery.
+// Behavior: if fewer than 5 images are available, it will display all images and then deep sleep.
+void gallery_mode() {
+    std::vector<std::string> images;
+    size_t total = get_image_list(images);
+    if (total == 0) {
+        ESP_LOGW(TAG, "No images found in %s", BASE_PATH);
+        return;
+    }
+
+    // Determine random stop target: between min_stop and total (inclusive).
+    const size_t min_stop = 5;
+    size_t target;
+    if (total <= min_stop) {
+        target = total;
+    } else {
+        // generate random in [min_stop, total]
+        uint32_t r = uniform_random_range(min_stop, total);
+        target = (r % (total - min_stop + 1)) + min_stop;
+    }
+
+    ESP_LOGI(TAG, "Gallery: found %u images, will show %u then deep sleep", (unsigned)total, (unsigned)target);
+
+    // Optional: shuffle order if you'd like randomness in which images are shown.
+    // Uncomment to randomize display order:
+    // uint32_t seed = uniform_random_range();
+    // std::shuffle(images.begin(), images.end(), std::default_random_engine(seed));
+
+    size_t shown = 0;
+    for (size_t i = 0; i < images.size() && shown < target; ++i) {
+        const char *name = images[i].c_str();
+
+        ESP_LOGI(TAG, "Displaying image %u/%u: %s", (unsigned)(shown+1), (unsigned)target, name);
+
+        if (GALLERY_CLEAN_MODE) {
+            epd_poweron();
+            epd_fullclear(&hl, temperature);
+            epd_poweroff();
+        } else {
+            epd_fill_rect(epd_full_screen(), 255, fb);
+            epd_fullclear(&hl, temperature);
+        }
+
+        // display image (read_file takes care of decoding and display)
+        read_file((char*)name);
+
+        // gentle LED ramp (as original)
+        for (int duty=100; duty<8000; duty+=250) {
+            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
+            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+
+        // wait between images
+        vTaskDelay(pdMS_TO_TICKS(GALLERY_WAIT_SEC * 1000));
+
+        // turn LED off
+        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+
+        shown++;
+    }
+
+    ESP_LOGI(TAG, "Gallery shown %u images, entering deep sleep for %d minutes", (unsigned)shown, DEEPSLEEP_MINUTES);
+    // Give logs a moment to flush
+    vTaskDelay(pdMS_TO_TICKS(100));
+    deepsleep();
 }
 
 // unmount storage
@@ -740,8 +790,10 @@ clean:
 
 void app_main(void)
 {
+    esp_timer_early_init();
     epd_init(&epd_board_v7_raw, &ED060XC3, EPD_LUT_64K);
     epd_set_vcom(1500);
+    
     // Gamma curva calculation
     double gammaCorrection = 1.0 / gamma_value;
     for (int gray_value = 0; gray_value < 256; gray_value++) {
