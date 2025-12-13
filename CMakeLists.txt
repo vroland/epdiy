@@ -29,6 +29,7 @@ set(app_sources "src/epdiy.c"
                 "src/board/epd_board_v6.c"
                 "src/board/epd_board_v7.c"
                 "src/board/epd_board_v7_raw.c"
+                "src/board/sverio_paperboard_v1.c"
 )
 
 
