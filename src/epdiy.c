@@ -78,7 +78,6 @@ Coord_xy _rotate(uint16_t x, uint16_t y) {
 void epd_draw_pixel(int x, int y, uint8_t color, uint8_t* framebuffer) {
     // Check rotation and move pixel around if necessary
     Coord_xy coord = _rotate(x, y);
-    x = epd_width()-coord.x;
     y = coord.y;
 
     if (x < 0 || x >= epd_width()) {
