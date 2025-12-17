@@ -81,3 +81,12 @@ const EpdDisplay_t ED052TC4 = {
     .default_waveform = &epdiy_ED097TC2,
     .display_type = DISPLAY_TYPE_HORIZONTAL_MIRRORED,
 };
+
+const EpdDisplay_t ED103MC2 = {
+    .width = 1872,
+    .height = 1404,
+    .bus_width = 16,
+    .bus_speed = 11,
+    .default_waveform = &epdiy_ED097TC2,
+    .display_type = DISPLAY_TYPE_HORIZONTAL_MIRRORED | DISPLAY_UPSEQ_MC2 // Combined flags
+};
