@@ -156,7 +156,7 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_deinit() {
-    epd_lcd_deinit();
+    //epd_lcd_deinit();
 
     ESP_ERROR_CHECK(pca9555_set_config(
         config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1

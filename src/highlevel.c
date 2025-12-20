@@ -52,8 +52,9 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
 
     memset(state.front_fb, 0xFF, fb_size);
     memset(state.back_fb, 0xFF, fb_size);
-
-    state.mirror_x = epd_get_display()->display_type == DISPLAY_TYPE_HORIZONTAL_MIRRORED;
+    bool is_mirrored = ((epd_get_display()->display_type & DISPLAY_TYPE_HORIZONTAL_MIRRORED) != 0); 
+    printf("is_mirrored: %d\n\n", is_mirrored);
+    state.mirror_x = is_mirrored;
     already_initialized = true;
     return state;
 }
