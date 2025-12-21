@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifndef __DECLARE_RCC_ATOMIC_ENV
-   #define __DECLARE_RCC_ATOMIC_ENV (0)
+#define __DECLARE_RCC_ATOMIC_ENV (0)
 #endif
 /**
  * LCD bus configuration parameters.

@@ -8,13 +8,13 @@
  */
 enum EpdDisplayType {
     /// A generic EPD, no specific flags set.
-    DISPLAY_TYPE_GENERIC = 0x00,               // 0000 (no flags)
+    DISPLAY_TYPE_GENERIC = 0x00,  // 0000 (no flags)
     /// Display with horizontal mirroring.
-    DISPLAY_TYPE_HORIZONTAL_MIRRORED = (1 << 0), // 0001 (bit 0)
+    DISPLAY_TYPE_HORIZONTAL_MIRRORED = (1 << 0),  // 0001 (bit 0)
     /// Fast display where low hold times are required.
-    DISPLAY_TYPE_ED097TC2 = (1 << 1),          // 0010 (bit 1)
+    DISPLAY_TYPE_ED097TC2 = (1 << 1),  // 0010 (bit 1)
     /// Up voltage sequence.
-    DISPLAY_UPSEQ_MC2 = (1 << 2),             // 0100 (bit 2)
+    DISPLAY_UPSEQ_MC2 = (1 << 2),  // 0100 (bit 2)
 };
 
 typedef struct {
