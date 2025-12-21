@@ -156,7 +156,7 @@ static void epd_board_init(uint32_t epd_row_width) {
 }
 
 static void epd_board_deinit() {
-    //epd_lcd_deinit();
+    epd_lcd_deinit();
 
     ESP_ERROR_CHECK(pca9555_set_config(
         config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1
@@ -216,7 +216,8 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     // Check if DISPLAY_UPSEQ_MC2 is set
     const EpdDisplay_t* display = epd_get_display();
     if (display->display_type & DISPLAY_UPSEQ_MC2) {
-        vTaskDelay(3); // Might need a bigger delay till TPS65185 fully wakes up
+        // Might need a bigger delay till TPS65185 fully wakes up
+        vTaskDelay(3);
         printf("Setting UPSEQ for DISPLAY_UPSEQ_MC2 sequence\n");
         tps_write_register(config_reg.port, TPS_REG_UPSEQ0, 0xE1);
         tps_write_register(config_reg.port, TPS_REG_UPSEQ1, 0xAA);

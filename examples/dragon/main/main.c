@@ -23,13 +23,7 @@ void idf_loop() {
     int temperature = 25;
 
     epd_poweron();
-    EpdFontProperties font_props = epd_font_properties_default();
-    font_props.flags = EPD_DRAW_ALIGN_CENTER;
- 
-
     epd_fullclear(&hl, temperature);
-int cursor_x = epd_width() -200;
-int cursor_y = 20;
 
     epd_copy_to_framebuffer(dragon_area, dragon_data, epd_hl_get_framebuffer(&hl));
 
@@ -40,9 +34,8 @@ int cursor_y = 20;
 }
 
 void idf_setup() {
-    //epd_init(&epd_board_v7, &ED097TC2, EPD_LUT_64K);
-    epd_init(&epd_board_v7_103, &ED103MC2, EPD_LUT_64K);
-    epd_set_vcom(1000);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
+    epd_set_vcom(1560);
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
 }
 
