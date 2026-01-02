@@ -219,7 +219,7 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
         vTaskDelay(3);
         tps_set_upseq_carta1300();
         printf("Setting UPSEQ for DISPLAY_UPSEQ_MC2\n");
-    } 
+    }
     config_reg.pwrup = true;
     epd_board_set_ctrl(state, &mask);
     config_reg.vcom_ctrl = true;
