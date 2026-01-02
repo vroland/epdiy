@@ -49,6 +49,10 @@ void tps_vcom_kickback_start();
 unsigned tps_vcom_kickback_rdy();
 
 /**
+ * Sets a special power-up voltage sequence that is specific for Carta 1300 panels
+ */
+void tps_set_upseq_carta1300();
+/**
  * Read the temperature via the on-board thermistor.
  */
 int8_t tps_read_thermistor(i2c_port_t i2c_num);

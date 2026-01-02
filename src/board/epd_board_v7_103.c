@@ -218,11 +218,9 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     if (display->display_type & DISPLAY_UPSEQ_MC2) {
         // Might need a bigger delay till TPS65185 fully wakes up
         vTaskDelay(3);
-        printf("Setting UPSEQ for DISPLAY_UPSEQ_MC2 sequence\n");
-        tps_write_register(config_reg.port, TPS_REG_UPSEQ0, 0xE1);
-        tps_write_register(config_reg.port, TPS_REG_UPSEQ1, 0xAA);
+        tps_set_upseq_carta1300();
+        printf("Setting UPSEQ for DISPLAY_UPSEQ_MC2\n");
     }
-
     config_reg.pwrup = true;
     epd_board_set_ctrl(state, &mask);
     config_reg.vcom_ctrl = true;
