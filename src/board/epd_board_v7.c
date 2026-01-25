@@ -80,6 +80,8 @@ static int vcom = 1600;
 static epd_config_register_t config_reg;
 
 static bool interrupt_done = false;
+static bool i2c_driver_installed_by_us = false;
+static bool isr_service_installed_by_us = false;
 
 static void IRAM_ATTR interrupt_handler(void* arg) {
     interrupt_done = true;
@@ -110,19 +112,36 @@ static lcd_bus_config_t lcd_config = {
 };
 
 static void epd_board_init(uint32_t epd_row_width) {
+    (void)epd_row_width;
     gpio_hold_dis(CKH);  // free CKH after wakeup
 
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = CFG_SDA;
-    conf.scl_io_num = CFG_SCL;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = 100000;
-    conf.clk_flags = 0;
-    ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
+    // I2C bus sharing: Check if driver is already installed (e.g., by Arduino Wire)
+    // IMPORTANT: We must check i2c_driver_install() BEFORE calling i2c_param_config()
+    // because param_config immediately reconfigures GPIO pins and I2C settings.
+    // If Wire already initialized I2C, calling param_config would overwrite its
+    // configuration and potentially cause bus glitches. By checking first, we can
+    // skip configuration entirely when sharing the bus with other components.
+    esp_err_t i2c_err = i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    if (i2c_err == ESP_ERR_INVALID_STATE) {
+        // Driver already installed by Wire or other component - reuse it
+        i2c_driver_installed_by_us = false;
+    } else if (i2c_err == ESP_OK) {
+        // We installed the driver - now configure it
+        i2c_driver_installed_by_us = true;
 
-    ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+        i2c_config_t conf;
+        conf.mode = I2C_MODE_MASTER;
+        conf.sda_io_num = CFG_SDA;
+        conf.scl_io_num = CFG_SCL;
+        conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+        conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+        conf.master.clk_speed = 100000;
+        conf.clk_flags = 0;
+        ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
+    } else {
+        // Other I2C error - log but continue
+        ESP_LOGE("epdiy", "i2c_driver_install error: 0x%x", i2c_err);
+    }
 
     config_reg.port = EPDIY_I2C_PORT;
     config_reg.pwrup = false;
@@ -135,7 +154,16 @@ static void epd_board_init(uint32_t epd_row_width) {
     gpio_set_direction(CFG_INTR, GPIO_MODE_INPUT);
     gpio_set_intr_type(CFG_INTR, GPIO_INTR_NEGEDGE);
 
-    ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_EDGE));
+    // ISR service may already be installed by another component
+    esp_err_t isr_err = gpio_install_isr_service(ESP_INTR_FLAG_EDGE);
+    if (isr_err == ESP_ERR_INVALID_STATE) {
+        // Already installed - reuse it
+        isr_service_installed_by_us = false;
+    } else if (isr_err == ESP_OK) {
+        isr_service_installed_by_us = true;
+    } else {
+        ESP_LOGE("epdiy", "gpio_install_isr_service error: 0x%x", isr_err);
+    }
 
     ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void*)CFG_INTR));
 
@@ -177,9 +205,16 @@ static void epd_board_deinit() {
     vTaskDelay(50);
     pca9555_read_input(config_reg.port, 0);
     pca9555_read_input(config_reg.port, 1);
-    i2c_driver_delete(EPDIY_I2C_PORT);
 
-    gpio_uninstall_isr_service();
+    // Only delete I2C driver if we installed it (not if Wire owns it)
+    if (i2c_driver_installed_by_us) {
+        i2c_driver_delete(EPDIY_I2C_PORT);
+    }
+
+    // Only uninstall ISR service if we installed it
+    if (isr_service_installed_by_us) {
+        gpio_uninstall_isr_service();
+    }
 }
 
 static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {
