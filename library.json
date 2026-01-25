@@ -1,11 +1,11 @@
 {
-  "name": "epdiy",
-  "version": "2.0.0",
-  "description": "Drive parallel e-Paper displays with epdiy-based boards.",
+  "name": "epdiy_upstream",
+  "version": "2.1.0-i2c-sharing",
+  "description": "Drive parallel e-Paper displays with epdiy-based boards. Patched for I2C bus sharing.",
   "keywords": "epd, driver, e-ink",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vroland/epdiy.git"
+    "url": "https://github.com/Bwooce/epdiy.git"
   },
   "authors": [
     {

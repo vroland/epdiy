@@ -120,9 +120,18 @@ static void epd_board_init(uint32_t epd_row_width) {
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = 100000;
     conf.clk_flags = 0;
-    ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
 
-    ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+    // Allow I2C bus sharing: if Arduino Wire.begin() was called first, the driver
+    // is already installed and i2c_driver_install returns ESP_ERR_INVALID_STATE.
+    // We accept that as success to allow coexistence with touch controllers, RTCs, etc.
+    esp_err_t i2c_err = i2c_param_config(EPDIY_I2C_PORT, &conf);
+    if (i2c_err != ESP_OK && i2c_err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(i2c_err);
+    }
+    i2c_err = i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    if (i2c_err != ESP_OK && i2c_err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(i2c_err);
+    }
 
     config_reg.port = EPDIY_I2C_PORT;
     config_reg.pwrup = false;
@@ -135,7 +144,11 @@ static void epd_board_init(uint32_t epd_row_width) {
     gpio_set_direction(CFG_INTR, GPIO_MODE_INPUT);
     gpio_set_intr_type(CFG_INTR, GPIO_INTR_NEGEDGE);
 
-    ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_EDGE));
+    // ISR service may already be installed by other code
+    esp_err_t isr_err = gpio_install_isr_service(ESP_INTR_FLAG_EDGE);
+    if (isr_err != ESP_OK && isr_err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(isr_err);
+    }
 
     ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void*)CFG_INTR));
 
