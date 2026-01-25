@@ -18,12 +18,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/rmt_tx.h>
 #include <driver/rmt_types.h>
 #include <driver/rmt_types_legacy.h>
 #include <esp_private/periph_ctrl.h>
 #include <hal/rmt_types.h>
 #include <soc/clk_tree_defs.h>
+#else
+#include <driver/periph_ctrl.h>
+#include <driver/rmt.h>
+#include <esp_rom_gpio.h>
+#include <soc/rmt_struct.h>
+#include "idf-4-backports.h"
+#endif
 
 #include <driver/gpio.h>
 #include <esp_check.h>
@@ -45,17 +53,7 @@
 #include <soc/lcd_periph.h>
 #include <soc/rmt_struct.h>
 
-#include "hal/gpio_hal.h"
-
-gpio_hal_context_t hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
-
 #define TAG "epdiy"
-
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 2)
-#define LCD_PERIPH_SIGNALS lcd_periph_signals
-#else
-#define LCD_PERIPH_SIGNALS lcd_periph_rgb_signals
-#endif
 
 static inline int min(int x, int y) {
     return x < y ? x : y;
@@ -72,6 +70,7 @@ static inline int max(int x, int y) {
 
 #define RMT_CKV_CHAN RMT_CHANNEL_1
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access
 // to RMTMEM through the rmt_private.h header which we can't access outside the sdk. Declare our own
 // extern here to properly use the RMTMEM smybol defined in
@@ -79,6 +78,7 @@ static inline int max(int x, int y) {
 // old rmt_block_mem_t struct. Same data fields, different names
 typedef rmt_mem_t rmt_block_mem_t;
 extern rmt_block_mem_t RMTMEM;
+#endif
 
 // spinlock for protecting the critical section at frame start
 static portMUX_TYPE frame_start_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -124,7 +124,7 @@ typedef struct {
     int display_lines;
 } s3_lcd_t;
 
-static s3_lcd_t lcd = { 0 };
+static s3_lcd_t lcd = {0};
 
 void IRAM_ATTR epd_lcd_line_source_cb(line_cb_func_t line_source, void* payload) {
     lcd.line_source_cb = line_source;
@@ -178,14 +178,20 @@ static void ckv_rmt_build_signal() {
  * Configure the RMT peripheral for use as the CKV clock.
  */
 static void init_ckv_rmt() {
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_enable(PERIPH_RMT_MODULE);
+    periph_module_reset(rmt_periph_signals.groups[0].module);
+    periph_module_enable(rmt_periph_signals.groups[0].module);
 
     rmt_ll_enable_periph_clock(&RMT, true);
 
     // Divide 80MHz APB Clock by 8 -> .1us resolution delay
     // idf >= 5.0 calculates the clock divider differently
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
+#else
+    rmt_ll_set_group_clock_src(
+        &RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0
+    );
+#endif
     rmt_ll_tx_set_channel_clock_div(&RMT, RMT_CKV_CHAN, 8);
     rmt_ll_tx_set_mem_blocks(&RMT, RMT_CKV_CHAN, 2);
     rmt_ll_enable_mem_access_nonfifo(&RMT, true);
@@ -194,7 +200,7 @@ static void init_ckv_rmt() {
 
     rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
 
-    gpio_hal_func_sel(&hal, lcd.config.bus.ckv, PIN_FUNC_GPIO);
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.ckv], PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
     esp_rom_gpio_connect_out_signal(
         lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0
@@ -207,8 +213,8 @@ static void init_ckv_rmt() {
  * Reset the CKV RMT configuration.
  */
 static void deinit_ckv_rmt() {
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_disable(PERIPH_RMT_MODULE);
+    periph_module_reset(rmt_periph_signals.groups[0].module);
+    periph_module_disable(rmt_periph_signals.groups[0].module);
 
     gpio_reset_pin(lcd.config.bus.ckv);
 }
@@ -255,7 +261,9 @@ __attribute__((optimize("O3"))) IRAM_ATTR static void lcd_isr_vsync(void* args) 
 
 // ISR handling bounce buffer refill
 static IRAM_ATTR bool lcd_rgb_panel_eof_handler(
-    gdma_channel_handle_t dma_chan, gdma_event_data_t* event_data, void* user_data
+    gdma_channel_handle_t dma_chan,
+    gdma_event_data_t* event_data,
+    void* user_data
 ) {
     dma_descriptor_t* desc = (dma_descriptor_t*)event_data->tx_eof_desc_addr;
     // Figure out which bounce buffer to write to.
@@ -327,27 +335,28 @@ static esp_err_t init_bus_gpio() {
 
     // connect peripheral signals via GPIO matrix
     for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
-        gpio_hal_func_sel(&hal, DATA_LINES[i], PIN_FUNC_GPIO);
+        gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[DATA_LINES[i]], PIN_FUNC_GPIO);
         gpio_set_direction(DATA_LINES[i], GPIO_MODE_OUTPUT);
         esp_rom_gpio_connect_out_signal(
-            DATA_LINES[i], LCD_PERIPH_SIGNALS.panels[0].data_sigs[i], false, false
+            DATA_LINES[i], lcd_periph_signals.panels[0].data_sigs[i], false, false
         );
     }
-    gpio_hal_func_sel(&hal, lcd.config.bus.leh, PIN_FUNC_GPIO);
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.leh], PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.leh, GPIO_MODE_OUTPUT);
-    gpio_hal_func_sel(&hal, lcd.config.bus.clock, PIN_FUNC_GPIO);
-    gpio_set_direction(lcd.config.bus.clock, GPIO_MODE_OUTPUT);
-    gpio_hal_func_sel(&hal, lcd.config.bus.start_pulse, PIN_FUNC_GPIO);
-    gpio_set_direction(lcd.config.bus.start_pulse, GPIO_MODE_OUTPUT);
+    esp_rom_gpio_connect_out_signal(
+        lcd.config.bus.leh, lcd_periph_signals.panels[0].hsync_sig, false, false
+    );
 
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.clock], PIN_FUNC_GPIO);
+    gpio_set_direction(lcd.config.bus.clock, GPIO_MODE_OUTPUT);
     esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.leh, LCD_PERIPH_SIGNALS.panels[0].hsync_sig, false, false
+        lcd.config.bus.clock, lcd_periph_signals.panels[0].pclk_sig, false, false
     );
+
+    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.start_pulse], PIN_FUNC_GPIO);
+    gpio_set_direction(lcd.config.bus.start_pulse, GPIO_MODE_OUTPUT);
     esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.clock, LCD_PERIPH_SIGNALS.panels[0].pclk_sig, false, false
-    );
-    esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.start_pulse, LCD_PERIPH_SIGNALS.panels[0].de_sig, false, false
+        lcd.config.bus.start_pulse, lcd_periph_signals.panels[0].de_sig, false, false
     );
 
     gpio_config_t vsync_gpio_conf = {
@@ -390,10 +399,8 @@ static void check_cache_configuration() {
             "speed."
         );
         ESP_LOGE(
-            "epdiy",
-            "Reducing the pixel clock from %d MHz to %d MHz for now!",
-            lcd.config.pixel_clock / 1000 / 1000,
-            lcd.config.pixel_clock / 1000 / 1000 / 2
+            "epdiy", "Reducing the pixel clock from %d MHz to %d MHz for now!",
+            lcd.config.pixel_clock / 1000 / 1000, lcd.config.pixel_clock / 1000 / 1000 / 2
         );
         lcd.config.pixel_clock = lcd.config.pixel_clock / 2;
 
@@ -410,7 +417,9 @@ static void check_cache_configuration() {
  * touching the LCD peripheral config.
  */
 static void assign_lcd_parameters_from_config(
-    const LcdEpdConfig_t* config, int display_width, int display_height
+    const LcdEpdConfig_t* config,
+    int display_width,
+    int display_height
 ) {
     // copy over the configuraiton object
     memcpy(&lcd.config, config, sizeof(LcdEpdConfig_t));
@@ -477,8 +486,8 @@ static esp_err_t init_lcd_peripheral() {
     esp_err_t ret = ESP_OK;
 
     // enable APB to access LCD registers
-    periph_module_enable(PERIPH_LCD_CAM_MODULE);
-    periph_module_reset(PERIPH_LCD_CAM_MODULE);
+    periph_module_enable(lcd_periph_signals.panels[0].module);
+    periph_module_reset(lcd_periph_signals.panels[0].module);
 
     lcd_hal_init(&lcd.hal, 0);
     lcd_ll_enable_clock(lcd.hal.dev, true);
@@ -487,10 +496,9 @@ static esp_err_t init_lcd_peripheral() {
 
     // install interrupt service, (LCD peripheral shares the interrupt source with Camera by
     // different mask)
-    int flags = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_SHARED
-                | ESP_INTR_FLAG_LOWMED;
-
-    int source = LCD_PERIPH_SIGNALS.panels[0].irq_id;
+    int flags = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_SHARED |
+                ESP_INTR_FLAG_LOWMED;
+    int source = lcd_periph_signals.panels[0].irq_id;
     uint32_t status = (uint32_t)lcd_ll_get_interrupt_status_reg(lcd.hal.dev);
     ret = esp_intr_alloc_intrstatus(
         source, flags, status, LCD_LL_EVENT_VSYNC_END, lcd_isr_vsync, NULL, &lcd.vsync_intr
@@ -512,12 +520,7 @@ static esp_err_t init_lcd_peripheral() {
 
     // enable RGB mode and set data width
     lcd_ll_enable_rgb_mode(lcd.hal.dev, true);
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
-    lcd_ll_set_dma_read_stride(lcd.hal.dev, lcd.config.bus_width);
-    lcd_ll_set_data_wire_width(lcd.hal.dev, lcd.config.bus_width);
-#else
     lcd_ll_set_data_width(lcd.hal.dev, lcd.config.bus_width);
-#endif
     lcd_ll_set_phase_cycles(lcd.hal.dev, 0, (lcd.dummy_bytes > 0), 1);  // enable data phase only
     lcd_ll_enable_output_hsync_in_porch_region(lcd.hal.dev, false);     // enable data phase only
 
@@ -553,8 +556,8 @@ static void deinit_lcd_peripheral() {
     lcd_ll_fifo_reset(lcd.hal.dev);
     lcd_ll_reset(lcd.hal.dev);
 
-    periph_module_reset(PERIPH_LCD_CAM_MODULE);
-    periph_module_disable(PERIPH_LCD_CAM_MODULE);
+    periph_module_reset(lcd_periph_signals.panels[0].module);
+    periph_module_disable(lcd_periph_signals.panels[0].module);
 }
 
 /**
@@ -611,32 +614,12 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
 
     // set pclk
     int flags = 0;
-
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
-    hal_utils_clk_div_t clk_div = {};
-/**
- * There was a change in the parameters of this function in this commit:
- * https://github.com/espressif/esp-idf/commit/d39388fe4f4c5bfb0b52df9177307b1688f41016#diff-2df607d77e3f6e350bab8eb31cfd914500ae42744564e1640cec47006cc17a9c
- * There are different builds with the same IDF minor version, some with, some without the commit.
- * So we try to select the correct one by checking if the flag value is defined.
- */
-#ifdef LCD_HAL_PCLK_FLAG_ALLOW_EQUAL_SYSCLK
-    uint32_t freq
-        = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags, &clk_div);
-#else
-    uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, &clk_div);
-#endif
-    lcd_ll_set_group_clock_coeff(
-        &LCD_CAM, (int)clk_div.integer, (int)clk_div.denominator, (int)clk_div.numerator
-    );
-#else
     uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, flags);
-#endif
-
     ESP_LOGI(TAG, "pclk freq: %d Hz", freq);
-    lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1)
-                             * 1000000 / lcd.config.pixel_clock
-                         + 1;
+    lcd.line_length_us =
+        (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1) * 1000000 /
+            lcd.config.pixel_clock +
+        1;
     lcd.line_cycles = lcd.line_length_us * lcd.config.pixel_clock / 1000000;
     ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
 
@@ -647,17 +630,14 @@ void IRAM_ATTR epd_lcd_start_frame() {
     int initial_lines = min(LINE_BATCH, lcd.display_lines);
 
     // hsync: pulse with, back porch, active width, front porch
-    int end_line
-        = lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
+    int end_line =
+        lcd.line_cycles - lcd.lcd_res_h - lcd.config.le_high_time - lcd.config.line_front_porch;
     lcd_ll_set_horizontal_timing(
-        lcd.hal.dev,
-        lcd.config.le_high_time - (lcd.dummy_bytes > 0),
-        lcd.config.line_front_porch,
+        lcd.hal.dev, lcd.config.le_high_time - (lcd.dummy_bytes > 0), lcd.config.line_front_porch,
         // a dummy byte is neeed in 8 bit mode to work around LCD peculiarities
-        lcd.lcd_res_h + (lcd.dummy_bytes > 0),
-        end_line
+        lcd.lcd_res_h + (lcd.dummy_bytes > 0), end_line
     );
-    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 0, initial_lines, 1);
+    lcd_ll_set_vertical_timing(lcd.hal.dev, 1, 1, initial_lines, 1);
 
     // generate the hsync at the very beginning of line
     lcd_ll_set_hsync_position(lcd.hal.dev, 1);
