@@ -18,12 +18,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/rmt_tx.h>
 #include <driver/rmt_types.h>
 #include <driver/rmt_types_legacy.h>
 #include <esp_private/periph_ctrl.h>
 #include <hal/rmt_types.h>
 #include <soc/clk_tree_defs.h>
+#else
+#include <driver/periph_ctrl.h>
+#include <driver/rmt.h>
+#include <esp_rom_gpio.h>
+#include <soc/rmt_struct.h>
+#include "idf-4-backports.h"
+#endif
 
 #include <driver/gpio.h>
 #include <esp_check.h>
@@ -51,10 +59,19 @@ gpio_hal_context_t hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
 #define TAG "epdiy"
 
+// In IDF 5.3.2+, lcd_periph_signals was renamed to lcd_periph_rgb_signals
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 2)
 #define LCD_PERIPH_SIGNALS lcd_periph_signals
 #else
 #define LCD_PERIPH_SIGNALS lcd_periph_rgb_signals
+#endif
+
+// Use named peripheral module defines where available, struct-based as fallback
+#ifndef PERIPH_LCD_CAM_MODULE
+#define PERIPH_LCD_CAM_MODULE LCD_PERIPH_SIGNALS.panels[0].module
+#endif
+#ifndef PERIPH_RMT_MODULE
+#define PERIPH_RMT_MODULE rmt_periph_signals.groups[0].module
 #endif
 
 static inline int min(int x, int y) {
@@ -72,6 +89,7 @@ static inline int max(int x, int y) {
 
 #define RMT_CKV_CHAN RMT_CHANNEL_1
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access
 // to RMTMEM through the rmt_private.h header which we can't access outside the sdk. Declare our own
 // extern here to properly use the RMTMEM smybol defined in
@@ -79,6 +97,7 @@ static inline int max(int x, int y) {
 // old rmt_block_mem_t struct. Same data fields, different names
 typedef rmt_mem_t rmt_block_mem_t;
 extern rmt_block_mem_t RMTMEM;
+#endif
 
 // spinlock for protecting the critical section at frame start
 static portMUX_TYPE frame_start_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -185,7 +204,11 @@ static void init_ckv_rmt() {
 
     // Divide 80MHz APB Clock by 8 -> .1us resolution delay
     // idf >= 5.0 calculates the clock divider differently
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
+#else
+    rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0);
+#endif
     rmt_ll_tx_set_channel_clock_div(&RMT, RMT_CKV_CHAN, 8);
     rmt_ll_tx_set_mem_blocks(&RMT, RMT_CKV_CHAN, 2);
     rmt_ll_enable_mem_access_nonfifo(&RMT, true);
