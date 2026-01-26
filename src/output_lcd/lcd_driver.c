@@ -66,14 +66,6 @@ gpio_hal_context_t hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 #define LCD_PERIPH_SIGNALS lcd_periph_rgb_signals
 #endif
 
-// Use named peripheral module defines where available, struct-based as fallback
-#ifndef PERIPH_LCD_CAM_MODULE
-#define PERIPH_LCD_CAM_MODULE LCD_PERIPH_SIGNALS.panels[0].module
-#endif
-#ifndef PERIPH_RMT_MODULE
-#define PERIPH_RMT_MODULE rmt_periph_signals.groups[0].module
-#endif
-
 static inline int min(int x, int y) {
     return x < y ? x : y;
 }
@@ -207,7 +199,9 @@ static void init_ckv_rmt() {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
 #else
-    rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0);
+    rmt_ll_set_group_clock_src(
+        &RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0
+    );
 #endif
     rmt_ll_tx_set_channel_clock_div(&RMT, RMT_CKV_CHAN, 8);
     rmt_ll_tx_set_mem_blocks(&RMT, RMT_CKV_CHAN, 2);
