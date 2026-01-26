@@ -382,7 +382,7 @@ static esp_err_t init_dma_trans_link() {
     // alloc DMA channel and connect to LCD peripheral
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
     // IDF 6.x: config has no direction; allocate TX only (pass NULL for RX)
-    gdma_channel_alloc_config_t dma_chan_config = {0};
+    gdma_channel_alloc_config_t dma_chan_config = { 0 };
     ESP_RETURN_ON_ERROR(
         gdma_new_ahb_channel(&dma_chan_config, &lcd.dma_chan, NULL), TAG, "alloc DMA channel failed"
     );
@@ -402,9 +402,7 @@ static esp_err_t init_dma_trans_link() {
         .max_data_burst_size = 64,
         .access_ext_mem = true,
     };
-    ESP_RETURN_ON_ERROR(
-        gdma_config_transfer(lcd.dma_chan, &trans_cfg), TAG, "dma setup error"
-    );
+    ESP_RETURN_ON_ERROR(gdma_config_transfer(lcd.dma_chan, &trans_cfg), TAG, "dma setup error");
 #else
     gdma_transfer_ability_t ability = {
         .psram_trans_align = 64,
@@ -446,9 +444,7 @@ static esp_err_t init_bus_gpio() {
     for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
         gpio_hal_func_sel(&hal, DATA_LINES[i], PIN_FUNC_GPIO);
         gpio_set_direction(DATA_LINES[i], GPIO_MODE_OUTPUT);
-        esp_rom_gpio_connect_out_signal(
-            DATA_LINES[i], LCD_PERIPH_SIG(data_sigs[i]), false, false
-        );
+        esp_rom_gpio_connect_out_signal(DATA_LINES[i], LCD_PERIPH_SIG(data_sigs[i]), false, false);
     }
     gpio_hal_func_sel(&hal, lcd.config.bus.leh, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.leh, GPIO_MODE_OUTPUT);
@@ -457,12 +453,8 @@ static esp_err_t init_bus_gpio() {
     gpio_hal_func_sel(&hal, lcd.config.bus.start_pulse, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.start_pulse, GPIO_MODE_OUTPUT);
 
-    esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.leh, LCD_PERIPH_SIG(hsync_sig), false, false
-    );
-    esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.clock, LCD_PERIPH_SIG(pclk_sig), false, false
-    );
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.leh, LCD_PERIPH_SIG(hsync_sig), false, false);
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.clock, LCD_PERIPH_SIG(pclk_sig), false, false);
     esp_rom_gpio_connect_out_signal(
         lcd.config.bus.start_pulse, LCD_PERIPH_SIG(de_sig), false, false
     );

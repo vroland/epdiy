@@ -78,7 +78,7 @@ void rmt_pulse_init(gpio_num_t pin) {
     RMT.conf_ch[RMT_PULSE_CHANNEL].conf0.carrier_out_lv = 0;
     RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.tx_conti_mode = 0;  // loop_en = false
     RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.idle_out_en = 1;
-    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.idle_out_lv = 0;    // idle level low
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.idle_out_lv = 0;  // idle level low
 
     // Connect GPIO to RMT channel
     gpio_set_direction(pin, GPIO_MODE_OUTPUT);
