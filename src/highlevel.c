@@ -31,7 +31,8 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
 
     int fb_size = epd_width() / 2 * epd_height();
 
-#if !(defined(CONFIG_ESP32_SPIRAM_SUPPORT) || defined(CONFIG_ESP32S3_SPIRAM_SUPPORT))
+#if !(defined(CONFIG_ESP32_SPIRAM_SUPPORT) || defined(CONFIG_ESP32S3_SPIRAM_SUPPORT) \
+      || defined(CONFIG_SPIRAM))
     ESP_LOGW(
         "EPDiy", "Please enable PSRAM for the ESP32 (menuconfig→ Component config→ ESP32-specific)"
     );

@@ -25,6 +25,7 @@ jobs:
           - v5.2
           - v5.3
           - v5.4
+          - v6.0
         target:
           - esp32
           - esp32s3
@@ -41,8 +42,20 @@ jobs:
             example: www-image
           - version: v5.4
             example: calibration_helper
+          # IDF 6.0 extended examples (mirrors v5.4 set)
+          - version: v6.0
+            example: screen_diag
+          - version: v6.0
+            example: dragon
+          - version: v6.0
+            example: grayscale_test
+          - version: v6.0
+            example: www-image
+          - version: v6.0
+            example: calibration_helper
 
-    continue-on-error: ${{ matrix.version == 'latest' }}
+    # Allow IDF 6.0 to fail while it is pre-release; remove once stable
+    continue-on-error: ${{ matrix.version == 'latest' || matrix.version == 'v6.0' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +67,7 @@ jobs:
           target: ${{ matrix.target }}
           path: 'examples/${{ matrix.example }}'
 
+  # Arduino-ESP32 IDF 6 support is pending upstream; keep on IDF 5.x for now
   build-arduino:
     runs-on: ubuntu-latest
     container:
