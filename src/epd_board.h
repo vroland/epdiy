@@ -126,6 +126,7 @@ extern const EpdBoardDefinition epd_board_v5;
 extern const EpdBoardDefinition epd_board_v6;
 extern const EpdBoardDefinition epd_board_v7;
 extern const EpdBoardDefinition epd_board_v7_raw;
+extern const EpdBoardDefinition sverio_paperboard_v1;
 
 /**
  * Helper for short, precise delays.
