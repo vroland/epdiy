@@ -2,18 +2,19 @@
 
 #include <stdint.h>
 #include "epd_internals.h"
-
 /**
  * Display type as "compatibility classes",
  * Grouping displays by workarounds needed.
  */
 enum EpdDisplayType {
-    /// A generic EPD, assume default config.
-    DISPLAY_TYPE_GENERIC,
-    /// Fast display where we can get away with low hold times.
-    DISPLAY_TYPE_ED097TC2,
+    /// A generic EPD, no specific flags set.
+    DISPLAY_TYPE_GENERIC = 0x00,  // 0000 (no flags)
     /// Display with horizontal mirroring.
-    DISPLAY_TYPE_HORIZONTAL_MIRRORED,
+    DISPLAY_TYPE_HORIZONTAL_MIRRORED = (1 << 0),  // 0001 (bit 0)
+    /// Fast display where low hold times are required.
+    DISPLAY_TYPE_ED097TC2 = (1 << 1),  // 0010 (bit 1)
+    /// Up voltage sequence.
+    DISPLAY_UPSEQ_MC2 = (1 << 2),  // 0100 (bit 2)
 };
 
 typedef struct {
@@ -43,3 +44,4 @@ extern const EpdDisplay_t ED047TC1;
 extern const EpdDisplay_t ED047TC2;
 extern const EpdDisplay_t ED078KC1;
 extern const EpdDisplay_t ED052TC4;
+extern const EpdDisplay_t ED103MC2;
