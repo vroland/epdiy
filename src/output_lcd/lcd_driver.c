@@ -83,6 +83,13 @@ extern const soc_lcd_rgb_signal_desc_t soc_lcd_rgb_signals[LCD_LL_GET(RGB_PANEL_
 
 gpio_hal_context_t hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
+// On IDF 5.5+, PERIPH_RCC_ATOMIC() declares __DECLARE_RCC_ATOMIC_ENV as a variable.
+// The workaround define in lcd_driver.h (from #452) must be undone here so it
+// doesn't collide with that declaration.
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+#undef __DECLARE_RCC_ATOMIC_ENV
+#endif
+
 #define TAG "epdiy"
 
 // In IDF 5.3.2+, lcd_periph_signals was renamed to lcd_periph_rgb_signals
