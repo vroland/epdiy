@@ -34,7 +34,11 @@ set(app_sources "src/epdiy.c"
 
 
 # Can also use IDF_VER for the full esp-idf version string but that is harder to parse. i.e. v4.1.1, v5.0-beta1, etc
-if (${IDF_VERSION_MAJOR} GREATER 4)
+if (${IDF_VERSION_MAJOR} GREATER 5)
+    # IDF 6.x: legacy drivers removed, sub-components split out
+    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/"
+        REQUIRES driver esp_timer esp_adc esp_lcd esp_hal_dma esp_driver_rmt esp_driver_gpio)
+elseif (${IDF_VERSION_MAJOR} GREATER 4)
     idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES driver esp_timer esp_adc esp_lcd)
 else()
     idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES esp_adc_cal esp_timer esp_lcd)

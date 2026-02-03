@@ -25,6 +25,7 @@ jobs:
           - v5.2
           - v5.3
           - v5.4
+          - release-v6.0
         target:
           - esp32
           - esp32s3
@@ -41,19 +42,45 @@ jobs:
             example: www-image
           - version: v5.4
             example: calibration_helper
+          # IDF 6.0 extended examples (mirrors v5.4 set)
+          - version: release-v6.0
+            example: screen_diag
+          - version: release-v6.0
+            example: dragon
+          - version: release-v6.0
+            example: grayscale_test
+          - version: release-v6.0
+            example: www-image
+          - version: release-v6.0
+            example: calibration_helper
 
-    continue-on-error: ${{ matrix.version == 'latest' }}
+    # Allow IDF 6.0 to fail while it is pre-release; switch to v6.0 once stable
+    continue-on-error: ${{ matrix.version == 'latest' || matrix.version == 'release-v6.0' }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+      # IDF 6 kconfgen crashes on large sdkconfig.defaults from IDF 5
+      # (upstream bug: choice.selection is None). Use minimal defaults.
+      - name: Use minimal sdkconfig for IDF 6
+        if: startsWith(matrix.version, 'release-v6') || startsWith(matrix.version, 'v6')
+        run: |
+          for f in examples/${{ matrix.example }}/sdkconfig.defaults.*; do
+            [ -f "$f" ] && : > "$f"
+          done
+          printf '%s\n' \
+            "CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y" \
+            "CONFIG_COMPILER_OPTIMIZATION_PERF=y" \
+            "CONFIG_SPIRAM=y" \
+            > examples/${{ matrix.example }}/sdkconfig.defaults
       - uses: 'espressif/esp-idf-ci-action@main'
         with:
           esp_idf_version: ${{ matrix.version }}
           target: ${{ matrix.target }}
           path: 'examples/${{ matrix.example }}'
 
+  # Arduino-ESP32 IDF 6 support is pending upstream; keep on IDF 5.x for now
   build-arduino:
     runs-on: ubuntu-latest
     container:

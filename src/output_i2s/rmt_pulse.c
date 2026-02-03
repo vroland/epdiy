@@ -3,17 +3,15 @@
 
 #ifdef RENDER_METHOD_I2S
 
-#include "driver/rmt.h"
+#include <esp_idf_version.h>
+
 #include "rmt_pulse.h"
 
 #include "soc/rmt_struct.h"
 
 static intr_handle_t gRMT_intr_handle = NULL;
 
-// the RMT channel configuration object
-static rmt_config_t row_rmt_config;
-
-// keep track of wether the current pulse is ongoing
+// keep track of whether the current pulse is ongoing
 volatile bool rmt_tx_done = true;
 
 /**
@@ -26,11 +24,115 @@ static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
 
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access
 // to RMTMEM through the rmt_private.h header which we can't access outside the sdk. Declare our own
-// extern here to properly use the RMTMEM smybol defined in
+// extern here to properly use the RMTMEM symbol defined in
 // components/soc/[target]/ld/[target].peripherals.ld Also typedef the new rmt_mem_t struct to the
 // old rmt_block_mem_t struct. Same data fields, different names
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+// IDF 6.x: rmt_mem_t and rmt_item32_t removed with legacy driver.
+// Define compatible types for direct RMT memory access.
+#include <hal/rmt_types.h>
+#include <hal/rmt_ll.h>
+#include <hal/rmt_periph.h>
+#include <soc/rmt_reg.h>
+typedef struct {
+    union {
+        struct {
+            uint32_t duration0 : 15;
+            uint32_t level0 : 1;
+            uint32_t duration1 : 15;
+            uint32_t level1 : 1;
+        };
+        uint32_t val;
+    };
+} rmt_item32_t;
+#ifndef SOC_RMT_MEM_WORDS_PER_CHANNEL
+#define SOC_RMT_MEM_WORDS_PER_CHANNEL 48
+#endif
+typedef struct {
+    struct {
+        rmt_item32_t data32[SOC_RMT_MEM_WORDS_PER_CHANNEL];
+    } chan[RMT_LL_CHANS_PER_INST];
+} rmt_block_mem_t;
+extern rmt_block_mem_t RMTMEM;
+
+// Channel index used for RMT pulse generation
+#define RMT_PULSE_CHANNEL 1
+#define RMT_MEM_OWNER_TX 1
+
+#include <esp_private/periph_ctrl.h>
+#include <driver/gpio.h>
+#include "esp_rom_gpio.h"
+
+void rmt_pulse_init(gpio_num_t pin) {
+    // Enable RMT peripheral clock via LL (PERIPH_RMT_MODULE removed in IDF 6)
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_reset_register(0);
+        rmt_ll_enable_bus_clock(0, true);
+    }
+
+    // Configure channel via direct register access (legacy rmt_config() removed in IDF 6)
+    // Set clock divider: 80MHz / 8 = 10MHz -> 0.1us resolution
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf0.div_cnt = 8;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf0.mem_size = 2;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf0.carrier_en = 0;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf0.carrier_out_lv = 0;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.tx_conti_mode = 0;  // loop_en = false
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.idle_out_en = 1;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.idle_out_lv = 0;  // idle level low
+
+    // Connect GPIO to RMT channel
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+    esp_rom_gpio_connect_out_signal(
+        pin, soc_rmt_signals[0].channels[RMT_PULSE_CHANNEL].tx_sig, false, false
+    );
+
+    // Allocate interrupt
+    esp_intr_alloc(
+        ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3, rmt_interrupt_handler, 0, &gRMT_intr_handle
+    );
+
+    // Enable TX done interrupt for this channel
+    RMT.int_ena.val |= (1 << (RMT_PULSE_CHANNEL * 3));  // TX_END interrupt bit
+}
+
+void rmt_pulse_deinit() {
+    esp_intr_disable(gRMT_intr_handle);
+    esp_intr_free(gRMT_intr_handle);
+}
+
+void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks, uint16_t low_time_ticks, bool wait) {
+    while (!rmt_tx_done) {
+    };
+    volatile rmt_item32_t* rmt_mem_ptr = &(RMTMEM.chan[RMT_PULSE_CHANNEL].data32[0]);
+    if (high_time_ticks > 0) {
+        rmt_mem_ptr->level0 = 1;
+        rmt_mem_ptr->duration0 = high_time_ticks;
+        rmt_mem_ptr->level1 = 0;
+        rmt_mem_ptr->duration1 = low_time_ticks;
+    } else {
+        rmt_mem_ptr->level0 = 1;
+        rmt_mem_ptr->duration0 = low_time_ticks;
+        rmt_mem_ptr->level1 = 0;
+        rmt_mem_ptr->duration1 = 0;
+    }
+    RMTMEM.chan[RMT_PULSE_CHANNEL].data32[1].val = 0;
+    rmt_tx_done = false;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.mem_rd_rst = 1;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.mem_owner = RMT_MEM_OWNER_TX;
+    RMT.conf_ch[RMT_PULSE_CHANNEL].conf1.tx_start = 1;
+    while (wait && !rmt_tx_done) {
+    };
+}
+
+#else
+// IDF 4.x / 5.x: use legacy RMT driver
+#include "driver/rmt.h"
+
 typedef rmt_mem_t rmt_block_mem_t;
 extern rmt_block_mem_t RMTMEM;
+
+// the RMT channel configuration object
+static rmt_config_t row_rmt_config;
 
 void rmt_pulse_init(gpio_num_t pin) {
     row_rmt_config.rmt_mode = RMT_MODE_TX;
@@ -85,6 +187,7 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks, uint16_t low_time_ticks
     while (wait && !rmt_tx_done) {
     };
 }
+#endif
 
 void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us, bool wait) {
     pulse_ckv_ticks(10 * high_time_us, 10 * low_time_us, wait);

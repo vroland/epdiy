@@ -11,8 +11,6 @@
 #include <assert.h>
 #include <esp_idf_version.h>
 #include <esp_log.h>
-#include <soc/lcd_periph.h>
-#include <soc/rmt_periph.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -21,7 +19,9 @@
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/rmt_tx.h>
 #include <driver/rmt_types.h>
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
 #include <driver/rmt_types_legacy.h>
+#endif
 #include <esp_private/periph_ctrl.h>
 #include <hal/rmt_types.h>
 #include <soc/clk_tree_defs.h>
@@ -49,21 +49,57 @@
 #include <hal/lcd_hal.h>
 #include <hal/lcd_ll.h>
 #include <hal/rmt_ll.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#if __has_include(<rom/cache.h>)
+#include <rom/cache.h>
+#elif __has_include(<esp32s3/rom/cache.h>)
+#include <esp32s3/rom/cache.h>
+#endif
+// Declare LCD peripheral signals from hal/lcd_periph.h without pulling in
+// its transitive I2S dependency. The struct and extern match lcd_periph.h.
+typedef struct {
+    const shared_periph_module_t module;
+    const int irq_id;
+    const int data_sigs[LCD_LL_GET(RGB_BUS_WIDTH)];
+    const int hsync_sig;
+    const int vsync_sig;
+    const int pclk_sig;
+    const int de_sig;
+    const int disp_sig;
+} soc_lcd_rgb_signal_desc_t;
+extern const soc_lcd_rgb_signal_desc_t soc_lcd_rgb_signals[LCD_LL_GET(RGB_PANEL_NUM)];
+#else
 #include <rom/cache.h>
 #include <soc/lcd_periph.h>
+#endif
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#include <hal/rmt_periph.h>
+#else
+#include <soc/rmt_periph.h>
+#endif
 #include <soc/rmt_struct.h>
 
 #include "hal/gpio_hal.h"
 
 gpio_hal_context_t hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
+// On IDF 5.5+, PERIPH_RCC_ATOMIC() declares __DECLARE_RCC_ATOMIC_ENV as a variable.
+// The workaround define in lcd_driver.h (from #452) must be undone here so it
+// doesn't collide with that declaration.
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+#undef __DECLARE_RCC_ATOMIC_ENV
+#endif
+
 #define TAG "epdiy"
 
 // In IDF 5.3.2+, lcd_periph_signals was renamed to lcd_periph_rgb_signals
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 2)
-#define LCD_PERIPH_SIGNALS lcd_periph_signals
+// In IDF 6.x, it became soc_lcd_rgb_signals indexed by panel number
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define LCD_PERIPH_SIG(member) soc_lcd_rgb_signals[0].member
+#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 2)
+#define LCD_PERIPH_SIG(member) lcd_periph_rgb_signals.panels[0].member
 #else
-#define LCD_PERIPH_SIGNALS lcd_periph_rgb_signals
+#define LCD_PERIPH_SIG(member) lcd_periph_signals.panels[0].member
 #endif
 
 static inline int min(int x, int y) {
@@ -79,17 +115,48 @@ static inline int max(int x, int y) {
 #define LINE_BATCH 1000
 #define BOUNCE_BUF_LINES 4
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+// IDF 6.x: legacy RMT enums removed, define channel index directly
+#define RMT_CKV_CHAN 1
+#else
 #define RMT_CKV_CHAN RMT_CHANNEL_1
+#endif
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 // The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access
 // to RMTMEM through the rmt_private.h header which we can't access outside the sdk. Declare our own
-// extern here to properly use the RMTMEM smybol defined in
+// extern here to properly use the RMTMEM symbol defined in
 // components/soc/[target]/ld/[target].peripherals.ld Also typedef the new rmt_mem_t struct to the
 // old rmt_block_mem_t struct. Same data fields, different names
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+// IDF 6.x: rmt_mem_t and rmt_item32_t removed with legacy driver.
+// Define compatible types for direct RMT memory access.
+#include <soc/rmt_reg.h>
+typedef struct {
+    union {
+        struct {
+            uint32_t duration0 : 15;
+            uint32_t level0 : 1;
+            uint32_t duration1 : 15;
+            uint32_t level1 : 1;
+        };
+        uint32_t val;
+    };
+} rmt_item32_t;
+#ifndef SOC_RMT_MEM_WORDS_PER_CHANNEL
+#define SOC_RMT_MEM_WORDS_PER_CHANNEL 48
+#endif
+typedef struct {
+    struct {
+        rmt_item32_t data32[SOC_RMT_MEM_WORDS_PER_CHANNEL];
+    } chan[RMT_LL_CHANS_PER_INST];
+} rmt_block_mem_t;
+extern rmt_block_mem_t RMTMEM;
+#else
 typedef rmt_mem_t rmt_block_mem_t;
 extern rmt_block_mem_t RMTMEM;
 #endif
+#endif  // ESP_IDF_VERSION >= 5.0.0
 
 // spinlock for protecting the critical section at frame start
 static portMUX_TYPE frame_start_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -189,10 +256,18 @@ static void ckv_rmt_build_signal() {
  * Configure the RMT peripheral for use as the CKV clock.
  */
 static void init_ckv_rmt() {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_reset_register(0);
+        rmt_ll_enable_bus_clock(0, true);
+    }
+    rmt_ll_enable_group_clock(&RMT, true);
+#else
     periph_module_reset(PERIPH_RMT_MODULE);
     periph_module_enable(PERIPH_RMT_MODULE);
 
     rmt_ll_enable_periph_clock(&RMT, true);
+#endif
 
     // Divide 80MHz APB Clock by 8 -> .1us resolution delay
     // idf >= 5.0 calculates the clock divider differently
@@ -206,16 +281,22 @@ static void init_ckv_rmt() {
     rmt_ll_tx_set_channel_clock_div(&RMT, RMT_CKV_CHAN, 8);
     rmt_ll_tx_set_mem_blocks(&RMT, RMT_CKV_CHAN, 2);
     rmt_ll_enable_mem_access_nonfifo(&RMT, true);
-    rmt_ll_tx_fix_idle_level(&RMT, RMT_CKV_CHAN, RMT_IDLE_LEVEL_LOW, true);
+    rmt_ll_tx_fix_idle_level(&RMT, RMT_CKV_CHAN, 0, true);
     rmt_ll_tx_enable_carrier_modulation(&RMT, RMT_CKV_CHAN, false);
 
     rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
 
     gpio_hal_func_sel(&hal, lcd.config.bus.ckv, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    esp_rom_gpio_connect_out_signal(
+        lcd.config.bus.ckv, soc_rmt_signals[0].channels[RMT_CKV_CHAN].tx_sig, false, 0
+    );
+#else
     esp_rom_gpio_connect_out_signal(
         lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0
     );
+#endif
 
     ckv_rmt_build_signal();
 }
@@ -224,8 +305,15 @@ static void init_ckv_rmt() {
  * Reset the CKV RMT configuration.
  */
 static void deinit_ckv_rmt() {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_reset_register(0);
+        rmt_ll_enable_bus_clock(0, false);
+    }
+#else
     periph_module_reset(PERIPH_RMT_MODULE);
     periph_module_disable(PERIPH_RMT_MODULE);
+#endif
 
     gpio_reset_pin(lcd.config.bus.ckv);
 }
@@ -299,19 +387,36 @@ static esp_err_t init_dma_trans_link() {
     lcd.dma_nodes[1].next = &lcd.dma_nodes[0];
 
     // alloc DMA channel and connect to LCD peripheral
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    // IDF 6.x: config has no direction; allocate TX only (pass NULL for RX)
+    gdma_channel_alloc_config_t dma_chan_config = { 0 };
+    ESP_RETURN_ON_ERROR(
+        gdma_new_ahb_channel(&dma_chan_config, &lcd.dma_chan, NULL), TAG, "alloc DMA channel failed"
+    );
+#else
     gdma_channel_alloc_config_t dma_chan_config = {
         .direction = GDMA_CHANNEL_DIRECTION_TX,
     };
     ESP_RETURN_ON_ERROR(
         gdma_new_channel(&dma_chan_config, &lcd.dma_chan), TAG, "alloc DMA channel failed"
     );
+#endif
     gdma_trigger_t trigger = GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0);
     ESP_RETURN_ON_ERROR(gdma_connect(lcd.dma_chan, trigger), TAG, "dma connect error");
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    // IDF 6.x: alignment fields replaced by burst size + ext mem flag
+    gdma_transfer_config_t trans_cfg = {
+        .max_data_burst_size = 64,
+        .access_ext_mem = true,
+    };
+    ESP_RETURN_ON_ERROR(gdma_config_transfer(lcd.dma_chan, &trans_cfg), TAG, "dma setup error");
+#else
     gdma_transfer_ability_t ability = {
         .psram_trans_align = 64,
         .sram_trans_align = 4,
     };
     ESP_RETURN_ON_ERROR(gdma_set_transfer_ability(lcd.dma_chan, &ability), TAG, "dma setup error");
+#endif
 
     gdma_tx_event_callbacks_t cbs = {
         .on_trans_eof = lcd_rgb_panel_eof_handler,
@@ -346,9 +451,7 @@ static esp_err_t init_bus_gpio() {
     for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
         gpio_hal_func_sel(&hal, DATA_LINES[i], PIN_FUNC_GPIO);
         gpio_set_direction(DATA_LINES[i], GPIO_MODE_OUTPUT);
-        esp_rom_gpio_connect_out_signal(
-            DATA_LINES[i], LCD_PERIPH_SIGNALS.panels[0].data_sigs[i], false, false
-        );
+        esp_rom_gpio_connect_out_signal(DATA_LINES[i], LCD_PERIPH_SIG(data_sigs[i]), false, false);
     }
     gpio_hal_func_sel(&hal, lcd.config.bus.leh, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.leh, GPIO_MODE_OUTPUT);
@@ -357,14 +460,10 @@ static esp_err_t init_bus_gpio() {
     gpio_hal_func_sel(&hal, lcd.config.bus.start_pulse, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.start_pulse, GPIO_MODE_OUTPUT);
 
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.leh, LCD_PERIPH_SIG(hsync_sig), false, false);
+    esp_rom_gpio_connect_out_signal(lcd.config.bus.clock, LCD_PERIPH_SIG(pclk_sig), false, false);
     esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.leh, LCD_PERIPH_SIGNALS.panels[0].hsync_sig, false, false
-    );
-    esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.clock, LCD_PERIPH_SIGNALS.panels[0].pclk_sig, false, false
-    );
-    esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.start_pulse, LCD_PERIPH_SIGNALS.panels[0].de_sig, false, false
+        lcd.config.bus.start_pulse, LCD_PERIPH_SIG(de_sig), false, false
     );
 
     gpio_config_t vsync_gpio_conf = {
@@ -393,13 +492,21 @@ static void deinit_bus_gpio() {
 /**
  * Check if the PSRAM cache is properly configured.
  */
+// Handle Kconfig name changes across IDF versions
+#if defined(CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE)
+#define EPDIY_DATA_CACHE_LINE_SIZE CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE
+#elif defined(CONFIG_DATA_CACHE_LINE_SIZE)
+#define EPDIY_DATA_CACHE_LINE_SIZE CONFIG_DATA_CACHE_LINE_SIZE
+#else
+#define EPDIY_DATA_CACHE_LINE_SIZE 64
+#endif
 static void check_cache_configuration() {
-    if (CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE < 64) {
+    if (EPDIY_DATA_CACHE_LINE_SIZE < 64) {
         ESP_LOGE(
             "epdiy",
             "cache line size is set to %d (< 64B)! This will degrade performance, please update "
             "this option in menuconfig.",
-            CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE
+            EPDIY_DATA_CACHE_LINE_SIZE
         );
         ESP_LOGE(
             "epdiy",
@@ -499,7 +606,16 @@ static esp_err_t init_lcd_peripheral() {
 
     lcd_hal_init(&lcd.hal, 0);
     lcd_ll_enable_clock(lcd.hal.dev, true);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    // IDF 6.x may rename clock source enums
+#if defined(LCD_CLK_SRC_PLL240M)
     lcd_ll_select_clk_src(lcd.hal.dev, LCD_CLK_SRC_PLL240M);
+#else
+    lcd_ll_select_clk_src(lcd.hal.dev, LCD_CLK_SRC_DEFAULT);
+#endif
+#else
+    lcd_ll_select_clk_src(lcd.hal.dev, LCD_CLK_SRC_PLL240M);
+#endif
     ESP_RETURN_ON_ERROR(ret, TAG, "set source clock failed");
 
     // install interrupt service, (LCD peripheral shares the interrupt source with Camera by
@@ -507,7 +623,7 @@ static esp_err_t init_lcd_peripheral() {
     int flags = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_SHARED
                 | ESP_INTR_FLAG_LOWMED;
 
-    int source = LCD_PERIPH_SIGNALS.panels[0].irq_id;
+    int source = LCD_PERIPH_SIG(irq_id);
     uint32_t status = (uint32_t)lcd_ll_get_interrupt_status_reg(lcd.hal.dev);
     ret = esp_intr_alloc_intrstatus(
         source, flags, status, LCD_LL_EVENT_VSYNC_END, lcd_isr_vsync, NULL, &lcd.vsync_intr
@@ -551,8 +667,15 @@ static esp_err_t init_lcd_peripheral() {
     // send next frame automatically in stream mode
     lcd_ll_enable_auto_next_frame(lcd.hal.dev, false);
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+    PERIPH_RCC_ATOMIC() {
+        lcd_ll_enable_interrupt(lcd.hal.dev, LCD_LL_EVENT_VSYNC_END, true);
+        lcd_ll_enable_interrupt(lcd.hal.dev, LCD_LL_EVENT_TRANS_DONE, true);
+    }
+#else
     lcd_ll_enable_interrupt(lcd.hal.dev, LCD_LL_EVENT_VSYNC_END, true);
     lcd_ll_enable_interrupt(lcd.hal.dev, LCD_LL_EVENT_TRANS_DONE, true);
+#endif
 
     // enable intr
     esp_intr_enable(lcd.vsync_intr);
