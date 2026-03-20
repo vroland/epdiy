@@ -581,8 +581,6 @@ void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_h
     esp_err_t ret = ESP_OK;
     assign_lcd_parameters_from_config(config, display_width, display_height);
 
-    check_cache_configuration();
-
     ret = allocate_lcd_buffers();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "lcd buffer allocation failed");
 
