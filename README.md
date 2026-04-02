@@ -113,12 +113,22 @@ The following list is compiled from past experiences and GitHub issues:
 
 LilyGo Boards
 ---------------
+
+### Supported LilyGo Boards
+
+| Board | Display | Board Definition | Notes |
+| --: | --: | --: | --: |
+| LilyGo T5 4.7" | ED047TC1 | `epd_board_lilygo_t5_47` | Original T5 4.7" |
+| LilyGo T5 S3 E-Paper Pro | ED047TC1 | `epd_board_v7` | ESP32-S3 based, includes GT911 touch, PCF8563 RTC, BQ25896/BQ27220 battery management |
+
+### Power Management
+
 There are several differences with these boards.
 One particular one is the way the LilyGo handles power to the display the official lilygo code has two states.
 This is now handled in epdiy in a different way to the lilygo code.
 **epd_poweroff()** completely turns the power off to the display and the other peripherals of the lilygo.
-The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work). 
-**epd_poweroff() should allways be called before sleeping the system**
+The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work).
+**epd_poweroff() should always be called before sleeping the system**
 You can still use touch to wake the screen with the following.
 In Arduino it works like this.
 `epd_poweroff();`
@@ -128,6 +138,23 @@ In Arduino it works like this.
  `esp_sleep_enable_ext1_wakeup(GPIO_SEL_13, ESP_EXT1_WAKEUP_ANY_HIGH);`
 
  `esp_deep_sleep_start();`
+
+### I2C Bus Sharing (Arduino)
+
+When using epdiy with Arduino on boards like the T5 S3 E-Paper Pro, you may need to share the I2C bus between epdiy and other peripherals (touch controller, RTC, battery gauge, etc.).
+
+Epdiy's board initialization will detect if the I2C driver is already installed (e.g., by Arduino's `Wire.begin()`) and reuse the existing driver instead of failing. This allows you to:
+
+1. Call `Wire.begin(SDA, SCL)` before `epd_init()` to initialize the I2C bus
+2. Use `Wire` for other I2C devices (GT911 touch, PCF8563 RTC, BQ27220 fuel gauge)
+3. Protect shared I2C access with a mutex if accessing from multiple tasks
+
+Example initialization order for T5 S3 E-Paper Pro:
+```cpp
+Wire.begin(39, 40);  // Initialize I2C first (SDA=39, SCL=40)
+epd_init(&epd_board_v7, &ED047TC1, EPD_LUT_64K);  // epdiy reuses I2C driver
+// Now both epdiy and Wire can coexist on the same I2C bus
+```
 
 More on E-Paper Displays
 ------------------------

@@ -126,3 +126,8 @@ unsigned tps_vcom_kickback_rdy() {
         return 0;
     }
 }
+
+void tps_set_upseq_carta1300() {
+    tps_write_register(I2C_NUM_0, TPS_REG_UPSEQ0, 0xE1);
+    tps_write_register(I2C_NUM_0, TPS_REG_UPSEQ1, 0xAA);
+}

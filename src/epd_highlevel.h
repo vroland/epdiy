@@ -83,6 +83,8 @@ typedef struct {
     uint8_t* dirty_columns;
     /// The waveform information to use.
     const EpdWaveform* waveform;
+    /// If true, the framebuffer is mirrored horizontally.
+    bool mirror_x;
 } EpdiyHighlevelState;
 
 /**

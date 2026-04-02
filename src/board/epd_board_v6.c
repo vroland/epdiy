@@ -196,6 +196,14 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     state->ep_stv = true;
     config_reg.wakeup = true;
     epd_board_set_ctrl(state, &mask);
+
+    // Check if DISPLAY_UPSEQ_MC2 is set
+    const EpdDisplay_t* display = epd_get_display();
+    if (display->display_type & DISPLAY_UPSEQ_MC2) {
+        vTaskDelay(3);
+        tps_set_upseq_carta1300();
+    }
+
     config_reg.pwrup = true;
     epd_board_set_ctrl(state, &mask);
     config_reg.vcom_ctrl = true;

@@ -7,7 +7,7 @@
 #### usage:
 
 python3 imgconvert.py [-h] -i INPUTFILE -n NAME -o OUTPUTFILE [-maxw MAX_WIDTH]
-                     [-maxh MAX_HEIGHT]
+                     [-maxh MAX_HEIGHT] [-nd] [-l GRAY_LEVELS]
 
 **optional arguments:**
 
@@ -22,6 +22,10 @@ python3 imgconvert.py [-h] -i INPUTFILE -n NAME -o OUTPUTFILE [-maxw MAX_WIDTH]
   * **-maxw MAX_WIDTH**
 
   * **-maxh MAX_HEIGHT**
+
+  * **-nd** disable dithering
+
+  * **-l GRAY_LEVELS** configure the amount of colors
 
 
 ==========================================================

@@ -27,7 +27,7 @@
 
 #define CFG_SCL GPIO_NUM_40
 #define CFG_SDA GPIO_NUM_39
-#define CFG_INTR GPIO_NUM_38
+#define CFG_INTR GPIO_NUM_2  // NUM_2 is >1.1    NUM_38 is 1.0
 #define EPDIY_I2C_PORT I2C_NUM_0
 
 #define CFG_PIN_OE (PCA_PIN_PC10 >> 8)
@@ -39,29 +39,29 @@
 #define CFG_PIN_PWRGOOD (PCA_PIN_PC16 >> 8)
 #define CFG_PIN_INT (PCA_PIN_PC17 >> 8)
 
-#define D15 GPIO_NUM_47
-#define D14 GPIO_NUM_21
-#define D13 GPIO_NUM_14
-#define D12 GPIO_NUM_13
-#define D11 GPIO_NUM_12
-#define D10 GPIO_NUM_11
-#define D9 GPIO_NUM_10
-#define D8 GPIO_NUM_9
+#define D15 GPIO_NUM_5
+#define D14 GPIO_NUM_6
+#define D13 GPIO_NUM_7
+#define D12 GPIO_NUM_15
+#define D11 GPIO_NUM_16
+#define D10 GPIO_NUM_17
+#define D9 GPIO_NUM_18
+#define D8 GPIO_NUM_8
 
-#define D7 GPIO_NUM_8
-#define D6 GPIO_NUM_18
-#define D5 GPIO_NUM_17
-#define D4 GPIO_NUM_16
-#define D3 GPIO_NUM_15
-#define D2 GPIO_NUM_7
-#define D1 GPIO_NUM_6
-#define D0 GPIO_NUM_5
+#define D7 GPIO_NUM_9
+#define D6 GPIO_NUM_10
+#define D5 GPIO_NUM_11
+#define D4 GPIO_NUM_12
+#define D3 GPIO_NUM_13
+#define D2 GPIO_NUM_14
+#define D1 GPIO_NUM_21
+#define D0 GPIO_NUM_47
 
 /* Control Lines */
-#define CKV GPIO_NUM_48
-#define STH GPIO_NUM_41
-#define LEH GPIO_NUM_42
-#define STV GPIO_NUM_45
+#define CKV GPIO_NUM_42
+#define STH GPIO_NUM_45
+#define LEH GPIO_NUM_48
+#define STV GPIO_NUM_41
 
 /* Edges */
 #define CKH GPIO_NUM_4
@@ -120,9 +120,9 @@ static void epd_board_init(uint32_t epd_row_width) {
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = 100000;
     conf.clk_flags = 0;
-    ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
+    i2c_param_config(EPDIY_I2C_PORT, &conf);
 
-    ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+    i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
 
     config_reg.port = EPDIY_I2C_PORT;
     config_reg.pwrup = false;
@@ -216,6 +216,7 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     // Check if DISPLAY_UPSEQ_MC2 is set
     const EpdDisplay_t* display = epd_get_display();
     if (display->display_type & DISPLAY_UPSEQ_MC2) {
+        // Might need a bigger delay till TPS65185 fully wakes up
         vTaskDelay(3);
         tps_set_upseq_carta1300();
         printf("Setting UPSEQ for DISPLAY_UPSEQ_MC2\n");
@@ -227,8 +228,14 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
 
     // give the IC time to powerup and set lines
     vTaskDelay(1);
-
+    int i = 0;
     while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
+        vTaskDelay(1);
+        i++;
+        if (i == 10) {
+            printf("Timeout waiting for PWRGOOD\n");
+            break;
+        }
     }
 
     ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
@@ -328,7 +335,7 @@ static void set_vcom(int value) {
     vcom = value;
 }
 
-const EpdBoardDefinition epd_board_v7 = {
+const EpdBoardDefinition epd_board_v7_103 = {
     .init = epd_board_init,
     .deinit = epd_board_deinit,
     .set_ctrl = epd_board_set_ctrl,
