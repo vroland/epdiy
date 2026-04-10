@@ -31,6 +31,7 @@ If you want to build something more useful though, how about:
 
 - A serial terminal for connecting to a raspberry pi: [video](https://cdn.hackaday.io/files/1681937195969312/terminal_demo.mp4) [repository](https://github.com/vroland/epdiy-terminal)]
 - A Music Player Daemon (MPD) dashboard: [repository](https://github.com/vroland/epdiy-mpd)]
+- Firmware for displaying images directly from Immich (Self-Hosted Photo Management) [epdiy-immich](https://github.com/vroland/epdiy-immich)
 - An e-Paper picture frame: [video](https://www.youtube.com/watch?v=r7AcNQsSZUw)
 - And more to come!
 
