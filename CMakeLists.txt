@@ -41,7 +41,18 @@ if (${IDF_VERSION_MAJOR} GREATER 4)
     if (${IDF_VERSION_MAJOR} GREATER 5 OR (${IDF_VERSION_MAJOR} EQUAL 5 AND ${IDF_VERSION_MINOR} GREATER 2))
         list(APPEND epdiy_requires esp_driver_i2c)
     endif()
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES ${epdiy_requires})
+
+    set(epdiy_private_requires hal soc esp_hw_support esp_rom)
+    if(DEFINED IDF_VERSION_MAJOR AND IDF_VERSION_MAJOR GREATER_EQUAL 6)
+        list(APPEND epdiy_private_requires esp_hal_rmt)
+    endif()
+
+    idf_component_register(
+        SRCS ${app_sources}
+        INCLUDE_DIRS "src/"
+        REQUIRES ${epdiy_requires}
+        PRIV_REQUIRES ${epdiy_private_requires}
+    )
 else()
     idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES esp_adc_cal esp_timer esp_lcd)
 endif()
