@@ -159,12 +159,15 @@ static void epd_board_poweroff(epd_ctrl_state_t* state) {
     epd_board_set_ctrl(state, &mask);
 
     i2s_gpio_detach(&i2s_config);
-    // END POWEROFF
+}
+
+static void epd_board_deinit() {
+    epd_board_temperature_deinit_v2();
 }
 
 const EpdBoardDefinition epd_board_v2_v3 = {
     .init = epd_board_init,
-    .deinit = NULL,
+    .deinit = epd_board_deinit,
     .set_ctrl = epd_board_set_ctrl,
     .poweron = epd_board_poweron,
     .poweroff = epd_board_poweroff,
