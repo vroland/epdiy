@@ -9,6 +9,7 @@
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/gpio.h>
 #include <esp_rom_gpio.h>
+#include <hal/gpio_hal.h>
 #include <hal/rmt_ll.h>
 #include <soc/rmt_reg.h>
 #include <soc/rmt_struct.h>
@@ -35,17 +36,7 @@ extern rmt_mem_block_t RMTMEM;
 
 #endif  // ESP_IDF_VERSION >= 5.0.0
 
-static intr_handle_t s_rmt_intr_handle = NULL;
-static void (*s_tx_done_callback)(void*) = NULL;
-static rmt_compat_channel_t s_active_channel = RMT_COMPAT_CHANNEL_MAX;
-
-static void IRAM_ATTR rmt_compat_isr(void* arg) {
-    (void)arg;
-    RMT.int_clr.val = RMT.int_st.val;
-    if (s_tx_done_callback) {
-        s_tx_done_callback(arg);
-    }
-}
+static gpio_hal_context_t s_gpio_hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
 void rmt_compat_init(rmt_compat_channel_t channel, gpio_num_t gpio) {
     rmt_compat_enable_clock(channel);
@@ -58,22 +49,10 @@ void rmt_compat_init(rmt_compat_channel_t channel, gpio_num_t gpio) {
     rmt_ll_tx_fix_idle_level(&RMT, channel, 0, true);
     rmt_ll_enable_mem_access_nonfifo(&RMT, true);
 
-    if (s_rmt_intr_handle == NULL) {
-        esp_intr_alloc(
-            ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3, rmt_compat_isr, NULL, &s_rmt_intr_handle
-        );
-    }
-    RMT.int_ena.val |= (1 << (channel * 3));
-
-    s_active_channel = channel;
 }
 
 void rmt_compat_deinit(rmt_compat_channel_t channel) {
-    (void)channel;
-    RMT.int_ena.val &= ~(1 << (channel * 3));
-    if (s_rmt_intr_handle != NULL) {
-        esp_intr_disable(s_rmt_intr_handle);
-    }
+    rmt_compat_tx_enable_interrupt(channel, false);
     rmt_compat_disable_clock(channel);
 }
 
@@ -106,6 +85,7 @@ void rmt_compat_disable_clock(rmt_compat_channel_t channel) {
 }
 
 void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
+    gpio_hal_func_sel(&s_gpio_hal, gpio, PIN_FUNC_GPIO);
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
     esp_rom_gpio_connect_out_signal(
         gpio, soc_rmt_signals[0].channels[channel].tx_sig, false, 0
@@ -157,10 +137,20 @@ void rmt_compat_tx_set_loop_count(rmt_compat_channel_t channel, uint32_t count) 
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
 }
 
-void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel) {
-    return (void*)&(RMTMEM.chan[channel].data32[0]);
+void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
+    const uint32_t tx_end_bit = 1u << (channel * 3);
+    if (enable) {
+        RMT.int_ena.val |= tx_end_bit;
+    } else {
+        RMT.int_ena.val &= ~tx_end_bit;
+    }
 }
 
-void rmt_compat_set_tx_done_callback(void (*callback)(void*)) {
-    s_tx_done_callback = callback;
+void rmt_compat_tx_prepare(rmt_compat_channel_t channel) {
+    rmt_ll_tx_reset_pointer(&RMT, channel);
+    rmt_ll_rx_set_mem_owner(&RMT, channel, RMT_LL_MEM_OWNER_HW);
+}
+
+void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel) {
+    return (void*)&(RMTMEM.chan[channel].data32[0]);
 }
