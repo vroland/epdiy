@@ -145,7 +145,7 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
 
 static void start_ckv_cycles(int cycles) {
     rmt_compat_tx_enable_loop_count(RMT_CKV_CHAN, true);
-    rmt_ll_tx_enable_loop_autostop(&RMT, RMT_CKV_CHAN, true);
+    rmt_compat_tx_enable_loop_autostop(RMT_CKV_CHAN, true);
     rmt_compat_tx_set_loop_count(RMT_CKV_CHAN, cycles);
     rmt_compat_tx_reset_mem(RMT_CKV_CHAN);
     rmt_compat_tx_start(RMT_CKV_CHAN);
@@ -168,11 +168,11 @@ static void ckv_rmt_build_signal() {
  * Configure the RMT peripheral for use as the CKV clock.
  */
 static void init_ckv_rmt() {
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_enable(PERIPH_RMT_MODULE);
+    rmt_compat_reset_module();
+    rmt_compat_enable_module(true);
 
-    rmt_ll_enable_periph_clock(&RMT, true);
-    rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
+    rmt_compat_enable_periph_clock(true);
+    rmt_compat_set_group_clock_src(RMT_CKV_CHAN);
     rmt_compat_set_clock_div(RMT_CKV_CHAN, 8);
     rmt_compat_set_mem_blocks(RMT_CKV_CHAN, 2);
     rmt_compat_enable_mem_access_nonfifo(true);
@@ -189,8 +189,9 @@ static void init_ckv_rmt() {
  * Reset the CKV RMT configuration.
  */
 static void deinit_ckv_rmt() {
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_disable(PERIPH_RMT_MODULE);
+    rmt_compat_reset_module();
+    rmt_compat_enable_periph_clock(false);
+    rmt_compat_enable_module(false);
     gpio_reset_pin(lcd.config.bus.ckv);
 }
 

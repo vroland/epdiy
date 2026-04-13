@@ -15,7 +15,7 @@ static volatile bool rmt_tx_done = true;
 static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
     (void)arg;
     rmt_tx_done = true;
-    RMT.int_clr.val = RMT.int_st.val;
+    rmt_compat_clear_interrupts();
 }
 
 void rmt_pulse_init(gpio_num_t pin) {

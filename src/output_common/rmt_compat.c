@@ -63,6 +63,38 @@ void rmt_compat_disable_clock(rmt_compat_channel_t channel) {
 #endif
 }
 
+void rmt_compat_enable_periph_clock(bool enable) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    rmt_ll_enable_group_clock(&RMT, enable);
+#else
+    rmt_ll_enable_periph_clock(&RMT, enable);
+#endif
+}
+
+void rmt_compat_reset_module(void) {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
+    periph_module_reset(PERIPH_RMT_MODULE);
+#else
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_reset_register(0);
+    }
+#endif
+}
+
+void rmt_compat_enable_module(bool enable) {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
+    if (enable) {
+        periph_module_enable(PERIPH_RMT_MODULE);
+    } else {
+        periph_module_disable(PERIPH_RMT_MODULE);
+    }
+#else
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_enable_bus_clock(0, enable);
+    }
+#endif
+}
+
 void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
     gpio_hal_func_sel(&s_gpio_hal, gpio, PIN_FUNC_GPIO);
     gpio_set_direction(gpio, GPIO_MODE_OUTPUT);
@@ -75,6 +107,10 @@ void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
         gpio, rmt_periph_signals.groups[0].channels[channel].tx_sig, false, 0
     );
 #endif
+}
+
+void rmt_compat_set_group_clock_src(rmt_compat_channel_t channel) {
+    rmt_ll_set_group_clock_src(&RMT, channel, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
 }
 
 void rmt_compat_set_clock_div(rmt_compat_channel_t channel, uint8_t div) {
@@ -128,6 +164,10 @@ void rmt_compat_tx_enable_loop_count(rmt_compat_channel_t channel, bool enable) 
     rmt_ll_tx_enable_loop_count(&RMT, channel, enable);
 }
 
+void rmt_compat_tx_enable_loop_autostop(rmt_compat_channel_t channel, bool enable) {
+    rmt_ll_tx_enable_loop_autostop(&RMT, channel, enable);
+}
+
 void rmt_compat_tx_set_loop_count(rmt_compat_channel_t channel, uint32_t count) {
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
 }
@@ -139,6 +179,10 @@ void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
     } else {
         RMT.int_ena.val &= ~tx_end_bit;
     }
+}
+
+void rmt_compat_clear_interrupts(void) {
+    RMT.int_clr.val = RMT.int_st.val;
 }
 
 void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel) {
