@@ -29,13 +29,17 @@ typedef struct {
     };
 } epdiy_rmt_item_t;
 
+// Lifecycle / Clock
 void rmt_compat_enable_clock(rmt_compat_channel_t channel);
 void rmt_compat_disable_clock(rmt_compat_channel_t channel);
 void rmt_compat_enable_periph_clock(bool enable);
 void rmt_compat_reset_module(void);
 void rmt_compat_enable_module(bool enable);
 
+// GPIO Routing
 void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio);
+
+// TX Channel Config
 void rmt_compat_set_group_clock_src(rmt_compat_channel_t channel);
 void rmt_compat_set_clock_div(rmt_compat_channel_t channel, uint8_t div);
 void rmt_compat_set_mem_blocks(rmt_compat_channel_t channel, uint8_t blocks);
@@ -44,16 +48,25 @@ void rmt_compat_tx_set_idle_level(rmt_compat_channel_t channel, uint8_t level, b
 void rmt_compat_tx_enable_carrier(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_tx_enable_loop(rmt_compat_channel_t channel, bool enable);
 
+// TX Execution
 void rmt_compat_tx_start(rmt_compat_channel_t channel);
 void rmt_compat_tx_stop(rmt_compat_channel_t channel);
 void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel);
+void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count);
 void rmt_compat_tx_set_loop(rmt_compat_channel_t channel, bool enable, uint32_t count);
 void rmt_compat_tx_enable_loop_count(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_tx_enable_loop_autostop(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_tx_set_loop_count(rmt_compat_channel_t channel, uint32_t count);
+
+// Interrupts
 void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_clear_interrupts(void);
 
+// I2S Pulse-Specific
+void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel);
+void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel);
+
+// Memory Access
 void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel);
 
 #ifdef __cplusplus

@@ -63,8 +63,7 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks, uint16_t low_time_ticks
     rmt_mem_ptr[1].val = 0;
 
     rmt_tx_done = false;
-    rmt_compat_tx_reset_mem(RMT_COMPAT_CHANNEL_1);
-    rmt_compat_tx_start(RMT_COMPAT_CHANNEL_1);
+    rmt_compat_tx_start_pulse(RMT_COMPAT_CHANNEL_1);
 
     if (wait) {
         while (!rmt_tx_done) {

@@ -144,9 +144,7 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
 }
 
 static void start_ckv_cycles(int cycles) {
-    rmt_compat_tx_enable_loop_count(RMT_CKV_CHAN, true);
-    rmt_compat_tx_enable_loop_autostop(RMT_CKV_CHAN, true);
-    rmt_compat_tx_set_loop_count(RMT_CKV_CHAN, cycles);
+    rmt_compat_tx_configure_finite_loop(RMT_CKV_CHAN, cycles);
     rmt_compat_tx_reset_mem(RMT_CKV_CHAN);
     rmt_compat_tx_start(RMT_CKV_CHAN);
 }
