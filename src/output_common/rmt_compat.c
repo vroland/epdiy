@@ -1,10 +1,7 @@
 #include "rmt_compat.h"
 
 #include <esp_idf_version.h>
-#include <esp_attr.h>
-#include <esp_intr_alloc.h>
 #include <esp_private/periph_ctrl.h>
-#include <string.h>
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/gpio.h>
@@ -38,24 +35,6 @@ extern rmt_mem_block_t RMTMEM;
 
 static gpio_hal_context_t s_gpio_hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
-void rmt_compat_init(rmt_compat_channel_t channel, gpio_num_t gpio) {
-    rmt_compat_enable_clock(channel);
-    rmt_compat_connect_gpio(channel, gpio);
-    rmt_compat_set_clock_div(channel, 8);
-    rmt_compat_set_mem_blocks(channel, 2);
-
-    rmt_ll_tx_enable_loop(&RMT, channel, true);
-    rmt_ll_tx_enable_carrier_modulation(&RMT, channel, false);
-    rmt_ll_tx_fix_idle_level(&RMT, channel, 0, true);
-    rmt_ll_enable_mem_access_nonfifo(&RMT, true);
-
-}
-
-void rmt_compat_deinit(rmt_compat_channel_t channel) {
-    rmt_compat_tx_enable_interrupt(channel, false);
-    rmt_compat_disable_clock(channel);
-}
-
 void rmt_compat_enable_clock(rmt_compat_channel_t channel) {
     (void)channel;
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
@@ -86,6 +65,7 @@ void rmt_compat_disable_clock(rmt_compat_channel_t channel) {
 
 void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
     gpio_hal_func_sel(&s_gpio_hal, gpio, PIN_FUNC_GPIO);
+    gpio_set_direction(gpio, GPIO_MODE_OUTPUT);
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
     esp_rom_gpio_connect_out_signal(
         gpio, soc_rmt_signals[0].channels[channel].tx_sig, false, 0
@@ -95,7 +75,6 @@ void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
         gpio, rmt_periph_signals.groups[0].channels[channel].tx_sig, false, 0
     );
 #endif
-    gpio_set_direction(gpio, GPIO_MODE_OUTPUT);
 }
 
 void rmt_compat_set_clock_div(rmt_compat_channel_t channel, uint8_t div) {
@@ -104,6 +83,22 @@ void rmt_compat_set_clock_div(rmt_compat_channel_t channel, uint8_t div) {
 
 void rmt_compat_set_mem_blocks(rmt_compat_channel_t channel, uint8_t blocks) {
     rmt_ll_tx_set_mem_blocks(&RMT, channel, blocks);
+}
+
+void rmt_compat_enable_mem_access_nonfifo(bool enable) {
+    rmt_ll_enable_mem_access_nonfifo(&RMT, enable);
+}
+
+void rmt_compat_tx_set_idle_level(rmt_compat_channel_t channel, uint8_t level, bool enable) {
+    rmt_ll_tx_fix_idle_level(&RMT, channel, level, enable);
+}
+
+void rmt_compat_tx_enable_carrier(rmt_compat_channel_t channel, bool enable) {
+    rmt_ll_tx_enable_carrier_modulation(&RMT, channel, enable);
+}
+
+void rmt_compat_tx_enable_loop(rmt_compat_channel_t channel, bool enable) {
+    rmt_ll_tx_enable_loop(&RMT, channel, enable);
 }
 
 void rmt_compat_tx_start(rmt_compat_channel_t channel) {
@@ -144,11 +139,6 @@ void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
     } else {
         RMT.int_ena.val &= ~tx_end_bit;
     }
-}
-
-void rmt_compat_tx_prepare(rmt_compat_channel_t channel) {
-    rmt_ll_tx_reset_pointer(&RMT, channel);
-    rmt_ll_rx_set_mem_owner(&RMT, channel, RMT_LL_MEM_OWNER_HW);
 }
 
 void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel) {

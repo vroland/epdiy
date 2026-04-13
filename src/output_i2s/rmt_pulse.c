@@ -19,12 +19,14 @@ static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
 }
 
 void rmt_pulse_init(gpio_num_t pin) {
-    rmt_compat_init(RMT_COMPAT_CHANNEL_1, pin);
-
-    rmt_ll_tx_enable_loop(&RMT, RMT_COMPAT_CHANNEL_1, false);
-    rmt_ll_tx_enable_carrier_modulation(&RMT, RMT_COMPAT_CHANNEL_1, false);
-    rmt_ll_tx_fix_idle_level(&RMT, RMT_COMPAT_CHANNEL_1, 0, true);
+    rmt_compat_enable_clock(RMT_COMPAT_CHANNEL_1);
+    rmt_compat_connect_gpio(RMT_COMPAT_CHANNEL_1, pin);
+    rmt_compat_set_clock_div(RMT_COMPAT_CHANNEL_1, 8);
     rmt_compat_set_mem_blocks(RMT_COMPAT_CHANNEL_1, 2);
+    rmt_compat_enable_mem_access_nonfifo(true);
+    rmt_compat_tx_enable_loop(RMT_COMPAT_CHANNEL_1, false);
+    rmt_compat_tx_enable_carrier(RMT_COMPAT_CHANNEL_1, false);
+    rmt_compat_tx_set_idle_level(RMT_COMPAT_CHANNEL_1, 0, true);
 
     esp_intr_alloc(
         ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3, rmt_interrupt_handler, 0, &gRMT_intr_handle
@@ -38,7 +40,8 @@ void rmt_pulse_deinit() {
         esp_intr_free(gRMT_intr_handle);
         gRMT_intr_handle = NULL;
     }
-    rmt_compat_deinit(RMT_COMPAT_CHANNEL_1);
+    rmt_compat_tx_enable_interrupt(RMT_COMPAT_CHANNEL_1, false);
+    rmt_compat_disable_clock(RMT_COMPAT_CHANNEL_1);
 }
 
 void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks, uint16_t low_time_ticks, bool wait) {
@@ -60,7 +63,7 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks, uint16_t low_time_ticks
     rmt_mem_ptr[1].val = 0;
 
     rmt_tx_done = false;
-    rmt_compat_tx_prepare(RMT_COMPAT_CHANNEL_1);
+    rmt_compat_tx_reset_mem(RMT_COMPAT_CHANNEL_1);
     rmt_compat_tx_start(RMT_COMPAT_CHANNEL_1);
 
     if (wait) {
