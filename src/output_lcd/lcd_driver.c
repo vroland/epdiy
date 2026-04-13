@@ -147,7 +147,7 @@ static void start_ckv_cycles(int cycles) {
     rmt_compat_tx_enable_loop_count(RMT_CKV_CHAN, true);
     rmt_ll_tx_enable_loop_autostop(&RMT, RMT_CKV_CHAN, true);
     rmt_compat_tx_set_loop_count(RMT_CKV_CHAN, cycles);
-    rmt_compat_tx_prepare(RMT_CKV_CHAN);
+    rmt_compat_tx_reset_mem(RMT_CKV_CHAN);
     rmt_compat_tx_start(RMT_CKV_CHAN);
 }
 
@@ -168,16 +168,19 @@ static void ckv_rmt_build_signal() {
  * Configure the RMT peripheral for use as the CKV clock.
  */
 static void init_ckv_rmt() {
-    rmt_compat_init(RMT_CKV_CHAN, lcd.config.bus.ckv);
+    periph_module_reset(PERIPH_RMT_MODULE);
+    periph_module_enable(PERIPH_RMT_MODULE);
 
+    rmt_ll_enable_periph_clock(&RMT, true);
     rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
     rmt_compat_set_clock_div(RMT_CKV_CHAN, 8);
     rmt_compat_set_mem_blocks(RMT_CKV_CHAN, 2);
-    rmt_ll_enable_mem_access_nonfifo(&RMT, true);
-    rmt_ll_tx_fix_idle_level(&RMT, RMT_CKV_CHAN, 0, true);
-    rmt_ll_tx_enable_carrier_modulation(&RMT, RMT_CKV_CHAN, false);
-    rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
-    rmt_ll_tx_enable_loop_autostop(&RMT, RMT_CKV_CHAN, true);
+    rmt_compat_enable_mem_access_nonfifo(true);
+    rmt_compat_tx_set_idle_level(RMT_CKV_CHAN, 0, true);
+    rmt_compat_tx_enable_carrier(RMT_CKV_CHAN, false);
+    rmt_compat_tx_enable_loop(RMT_CKV_CHAN, true);
+
+    rmt_compat_connect_gpio(RMT_CKV_CHAN, lcd.config.bus.ckv);
 
     ckv_rmt_build_signal();
 }
@@ -186,7 +189,8 @@ static void init_ckv_rmt() {
  * Reset the CKV RMT configuration.
  */
 static void deinit_ckv_rmt() {
-    rmt_compat_deinit(RMT_CKV_CHAN);
+    periph_module_reset(PERIPH_RMT_MODULE);
+    periph_module_disable(PERIPH_RMT_MODULE);
     gpio_reset_pin(lcd.config.bus.ckv);
 }
 
