@@ -35,53 +35,7 @@ extern rmt_mem_block_t RMTMEM;
 
 static gpio_hal_context_t s_gpio_hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
-void rmt_compat_enable_clock(rmt_compat_channel_t channel) {
-    (void)channel;
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-    PERIPH_RCC_ATOMIC() {
-        rmt_ll_reset_register(0);
-        rmt_ll_enable_bus_clock(0, true);
-    }
-    rmt_ll_enable_group_clock(&RMT, true);
-#else
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_enable(PERIPH_RMT_MODULE);
-    rmt_ll_enable_periph_clock(&RMT, true);
-#endif
-}
-
-void rmt_compat_disable_clock(rmt_compat_channel_t channel) {
-    (void)channel;
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-    rmt_ll_enable_group_clock(&RMT, false);
-    PERIPH_RCC_ATOMIC() {
-        rmt_ll_enable_bus_clock(0, false);
-    }
-#else
-    rmt_ll_enable_periph_clock(&RMT, false);
-    periph_module_disable(PERIPH_RMT_MODULE);
-#endif
-}
-
-void rmt_compat_enable_periph_clock(bool enable) {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-    rmt_ll_enable_group_clock(&RMT, enable);
-#else
-    rmt_ll_enable_periph_clock(&RMT, enable);
-#endif
-}
-
-void rmt_compat_reset_module(void) {
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
-    periph_module_reset(PERIPH_RMT_MODULE);
-#else
-    PERIPH_RCC_ATOMIC() {
-        rmt_ll_reset_register(0);
-    }
-#endif
-}
-
-void rmt_compat_enable_module(bool enable) {
+static void rmt_compat_set_module_enabled(bool enable) {
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
     if (enable) {
         periph_module_enable(PERIPH_RMT_MODULE);
@@ -93,6 +47,56 @@ void rmt_compat_enable_module(bool enable) {
         rmt_ll_enable_bus_clock(0, enable);
     }
 #endif
+}
+
+static void rmt_compat_set_periph_clock_enabled(bool enable) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    rmt_ll_enable_group_clock(&RMT, enable);
+#else
+    rmt_ll_enable_periph_clock(&RMT, enable);
+#endif
+}
+
+static void rmt_compat_reset_module_regs(void) {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
+    periph_module_reset(PERIPH_RMT_MODULE);
+#else
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_reset_register(0);
+    }
+#endif
+}
+
+void rmt_compat_enable_clock(rmt_compat_channel_t channel) {
+    (void)channel;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    PERIPH_RCC_ATOMIC() {
+        rmt_ll_reset_register(0);
+    }
+    rmt_compat_set_module_enabled(true);
+#else
+    rmt_compat_reset_module_regs();
+    rmt_compat_set_module_enabled(true);
+#endif
+    rmt_compat_set_periph_clock_enabled(true);
+}
+
+void rmt_compat_disable_clock(rmt_compat_channel_t channel) {
+    (void)channel;
+    rmt_compat_set_periph_clock_enabled(false);
+    rmt_compat_set_module_enabled(false);
+}
+
+void rmt_compat_enable_periph_clock(bool enable) {
+    rmt_compat_set_periph_clock_enabled(enable);
+}
+
+void rmt_compat_reset_module(void) {
+    rmt_compat_reset_module_regs();
+}
+
+void rmt_compat_enable_module(bool enable) {
+    rmt_compat_set_module_enabled(enable);
 }
 
 void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
@@ -150,6 +154,12 @@ void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
     rmt_ll_tx_reset_pointer(&RMT, channel);
 }
 
+void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
+    rmt_ll_tx_enable_loop_count(&RMT, channel, true);
+    rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
+    rmt_ll_tx_set_loop_count(&RMT, channel, count);
+}
+
 void rmt_compat_tx_set_loop(rmt_compat_channel_t channel, bool enable, uint32_t count) {
     rmt_ll_tx_enable_loop(&RMT, channel, enable);
     if (enable) {
@@ -179,6 +189,17 @@ void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
     } else {
         RMT.int_ena.val &= ~tx_end_bit;
     }
+}
+
+void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
+    // Mirror the legacy pulse path by handing RAM ownership back to TX/APB before start.
+    rmt_ll_rx_set_mem_owner(&RMT, channel, RMT_LL_MEM_OWNER_SW);
+}
+
+void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel) {
+    rmt_compat_tx_reset_mem(channel);
+    rmt_compat_tx_set_mem_owner(channel);
+    rmt_compat_tx_start(channel);
 }
 
 void rmt_compat_clear_interrupts(void) {
