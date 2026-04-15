@@ -38,7 +38,7 @@
 EpdiyHighlevelState hl;
 
 void idf_setup() {
-    epd_init(&DEMO_BOARD, &ED078KC1, EPD_LUT_64K);
+    epd_init(&DEMO_BOARD, &ED097TC2, EPD_LUT_64K);
     // Set VCOM for boards that allow to set this in software (in mV).
     // This will print an error if unsupported. In this case,
     // set VCOM using the hardware potentiometer and delete this line.
