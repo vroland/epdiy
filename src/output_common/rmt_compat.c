@@ -206,6 +206,26 @@ void rmt_compat_clear_interrupts(void) {
     RMT.int_clr.val = RMT.int_st.val;
 }
 
+void rmt_compat_write_single_item(
+    rmt_compat_channel_t channel,
+    uint16_t duration0,
+    bool level0,
+    uint16_t duration1,
+    bool level1,
+    bool terminate
+) {
+    volatile epdiy_rmt_item_t* rmt_mem_ptr = rmt_compat_get_mem_ptr(channel);
+
+    rmt_mem_ptr[0].duration0 = duration0;
+    rmt_mem_ptr[0].level0 = level0;
+    rmt_mem_ptr[0].duration1 = duration1;
+    rmt_mem_ptr[0].level1 = level1;
+
+    if (terminate) {
+        rmt_mem_ptr[1].val = 0;
+    }
+}
+
 void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel) {
     return (void*)&(RMTMEM.chan[channel].data32[0]);
 }

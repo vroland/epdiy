@@ -154,12 +154,9 @@ static void start_ckv_cycles(int cycles) {
  */
 static void ckv_rmt_build_signal() {
     int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
-    volatile epdiy_rmt_item_t* rmt_mem_ptr = rmt_compat_get_mem_ptr(RMT_CKV_CHAN);
-    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
-    rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration1 = low_time;
-    rmt_mem_ptr->level1 = 0;
-    rmt_mem_ptr[1].val = 0;
+    rmt_compat_write_single_item(
+        RMT_CKV_CHAN, lcd.config.ckv_high_time, true, low_time, false, true
+    );
 }
 
 /**

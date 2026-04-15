@@ -66,6 +66,16 @@ void rmt_compat_clear_interrupts(void);
 void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel);
 void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel);
 
+// Memory Writes
+void rmt_compat_write_single_item(
+    rmt_compat_channel_t channel,
+    uint16_t duration0,
+    bool level0,
+    uint16_t duration1,
+    bool level1,
+    bool terminate
+);
+
 // Memory Access
 void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel);
 

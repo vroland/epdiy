@@ -48,19 +48,13 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks, uint16_t low_time_ticks
     while (!rmt_tx_done) {
     };
 
-    volatile epdiy_rmt_item_t* rmt_mem_ptr = rmt_compat_get_mem_ptr(RMT_COMPAT_CHANNEL_1);
     if (high_time_ticks > 0) {
-        rmt_mem_ptr->level0 = 1;
-        rmt_mem_ptr->duration0 = high_time_ticks;
-        rmt_mem_ptr->level1 = 0;
-        rmt_mem_ptr->duration1 = low_time_ticks;
+        rmt_compat_write_single_item(
+            RMT_COMPAT_CHANNEL_1, high_time_ticks, true, low_time_ticks, false, true
+        );
     } else {
-        rmt_mem_ptr->level0 = 1;
-        rmt_mem_ptr->duration0 = low_time_ticks;
-        rmt_mem_ptr->level1 = 0;
-        rmt_mem_ptr->duration1 = 0;
+        rmt_compat_write_single_item(RMT_COMPAT_CHANNEL_1, low_time_ticks, true, 0, false, true);
     }
-    rmt_mem_ptr[1].val = 0;
 
     rmt_tx_done = false;
     rmt_compat_tx_start_pulse(RMT_COMPAT_CHANNEL_1);
