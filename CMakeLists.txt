@@ -35,7 +35,18 @@ set(app_sources "src/epdiy.c"
 
 
 # IDF 5.x minimum required (rmt_compat uses IDF 5.x+ APIs)
-idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES driver esp_timer esp_adc esp_lcd)
+set(epdiy_private_requires hal soc esp_hw_support esp_rom)
+
+if(DEFINED IDF_VERSION_MAJOR AND IDF_VERSION_MAJOR GREATER_EQUAL 6)
+    list(APPEND epdiy_private_requires esp_hal_rmt)
+endif()
+
+idf_component_register(
+    SRCS ${app_sources}
+    INCLUDE_DIRS "src/"
+    REQUIRES driver esp_timer esp_adc esp_lcd
+    PRIV_REQUIRES ${epdiy_private_requires}
+)
 
 # formatting specifiers maybe incompatible between idf versions because of different int definitions
 component_compile_options(-Wno-error=format= -Wno-format)
