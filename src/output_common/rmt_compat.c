@@ -146,10 +146,6 @@ void rmt_compat_tx_start(rmt_compat_channel_t channel) {
     rmt_ll_tx_start(&RMT, channel);
 }
 
-void rmt_compat_tx_stop(rmt_compat_channel_t channel) {
-    rmt_ll_tx_stop(&RMT, channel);
-}
-
 void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
     rmt_ll_tx_reset_pointer(&RMT, channel);
 }
@@ -157,28 +153,6 @@ void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
 void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
     rmt_ll_tx_enable_loop_count(&RMT, channel, true);
     rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
-    rmt_ll_tx_set_loop_count(&RMT, channel, count);
-}
-
-void rmt_compat_tx_set_loop(rmt_compat_channel_t channel, bool enable, uint32_t count) {
-    rmt_ll_tx_enable_loop(&RMT, channel, enable);
-    if (enable) {
-        rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
-        rmt_ll_tx_set_loop_count(&RMT, channel, count);
-    } else {
-        rmt_ll_tx_enable_loop_autostop(&RMT, channel, false);
-    }
-}
-
-void rmt_compat_tx_enable_loop_count(rmt_compat_channel_t channel, bool enable) {
-    rmt_ll_tx_enable_loop_count(&RMT, channel, enable);
-}
-
-void rmt_compat_tx_enable_loop_autostop(rmt_compat_channel_t channel, bool enable) {
-    rmt_ll_tx_enable_loop_autostop(&RMT, channel, enable);
-}
-
-void rmt_compat_tx_set_loop_count(rmt_compat_channel_t channel, uint32_t count) {
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
 }
 
@@ -191,7 +165,7 @@ void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
     }
 }
 
-void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
+static void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
     // Mirror the legacy pulse path by handing RAM ownership back to TX/APB before start.
     rmt_ll_rx_set_mem_owner(&RMT, channel, RMT_LL_MEM_OWNER_SW);
 }
@@ -214,7 +188,7 @@ void rmt_compat_write_single_item(
     bool level1,
     bool terminate
 ) {
-    volatile epdiy_rmt_item_t* rmt_mem_ptr = rmt_compat_get_mem_ptr(channel);
+    volatile epdiy_rmt_item_t* rmt_mem_ptr = (void*)&(RMTMEM.chan[channel].data32[0]);
 
     rmt_mem_ptr[0].duration0 = duration0;
     rmt_mem_ptr[0].level0 = level0;
@@ -224,8 +198,4 @@ void rmt_compat_write_single_item(
     if (terminate) {
         rmt_mem_ptr[1].val = 0;
     }
-}
-
-void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel) {
-    return (void*)&(RMTMEM.chan[channel].data32[0]);
 }

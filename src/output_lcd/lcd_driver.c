@@ -37,10 +37,8 @@
 #include <hal/gpio_hal.h>
 #include <hal/lcd_hal.h>
 #include <hal/lcd_ll.h>
-#include <hal/rmt_ll.h>
 #include <rom/cache.h>
 #include <soc/lcd_periph.h>
-#include <soc/rmt_struct.h>
 
 #include "hal/gpio_hal.h"
 
