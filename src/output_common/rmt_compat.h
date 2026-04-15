@@ -50,20 +50,14 @@ void rmt_compat_tx_enable_loop(rmt_compat_channel_t channel, bool enable);
 
 // TX Execution
 void rmt_compat_tx_start(rmt_compat_channel_t channel);
-void rmt_compat_tx_stop(rmt_compat_channel_t channel);
 void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel);
 void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count);
-void rmt_compat_tx_set_loop(rmt_compat_channel_t channel, bool enable, uint32_t count);
-void rmt_compat_tx_enable_loop_count(rmt_compat_channel_t channel, bool enable);
-void rmt_compat_tx_enable_loop_autostop(rmt_compat_channel_t channel, bool enable);
-void rmt_compat_tx_set_loop_count(rmt_compat_channel_t channel, uint32_t count);
 
 // Interrupts
 void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_clear_interrupts(void);
 
 // I2S Pulse-Specific
-void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel);
 void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel);
 
 // Memory Writes
@@ -75,9 +69,6 @@ void rmt_compat_write_single_item(
     bool level1,
     bool terminate
 );
-
-// Memory Access
-void* rmt_compat_get_mem_ptr(rmt_compat_channel_t channel);
 
 #ifdef __cplusplus
 }

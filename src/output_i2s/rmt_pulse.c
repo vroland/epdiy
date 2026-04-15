@@ -6,8 +6,6 @@
 #include "rmt_pulse.h"
 #include "rmt_compat.h"
 
-#include "soc/rmt_struct.h"
-
 static intr_handle_t gRMT_intr_handle = NULL;
 
 static volatile bool rmt_tx_done = true;
