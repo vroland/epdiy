@@ -16,6 +16,7 @@ typedef struct {
 } Coord_xy;
 
 static const EpdDisplay_t* display = NULL;
+static const EpdInitConfig* init_config = NULL;
 
 // Display rotation. Can be updated using epd_set_rotation(enum EpdRotation)
 static enum EpdRotation display_rotation = EPD_ROT_LANDSCAPE;
@@ -487,7 +488,17 @@ void epd_poweroff() {
 void epd_init(
     const EpdBoardDefinition* board, const EpdDisplay_t* disp, enum EpdInitOptions options
 ) {
+    epd_init_with_config(board, disp, options, NULL);
+}
+
+void epd_init_with_config(
+    const EpdBoardDefinition* board,
+    const EpdDisplay_t* disp,
+    enum EpdInitOptions options,
+    const EpdInitConfig* config
+) {
     display = disp;
+    init_config = config;
     epd_set_board(board);
     epd_renderer_init(options);
 }
@@ -525,6 +536,10 @@ void epd_set_vcom(uint16_t vcom) {
 const EpdDisplay_t* epd_get_display() {
     assert(display != NULL);
     return display;
+}
+
+const EpdInitConfig* epd_get_init_config() {
+    return init_config;
 }
 
 int epd_width() {

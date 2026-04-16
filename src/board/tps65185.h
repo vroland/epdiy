@@ -1,7 +1,7 @@
 #ifndef TPS65185_H
 #define TPS65185_H
 
-#include <driver/i2c.h>
+#include <driver/i2c_master.h>
 
 #define TPS_REG_TMST_VALUE 0x00
 #define TPS_REG_ENABLE 0x01
@@ -21,13 +21,13 @@
 #define TPS_REG_PG 0x0F
 #define TPS_REG_REVID 0x10
 
-esp_err_t tps_write_register(i2c_port_t port, int reg, uint8_t value);
-uint8_t tps_read_register(i2c_port_t i2c_num, int reg);
+esp_err_t tps_write_register(i2c_master_dev_handle_t dev, int reg, uint8_t value);
+uint8_t tps_read_register(i2c_master_dev_handle_t dev, int reg);
 
 /**
  * Sets the VCOM voltage in positive milivolts: 1600 -> -1.6V
  */
-void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV);
+void tps_set_vcom(i2c_master_dev_handle_t dev, unsigned vcom_mV);
 
 /**
  * @brief Please read datasheet section 8.3.7.1 Kick-Back Voltage Measurement
@@ -55,6 +55,6 @@ void tps_set_upseq_carta1300();
 /**
  * Read the temperature via the on-board thermistor.
  */
-int8_t tps_read_thermistor(i2c_port_t i2c_num);
+int8_t tps_read_thermistor(i2c_master_dev_handle_t dev);
 
 #endif  //  TPS65185_H
