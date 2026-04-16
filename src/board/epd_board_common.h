@@ -6,3 +6,4 @@
 
 void epd_board_temperature_init_v2();
 float epd_board_ambient_temperature_v2();
+void epd_board_temperature_deinit_v2();
