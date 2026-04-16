@@ -27,7 +27,11 @@ void rmt_pulse_init(gpio_num_t pin) {
     rmt_compat_tx_set_idle_level(RMT_COMPAT_CHANNEL_1, 0, true);
 
     esp_intr_alloc(
-        ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3, rmt_interrupt_handler, 0, &gRMT_intr_handle
+        rmt_compat_get_irq_source(),
+        ESP_INTR_FLAG_LEVEL3,
+        rmt_interrupt_handler,
+        0,
+        &gRMT_intr_handle
     );
     rmt_compat_tx_enable_interrupt(RMT_COMPAT_CHANNEL_1, true);
 }

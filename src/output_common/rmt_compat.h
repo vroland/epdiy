@@ -54,6 +54,7 @@ void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel);
 void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count);
 
 // Interrupts
+int rmt_compat_get_irq_source(void);
 void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_clear_interrupts(void);
 
