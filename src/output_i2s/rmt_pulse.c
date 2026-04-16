@@ -4,7 +4,7 @@
 #ifdef RENDER_METHOD_I2S
 
 #include "rmt_pulse.h"
-#include "rmt_compat.h"
+#include "../output_common/rmt_compat.h"
 
 static intr_handle_t gRMT_intr_handle = NULL;
 
