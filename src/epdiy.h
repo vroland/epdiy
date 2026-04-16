@@ -12,8 +12,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <driver/i2c_master.h>
-
+#include "epd_init_config.h"
 #include "epd_internals.h"
 
 /// An area on the display.
@@ -46,14 +45,6 @@ enum EpdInitOptions {
     /// Best performance, but larger memory footprint.
     EPD_FEED_QUEUE_32 = 8,
 };
-
-typedef struct {
-    i2c_master_bus_handle_t bus_handle;
-} EpdI2cConfig;
-
-typedef struct {
-    const EpdI2cConfig* i2c;
-} EpdInitConfig;
 
 /// The image drawing mode.
 enum EpdDrawMode {

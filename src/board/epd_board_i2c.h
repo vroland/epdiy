@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "epd_init_config.h"
+
 typedef struct {
     i2c_port_num_t port;
     gpio_num_t sda_io_num;
@@ -23,6 +25,7 @@ typedef struct {
 esp_err_t epd_board_i2c_init(
     epd_board_i2c_context_t* ctx,
     const epd_board_i2c_bus_config_t* defaults,
+    const EpdInitConfig* init_config,
     bool need_tps,
     bool need_pca
 );

@@ -8,8 +8,6 @@
 static const uint32_t GLITCH_IGNORE_COUNT = 7;
 static i2c_master_dev_handle_t current_tps;
 
-const EpdInitConfig* epd_get_init_config();
-
 static esp_err_t epd_board_i2c_add_device(
     i2c_master_bus_handle_t bus,
     uint16_t address,
@@ -27,12 +25,12 @@ static esp_err_t epd_board_i2c_add_device(
 esp_err_t epd_board_i2c_init(
     epd_board_i2c_context_t* ctx,
     const epd_board_i2c_bus_config_t* defaults,
+    const EpdInitConfig* init_config,
     bool need_tps,
     bool need_pca
 ) {
     *ctx = (epd_board_i2c_context_t){ 0 };
 
-    const EpdInitConfig* init_config = epd_get_init_config();
     if (init_config && init_config->i2c && init_config->i2c->bus_handle) {
         ctx->bus = init_config->i2c->bus_handle;
         ctx->owns_bus = false;

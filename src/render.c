@@ -236,12 +236,12 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
     }
 }
 
-void epd_renderer_init(enum EpdInitOptions options) {
+void epd_renderer_init(enum EpdInitOptions options, const EpdInitConfig* config) {
     // Either the board should be set in menuconfig or the epd_set_board() must
     // be called before epd_init()
     assert((epd_current_board() != NULL));
 
-    epd_current_board()->init(epd_width());
+    epd_current_board()->init(epd_width(), config);
     epd_control_reg_init();
 
     render_context.display_width = epd_width();

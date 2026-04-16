@@ -11,6 +11,8 @@
 #include <esp_err.h>
 #include <xtensa/core-macros.h>
 
+#include "epd_init_config.h"
+
 /**
  * State of display control pins.
  */
@@ -29,7 +31,7 @@ typedef struct {
     /**
      * Initialize the board.
      */
-    void (*init)(uint32_t epd_row_width);
+    void (*init)(uint32_t epd_row_width, const EpdInitConfig* init_config);
     /**
      * Clean up resources and peripherals used by the board.
      */

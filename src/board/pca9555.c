@@ -49,9 +49,7 @@ esp_err_t pca9555_set_config(i2c_master_dev_handle_t dev, uint8_t config_value, 
     return pca9555_write_single(dev, REG_CONFIG_PORT0 + high_port, config_value);
 }
 
-esp_err_t pca9555_set_inversion(
-    i2c_master_dev_handle_t dev, uint8_t config_value, int high_port
-) {
+esp_err_t pca9555_set_inversion(i2c_master_dev_handle_t dev, uint8_t config_value, int high_port) {
     return pca9555_write_single(dev, REG_INVERT_PORT0 + high_port, config_value);
 }
 
