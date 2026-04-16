@@ -151,9 +151,16 @@ void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
 }
 
 void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
+#if SOC_RMT_SUPPORT_TX_LOOP_COUNT
     rmt_ll_tx_enable_loop_count(&RMT, channel, true);
+#if SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP
     rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
+#endif
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
+#else
+    (void)channel;
+    (void)count;
+#endif
 }
 
 void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
