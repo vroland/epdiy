@@ -103,9 +103,7 @@ void rmt_compat_connect_gpio(rmt_compat_channel_t channel, gpio_num_t gpio) {
     gpio_hal_func_sel(&s_gpio_hal, gpio, PIN_FUNC_GPIO);
     gpio_set_direction(gpio, GPIO_MODE_OUTPUT);
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-    esp_rom_gpio_connect_out_signal(
-        gpio, soc_rmt_signals[0].channels[channel].tx_sig, false, 0
-    );
+    esp_rom_gpio_connect_out_signal(gpio, soc_rmt_signals[0].channels[channel].tx_sig, false, 0);
 #else
     esp_rom_gpio_connect_out_signal(
         gpio, rmt_periph_signals.groups[0].channels[channel].tx_sig, false, 0
