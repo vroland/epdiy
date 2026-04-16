@@ -12,6 +12,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "epd_init_config.h"
 #include "epd_internals.h"
 
 /// An area on the display.
@@ -204,6 +205,14 @@ typedef struct {
 /** Initialize the ePaper display */
 void epd_init(
     const EpdBoardDefinition* board, const EpdDisplay_t* display, enum EpdInitOptions options
+);
+
+/** Initialize the ePaper display with optional bus configuration overrides. */
+void epd_init_with_config(
+    const EpdBoardDefinition* board,
+    const EpdDisplay_t* display,
+    enum EpdInitOptions options,
+    const EpdInitConfig* config
 );
 
 /**

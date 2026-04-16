@@ -19,6 +19,7 @@ set(app_sources "src/epdiy.c"
                 "src/highlevel.c"
                 "src/board/tps65185.c"
                 "src/board/pca9555.c"
+                "src/board/epd_board_i2c.c"
                 "src/board/epd_board.c"
                 "src/board/epd_board_common.c"
                 "src/board/epd_board_lilygo_t5_47.c"
@@ -35,7 +36,11 @@ set(app_sources "src/epdiy.c"
 
 # Can also use IDF_VER for the full esp-idf version string but that is harder to parse. i.e. v4.1.1, v5.0-beta1, etc
 if (${IDF_VERSION_MAJOR} GREATER 4)
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES driver esp_timer esp_adc esp_lcd)
+    set(epdiy_requires driver esp_timer esp_adc esp_lcd)
+    if (${IDF_VERSION_MAJOR} GREATER 5 OR (${IDF_VERSION_MAJOR} EQUAL 5 AND ${IDF_VERSION_MINOR} GREATER 2))
+        list(APPEND epdiy_requires esp_driver_i2c)
+    endif()
+    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES ${epdiy_requires})
 else()
     idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES esp_adc_cal esp_timer esp_lcd)
 endif()

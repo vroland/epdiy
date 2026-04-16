@@ -140,22 +140,27 @@ In Arduino it works like this.
 
  `esp_deep_sleep_start();`
 
-### I2C Bus Sharing (Arduino)
+### I2C Bus Sharing
 
-When using epdiy with Arduino on boards like the T5 S3 E-Paper Pro, you may need to share the I2C bus between epdiy and other peripherals (touch controller, RTC, battery gauge, etc.).
+EPDIY now uses the ESP-IDF master bus/device I2C driver on IDF 5.x and newer.
 
-Epdiy's board initialization will detect if the I2C driver is already installed (e.g., by Arduino's `Wire.begin()`) and reuse the existing driver instead of failing. This allows you to:
+Existing programs can keep calling `epd_init(...)` and EPDIY will create and own the board's default I2C bus.
 
-1. Call `Wire.begin(SDA, SCL)` before `epd_init()` to initialize the I2C bus
-2. Use `Wire` for other I2C devices (GT911 touch, PCF8563 RTC, BQ27220 fuel gauge)
-3. Protect shared I2C access with a mutex if accessing from multiple tasks
+If your application already owns an ESP-IDF I2C master bus, pass it in during initialization:
 
-Example initialization order for T5 S3 E-Paper Pro:
-```cpp
-Wire.begin(39, 40);  // Initialize I2C first (SDA=39, SCL=40)
-epd_init(&epd_board_v7, &ED047TC1, EPD_LUT_64K);  // epdiy reuses I2C driver
-// Now both epdiy and Wire can coexist on the same I2C bus
+```c
+i2c_master_bus_handle_t bus = ...;
+EpdI2cConfig i2c_config = {
+    .bus_handle = bus,
+};
+EpdInitConfig init_config = {
+    .i2c = &i2c_config,
+};
+
+epd_init_with_config(&epd_board_v7, &ED047TC1, EPD_LUT_64K, &init_config);
 ```
+
+When a bus handle is provided, EPDIY will attach its TPS65185/PCA9555 devices to that bus and leave bus ownership to the caller.
 
 More on E-Paper Displays
 ------------------------

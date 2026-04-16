@@ -64,7 +64,8 @@ static void IRAM_ATTR push_cfg_bit(bool bit) {
 
 static epd_config_register_t config_reg;
 
-static void epd_board_init(uint32_t epd_row_width) {
+static void epd_board_init(uint32_t epd_row_width, const EpdInitConfig* init_config) {
+    (void)init_config;
     /* Power Control Output/Off */
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);

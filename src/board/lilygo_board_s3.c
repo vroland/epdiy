@@ -5,12 +5,15 @@
 #include "../output_common/render_method.h"
 #include "../output_lcd/lcd_driver.h"
 #include "esp_log.h"
+#include "epd_board_i2c.h"
 #include "pca9555.h"
 #include "tps65185.h"
 
 #include <driver/gpio.h>
-#include <driver/i2c.h>
 #include <sdkconfig.h>
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 // Make this compile von the ESP32 without ifdefing the whole file
 #ifndef CONFIG_IDF_TARGET_ESP32S3
@@ -28,7 +31,6 @@
 #define CFG_SCL GPIO_NUM_40
 #define CFG_SDA GPIO_NUM_39
 #define CFG_INTR GPIO_NUM_38
-#define EPDIY_I2C_PORT I2C_NUM_0
 
 #define CFG_PIN_OE (PCA_PIN_PC10 >> 8)
 #define CFG_PIN_MODE (PCA_PIN_PC11 >> 8)
@@ -58,12 +60,19 @@
 #define CKH GPIO_NUM_4
 
 typedef struct {
-    i2c_port_t port;
+    epd_board_i2c_context_t i2c;
     bool pwrup;
     bool vcom_ctrl;
     bool wakeup;
     bool others[8];
 } epd_config_register_t;
+
+static const epd_board_i2c_bus_config_t board_i2c_config = {
+    .port = I2C_NUM_0,
+    .sda_io_num = CFG_SDA,
+    .scl_io_num = CFG_SCL,
+    .bus_speed_hz = 100000,
+};
 
 /** The VCOM voltage to use. */
 static int vcom = 1600;
@@ -92,22 +101,11 @@ static lcd_bus_config_t lcd_config = {
     .data[7] = D7,
 };
 
-static void epd_board_init(uint32_t epd_row_width) {
+static void epd_board_init(uint32_t epd_row_width, const EpdInitConfig* init_config) {
     gpio_hold_dis(CKH);  // free CKH after wakeup
 
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = CFG_SDA;
-    conf.scl_io_num = CFG_SCL;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = 100000;
-    conf.clk_flags = 0;
-    ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
-
-    ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
-
-    config_reg.port = EPDIY_I2C_PORT;
+    ESP_ERROR_CHECK(epd_board_i2c_init(&config_reg.i2c, &board_i2c_config, init_config, true, true)
+    );
     config_reg.pwrup = false;
     config_reg.vcom_ctrl = false;
     config_reg.wakeup = false;
@@ -123,7 +121,7 @@ static void epd_board_init(uint32_t epd_row_width) {
     ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void*)CFG_INTR));
 
     // set all epdiy lines to output except TPS interrupt + PWR good
-    ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
+    ESP_ERROR_CHECK(pca9555_set_config(config_reg.i2c.pca, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 
     const EpdDisplay_t* display = epd_get_display();
 
@@ -142,11 +140,11 @@ static void epd_board_deinit() {
     epd_lcd_deinit();
 
     ESP_ERROR_CHECK(pca9555_set_config(
-        config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1
+        config_reg.i2c.pca, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1
     ));
 
     int tries = 0;
-    while (!((pca9555_read_input(config_reg.port, 1) & 0xC0) == 0x80)) {
+    while (!((pca9555_read_input(config_reg.i2c.pca, 1) & 0xC0) == 0x80)) {
         if (tries >= 50) {
             ESP_LOGE("epdiy", "failed to shut down TPS65185!");
             break;
@@ -158,9 +156,9 @@ static void epd_board_deinit() {
     // Not sure why we need this delay, but the TPS65185 seems to generate an interrupt after some
     // time that needs to be cleared.
     vTaskDelay(50);
-    pca9555_read_input(config_reg.port, 0);
-    pca9555_read_input(config_reg.port, 1);
-    i2c_driver_delete(EPDIY_I2C_PORT);
+    pca9555_read_input(config_reg.i2c.pca, 0);
+    pca9555_read_input(config_reg.i2c.pca, 1);
+    epd_board_i2c_deinit(&config_reg.i2c);
 
     gpio_uninstall_isr_service();
 }
@@ -180,7 +178,7 @@ static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* 
         if (config_reg.wakeup)
             value |= CFG_PIN_WAKEUP;
 
-        ESP_ERROR_CHECK(pca9555_set_value(config_reg.port, value, 1));
+        ESP_ERROR_CHECK(pca9555_set_value(config_reg.i2c.pca, value, 1));
     }
 }
 
@@ -203,12 +201,12 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     // give the IC time to powerup and set lines
     vTaskDelay(1);
 
-    while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
+    while (!(pca9555_read_input(config_reg.i2c.pca, 1) & CFG_PIN_PWRGOOD)) {
     }
 
-    ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
+    ESP_ERROR_CHECK(tps_write_register(config_reg.i2c.tps, TPS_REG_ENABLE, 0x3F));
 
-    tps_set_vcom(config_reg.port, vcom);
+    tps_set_vcom(config_reg.i2c.tps, vcom);
 
     state->ep_sth = true;
     mask = (const epd_ctrl_state_t){
@@ -217,12 +215,12 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     epd_board_set_ctrl(state, &mask);
 
     int tries = 0;
-    while (!((tps_read_register(config_reg.port, TPS_REG_PG) & 0xFA) == 0xFA)) {
+    while (!((tps_read_register(config_reg.i2c.tps, TPS_REG_PG) & 0xFA) == 0xFA)) {
         if (tries >= 500) {
             ESP_LOGE(
                 "epdiy",
                 "Power enable failed! PG status: %X",
-                tps_read_register(config_reg.port, TPS_REG_PG)
+                tps_read_register(config_reg.i2c.tps, TPS_REG_PG)
             );
             return;
         }
