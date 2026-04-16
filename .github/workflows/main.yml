@@ -41,6 +41,8 @@ jobs:
             example: www-image
           - version: v5.4
             example: calibration_helper
+          - version: v5.4
+            example: test
 
     continue-on-error: ${{ matrix.version == 'latest' }}
 
