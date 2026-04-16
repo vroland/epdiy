@@ -6,6 +6,7 @@ set(app_sources "src/epdiy.c"
                 "src/output_i2s/render_i2s.c"
                 "src/output_i2s/rmt_pulse.c"
                 "src/output_i2s/i2s_data_bus.c"
+                "src/output_common/rmt_compat.c"
                 "src/output_common/lut.c"
                 "src/output_common/lut.S"
                 "src/output_common/line_queue.c"
@@ -33,12 +34,19 @@ set(app_sources "src/epdiy.c"
 )
 
 
-# Can also use IDF_VER for the full esp-idf version string but that is harder to parse. i.e. v4.1.1, v5.0-beta1, etc
-if (${IDF_VERSION_MAJOR} GREATER 4)
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES driver esp_timer esp_adc esp_lcd)
-else()
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES esp_adc_cal esp_timer esp_lcd)
+# IDF 5.x minimum required (rmt_compat uses IDF 5.x+ APIs)
+set(epdiy_private_requires hal soc esp_hw_support esp_rom)
+
+if(DEFINED IDF_VERSION_MAJOR AND IDF_VERSION_MAJOR GREATER_EQUAL 6)
+    list(APPEND epdiy_private_requires esp_hal_rmt)
 endif()
+
+idf_component_register(
+    SRCS ${app_sources}
+    INCLUDE_DIRS "src/"
+    REQUIRES driver esp_timer esp_adc esp_lcd
+    PRIV_REQUIRES ${epdiy_private_requires}
+)
 
 # formatting specifiers maybe incompatible between idf versions because of different int definitions
 component_compile_options(-Wno-error=format= -Wno-format)
