@@ -26,3 +26,4 @@ ED*.h
 ES*.h
 examples/private_*/
 *.code-workspace
+.serena/

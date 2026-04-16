@@ -6,9 +6,14 @@
 // the I2S driver is based on ESP32 registers and won't compile on the S3
 #ifdef CONFIG_IDF_TARGET_ESP32
 
+#include <esp_idf_version.h>
 #include "driver/rtc_io.h"
 #include "esp_system.h"
-#if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+// IDF 6.x: use esp_rom wrapper; legacy rom/gpio.h may not export gpio_matrix_out
+#include "esp_rom_gpio.h"
+#include "rom/lldesc.h"
+#elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 0, 0) || ARDUINO_ARCH_ESP32
 #include "rom/gpio.h"
 #include "rom/lldesc.h"
 #else
@@ -19,9 +24,12 @@
 #include "soc/i2s_reg.h"
 #include "soc/i2s_struct.h"
 #include "soc/rtc.h"
+#include "soc/gpio_sig_map.h"
 
-#include "esp_system.h"  // for ESP_IDF_VERSION_VAL
 #include "esp_private/periph_ctrl.h"
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#include "hal/i2s_ll.h"
+#endif
 
 /// DMA descriptors for front and back line buffer.
 /// We use two buffers, so one can be filled while the other
@@ -81,7 +89,11 @@ static void gpio_setup_out(int gpio, int sig, bool invert) {
         return;
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpio], PIN_FUNC_GPIO);
     gpio_set_direction(gpio, GPIO_MODE_DEF_OUTPUT);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    esp_rom_gpio_connect_out_signal(gpio, sig, invert, false);
+#else
     gpio_matrix_out(gpio, sig, invert, false);
+#endif
 }
 
 /// Resets "Start Pulse" signal when the current row output is done.
@@ -178,7 +190,14 @@ void i2s_bus_init(i2s_bus_config* cfg, uint32_t epd_row_width) {
     // store pin in global variable for use in interrupt.
     start_pulse_pin = cfg->start_pulse;
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    PERIPH_RCC_ATOMIC() {
+        i2s_ll_enable_bus_clock(1, true);
+        i2s_ll_reset_register(1);
+    }
+#else
     periph_module_enable(PERIPH_I2S1_MODULE);
+#endif
 
     i2s_dev_t* dev = &I2S1;
 
@@ -297,7 +316,13 @@ void i2s_bus_deinit() {
     rtc_clk_apll_coeff_set(0, 0, 0, 8);
     rtc_clk_apll_enable(true);
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    PERIPH_RCC_ATOMIC() {
+        i2s_ll_enable_bus_clock(1, false);
+    }
+#else
     periph_module_disable(PERIPH_I2S1_MODULE);
+#endif
 }
 
 #endif

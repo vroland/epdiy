@@ -5,8 +5,18 @@
 
 #ifdef RENDER_METHOD_LCD
 
+#include <esp_idf_version.h>
 #include <esp_log.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+// IDF 6.x: rom/cache.h may be relocated; try target-specific path
+#if __has_include(<rom/cache.h>)
 #include <rom/cache.h>
+#elif __has_include(<esp32s3/rom/cache.h>)
+#include <esp32s3/rom/cache.h>
+#endif
+#else
+#include <rom/cache.h>
+#endif
 
 #include "../epd_internals.h"
 #include "../output_common/line_queue.h"
