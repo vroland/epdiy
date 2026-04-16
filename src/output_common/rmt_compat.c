@@ -151,15 +151,23 @@ void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
 }
 
 void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
-#if SOC_RMT_SUPPORT_TX_LOOP_COUNT
+#if defined(SOC_RMT_SUPPORT_TX_LOOP_COUNT) && SOC_RMT_SUPPORT_TX_LOOP_COUNT
     rmt_ll_tx_enable_loop_count(&RMT, channel, true);
-#if SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP
+#if defined(SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP) && SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP
     rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
 #endif
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
 #else
     (void)channel;
     (void)count;
+#endif
+}
+
+int rmt_compat_get_irq_source(void) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    return soc_rmt_signals[0].irq;
+#else
+    return rmt_periph_signals.groups[0].irq;
 #endif
 }
 
