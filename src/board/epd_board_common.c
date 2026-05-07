@@ -50,15 +50,22 @@ void epd_board_temperature_init_v2() {
 float epd_board_ambient_temperature_v2() {
     int raw = 0;
     uint32_t value = 0;
+    int successful_samples = 0;
     for (int i = 0; i < NUMBER_OF_SAMPLES; i++) {
         if (adc_oneshot_read(adc_handle, channel, &raw) == ESP_OK) {
             value += raw;
+            successful_samples++;
         }
     }
-    value /= NUMBER_OF_SAMPLES;
+    if (successful_samples == 0) {
+        return 20.0f;
+    }
+    value /= successful_samples;
     int voltage_mv = 0;
     if (adc_cali_handle != NULL) {
-        adc_cali_raw_to_voltage(adc_cali_handle, (int)value, &voltage_mv);
+        if (adc_cali_raw_to_voltage(adc_cali_handle, (int)value, &voltage_mv) != ESP_OK) {
+            return 20.0f;
+        }
     } else {
         voltage_mv = (int)(value * 2200 / 4095);
     }
