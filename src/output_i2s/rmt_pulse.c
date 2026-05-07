@@ -19,6 +19,7 @@ static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
 void rmt_pulse_init(gpio_num_t pin) {
     rmt_compat_enable_clock(RMT_COMPAT_CHANNEL_1);
     rmt_compat_connect_gpio(RMT_COMPAT_CHANNEL_1, pin);
+    rmt_compat_set_group_clock_src(RMT_COMPAT_CHANNEL_1);
     rmt_compat_set_clock_div(RMT_COMPAT_CHANNEL_1, 8);
     rmt_compat_set_mem_blocks(RMT_COMPAT_CHANNEL_1, 2);
     rmt_compat_enable_mem_access_nonfifo(true);
