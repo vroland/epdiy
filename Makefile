@@ -8,12 +8,21 @@ EXPORTED_MODES ?= 1,2,5,16,17
 # Generate waveforms in room temperature range
 EXPORT_TEMPERATURE_RANGE ?= 15,35
 
-FORMATTED_FILES := $(shell find ./ -regex '.*\.\(c\|cpp\|h\|ino\)$$' \
-		-not -regex '.*/\(.ccls-cache\|.cache\|waveforms\|\components\|build\)/.*' \
-		-not -regex '.*/img_.*.h' \
-		-not -regex '.*/build.*' \
-		-not -regex '.*/\(firasans_.*.h\|opensans.*.h\|amiri.h\|alexandria.h\|dragon.h\)' \
-		-not -regex '.*E[DS][0-9]*[A-Za-z]*[0-9].h')
+FORMATTED_FILES := $(shell git ls-files '*.c' '*.cpp' '*.h' '*.ino' \
+		':!**/.ccls-cache/**' \
+		':!**/.cache/**' \
+		':!**/waveforms/**' \
+		':!**/components/**' \
+		':!**/managed_components/**' \
+		':!**/build/**' \
+		':!**/build.*' \
+		':!**/img_*.h' \
+		':!**/firasans_*.h' \
+		':!**/opensans*.h' \
+		':!**/amiri.h' \
+		':!**/alexandria.h' \
+		':!**/dragon.h' \
+		':!**/E[DS][0-9]*[A-Za-z]*[0-9].h')
 
 # the default headers that should come with the distribution
 default: \

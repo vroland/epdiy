@@ -25,6 +25,7 @@ jobs:
           - v5.2
           - v5.3
           - v5.4
+          - v6.0
         target:
           - esp32
           - esp32s3
@@ -43,6 +44,18 @@ jobs:
             example: calibration_helper
           - version: v5.4
             example: test
+          - version: v6.0
+            example: screen_diag
+          - version: v6.0
+            example: dragon
+          - version: v6.0
+            example: grayscale_test
+          - version: v6.0
+            example: www-image
+          - version: v6.0
+            example: calibration_helper
+          - version: v6.0
+            example: test
 
     continue-on-error: ${{ matrix.version == 'latest' }}
 
@@ -50,6 +63,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+      - name: Use minimal sdkconfig for IDF 6
+        if: startsWith(matrix.version, 'release-v6') || startsWith(matrix.version, 'v6')
+        run: |
+          for f in examples/${{ matrix.example }}/sdkconfig.defaults.*; do
+            [ -f "$f" ] && : > "$f"
+          done
+          printf '%s\n' \
+            "CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y" \
+            "CONFIG_COMPILER_OPTIMIZATION_PERF=y" \
+            "CONFIG_SPIRAM=y" \
+            > examples/${{ matrix.example }}/sdkconfig.defaults
       - uses: 'espressif/esp-idf-ci-action@main'
         with:
           esp_idf_version: ${{ matrix.version }}
