@@ -3,7 +3,6 @@
 #include <esp_idf_version.h>
 #include <esp_private/periph_ctrl.h>
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/gpio.h>
 #include <esp_rom_gpio.h>
 #include <hal/gpio_hal.h>
@@ -30,8 +29,6 @@ extern rmt_mem_block_t RMTMEM;
 typedef rmt_mem_t rmt_mem_block_t;
 extern rmt_mem_block_t RMTMEM;
 #endif
-
-#endif  // ESP_IDF_VERSION >= 5.0.0
 
 static gpio_hal_context_t s_gpio_hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 

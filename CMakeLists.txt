@@ -44,10 +44,13 @@ set(epdiy_requires driver esp_timer esp_adc esp_lcd)
 if (${IDF_VERSION_MAJOR} GREATER 5 OR (${IDF_VERSION_MAJOR} EQUAL 5 AND ${IDF_VERSION_MINOR} GREATER 2))
     list(APPEND epdiy_requires esp_driver_i2c)
 endif()
+if(DEFINED IDF_VERSION_MAJOR AND IDF_VERSION_MAJOR GREATER_EQUAL 6)
+    list(APPEND epdiy_requires esp_driver_gpio esp_driver_rmt)
+endif()
 
 set(epdiy_private_requires hal soc esp_hw_support esp_rom)
 if(DEFINED IDF_VERSION_MAJOR AND IDF_VERSION_MAJOR GREATER_EQUAL 6)
-    list(APPEND epdiy_private_requires esp_hal_rmt)
+    list(APPEND epdiy_private_requires esp_hal_dma esp_hal_rmt)
 endif()
 
 idf_component_register(
