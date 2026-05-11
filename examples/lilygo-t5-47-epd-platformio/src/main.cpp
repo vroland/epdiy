@@ -88,12 +88,12 @@ void display_center_message(const char* text) {
     // first set full screen to white
     epd_hl_set_all_white(&hl);
 
-    int cursor_x = EPD_WIDTH / 2;
-    int cursor_y = EPD_HEIGHT / 2;
+    int cursor_x = epd_width() / 2;
+    int cursor_y = epd_height() / 2;
     if (orientation == EPD_ROT_PORTRAIT) {
         // height and width switched here because portrait mode
-        cursor_x = EPD_HEIGHT / 2;
-        cursor_y = EPD_WIDTH / 2;
+        cursor_x = epd_height() / 2;
+        cursor_y = epd_width() / 2;
     }
     EpdFontProperties font_props = epd_font_properties_default();
     font_props.flags = EPD_DRAW_ALIGN_CENTER;
@@ -123,12 +123,12 @@ void display_full_screen_left_aligned_text(const char* text) {
 
     /************ Battery percentage display ****************/
     // height and width switched here because portrait mode
-    int battery_cursor_x = EPD_WIDTH - 30;
-    int battery_cursor_y = EPD_HEIGHT - 10;
+    int battery_cursor_x = epd_width() - 30;
+    int battery_cursor_y = epd_height() - 10;
     if (orientation == EPD_ROT_PORTRAIT) {
         // switched x and y constants in portrait mode
-        battery_cursor_x = EPD_HEIGHT - 10;
-        battery_cursor_y = EPD_WIDTH - 30;
+        battery_cursor_x = epd_height() - 10;
+        battery_cursor_y = epd_width() - 30;
     }
     EpdFontProperties battery_font_props = epd_font_properties_default();
     battery_font_props.flags = EPD_DRAW_ALIGN_RIGHT;
