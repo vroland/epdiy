@@ -258,12 +258,10 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
             pwr_good_received = true;
             printPowerGoodStatus();
             break;
-        } 
-        else
-        {
-         printPowerGoodStatus(); 
+        } else {
+            printPowerGoodStatus();
         }
-        
+
         // Turn off wakeup and pwrup
         config_reg.wakeup = false;
         config_reg.pwrup = false;
@@ -275,7 +273,9 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     }
 
     if (!pwr_good_received) {
-        ESP_LOGE("epdiy", "PWR_GOOD signal not received after 30 retries, internal rails may not be OK");
+        ESP_LOGE(
+            "epdiy", "PWR_GOOD signal not received after 30 retries, internal rails may not be OK"
+        );
         printPowerGoodStatus();
         return;
     }
