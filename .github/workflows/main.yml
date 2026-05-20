@@ -71,16 +71,16 @@ jobs:
           - 3.1.3
 
     steps:
-      - name: Install latest git
-        run: |
-          apt update -qq && apt install -y -qq git
       - name: Checkout repo
         uses: actions/checkout@v6
-      - name: Install Arduino ESP
-        run: |
-          cd examples/${{ matrix.example }}
-          mkdir components && cd components
-          git clone --depth 1 --recursive --branch ${{ matrix.arduino-esp32 }} https://github.com/espressif/arduino-esp32.git arduino
+      - name: Checkout Arduino ESP
+        uses: actions/checkout@v6
+        with:
+          repository: espressif/arduino-esp32
+          ref: ${{ matrix.arduino-esp32 }}
+          path: examples/${{ matrix.example }}/components/arduino
+          submodules: recursive
+          fetch-depth: 1
       - name: esp-idf build
         run: |
           . $IDF_PATH/export.sh
