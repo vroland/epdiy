@@ -9,14 +9,11 @@ on:
 jobs:
   format-check:
     runs-on: ubuntu-latest
-    container:
-      image: "espressif/idf:v5.4"
     steps:
       - uses: actions/checkout@v6
+      - name: Install clang-format
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-format-18
       - run: |
-          . $IDF_PATH/export.sh
-          idf_tools.py install esp-clang
-          . $IDF_PATH/export.sh
           which clang-format
           make format-check
 
