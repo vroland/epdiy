@@ -46,7 +46,6 @@ void epd_lcd_deinit();
 void epd_lcd_frame_done_cb(frame_done_func_t, void* payload);
 void epd_lcd_line_source_cb(line_cb_func_t, void* payload);
 void epd_lcd_start_frame();
-size_t epd_lcd_get_bb_eof_count();
 /**
  * Set the LCD pixel clock frequency in MHz.
  */

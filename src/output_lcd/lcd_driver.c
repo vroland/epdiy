@@ -14,13 +14,10 @@
 #include <esp_log.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include <esp_private/periph_ctrl.h>
-#include <esp_private/esp_clk.h>
 #include <soc/clk_tree_defs.h>
-#include <soc/system_reg.h>
 
 #include <driver/gpio.h>
 #include <esp_check.h>
@@ -297,6 +294,9 @@ static esp_err_t init_dma_trans_link() {
     ESP_RETURN_ON_ERROR(
         gdma_new_ahb_channel(&dma_chan_config, &lcd.dma_chan, NULL), TAG, "alloc DMA channel failed"
     );
+    // IDF 6.0's gdma_connect no longer implicitly resets the channel (removed).
+    // Do it explicitly to match IDF 5.4 behavior.
+    gdma_reset(lcd.dma_chan);
 #else
     // alloc DMA channel and connect to LCD peripheral
     gdma_channel_alloc_config_t dma_chan_config = {
@@ -522,11 +522,7 @@ static esp_err_t init_lcd_peripheral() {
 #else
     lcd_ll_enable_clock(lcd.hal.dev, true);
 #endif
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) && !defined(LCD_CLK_SRC_PLL240M)
-    lcd_ll_select_clk_src(lcd.hal.dev, LCD_CLK_SRC_DEFAULT);
-#else
     lcd_ll_select_clk_src(lcd.hal.dev, LCD_CLK_SRC_PLL240M);
-#endif
     ESP_RETURN_ON_ERROR(ret, TAG, "set source clock failed");
 
     lcd_ll_fifo_reset(lcd.hal.dev);
@@ -651,12 +647,6 @@ void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_h
     epd_lcd_set_pixel_clock_MHz(lcd.config.pixel_clock / 1000 / 1000);
     epd_lcd_line_source_cb(NULL, NULL);
 
-    uint32_t pll_freq_sel = REG_GET_FIELD(SYSTEM_CPU_PER_CONF_REG, SYSTEM_PLL_FREQ_SEL);
-    ESP_LOGI(
-        TAG, "PLL config: sel=%"PRIu32" -> %"PRIu32" MHz, CPU: %d MHz",
-        pll_freq_sel, pll_freq_sel == 1 ? 480 : 320, esp_clk_cpu_freq()
-    );
-
     ESP_LOGI(TAG, "LCD init done.");
     return;
 err:
@@ -702,12 +692,10 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
     uint32_t freq = lcd_hal_cal_pclk_freq(&lcd.hal, 240000000, lcd.config.pixel_clock, 0);
 #endif
 
-    ESP_LOGI(TAG, "pclk freq: requested %d Hz, actual %d Hz", lcd.config.pixel_clock, freq);
     lcd.line_length_us = (lcd.lcd_res_h + lcd.config.le_high_time + lcd.config.line_front_porch - 1)
                              * 1000000 / freq
                          + 1;
     lcd.line_cycles = lcd.line_length_us * freq / 1000000;
-    ESP_LOGI(TAG, "line width: %dus, %d cylces", lcd.line_length_us, lcd.line_cycles);
 
     ckv_rmt_build_signal();
 }
@@ -765,10 +753,6 @@ void IRAM_ATTR epd_lcd_start_frame() {
     lcd_ll_start(lcd.hal.dev);
 
     taskEXIT_CRITICAL(&frame_start_spinlock);
-}
-
-size_t epd_lcd_get_bb_eof_count() {
-    return lcd.bb_eof_count;
 }
 
 #else

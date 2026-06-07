@@ -77,14 +77,6 @@ void lcd_do_update(RenderContext_t* ctx) {
 
         // transmission is started in renderer threads, now wait util it's done
         xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
-        ESP_LOGI(
-            "epd_lcd",
-            "frame %d consumed %d/%d lines, dma eof count %u",
-            ctx->current_frame,
-            ctx->lines_consumed,
-            ctx->lines_total,
-            (unsigned)epd_lcd_get_bb_eof_count()
-        );
 
         for (int i = 0; i < NUM_RENDER_THREADS; i++) {
             xSemaphoreTake(ctx->feed_done_smphr[i], portMAX_DELAY);
@@ -167,13 +159,6 @@ void epd_push_pixels_lcd(RenderContext_t* ctx, short time, int color) {
     epd_set_mode(1);
     epd_lcd_start_frame();
     xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
-    ESP_LOGI(
-        "epd_lcd",
-        "push pixels consumed %d/%d lines, dma eof count %u",
-        ctx->lines_consumed,
-        ctx->lines_total,
-        (unsigned)epd_lcd_get_bb_eof_count()
-    );
     epd_set_mode(0);
 
     free(ctx->static_line_buffer);
@@ -227,7 +212,6 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             while (buf == NULL) {
                 // break in case of errors
                 if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
-                    printf("on err 1: %d %d\n", ctx->lines_prepared, ctx->lines_consumed);
                     lq_reset(lq);
                     return;
                 };
@@ -252,7 +236,6 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             // break in case of errors
             if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
                 lq_reset(lq);
-                printf("on err 2: %d %d\n", ctx->lines_prepared, ctx->lines_consumed);
                 return;
             };
 
