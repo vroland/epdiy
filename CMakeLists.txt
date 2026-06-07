@@ -6,6 +6,7 @@ set(app_sources "src/epdiy.c"
                 "src/output_i2s/render_i2s.c"
                 "src/output_i2s/rmt_pulse.c"
                 "src/output_i2s/i2s_data_bus.c"
+                "src/output_common/rmt_compat.c"
                 "src/output_common/lut.c"
                 "src/output_common/lut.S"
                 "src/output_common/line_queue.c"
@@ -19,6 +20,7 @@ set(app_sources "src/epdiy.c"
                 "src/highlevel.c"
                 "src/board/tps65185.c"
                 "src/board/pca9555.c"
+                "src/board/epd_board_i2c.c"
                 "src/board/epd_board.c"
                 "src/board/epd_board_common.c"
                 "src/board/epd_board_lilygo_t5_47.c"
@@ -34,12 +36,27 @@ set(app_sources "src/epdiy.c"
 )
 
 
-# Can also use IDF_VER for the full esp-idf version string but that is harder to parse. i.e. v4.1.1, v5.0-beta1, etc
-if (${IDF_VERSION_MAJOR} GREATER 4)
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES driver esp_timer esp_adc esp_lcd)
-else()
-    idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "src/" REQUIRES esp_adc_cal esp_timer esp_lcd)
+# Can also use IDF_VER for the full esp-idf version string but that is harder to parse. i.e. v5.0-beta1, etc
+if (${IDF_VERSION_MAJOR} LESS 5)
+    message(FATAL_ERROR "epdiy requires ESP-IDF 5.x or newer")
 endif()
+
+set(epdiy_requires driver esp_timer esp_adc esp_lcd)
+if (${IDF_VERSION_MAJOR} GREATER 5 OR (${IDF_VERSION_MAJOR} EQUAL 5 AND ${IDF_VERSION_MINOR} GREATER 2))
+    list(APPEND epdiy_requires esp_driver_i2c)
+endif()
+
+set(epdiy_private_requires hal soc esp_hw_support esp_rom)
+if(DEFINED IDF_VERSION_MAJOR AND IDF_VERSION_MAJOR GREATER_EQUAL 6)
+    list(APPEND epdiy_private_requires esp_hal_rmt)
+endif()
+
+idf_component_register(
+    SRCS ${app_sources}
+    INCLUDE_DIRS "src/"
+    REQUIRES ${epdiy_requires}
+    PRIV_REQUIRES ${epdiy_private_requires}
+)
 
 # formatting specifiers maybe incompatible between idf versions because of different int definitions
 component_compile_options(-Wno-error=format= -Wno-format)

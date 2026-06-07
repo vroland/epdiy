@@ -64,7 +64,8 @@ static void IRAM_ATTR push_cfg_bit(bool bit) {
 
 static epd_config_register_t config_reg;
 
-static void epd_board_init(uint32_t epd_row_width) {
+static void epd_board_init(uint32_t epd_row_width, const EpdInitConfig* init_config) {
+    (void)init_config;
     /* Power Control Output/Off */
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
@@ -180,12 +181,15 @@ static void epd_board_poweroff(epd_ctrl_state_t* state) {
     epd_board_set_ctrl(state, &mask);
 
     i2s_gpio_detach(&i2s_config);
-    // END POWEROFF
+}
+
+static void epd_board_deinit() {
+    epd_board_temperature_deinit_v2();
 }
 
 const EpdBoardDefinition epd_board_v4 = {
     .init = epd_board_init,
-    .deinit = NULL,
+    .deinit = epd_board_deinit,
     .set_ctrl = epd_board_set_ctrl,
     .poweron = epd_board_poweron,
     .poweroff = epd_board_poweroff,

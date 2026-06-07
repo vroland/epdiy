@@ -2,6 +2,7 @@
 #include "epdiy.h"
 
 #include "../output_common/render_method.h"
+#include "../output_common/rmt_compat.h"
 #include "esp_heap_caps.h"
 #include "esp_intr_alloc.h"
 #include "hal/gpio_types.h"
@@ -18,20 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-#include <driver/rmt_tx.h>
-#include <driver/rmt_types.h>
-#include <driver/rmt_types_legacy.h>
 #include <esp_private/periph_ctrl.h>
-#include <hal/rmt_types.h>
 #include <soc/clk_tree_defs.h>
-#else
-#include <driver/periph_ctrl.h>
-#include <driver/rmt.h>
-#include <esp_rom_gpio.h>
-#include <soc/rmt_struct.h>
-#include "idf-4-backports.h"
-#endif
 
 #include <driver/gpio.h>
 #include <esp_check.h>
@@ -48,10 +37,8 @@
 #include <hal/gpio_hal.h>
 #include <hal/lcd_hal.h>
 #include <hal/lcd_ll.h>
-#include <hal/rmt_ll.h>
 #include <rom/cache.h>
 #include <soc/lcd_periph.h>
-#include <soc/rmt_struct.h>
 
 #include "hal/gpio_hal.h"
 
@@ -79,17 +66,7 @@ static inline int max(int x, int y) {
 #define LINE_BATCH 1000
 #define BOUNCE_BUF_LINES 4
 
-#define RMT_CKV_CHAN RMT_CHANNEL_1
-
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-// The extern line is declared in esp-idf/components/driver/deprecated/rmt_legacy.c. It has access
-// to RMTMEM through the rmt_private.h header which we can't access outside the sdk. Declare our own
-// extern here to properly use the RMTMEM smybol defined in
-// components/soc/[target]/ld/[target].peripherals.ld Also typedef the new rmt_mem_t struct to the
-// old rmt_block_mem_t struct. Same data fields, different names
-typedef rmt_mem_t rmt_block_mem_t;
-extern rmt_block_mem_t RMTMEM;
-#endif
+#define RMT_CKV_CHAN RMT_COMPAT_CHANNEL_1
 
 // spinlock for protecting the critical section at frame start
 static portMUX_TYPE frame_start_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -165,11 +142,9 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
 }
 
 static void start_ckv_cycles(int cycles) {
-    rmt_ll_tx_enable_loop_count(&RMT, RMT_CKV_CHAN, true);
-    rmt_ll_tx_enable_loop_autostop(&RMT, RMT_CKV_CHAN, true);
-    rmt_ll_tx_set_loop_count(&RMT, RMT_CKV_CHAN, cycles);
-    rmt_ll_tx_reset_pointer(&RMT, RMT_CKV_CHAN);
-    rmt_ll_tx_start(&RMT, RMT_CKV_CHAN);
+    rmt_compat_tx_configure_finite_loop(RMT_CKV_CHAN, cycles);
+    rmt_compat_tx_reset_mem(RMT_CKV_CHAN);
+    rmt_compat_tx_start(RMT_CKV_CHAN);
 }
 
 /**
@@ -177,45 +152,28 @@ static void start_ckv_cycles(int cycles) {
  */
 static void ckv_rmt_build_signal() {
     int low_time = (lcd.line_length_us * 10 - lcd.config.ckv_high_time);
-    volatile rmt_item32_t* rmt_mem_ptr = &(RMTMEM.chan[RMT_CKV_CHAN].data32[0]);
-    rmt_mem_ptr->duration0 = lcd.config.ckv_high_time;
-    rmt_mem_ptr->level0 = 1;
-    rmt_mem_ptr->duration1 = low_time;
-    rmt_mem_ptr->level1 = 0;
-    rmt_mem_ptr[1].val = 0;
+    rmt_compat_write_single_item(
+        RMT_CKV_CHAN, lcd.config.ckv_high_time, true, low_time, false, true
+    );
 }
 
 /**
  * Configure the RMT peripheral for use as the CKV clock.
  */
 static void init_ckv_rmt() {
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_enable(PERIPH_RMT_MODULE);
+    rmt_compat_reset_module();
+    rmt_compat_enable_module(true);
 
-    rmt_ll_enable_periph_clock(&RMT, true);
+    rmt_compat_enable_periph_clock(true);
+    rmt_compat_set_group_clock_src(RMT_CKV_CHAN);
+    rmt_compat_set_clock_div(RMT_CKV_CHAN, 8);
+    rmt_compat_set_mem_blocks(RMT_CKV_CHAN, 2);
+    rmt_compat_enable_mem_access_nonfifo(true);
+    rmt_compat_tx_set_idle_level(RMT_CKV_CHAN, 0, true);
+    rmt_compat_tx_enable_carrier(RMT_CKV_CHAN, false);
+    rmt_compat_tx_enable_loop(RMT_CKV_CHAN, true);
 
-    // Divide 80MHz APB Clock by 8 -> .1us resolution delay
-    // idf >= 5.0 calculates the clock divider differently
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    rmt_ll_set_group_clock_src(&RMT, RMT_CKV_CHAN, RMT_CLK_SRC_DEFAULT, 1, 0, 0);
-#else
-    rmt_ll_set_group_clock_src(
-        &RMT, RMT_CKV_CHAN, (rmt_clock_source_t)RMT_BASECLK_DEFAULT, 0, 0, 0
-    );
-#endif
-    rmt_ll_tx_set_channel_clock_div(&RMT, RMT_CKV_CHAN, 8);
-    rmt_ll_tx_set_mem_blocks(&RMT, RMT_CKV_CHAN, 2);
-    rmt_ll_enable_mem_access_nonfifo(&RMT, true);
-    rmt_ll_tx_fix_idle_level(&RMT, RMT_CKV_CHAN, RMT_IDLE_LEVEL_LOW, true);
-    rmt_ll_tx_enable_carrier_modulation(&RMT, RMT_CKV_CHAN, false);
-
-    rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
-
-    gpio_hal_func_sel(&hal, lcd.config.bus.ckv, PIN_FUNC_GPIO);
-    gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
-    esp_rom_gpio_connect_out_signal(
-        lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0
-    );
+    rmt_compat_connect_gpio(RMT_CKV_CHAN, lcd.config.bus.ckv);
 
     ckv_rmt_build_signal();
 }
@@ -224,9 +182,9 @@ static void init_ckv_rmt() {
  * Reset the CKV RMT configuration.
  */
 static void deinit_ckv_rmt() {
-    periph_module_reset(PERIPH_RMT_MODULE);
-    periph_module_disable(PERIPH_RMT_MODULE);
-
+    rmt_compat_reset_module();
+    rmt_compat_enable_periph_clock(false);
+    rmt_compat_enable_module(false);
     gpio_reset_pin(lcd.config.bus.ckv);
 }
 
