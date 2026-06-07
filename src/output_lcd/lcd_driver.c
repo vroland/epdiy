@@ -172,7 +172,7 @@ static IRAM_ATTR bool fill_bounce_buffer(uint8_t* buffer) {
     return task_awoken;
 }
 
-static void start_ckv_cycles(int cycles) {
+static void IRAM_ATTR start_ckv_cycles(int cycles) {
     rmt_compat_tx_configure_finite_loop(RMT_CKV_CHAN, cycles);
     rmt_compat_tx_reset_mem(RMT_CKV_CHAN);
     rmt_compat_tx_start(RMT_CKV_CHAN);

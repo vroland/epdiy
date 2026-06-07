@@ -1,5 +1,6 @@
 #include "rmt_compat.h"
 
+#include <sdkconfig.h>
 #include <esp_idf_version.h>
 #include <esp_private/periph_ctrl.h>
 
@@ -136,22 +137,24 @@ void rmt_compat_tx_enable_loop(rmt_compat_channel_t channel, bool enable) {
     rmt_ll_tx_enable_loop(&RMT, channel, enable);
 }
 
-void rmt_compat_tx_start(rmt_compat_channel_t channel) {
+void IRAM_ATTR rmt_compat_tx_start(rmt_compat_channel_t channel) {
     rmt_ll_tx_reset_pointer(&RMT, channel);
     rmt_ll_tx_start(&RMT, channel);
 }
 
-void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
+void IRAM_ATTR rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
     rmt_ll_tx_reset_pointer(&RMT, channel);
 }
 
-void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
+void IRAM_ATTR rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
 #if defined(SOC_RMT_SUPPORT_TX_LOOP_COUNT) && SOC_RMT_SUPPORT_TX_LOOP_COUNT
     rmt_ll_tx_enable_loop_count(&RMT, channel, true);
 #if defined(SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP) && SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP
     rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
 #endif
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#error "ESP32-S3 LCD output requires RMT TX loop count support"
 #else
     (void)channel;
     (void)count;
@@ -175,22 +178,22 @@ void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
     }
 }
 
-static void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
+static void IRAM_ATTR rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
     // Mirror the legacy pulse path by handing RAM ownership back to TX/APB before start.
     rmt_ll_rx_set_mem_owner(&RMT, channel, RMT_LL_MEM_OWNER_SW);
 }
 
-void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel) {
+void IRAM_ATTR rmt_compat_tx_start_pulse(rmt_compat_channel_t channel) {
     rmt_compat_tx_reset_mem(channel);
     rmt_compat_tx_set_mem_owner(channel);
     rmt_compat_tx_start(channel);
 }
 
-void rmt_compat_clear_interrupts(void) {
+void IRAM_ATTR rmt_compat_clear_interrupts(void) {
     RMT.int_clr.val = RMT.int_st.val;
 }
 
-void rmt_compat_write_single_item(
+void IRAM_ATTR rmt_compat_write_single_item(
     rmt_compat_channel_t channel,
     uint16_t duration0,
     bool level0,

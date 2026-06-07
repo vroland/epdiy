@@ -2,6 +2,7 @@
 #define EPDIY_RMT_COMPAT_H
 
 #include <driver/gpio.h>
+#include <esp_attr.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -49,20 +50,20 @@ void rmt_compat_tx_enable_carrier(rmt_compat_channel_t channel, bool enable);
 void rmt_compat_tx_enable_loop(rmt_compat_channel_t channel, bool enable);
 
 // TX Execution
-void rmt_compat_tx_start(rmt_compat_channel_t channel);
-void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel);
-void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count);
+void IRAM_ATTR rmt_compat_tx_start(rmt_compat_channel_t channel);
+void IRAM_ATTR rmt_compat_tx_reset_mem(rmt_compat_channel_t channel);
+void IRAM_ATTR rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count);
 
 // Interrupts
 int rmt_compat_get_irq_source(void);
 void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable);
-void rmt_compat_clear_interrupts(void);
+void IRAM_ATTR rmt_compat_clear_interrupts(void);
 
 // I2S Pulse-Specific
-void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel);
+void IRAM_ATTR rmt_compat_tx_start_pulse(rmt_compat_channel_t channel);
 
 // Memory Writes
-void rmt_compat_write_single_item(
+void IRAM_ATTR rmt_compat_write_single_item(
     rmt_compat_channel_t channel,
     uint16_t duration0,
     bool level0,

@@ -96,13 +96,16 @@ static void gpio_setup_out(int gpio, int sig, bool invert) {
 /// Resets "Start Pulse" signal when the current row output is done.
 static void IRAM_ATTR i2s_int_hdl(void* arg) {
     i2s_dev_t* dev = &I2S1;
-    if (dev->int_st.out_done) {
+    bool done = dev->int_st.out_done;
+
+    // Clear the interrupt before publishing completion so a new transfer cannot race the ACK.
+    dev->int_clr.val = dev->int_raw.val;
+
+    if (done) {
         // gpio_set_level(start_pulse_pin, 1);
         // gpio_set_level(GPIO_NUM_26, 0);
         output_done = true;
     }
-    // Clear the interrupt. Otherwise, the whole device would hang.
-    dev->int_clr.val = dev->int_raw.val;
 }
 
 uint8_t* IRAM_ATTR i2s_get_current_buffer() {
@@ -302,8 +305,14 @@ void i2s_bus_init(i2s_bus_config* cfg, uint32_t epd_row_width) {
 }
 
 void i2s_bus_deinit() {
-    esp_intr_disable(gI2S_intr_handle);
-    esp_intr_free(gI2S_intr_handle);
+    I2S1.int_ena.val = 0;
+    I2S1.int_clr.val = I2S1.int_raw.val;
+
+    if (gI2S_intr_handle != NULL) {
+        esp_intr_disable(gI2S_intr_handle);
+        esp_intr_free(gI2S_intr_handle);
+        gI2S_intr_handle = NULL;
+    }
 
     free(i2s_state.buf_a);
     free(i2s_state.buf_b);
