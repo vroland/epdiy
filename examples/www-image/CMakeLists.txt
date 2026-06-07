@@ -5,5 +5,8 @@ set(EXTRA_COMPONENT_DIRS "../../")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(www-image_example)
 
-# This is just to avoid that components/jpegdec includes Arduino.h
-idf_build_set_property(COMPILE_OPTIONS "-D __LINUX__" APPEND)
+idf_component_get_property(jpegdec_lib bitbank2__jpegdec COMPONENT_LIB)
+target_compile_options(
+    ${jpegdec_lib}
+    PRIVATE -Wno-error=pointer-to-int-cast -Wno-error=shift-negative-value
+)

@@ -24,10 +24,12 @@
 #include "esp_netif.h"
 #include "esp_sntp.h"
 
-// JPG decoder is on ESP32 rom for this version
-#if ESP_IDF_VERSION_MAJOR >= 4  // IDF 4+
+// JPG decoder is in target-specific ROM headers.
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#include "esp32s3/rom/tjpgd.h"
+#elif defined(CONFIG_IDF_TARGET_ESP32)
 #include "esp32/rom/tjpgd.h"
-#else  // ESP32 Before IDF 4.0
+#else
 #include "rom/tjpgd.h"
 #endif
 
@@ -481,7 +483,7 @@ void wifi_init_sta(void) {
     };
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
