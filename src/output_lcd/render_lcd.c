@@ -217,7 +217,8 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
                 };
 
                 buf = lq_current(lq);
-                if (buf == NULL) vTaskDelay(0);
+                if (buf == NULL)
+                    vTaskDelay(0);
             }
             memset(buf, 0x00, lq->element_size);
             lq_commit(lq);
@@ -240,7 +241,8 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             };
 
             buf = lq_current(lq);
-            if (buf == NULL) vTaskDelay(0);
+            if (buf == NULL)
+                vTaskDelay(0);
         }
 
         ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);
