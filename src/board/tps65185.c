@@ -93,13 +93,13 @@ void tps_vcom_kickback() {
     tps_write_register(dev, 4, 0x38);
     vTaskDelay(1);
 
-    uint8_t int1reg = tps_read_register(dev, TPS_REG_INT1);
-    uint8_t vcomreg = tps_read_register(dev, TPS_REG_VCOM2);
+    tps_read_register(dev, TPS_REG_INT1);
+    tps_read_register(dev, TPS_REG_VCOM2);
 }
 
 void tps_vcom_kickback_start() {
     i2c_master_dev_handle_t dev = current_tps();
-    uint8_t int1reg = tps_read_register(dev, TPS_REG_INT1);
+    tps_read_register(dev, TPS_REG_INT1);
     // set the ACQ bit in the VCOM2 register to 1 (BIT 7)
     tps_write_register(dev, TPS_REG_VCOM2, 0xA0);
 }

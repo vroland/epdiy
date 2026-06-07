@@ -77,6 +77,14 @@ void lcd_do_update(RenderContext_t* ctx) {
 
         // transmission is started in renderer threads, now wait util it's done
         xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
+        ESP_LOGI(
+            "epd_lcd",
+            "frame %d consumed %d/%d lines, dma eof count %u",
+            ctx->current_frame,
+            ctx->lines_consumed,
+            ctx->lines_total,
+            (unsigned)epd_lcd_get_bb_eof_count()
+        );
 
         for (int i = 0; i < NUM_RENDER_THREADS; i++) {
             xSemaphoreTake(ctx->feed_done_smphr[i], portMAX_DELAY);
@@ -159,6 +167,13 @@ void epd_push_pixels_lcd(RenderContext_t* ctx, short time, int color) {
     epd_set_mode(1);
     epd_lcd_start_frame();
     xSemaphoreTake(ctx->frame_done, portMAX_DELAY);
+    ESP_LOGI(
+        "epd_lcd",
+        "push pixels consumed %d/%d lines, dma eof count %u",
+        ctx->lines_consumed,
+        ctx->lines_total,
+        (unsigned)epd_lcd_get_bb_eof_count()
+    );
     epd_set_mode(0);
 
     free(ctx->static_line_buffer);
@@ -218,6 +233,7 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
                 };
 
                 buf = lq_current(lq);
+                if (buf == NULL) vTaskDelay(0);
             }
             memset(buf, 0x00, lq->element_size);
             lq_commit(lq);
@@ -241,6 +257,7 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             };
 
             buf = lq_current(lq);
+            if (buf == NULL) vTaskDelay(0);
         }
 
         ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);

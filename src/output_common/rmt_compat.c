@@ -1,6 +1,7 @@
 #include "rmt_compat.h"
 
 #include <sdkconfig.h>
+#include <esp_attr.h>
 #include <esp_idf_version.h>
 #include <esp_private/periph_ctrl.h>
 
@@ -49,7 +50,15 @@ static void rmt_compat_set_module_enabled(bool enable) {
 
 static void rmt_compat_set_periph_clock_enabled(bool enable) {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    // IDF 6.0 removed rmt_ll_enable_periph_clock — the replacement
+    // rmt_ll_enable_group_clock only sets sclk_active (already default 1).
+    // We must also enable the register clock gate and memory clock,
+    // otherwise RMT register writes are silently ignored.
     rmt_ll_enable_group_clock(&RMT, enable);
+#if CONFIG_IDF_TARGET_ESP32S3
+    RMT.sys_conf.clk_en = enable;
+    RMT.sys_conf.mem_clk_force_on = enable;
+#endif
 #else
     rmt_ll_enable_periph_clock(&RMT, enable);
 #endif
@@ -148,10 +157,11 @@ void IRAM_ATTR rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
 
 void IRAM_ATTR rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
 #if defined(SOC_RMT_SUPPORT_TX_LOOP_COUNT) && SOC_RMT_SUPPORT_TX_LOOP_COUNT
-    rmt_ll_tx_enable_loop_count(&RMT, channel, true);
 #if defined(SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP) && SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP
     rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
 #endif
+    rmt_ll_tx_reset_loop_count(&RMT, channel);
+    rmt_ll_tx_enable_loop_count(&RMT, channel, true);
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
 #error "ESP32-S3 LCD output requires RMT TX loop count support"
