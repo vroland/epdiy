@@ -205,7 +205,7 @@ static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* 
     }
 }
 
-void printPowerGoodStatus() {
+static void printPowerGoodStatus() {
     // Read the Power Good Status register at address 0x0F
     uint8_t pgStatus = tps_read_register(config_reg.i2c.tps, TPS_REG_PG);
 
@@ -218,13 +218,13 @@ void printPowerGoodStatus() {
     uint8_t vneg_pg = (pgStatus >> 1) & 0x01;
 
     // Log the Power Good Status
-    ESP_LOGE("epdiy", "Power Good Status: 0x%02X", pgStatus);
-    ESP_LOGE("epdiy", "VB_PG: %d", vb_pg);
-    ESP_LOGE("epdiy", "VDDH_PG: %d", vddh_pg);
-    ESP_LOGE("epdiy", "VN_PG: %d", vn_pg);
-    ESP_LOGE("epdiy", "VPOS_PG: %d", vpos_pg);
-    ESP_LOGE("epdiy", "VEE_PG: %d", vee_pg);
-    ESP_LOGE("epdiy", "VNEG_PG: %d", vneg_pg);
+    ESP_LOGI("epdiy", "Power Good Status: 0x%02X", pgStatus);
+    ESP_LOGI("epdiy", "VB_PG: %d", vb_pg);
+    ESP_LOGI("epdiy", "VDDH_PG: %d", vddh_pg);
+    ESP_LOGI("epdiy", "VN_PG: %d", vn_pg);
+    ESP_LOGI("epdiy", "VPOS_PG: %d", vpos_pg);
+    ESP_LOGI("epdiy", "VEE_PG: %d", vee_pg);
+    ESP_LOGI("epdiy", "VNEG_PG: %d", vneg_pg);
 }
 
 static void epd_board_poweron(epd_ctrl_state_t* state) {
