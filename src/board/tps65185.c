@@ -13,11 +13,15 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+static const int I2C_TIMEOUT_MS = 1000;
+
 static uint8_t i2c_master_read_slave(i2c_master_dev_handle_t dev, int reg) {
     uint8_t r_data[1];
 
     uint8_t reg_addr = reg;
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), r_data, 1, -1));
+    ESP_ERROR_CHECK(
+        i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), r_data, 1, I2C_TIMEOUT_MS)
+    );
 
     return r_data[0];
 }
@@ -30,7 +34,7 @@ static esp_err_t i2c_master_write_slave(
         return ESP_ERR_INVALID_SIZE;
     }
     memcpy(write_buffer + 1, data_wr, size);
-    return i2c_master_transmit(dev, write_buffer, size + 1, -1);
+    return i2c_master_transmit(dev, write_buffer, size + 1, I2C_TIMEOUT_MS);
 }
 
 esp_err_t tps_write_register(i2c_master_dev_handle_t dev, int reg, uint8_t value) {
@@ -89,13 +93,13 @@ void tps_vcom_kickback() {
     tps_write_register(dev, 4, 0x38);
     vTaskDelay(1);
 
-    uint8_t int1reg = tps_read_register(dev, TPS_REG_INT1);
-    uint8_t vcomreg = tps_read_register(dev, TPS_REG_VCOM2);
+    tps_read_register(dev, TPS_REG_INT1);
+    tps_read_register(dev, TPS_REG_VCOM2);
 }
 
 void tps_vcom_kickback_start() {
     i2c_master_dev_handle_t dev = current_tps();
-    uint8_t int1reg = tps_read_register(dev, TPS_REG_INT1);
+    tps_read_register(dev, TPS_REG_INT1);
     // set the ACQ bit in the VCOM2 register to 1 (BIT 7)
     tps_write_register(dev, TPS_REG_VCOM2, 0xA0);
 }

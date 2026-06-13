@@ -5,8 +5,17 @@
 
 #ifdef RENDER_METHOD_LCD
 
+#include <esp_idf_version.h>
 #include <esp_log.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#if __has_include(<rom/cache.h>)
 #include <rom/cache.h>
+#elif __has_include(<esp32s3/rom/cache.h>)
+#include <esp32s3/rom/cache.h>
+#endif
+#else
+#include <rom/cache.h>
+#endif
 
 #include "../epd_internals.h"
 #include "../output_common/line_queue.h"
@@ -203,12 +212,13 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             while (buf == NULL) {
                 // break in case of errors
                 if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
-                    printf("on err 1: %d %d\n", ctx->lines_prepared, ctx->lines_consumed);
                     lq_reset(lq);
                     return;
                 };
 
                 buf = lq_current(lq);
+                if (buf == NULL)
+                    vTaskDelay(0);
             }
             memset(buf, 0x00, lq->element_size);
             lq_commit(lq);
@@ -227,11 +237,12 @@ lcd_calculate_frame(RenderContext_t* ctx, int thread_id) {
             // break in case of errors
             if (ctx->error & EPD_DRAW_EMPTY_LINE_QUEUE) {
                 lq_reset(lq);
-                printf("on err 2: %d %d\n", ctx->lines_prepared, ctx->lines_consumed);
                 return;
             };
 
             buf = lq_current(lq);
+            if (buf == NULL)
+                vTaskDelay(0);
         }
 
         ctx->lut_lookup_func(lp, buf, ctx->conversion_lut, ctx->display_width);

@@ -1,9 +1,10 @@
 #include "rmt_compat.h"
 
+#include <sdkconfig.h>
+#include <esp_attr.h>
 #include <esp_idf_version.h>
 #include <esp_private/periph_ctrl.h>
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <driver/gpio.h>
 #include <esp_rom_gpio.h>
 #include <hal/gpio_hal.h>
@@ -31,8 +32,6 @@ typedef rmt_mem_t rmt_mem_block_t;
 extern rmt_mem_block_t RMTMEM;
 #endif
 
-#endif  // ESP_IDF_VERSION >= 5.0.0
-
 static gpio_hal_context_t s_gpio_hal = { .dev = GPIO_HAL_GET_HW(GPIO_PORT_0) };
 
 static void rmt_compat_set_module_enabled(bool enable) {
@@ -51,7 +50,15 @@ static void rmt_compat_set_module_enabled(bool enable) {
 
 static void rmt_compat_set_periph_clock_enabled(bool enable) {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    // IDF 6.0 removed rmt_ll_enable_periph_clock — the replacement
+    // rmt_ll_enable_group_clock only sets sclk_active (already default 1).
+    // We must also enable the register clock gate and memory clock,
+    // otherwise RMT register writes are silently ignored.
     rmt_ll_enable_group_clock(&RMT, enable);
+#if CONFIG_IDF_TARGET_ESP32S3
+    RMT.sys_conf.clk_en = enable;
+    RMT.sys_conf.mem_clk_force_on = enable;
+#endif
 #else
     rmt_ll_enable_periph_clock(&RMT, enable);
 #endif
@@ -139,22 +146,25 @@ void rmt_compat_tx_enable_loop(rmt_compat_channel_t channel, bool enable) {
     rmt_ll_tx_enable_loop(&RMT, channel, enable);
 }
 
-void rmt_compat_tx_start(rmt_compat_channel_t channel) {
+void IRAM_ATTR rmt_compat_tx_start(rmt_compat_channel_t channel) {
     rmt_ll_tx_reset_pointer(&RMT, channel);
     rmt_ll_tx_start(&RMT, channel);
 }
 
-void rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
+void IRAM_ATTR rmt_compat_tx_reset_mem(rmt_compat_channel_t channel) {
     rmt_ll_tx_reset_pointer(&RMT, channel);
 }
 
-void rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
+void IRAM_ATTR rmt_compat_tx_configure_finite_loop(rmt_compat_channel_t channel, uint32_t count) {
 #if defined(SOC_RMT_SUPPORT_TX_LOOP_COUNT) && SOC_RMT_SUPPORT_TX_LOOP_COUNT
-    rmt_ll_tx_enable_loop_count(&RMT, channel, true);
 #if defined(SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP) && SOC_RMT_SUPPORT_TX_LOOP_AUTO_STOP
     rmt_ll_tx_enable_loop_autostop(&RMT, channel, true);
 #endif
+    rmt_ll_tx_reset_loop_count(&RMT, channel);
+    rmt_ll_tx_enable_loop_count(&RMT, channel, true);
     rmt_ll_tx_set_loop_count(&RMT, channel, count);
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#error "ESP32-S3 LCD output requires RMT TX loop count support"
 #else
     (void)channel;
     (void)count;
@@ -178,22 +188,22 @@ void rmt_compat_tx_enable_interrupt(rmt_compat_channel_t channel, bool enable) {
     }
 }
 
-static void rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
+static void IRAM_ATTR rmt_compat_tx_set_mem_owner(rmt_compat_channel_t channel) {
     // Mirror the legacy pulse path by handing RAM ownership back to TX/APB before start.
     rmt_ll_rx_set_mem_owner(&RMT, channel, RMT_LL_MEM_OWNER_SW);
 }
 
-void rmt_compat_tx_start_pulse(rmt_compat_channel_t channel) {
+void IRAM_ATTR rmt_compat_tx_start_pulse(rmt_compat_channel_t channel) {
     rmt_compat_tx_reset_mem(channel);
     rmt_compat_tx_set_mem_owner(channel);
     rmt_compat_tx_start(channel);
 }
 
-void rmt_compat_clear_interrupts(void) {
+void IRAM_ATTR rmt_compat_clear_interrupts(void) {
     RMT.int_clr.val = RMT.int_st.val;
 }
 
-void rmt_compat_write_single_item(
+void IRAM_ATTR rmt_compat_write_single_item(
     rmt_compat_channel_t channel,
     uint16_t duration0,
     bool level0,

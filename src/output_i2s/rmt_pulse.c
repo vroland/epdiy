@@ -12,8 +12,8 @@ static volatile bool rmt_tx_done = true;
 
 static void IRAM_ATTR rmt_interrupt_handler(void* arg) {
     (void)arg;
-    rmt_tx_done = true;
     rmt_compat_clear_interrupts();
+    rmt_tx_done = true;
 }
 
 void rmt_pulse_init(gpio_num_t pin) {
@@ -38,12 +38,14 @@ void rmt_pulse_init(gpio_num_t pin) {
 }
 
 void rmt_pulse_deinit() {
+    rmt_compat_tx_enable_interrupt(RMT_COMPAT_CHANNEL_1, false);
+    rmt_compat_clear_interrupts();
+
     if (gRMT_intr_handle != NULL) {
         esp_intr_disable(gRMT_intr_handle);
         esp_intr_free(gRMT_intr_handle);
         gRMT_intr_handle = NULL;
     }
-    rmt_compat_tx_enable_interrupt(RMT_COMPAT_CHANNEL_1, false);
     rmt_compat_disable_clock(RMT_COMPAT_CHANNEL_1);
 }
 

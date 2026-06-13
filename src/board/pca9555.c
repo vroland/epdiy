@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <string.h>
 
+static const int I2C_TIMEOUT_MS = 1000;
+
 #define REG_INPUT_PORT0 0
 #define REG_INPUT_PORT1 1
 
@@ -25,7 +27,9 @@ static esp_err_t i2c_master_read_slave(
         return ESP_OK;
     }
     uint8_t reg_addr = reg;
-    return i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), data_rd, size, -1);
+    return i2c_master_transmit_receive(
+        dev, &reg_addr, sizeof(reg_addr), data_rd, size, I2C_TIMEOUT_MS
+    );
 }
 
 static esp_err_t i2c_master_write_slave(
@@ -37,7 +41,7 @@ static esp_err_t i2c_master_write_slave(
         return ESP_ERR_INVALID_SIZE;
     }
     memcpy(write_buffer + 1, data_wr, size);
-    return i2c_master_transmit(dev, write_buffer, size + 1, -1);
+    return i2c_master_transmit(dev, write_buffer, size + 1, I2C_TIMEOUT_MS);
 }
 
 static esp_err_t pca9555_write_single(i2c_master_dev_handle_t dev, int reg, uint8_t value) {
