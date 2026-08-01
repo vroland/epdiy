@@ -12,14 +12,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  validate-release:
     # Prereleases are intentionally not distributed through either registry.
     if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
-    environment: release
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -50,6 +46,14 @@ jobs:
           check_version library.properties "$(grep -Po '(?<=^version=).*' library.properties)"
           check_version doc/source/conf.py "$(grep -Po "(?<=^release = ')[^']+" doc/source/conf.py)"
 
+  validate-platformio:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -60,6 +64,14 @@ jobs:
       - name: Validate PlatformIO package
         run: pio pkg pack . --output "$RUNNER_TEMP/epdiy.tar.gz"
 
+  validate-idf:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
       - name: Validate ESP component package
         uses: espressif/upload-components-ci-action@v2
         with:
@@ -67,13 +79,38 @@ jobs:
           namespace: vroland
           dry_run: true
 
-      - name: Publish ESP component
-        uses: espressif/upload-components-ci-action@v2
+  publish-platformio:
+    needs: [validate-platformio, validate-idf]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v6
         with:
-          components: "epdiy: ."
-          namespace: vroland
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
 
       - name: Publish PlatformIO library
         env:
           PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
         run: pio pkg publish . --type library --no-interactive
+
+  publish-idf:
+    needs: [validate-platformio, validate-idf]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Publish ESP component
+        uses: espressif/upload-components-ci-action@v2
+        with:
+          components: "epdiy: ."
+          namespace: vroland

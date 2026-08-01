@@ -22,7 +22,8 @@
   "platforms": "espressif32",
   "export": {
     "exclude": [
-      "hardware"
+      "hardware",
+      "dist/**"
     ]
   },
   "build": {
