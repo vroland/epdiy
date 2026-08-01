@@ -92,6 +92,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install PlatformIO Core
+        run: python -m pip install --upgrade platformio
+
       - name: Publish PlatformIO library
         env:
           PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
