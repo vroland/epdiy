@@ -26,3 +26,5 @@ ED*.h
 ES*.h
 examples/private_*/
 *.code-workspace
+# MAC
+.DS_Store
