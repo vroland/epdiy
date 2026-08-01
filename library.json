@@ -1,6 +1,6 @@
 {
   "name": "epdiy",
-  "version": "2.0.0",
+  "version": "2.1.1",
   "description": "Drive parallel e-Paper displays with epdiy-based boards.",
   "keywords": "epd, e-paper, e-ink, display, kindle, e-reader, ereader, epdiy",
   "repository": {

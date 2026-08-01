@@ -22,7 +22,7 @@ copyright = '2023, Valentin Roland'
 author = 'Valentin Roland'
 
 # The full version, including alpha/beta/rc tags
-release = '2.0.0'
+release = '2.1.1'
 
 
 # -- General configuration ---------------------------------------------------
