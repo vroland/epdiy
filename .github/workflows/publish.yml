@@ -16,6 +16,7 @@ jobs:
     # Prereleases are intentionally not distributed through either registry.
     if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: read
       id-token: write
