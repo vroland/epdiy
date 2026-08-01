@@ -1,0 +1,78 @@
+name: Publish packages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Prereleases are intentionally not distributed through either registry.
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if ! [[ "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            printf 'Release tag must be an unprefixed semantic version, got: %s\n' "$RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          check_version() {
+            local source=$1
+            local version=$2
+            if [[ "$version" != "$RELEASE_TAG" ]]; then
+              printf '%s declares %s, but the release tag is %s\n' "$source" "$version" "$RELEASE_TAG" >&2
+              exit 1
+            fi
+          }
+
+          check_version library.json "$(jq -er '.version' library.json)"
+          check_version idf_component.yml "$(grep -Po '(?<=^version: ")[^"]+' idf_component.yml)"
+          check_version library.properties "$(grep -Po '(?<=^version=).*' library.properties)"
+          check_version doc/source/conf.py "$(grep -Po "(?<=^release = ')[^']+" doc/source/conf.py)"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install PlatformIO Core
+        run: python -m pip install --upgrade platformio
+
+      - name: Validate PlatformIO package
+        run: pio pkg pack . --output "$RUNNER_TEMP/epdiy.tar.gz"
+
+      - name: Validate ESP component package
+        uses: espressif/upload-components-ci-action@v2
+        with:
+          components: "epdiy: ."
+          namespace: vroland
+          dry_run: true
+
+      - name: Publish ESP component
+        uses: espressif/upload-components-ci-action@v2
+        with:
+          components: "epdiy: ."
+          namespace: vroland
+
+      - name: Publish PlatformIO library
+        env:
+          PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
+        run: pio pkg publish . --type library --no-interactive

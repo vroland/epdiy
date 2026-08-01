@@ -1,4 +1,19 @@
 version: "2.0.0"
 description: "Drive parallel e-Paper displays with epdiy-based boards."
 url: "https://github.com/vroland/epdiy"
+repository: "https://github.com/vroland/epdiy.git"
 license: LGPL-3.0-or-later
+targets:
+  - esp32
+  - esp32s3
+dependencies:
+  idf: ">=5.0"
+tags:
+  - display
+  - e-paper
+  - e-ink
+  - epd
+  - kindle
+  - e-reader
+  - ereader
+  - epdiy
