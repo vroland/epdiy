@@ -228,7 +228,14 @@ static void epd_board_poweron(epd_ctrl_state_t* state) {
     // give the IC time to powerup and set lines
     vTaskDelay(1);
 
+    int pg_tries = 0;
     while (!(pca9555_read_input(config_reg.i2c.pca, 1) & CFG_PIN_PWRGOOD)) {
+        if (pg_tries >= 500) {
+            ESP_LOGE("epdiy", "Power enable failed! PWRGOOD (PCA9555) not asserted");
+            return;
+        }
+        pg_tries++;
+        vTaskDelay(1);
     }
 
     ESP_ERROR_CHECK(tps_write_register(config_reg.i2c.tps, TPS_REG_ENABLE, 0x3F));
@@ -278,7 +285,14 @@ static void epd_board_measure_vcom(epd_ctrl_state_t* state) {
     };
     epd_board_set_ctrl(state, &mask);
 
+    int pg_tries = 0;
     while (!(pca9555_read_input(config_reg.i2c.pca, 1) & CFG_PIN_PWRGOOD)) {
+        if (pg_tries >= 500) {
+            ESP_LOGE("epdiy", "Power enable failed! PWRGOOD (PCA9555) not asserted");
+            return;
+        }
+        pg_tries++;
+        vTaskDelay(1);
     }
     ESP_LOGI("epdiy", "Power rails enabled");
 
