@@ -22,6 +22,9 @@
 #define TPS_REG_REVID 0x10
 
 esp_err_t tps_write_register(i2c_master_dev_handle_t dev, int reg, uint8_t value);
+/** Read a register without aborting on an I2C error. */
+esp_err_t tps_read_register_checked(i2c_master_dev_handle_t dev, int reg, uint8_t* value);
+
 uint8_t tps_read_register(i2c_master_dev_handle_t dev, int reg);
 
 /**

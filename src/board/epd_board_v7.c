@@ -5,6 +5,8 @@
 #include "../output_common/render_method.h"
 #include "../output_lcd/lcd_driver.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "power_timing.h"
 #include "epd_board_i2c.h"
 #include "pca9555.h"
 #include "tps65185.h"
@@ -182,7 +184,7 @@ static void epd_board_deinit() {
     gpio_uninstall_isr_service();
 }
 
-static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {
+static esp_err_t epd_board_set_ctrl_checked(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {
     uint8_t value = 0x00;
     if (mask->ep_output_enable || mask->ep_mode || mask->ep_stv) {
         if (state->ep_output_enable)
@@ -197,127 +199,23 @@ static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* 
         if (config_reg.wakeup)
             value |= CFG_PIN_WAKEUP;
 
-        ESP_ERROR_CHECK(pca9555_set_value(config_reg.i2c.pca, value, 1));
+        return pca9555_set_value(config_reg.i2c.pca, value, 1);
     }
+    return ESP_OK;
 }
 
-static void epd_board_poweron(epd_ctrl_state_t* state) {
-    epd_ctrl_state_t mask = {
-        .ep_output_enable = true,
-        .ep_mode = true,
-        .ep_stv = true,
-    };
-    state->ep_stv = true;
-    state->ep_mode = false;
-    state->ep_output_enable = true;
-    config_reg.wakeup = true;
-    epd_board_set_ctrl(state, &mask);
-
-    // Check if DISPLAY_UPSEQ_MC2 is set
-    const EpdDisplay_t* display = epd_get_display();
-    if (display->display_type & DISPLAY_UPSEQ_MC2) {
-        vTaskDelay(3);
-        tps_set_upseq_carta1300();
-        printf("Setting UPSEQ for DISPLAY_UPSEQ_MC2\n");
-    }
-    config_reg.pwrup = true;
-    epd_board_set_ctrl(state, &mask);
-    config_reg.vcom_ctrl = true;
-    epd_board_set_ctrl(state, &mask);
-
-    // give the IC time to powerup and set lines
-    vTaskDelay(1);
-
-    int pg_tries = 0;
-    while (!(pca9555_read_input(config_reg.i2c.pca, 1) & CFG_PIN_PWRGOOD)) {
-        if (pg_tries >= 500) {
-            ESP_LOGE("epdiy", "Power enable failed! PWRGOOD (PCA9555) not asserted");
-            return;
-        }
-        pg_tries++;
-        vTaskDelay(1);
-    }
-
-    ESP_ERROR_CHECK(tps_write_register(config_reg.i2c.tps, TPS_REG_ENABLE, 0x3F));
-
-    tps_set_vcom(config_reg.i2c.tps, vcom);
-
-    state->ep_sth = true;
-    mask = (const epd_ctrl_state_t){
-        .ep_sth = true,
-    };
-    epd_board_set_ctrl(state, &mask);
-
-    int tries = 0;
-    while (!((tps_read_register(config_reg.i2c.tps, TPS_REG_PG) & 0xFA) == 0xFA)) {
-        if (tries >= 500) {
-            ESP_LOGE(
-                "epdiy",
-                "Power enable failed! PG status: %X",
-                tps_read_register(config_reg.i2c.tps, TPS_REG_PG)
-            );
-            return;
-        }
-        tries++;
-        vTaskDelay(1);
-    }
+// Display-line operations retain the legacy contract. Power transitions use
+// the checked helper so a bus fault can be returned to the application.
+static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* const mask) {
+    ESP_ERROR_CHECK(epd_board_set_ctrl_checked(state, mask));
 }
 
-static void epd_board_measure_vcom(epd_ctrl_state_t* state) {
-    epd_ctrl_state_t mask = {
-        .ep_output_enable = true,
-        .ep_mode = true,
-        .ep_stv = true,
-    };
-    state->ep_stv = true;
-    state->ep_mode = false;
-    state->ep_output_enable = true;
-    config_reg.wakeup = true;
-    epd_board_set_ctrl(state, &mask);
-    config_reg.pwrup = true;
-    epd_board_set_ctrl(state, &mask);
-
-    // give the IC time to powerup and set lines
-    vTaskDelay(1);
-    state->ep_sth = true;
-    mask = (const epd_ctrl_state_t){
-        .ep_sth = true,
-    };
-    epd_board_set_ctrl(state, &mask);
-
-    int pg_tries = 0;
-    while (!(pca9555_read_input(config_reg.i2c.pca, 1) & CFG_PIN_PWRGOOD)) {
-        if (pg_tries >= 500) {
-            ESP_LOGE("epdiy", "Power enable failed! PWRGOOD (PCA9555) not asserted");
-            return;
-        }
-        pg_tries++;
-        vTaskDelay(1);
-    }
-    ESP_LOGI("epdiy", "Power rails enabled");
-
-    state->ep_sth = true;
-    mask = (const epd_ctrl_state_t){
-        .ep_sth = true,
-    };
-    epd_board_set_ctrl(state, &mask);
-
-    int tries = 0;
-    while (!((tps_read_register(config_reg.i2c.tps, TPS_REG_PG) & 0xFA) == 0xFA)) {
-        if (tries >= 500) {
-            ESP_LOGE(
-                "epdiy",
-                "Power enable failed! PG status: %X",
-                tps_read_register(config_reg.i2c.tps, TPS_REG_PG)
-            );
-            return;
-        }
-        tries++;
-        vTaskDelay(1);
-    }
+static void power_delay_ms(uint32_t ms) {
+    TickType_t ticks = pdMS_TO_TICKS(ms);
+    vTaskDelay(ticks ? ticks : 1);
 }
 
-static void epd_board_poweroff(epd_ctrl_state_t* state) {
+static esp_err_t epd_board_poweroff_checked(epd_ctrl_state_t* state) {
     epd_ctrl_state_t mask = {
         .ep_stv = true,
         .ep_output_enable = true,
@@ -328,10 +226,121 @@ static void epd_board_poweroff(epd_ctrl_state_t* state) {
     state->ep_stv = false;
     state->ep_output_enable = false;
     state->ep_mode = false;
-    epd_board_set_ctrl(state, &mask);
-    vTaskDelay(1);
+    state->ep_sth = false;
+    esp_err_t first = epd_board_set_ctrl_checked(state, &mask);
+    power_delay_ms(1);
+    // Always try the final all-off write, even if the first write failed.
     config_reg.wakeup = false;
-    epd_board_set_ctrl(state, &mask);
+    esp_err_t last = epd_board_set_ctrl_checked(state, &mask);
+    return first != ESP_OK ? first : last;
+}
+
+static esp_err_t wait_power_good(bool pca) {
+    const int64_t deadline = esp_timer_get_time() + EPD_POWER_GOOD_TIMEOUT_MS * 1000LL;
+    while (esp_timer_get_time() < deadline) {
+        uint8_t value = 0;
+        esp_err_t err = pca
+            ? pca9555_read_input_checked(config_reg.i2c.pca, 1, &value)
+            : tps_read_register_checked(config_reg.i2c.tps, TPS_REG_PG, &value);
+        if (err != ESP_OK) {
+            return err;
+        }
+        // Do not accept a late success. Each I2C operation is independently
+        // bounded, so a failed wait can overrun by at most one transfer or poll.
+        if (esp_timer_get_time() >= deadline) {
+            break;
+        }
+        uint8_t required = pca ? CFG_PIN_PWRGOOD : 0xFA;
+        if ((value & required) == required) {
+            return ESP_OK;
+        }
+        power_delay_ms(EPD_POWER_POLL_INTERVAL_MS);
+    }
+    ESP_LOGE("epdiy", "%s power-good timeout", pca ? "PCA9555" : "TPS65185");
+    return ESP_ERR_TIMEOUT;
+}
+
+static esp_err_t epd_board_enable_power(epd_ctrl_state_t* state, bool measure_vcom) {
+    epd_ctrl_state_t mask = {
+        .ep_output_enable = true,
+        .ep_mode = true,
+        .ep_stv = true,
+    };
+    const EpdDisplay_t* display = epd_get_display();
+    esp_err_t err;
+    state->ep_stv = true;
+    state->ep_mode = false;
+    state->ep_output_enable = true;
+    config_reg.wakeup = true;
+    err = epd_board_set_ctrl_checked(state, &mask);
+    if (err != ESP_OK) goto fail;
+
+    if (!measure_vcom && (display->display_type & DISPLAY_UPSEQ_MC2)) {
+        power_delay_ms(3);
+        err = tps_write_register(config_reg.i2c.tps, TPS_REG_UPSEQ0, 0xE1);
+        if (err != ESP_OK) goto fail;
+        err = tps_write_register(config_reg.i2c.tps, TPS_REG_UPSEQ1, 0xAA);
+        if (err != ESP_OK) goto fail;
+    }
+    config_reg.pwrup = true;
+    err = epd_board_set_ctrl_checked(state, &mask);
+    if (err != ESP_OK) goto fail;
+    if (!measure_vcom) {
+        config_reg.vcom_ctrl = true;
+        err = epd_board_set_ctrl_checked(state, &mask);
+        if (err != ESP_OK) goto fail;
+    }
+    power_delay_ms(1);
+    err = wait_power_good(true);
+    if (err != ESP_OK) goto fail;
+
+    if (!measure_vcom) {
+        err = tps_write_register(config_reg.i2c.tps, TPS_REG_ENABLE, 0x3F);
+        if (err != ESP_OK) goto fail;
+        unsigned value = vcom / 10;
+        err = tps_write_register(config_reg.i2c.tps, TPS_REG_VCOM2, (value & 0x100) >> 8);
+        if (err != ESP_OK) goto fail;
+        err = tps_write_register(config_reg.i2c.tps, TPS_REG_VCOM1, value & 0xFF);
+        if (err != ESP_OK) goto fail;
+    }
+    state->ep_sth = true;
+    mask = (epd_ctrl_state_t){ .ep_sth = true };
+    err = epd_board_set_ctrl_checked(state, &mask);
+    if (err != ESP_OK) goto fail;
+    err = wait_power_good(false);
+    if (err == ESP_OK) return ESP_OK;
+
+fail:
+    ESP_LOGE("epdiy", "Power enable failed: %s", esp_err_to_name(err));
+    // Preserve the original error, and report cleanup failure separately.
+    if (epd_board_poweroff_checked(state) != ESP_OK) {
+        ESP_LOGE("epdiy", "Power cleanup failed; rail shutdown could not be confirmed");
+    }
+    return err;
+}
+
+static esp_err_t epd_board_poweron_checked(epd_ctrl_state_t* state) {
+    return epd_board_enable_power(state, false);
+}
+
+static esp_err_t epd_board_measure_vcom_checked(epd_ctrl_state_t* state) {
+    return epd_board_enable_power(state, true);
+}
+
+// Keep the original API for existing applications. New applications should use
+// the checked API and skip drawing when power could not be established.
+static void epd_board_poweron(epd_ctrl_state_t* state) {
+    epd_board_poweron_checked(state);
+}
+
+static void epd_board_measure_vcom(epd_ctrl_state_t* state) {
+    epd_board_measure_vcom_checked(state);
+}
+
+static void epd_board_poweroff(epd_ctrl_state_t* state) {
+    if (epd_board_poweroff_checked(state) != ESP_OK) {
+        ESP_LOGE("epdiy", "Power-off failed");
+    }
 }
 
 static float epd_board_ambient_temperature() {
@@ -347,6 +356,9 @@ const EpdBoardDefinition epd_board_v7 = {
     .deinit = epd_board_deinit,
     .set_ctrl = epd_board_set_ctrl,
     .poweron = epd_board_poweron,
+    .poweron_checked = epd_board_poweron_checked,
+    .poweroff_checked = epd_board_poweroff_checked,
+    .measure_vcom_checked = epd_board_measure_vcom_checked,
     .poweroff = epd_board_poweroff,
 
     .measure_vcom = epd_board_measure_vcom,

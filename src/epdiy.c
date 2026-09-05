@@ -476,6 +476,16 @@ void epd_draw_rotated_image(EpdRect image_area, const uint8_t* image_buffer, uin
     }
 }
 
+esp_err_t epd_poweron_checked() {
+    const EpdBoardDefinition* board = epd_current_board();
+    return board->poweron_checked ? board->poweron_checked(epd_ctrl_state()) : ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t epd_poweroff_checked() {
+    const EpdBoardDefinition* board = epd_current_board();
+    return board->poweroff_checked ? board->poweroff_checked(epd_ctrl_state()) : ESP_ERR_NOT_SUPPORTED;
+}
+
 void epd_poweron() {
     epd_current_board()->poweron(epd_ctrl_state());
 }

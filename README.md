@@ -190,3 +190,25 @@ The board and schematic are licensed under a <a rel="license" href="https://crea
 
 Firmware and remaining examples are licensed under the terms of the GNU Lesser GPL version 3.
 Utilities are licensed under the terms of the MIT license.
+
+### Checked V7 power transitions
+
+Applications that need to recover from a display supply failure can use
+`epd_poweron_checked()` and `epd_poweroff_checked()` on board V7. Draw only after
+power-on returns `ESP_OK`, and check shutdown too. Other boards return
+`ESP_ERR_NOT_SUPPORTED` without changing power; the existing void power API is
+still available for legacy callers.
+
+V7 waits up to 500 ms **per power-good phase**, using the monotonic microsecond
+clock. Polls yield for 10 ms (at least one FreeRTOS tick). PCA9555 and TPS65185
+transfers have a 50 ms timeout, including writes and cleanup. A phase can overrun
+its deadline by one bounded transfer or poll; setup and shutdown take additional
+time. These constants live in `src/board/power_timing.h`.
+
+On a failed start, V7 attempts both shutdown writes and returns the original
+error. A cleanup failure is logged separately: if I2C is broken, software cannot
+guarantee physical rail shutdown. The checked VCOM preparation callback follows
+the same rules. Legacy void callers cannot inspect the returned status and
+should migrate before relying on automatic recovery.
+
+Run `python3 test/host/test_power.py` for host fault tests at two tick rates.

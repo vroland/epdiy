@@ -27,6 +27,9 @@
 
 #define EPDIY_PCA9555_ADDR 0x20
 
+/** Read an input port without aborting or hiding an I2C error. */
+esp_err_t pca9555_read_input_checked(i2c_master_dev_handle_t dev, int high_port, uint8_t* value);
+
 uint8_t pca9555_read_input(i2c_master_dev_handle_t dev, int high_port);
 esp_err_t pca9555_set_value(i2c_master_dev_handle_t dev, uint8_t config_value, int high_port);
 esp_err_t pca9555_set_inversion(i2c_master_dev_handle_t dev, uint8_t config_value, int high_port);

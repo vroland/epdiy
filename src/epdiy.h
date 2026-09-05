@@ -265,6 +265,15 @@ void epd_poweron();
 /** Disable display power supply. */
 void epd_poweroff();
 
+/**
+ * Checked power operations. Currently supported by board v7. Return
+ * ESP_ERR_NOT_SUPPORTED without changing power on boards without checked
+ * callbacks. Callers must not draw after a failed power-on. On failure v7
+ * attempts shutdown; an I2C fault can prevent physical shutdown too.
+ */
+esp_err_t epd_poweron_checked();
+esp_err_t epd_poweroff_checked();
+
 /** Clear the whole screen by flashing it. */
 void epd_clear();
 

@@ -1,3 +1,4 @@
+#include "power_timing.h"
 
 
 #include "pca9555.h"
@@ -25,7 +26,7 @@ static esp_err_t i2c_master_read_slave(
         return ESP_OK;
     }
     uint8_t reg_addr = reg;
-    return i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), data_rd, size, -1);
+    return i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), data_rd, size, EPD_POWER_I2C_TIMEOUT_MS);
 }
 
 static esp_err_t i2c_master_write_slave(
@@ -37,7 +38,7 @@ static esp_err_t i2c_master_write_slave(
         return ESP_ERR_INVALID_SIZE;
     }
     memcpy(write_buffer + 1, data_wr, size);
-    return i2c_master_transmit(dev, write_buffer, size + 1, -1);
+    return i2c_master_transmit(dev, write_buffer, size + 1, EPD_POWER_I2C_TIMEOUT_MS);
 }
 
 static esp_err_t pca9555_write_single(i2c_master_dev_handle_t dev, int reg, uint8_t value) {
@@ -55,6 +56,10 @@ esp_err_t pca9555_set_inversion(i2c_master_dev_handle_t dev, uint8_t config_valu
 
 esp_err_t pca9555_set_value(i2c_master_dev_handle_t dev, uint8_t config_value, int high_port) {
     return pca9555_write_single(dev, REG_OUTPUT_PORT0 + high_port, config_value);
+}
+
+esp_err_t pca9555_read_input_checked(i2c_master_dev_handle_t dev, int high_port, uint8_t* value) {
+    return i2c_master_read_slave(dev, value, 1, REG_INPUT_PORT0 + high_port);
 }
 
 uint8_t pca9555_read_input(i2c_master_dev_handle_t dev, int high_port) {

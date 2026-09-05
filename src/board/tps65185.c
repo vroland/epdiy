@@ -1,3 +1,4 @@
+#include "power_timing.h"
 
 #include "tps65185.h"
 #include "epd_board_i2c.h"
@@ -17,7 +18,7 @@ static uint8_t i2c_master_read_slave(i2c_master_dev_handle_t dev, int reg) {
     uint8_t r_data[1];
 
     uint8_t reg_addr = reg;
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), r_data, 1, -1));
+    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev, &reg_addr, sizeof(reg_addr), r_data, 1, EPD_POWER_I2C_TIMEOUT_MS));
 
     return r_data[0];
 }
@@ -30,7 +31,7 @@ static esp_err_t i2c_master_write_slave(
         return ESP_ERR_INVALID_SIZE;
     }
     memcpy(write_buffer + 1, data_wr, size);
-    return i2c_master_transmit(dev, write_buffer, size + 1, -1);
+    return i2c_master_transmit(dev, write_buffer, size + 1, EPD_POWER_I2C_TIMEOUT_MS);
 }
 
 esp_err_t tps_write_register(i2c_master_dev_handle_t dev, int reg, uint8_t value) {
@@ -41,6 +42,13 @@ esp_err_t tps_write_register(i2c_master_dev_handle_t dev, int reg, uint8_t value
 
     err = i2c_master_write_slave(dev, reg, w_data, 1);
     return err;
+}
+
+esp_err_t tps_read_register_checked(i2c_master_dev_handle_t dev, int reg, uint8_t* value) {
+    uint8_t reg_addr = reg;
+    return i2c_master_transmit_receive(
+        dev, &reg_addr, sizeof(reg_addr), value, 1, EPD_POWER_I2C_TIMEOUT_MS
+    );
 }
 
 uint8_t tps_read_register(i2c_master_dev_handle_t dev, int reg) {
@@ -81,7 +89,14 @@ static i2c_master_dev_handle_t current_tps() {
 void tps_vcom_kickback() {
     printf("VCOM Kickback test\n");
     // pull the WAKEUP pin and the PWRUP pin high to enable all output rails.
-    epd_current_board()->measure_vcom(epd_ctrl_state());
+    const EpdBoardDefinition* board = epd_current_board();
+    if (board->measure_vcom_checked) {
+        if (board->measure_vcom_checked(epd_ctrl_state()) != ESP_OK) {
+            return;
+        }
+    } else {
+        board->measure_vcom(epd_ctrl_state());
+    }
     // set the HiZ bit in the VCOM2 register (BIT 5) 0x20
     // this puts the VCOM pin in a high-impedance state.
     // bit 3 & 4 Number of acquisitions that is averaged to a single kick-back V. measurement

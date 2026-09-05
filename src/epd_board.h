@@ -84,6 +84,14 @@ typedef struct {
      * Set the output level of a GPIO extender, if available.
      */
     esp_err_t (*gpio_write)(int pin, bool value);
+    /**
+     * Optional checked power operations. Return ESP_OK only when successful.
+     * Power-on / VCOM preparation must attempt shutdown on failure. Appended to
+     * preserve existing initializers; legacy boards may leave these NULL.
+     */
+    esp_err_t (*poweron_checked)(epd_ctrl_state_t*);
+    esp_err_t (*poweroff_checked)(epd_ctrl_state_t*);
+    esp_err_t (*measure_vcom_checked)(epd_ctrl_state_t*);
 } EpdBoardDefinition;
 
 /**
