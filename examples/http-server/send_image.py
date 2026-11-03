@@ -66,7 +66,8 @@ def convert_8bit_to_4bit(bytestring):
     for i in range(0, len(bytestring), 2):
         first_nibble = int(bytestring[i] / 17)
         second_nibble = int(bytestring[i + 1] / 17)
-        fourbit += [first_nibble << 4 | second_nibble]
+        # epdiy reads the left pixel of each pair from the low nibble
+        fourbit += [second_nibble << 4 | first_nibble]
     fourbit = bytes(fourbit)
     return fourbit
 
