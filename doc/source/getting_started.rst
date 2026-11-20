@@ -107,7 +107,7 @@ You should now see the demo output on your display.
 Use with esp-idf
 ----------------
 
-The neccessary functionality for driving an EPD display is encapsulated in the :code:`components/epdiy` IDF component.
+The necessary functionality for driving an EPD display is encapsulated in the :code:`components/epdiy` IDF component.
 To use it in you own project, simply copy the :code:`epdiy` folder to your project-local :code:`components` directory.
 The component sould be automatically detected by the framework, you can now use
 ::
@@ -137,4 +137,3 @@ To install epdiy to work with the Arduino IDE (>= 1.8), place the downloaded rep
 Alternatively, it is possible to use the `Arduino APIs as an IDF component <https://github.com/espressif/arduino-esp32/blob/master/docs/esp-idf_component.md>`_,
 which allows you to use the Arduino ecosystem (Except for a different build process).
 This gives you full access to ESP-IDF options.
-
